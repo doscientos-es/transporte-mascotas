@@ -11,7 +11,7 @@ import { initialDailyRoutes, initialLetters, templates } from './lib/data'
 import { parseCartaPdf } from './lib/carta-parser'
 import { saveImportedLetter } from './lib/letters'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
-import { boxSize } from './lib/van'
+import { boxesBySize, boxSize } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from './lib/types'
 import './App.css'
@@ -48,6 +48,7 @@ function Dashboard({ session }: { session: Session | null }) {
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
   const [showImport, setShowImport] = useState(false)
   const [showNewRoute, setShowNewRoute] = useState(false)
+  const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
@@ -82,8 +83,19 @@ function Dashboard({ session }: { session: Session | null }) {
       toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
     }
   }
-  function createDailyRoute(template: RouteTemplate) {
-    const route: DailyRoute = { id: `route-${Date.now()}`, templateId: template.id, date: '2026-08-09', status: 'borrador', actions: [] }
+  function createDailyRoute(template: RouteTemplate, date: string) {
+    const usedBoxes = new Set<number>()
+    const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => letter.animals.flatMap((animal) => {
+      const box = animal.box ?? boxesBySize[animal.size].find((candidate) => !usedBoxes.has(candidate))
+      if (box) usedBoxes.add(box)
+      const originStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()))
+      const destinationStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()))
+      return [
+        ...(originStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'recogida' as const, stop: originStop.locality, customer: letter.sender, phone: letter.senderPhone, status: 'pendiente' as const, box }] : []),
+        ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
+      ]
+    }))
+    const route: DailyRoute = { id: `route-${Date.now()}`, templateId: template.id, date, status: 'borrador', actions }
     setDailyRoutes((current) => [route, ...current]); setSelectedRoute(route); setShowNewRoute(false); setSection('rutas'); toast(`Ruta ${template.name} creada como borrador.`)
   }
 
@@ -98,7 +110,7 @@ function Dashboard({ session }: { session: Session | null }) {
       <main>
         <header className="topbar"><div><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></div><div className="topbar-actions"><label className="search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar" aria-label="Buscar" /></label><span className="avatar">GM</span></div></header>
         <div className="page-content">
-          {section === 'cartas' && <LettersPage letters={filteredLetters} onImport={() => setShowImport(true)} onInvoice={(letter) => downloadInvoice(letter.id, letter.sender, 200)} />}
+          {section === 'cartas' && <LettersPage letters={filteredLetters} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
           {section === 'plantillas' && <TemplatesPage selected={selectedTemplate} onSelect={setSelectedTemplate} />}
           {section === 'rutas' && <RoutesPage route={selectedRoute} template={activeTemplate} routes={dailyRoutes} onSelect={setSelectedRoute} onAction={updateAction} onCreate={() => setShowNewRoute(true)} />}
           {section === 'furgoneta' && <VanPage route={selectedRoute} assignments={assignments} onPrint={() => downloadVanManifest(assignments, activeTemplate.name)} />}
@@ -107,6 +119,7 @@ function Dashboard({ session }: { session: Session | null }) {
       <nav className="mobile-nav" aria-label="Navegación móvil">{nav.map(([id, label, Icon]) => <button type="button" className={section === id ? 'is-active' : ''} key={id} onClick={() => setSection(id)}><Icon size={19} /><span>{label.split(' ')[0]}</span></button>)}</nav>
       {showImport && <ImportDialog onClose={() => setShowImport(false)} onPick={() => fileInput.current?.click()} />}
       {showNewRoute && <NewRouteDialog onClose={() => setShowNewRoute(false)} onCreate={createDailyRoute} />}
+      {invoiceLetter && <InvoiceDialog letter={invoiceLetter} onClose={() => setInvoiceLetter(null)} />}
       <input ref={fileInput} hidden type="file" accept="application/pdf" onChange={(event) => importPdf(event.target.files?.[0])} />
       {notice && <div className="toast" role="status"><CheckCircle2 size={18} /> {notice}</div>}
     </div>
@@ -167,7 +180,8 @@ function VanPage({ route, assignments, onPrint }: { route: DailyRoute; assignmen
   </> }
 
 function ImportDialog({ onClose, onPick }: { onClose: () => void; onPick: () => void }) { return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="import-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><FilePlus2 size={24} /></div><h2 id="import-title">Importar carta de porte</h2><p>Sube un PDF digital. Extraeremos el contenido y podrás revisarlo antes de guardarlo.</p><button type="button" className="dropzone" onClick={onPick}><Upload size={24} /><strong>Seleccionar PDF</strong><span>Máximo 10 MB · solo PDF con texto</span></button><p className="hint">El identificador será el encabezado «CARTA DE PORTE Nº …».</p></CardContent></Card></div> }
-function NewRouteDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (template: RouteTemplate) => void }) { return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="route-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Route size={24} /></div><h2 id="route-title">Crear ruta diaria</h2><p>Elige una plantilla para el día 9 de agosto. Se copiarán todas sus paradas y las cartas compatibles.</p><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></CardContent></Card></div> }
+function InvoiceDialog({ letter, onClose }: { letter: Letter; onClose: () => void }) { const [payer, setPayer] = useState<'remitente' | 'destinatario'>('remitente'); const [total, setTotal] = useState('200'); const customer = payer === 'remitente' ? letter.sender : letter.recipient; return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="invoice-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Printer size={24} /></div><h2 id="invoice-title">Preparar borrador</h2><p>Elige quién paga y ajusta el importe con IVA antes de generar el PDF provisional.</p><div className="payer-options"><button type="button" className={payer === 'remitente' ? 'is-selected' : ''} onClick={() => setPayer('remitente')}><span>Remitente</span><strong>{letter.sender}</strong></button><button type="button" className={payer === 'destinatario' ? 'is-selected' : ''} onClick={() => setPayer('destinatario')}><span>Destinatario</span><strong>{letter.recipient}</strong></button></div><label className="date-field">Total (IVA incluido)<input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></label><Button className="dialog-submit" onClick={() => { downloadInvoice(letter.id, customer, Number(total) || 0); onClose() }}><Printer /> Generar PDF provisional</Button></CardContent></Card></div> }
+function NewRouteDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (template: RouteTemplate, date: string) => void }) { const [date, setDate] = useState('2026-08-09'); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="route-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Route size={24} /></div><h2 id="route-title">Crear ruta diaria</h2><p>Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida.</p><label className="date-field">Fecha de servicio<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></CardContent></Card></div> }
 function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) { return <Card className={`stat ${accent ? `stat-${accent}` : ''}`}><CardContent><p>{label}</p><strong>{value}</strong><span><ClipboardList size={15} /> actualizado ahora</span></CardContent></Card> }
 
 export default App
