@@ -68,7 +68,13 @@ function Dashboard({ session }: { session: Session | null }) {
   }, [session])
 
   function toast(message: string) { setNotice(message); window.setTimeout(() => setNotice(''), 3200) }
-  function updateAction(actionId: string) {
+  async function updateAction(actionId: string) {
+    const target = selectedRoute.actions.find((action) => action.id === actionId)
+    const status = target?.status === 'completada' ? 'pendiente' : 'completada'
+    if (session && supabase && target) {
+      const { error } = await supabase.rpc('record_route_action', { p_action_id: actionId, p_status: status })
+      if (error) { toast('No se ha podido actualizar la acción en la ruta.'); return }
+    }
     const update = (route: DailyRoute): DailyRoute => route.id === selectedRoute.id ? { ...route, actions: route.actions.map((action): ServiceAction => action.id === actionId ? { ...action, status: action.status === 'completada' ? 'pendiente' : 'completada' } : action) } : route
     const next = update(selectedRoute); setSelectedRoute(next); setDailyRoutes((current) => current.map(update))
   }

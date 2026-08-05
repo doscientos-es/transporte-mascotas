@@ -59,7 +59,7 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     created_by: userId,
   })
   if (routeError) throw routeError
-  const { error: stopsError } = await supabase.from('daily_route_stops').insert(template.stops.map((stop, index) => ({
+  const { data: savedStops, error: stopsError } = await supabase.from('daily_route_stops').insert(template.stops.map((stop, index) => ({
     daily_route_id: route.id,
     template_stop_id: stop.id,
     sequence: index + 1,
@@ -67,6 +67,25 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     meeting_point: stop.place,
     map_url: stop.mapUrl,
     minutes_to_next: stop.minutes || null,
-  })))
+  }))).select('id,locality')
   if (stopsError) throw stopsError
+
+  const letterIds = [...new Set(route.actions.map((action) => action.letterId))]
+  if (!letterIds.length) return
+  const { data: storedLetters, error: lettersError } = await supabase.from('carriage_letters').select('id').in('id', letterIds)
+  if (lettersError) throw lettersError
+  const allowedLetters = new Set(storedLetters.map((letter) => letter.id))
+  const stopIds = new Map(savedStops.map((stop) => [stop.locality, stop.id]))
+  const actions = route.actions.filter((action) => allowedLetters.has(action.letterId) && stopIds.has(action.stop)).map((action) => ({
+    id: action.id,
+    daily_route_id: route.id,
+    daily_route_stop_id: stopIds.get(action.stop),
+    letter_id: action.letterId,
+    animal_id: action.animalId,
+    action_type: action.type,
+    status: action.status,
+  }))
+  if (!actions.length) return
+  const { error: actionsError } = await supabase.from('route_actions').insert(actions)
+  if (actionsError) throw actionsError
 }
