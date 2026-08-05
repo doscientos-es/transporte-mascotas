@@ -161,7 +161,14 @@ function LoginScreen() {
     setSending(true); setError('')
     const response = mode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
+      : await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { display_name: displayName },
+          emailRedirectTo: window.location.origin,
+        },
+      })
     setSending(false)
     if (response.error) setError(mode === 'login' ? 'No hemos podido iniciar sesión. Revisa tus datos.' : 'No hemos podido crear el acceso. Revisa los datos e inténtalo de nuevo.')
     else if (mode === 'signup' && !response.data.session) setError('Revisa tu correo y confirma el acceso antes de iniciar sesión.')
