@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { initialDailyRoutes, initialLetters, templates } from './lib/data'
 import { parseCartaPdf } from './lib/carta-parser'
 import { saveImportedLetter } from './lib/letters'
+import { loadOrSeedRouteTemplates, saveDailyRoute } from './lib/routes'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
 import { boxesBySize, boxSize } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -43,6 +44,7 @@ function App() {
 function Dashboard({ session }: { session: Session | null }) {
   const [section, setSection] = useState<NavSection>('cartas')
   const [letters, setLetters] = useState<Letter[]>(initialLetters)
+  const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(templates[0])
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
@@ -53,9 +55,17 @@ function Dashboard({ session }: { session: Session | null }) {
   const [notice, setNotice] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const activeTemplate = templates.find((template) => template.id === selectedRoute.templateId) ?? templates[0]
+  const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
   const filteredLetters = useMemo(() => letters.filter((letter) => Object.values(letter).join(' ').toLowerCase().includes(search.toLowerCase())), [letters, search])
   const assignments = useMemo(() => selectedRoute.actions.filter((action) => action.type === 'recogida' && action.box).map((action) => ({ box: action.box!, label: action.letterId })), [selectedRoute])
+
+  useEffect(() => {
+    if (!session) return
+    loadOrSeedRouteTemplates(templates).then((loaded) => {
+      setRouteTemplates(loaded)
+      setSelectedTemplate((current) => loaded.find((template) => template.name === current.name) ?? loaded[0])
+    }).catch(() => undefined)
+  }, [session])
 
   function toast(message: string) { setNotice(message); window.setTimeout(() => setNotice(''), 3200) }
   function updateAction(actionId: string) {
@@ -67,7 +77,7 @@ function Dashboard({ session }: { session: Session | null }) {
     try {
       const extracted = await parseCartaPdf(file)
       const fallbackNumber = 445 + letters.length
-      const route = templates.find((template) => template.stops.some((stop) => stop.locality.toLocaleLowerCase().includes((extracted.destination ?? '').toLocaleLowerCase())))
+      const route = routeTemplates.find((template) => template.stops.some((stop) => stop.locality.toLocaleLowerCase().includes((extracted.destination ?? '').toLocaleLowerCase())))
       const letter: Letter = {
         id: extracted.id || `CARTA DE PORTE Nº 2026-${fallbackNumber}`,
         sender: extracted.sender || 'Pendiente de revisar', senderPhone: extracted.senderPhone || '',
@@ -83,7 +93,7 @@ function Dashboard({ session }: { session: Session | null }) {
       toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
     }
   }
-  function createDailyRoute(template: RouteTemplate, date: string) {
+  async function createDailyRoute(template: RouteTemplate, date: string) {
     const usedBoxes = new Set<number>()
     const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => letter.animals.flatMap((animal) => {
       const box = animal.box ?? boxesBySize[animal.size].find((candidate) => !usedBoxes.has(candidate))
@@ -95,8 +105,13 @@ function Dashboard({ session }: { session: Session | null }) {
         ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
       ]
     }))
-    const route: DailyRoute = { id: `route-${Date.now()}`, templateId: template.id, date, status: 'borrador', actions }
-    setDailyRoutes((current) => [route, ...current]); setSelectedRoute(route); setShowNewRoute(false); setSection('rutas'); toast(`Ruta ${template.name} creada como borrador.`)
+    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', actions }
+    try {
+      if (session) await saveDailyRoute(route, template, session.user.id)
+      setDailyRoutes((current) => [route, ...current]); setSelectedRoute(route); setShowNewRoute(false); setSection('rutas'); toast(`Ruta ${template.name} creada como borrador.`)
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
+    }
   }
 
   return (
@@ -111,14 +126,14 @@ function Dashboard({ session }: { session: Session | null }) {
         <header className="topbar"><div><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></div><div className="topbar-actions"><label className="search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar" aria-label="Buscar" /></label><span className="avatar">GM</span></div></header>
         <div className="page-content">
           {section === 'cartas' && <LettersPage letters={filteredLetters} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
-          {section === 'plantillas' && <TemplatesPage selected={selectedTemplate} onSelect={setSelectedTemplate} />}
-          {section === 'rutas' && <RoutesPage route={selectedRoute} template={activeTemplate} routes={dailyRoutes} onSelect={setSelectedRoute} onAction={updateAction} onCreate={() => setShowNewRoute(true)} />}
+          {section === 'plantillas' && <TemplatesPage templates={routeTemplates} selected={selectedTemplate} onSelect={setSelectedTemplate} />}
+          {section === 'rutas' && <RoutesPage route={selectedRoute} template={activeTemplate} templates={routeTemplates} routes={dailyRoutes} onSelect={setSelectedRoute} onAction={updateAction} onCreate={() => setShowNewRoute(true)} />}
           {section === 'furgoneta' && <VanPage route={selectedRoute} assignments={assignments} onPrint={() => downloadVanManifest(assignments, activeTemplate.name)} />}
         </div>
       </main>
       <nav className="mobile-nav" aria-label="Navegación móvil">{nav.map(([id, label, Icon]) => <button type="button" className={section === id ? 'is-active' : ''} key={id} onClick={() => setSection(id)}><Icon size={19} /><span>{label.split(' ')[0]}</span></button>)}</nav>
       {showImport && <ImportDialog onClose={() => setShowImport(false)} onPick={() => fileInput.current?.click()} />}
-      {showNewRoute && <NewRouteDialog onClose={() => setShowNewRoute(false)} onCreate={createDailyRoute} />}
+      {showNewRoute && <NewRouteDialog templates={routeTemplates} onClose={() => setShowNewRoute(false)} onCreate={createDailyRoute} />}
       {invoiceLetter && <InvoiceDialog letter={invoiceLetter} onClose={() => setInvoiceLetter(null)} />}
       <input ref={fileInput} hidden type="file" accept="application/pdf" onChange={(event) => importPdf(event.target.files?.[0])} />
       {notice && <div className="toast" role="status"><CheckCircle2 size={18} /> {notice}</div>}
@@ -159,12 +174,12 @@ function LettersPage({ letters, onImport, onInvoice }: { letters: Letter[]; onIm
   </>
 }
 
-function TemplatesPage({ selected, onSelect }: { selected: RouteTemplate; onSelect: (template: RouteTemplate) => void }) { return <>
+function TemplatesPage({ templates, selected, onSelect }: { templates: RouteTemplate[]; selected: RouteTemplate; onSelect: (template: RouteTemplate) => void }) { return <>
   <PageIntro title="Rutas preestablecidas" text="El orden de las paradas se conservará al crear una ruta diaria."><Button><Plus /> Nueva ruta</Button></PageIntro>
   <div className="template-layout"><Card className="template-list"><CardContent><h3>Plantillas</h3>{templates.map((template) => <button type="button" key={template.id} onClick={() => onSelect(template)} className={`template-row ${selected.id === template.id ? 'is-selected' : ''}`}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={16} /></button>)}</CardContent></Card><Card className="stops-card"><CardContent><div className="template-header"><div><span className="eyebrow">Plantilla activa</span><h3>Ruta {selected.name}</h3></div><Button variant="outline"><Plus /> Añadir parada</Button></div><ol className="stops-list">{selected.stops.map((stop, index) => <li key={stop.id}><div className="stop-index">{index + 1}</div><div><strong>{stop.locality}</strong><p>{stop.place}</p></div><span className="duration">{stop.minutes ? `${stop.minutes} min` : 'Final'}</span><a href={stop.mapUrl} target="_blank" rel="noreferrer" aria-label={`Abrir ${stop.locality} en mapas`}><MapPin size={17} /></a></li>)}</ol></CardContent></Card></div>
   </> }
 
-function RoutesPage({ route, template, routes, onSelect, onAction, onCreate }: { route: DailyRoute; template: RouteTemplate; routes: DailyRoute[]; onSelect: (route: DailyRoute) => void; onAction: (id: string) => void; onCreate: () => void }) { return <>
+function RoutesPage({ route, template, templates, routes, onSelect, onAction, onCreate }: { route: DailyRoute; template: RouteTemplate; templates: RouteTemplate[]; routes: DailyRoute[]; onSelect: (route: DailyRoute) => void; onAction: (id: string) => void; onCreate: () => void }) { return <>
   <PageIntro title="Rutas" text="La ruta incluye todas las paradas de la plantilla y los servicios del día."><Button onClick={onCreate}><CalendarDays /> Crear ruta</Button></PageIntro>
   <div className="route-selector">{routes.map((item) => <button type="button" onClick={() => onSelect(item)} className={route.id === item.id ? 'is-selected' : ''} key={item.id}><Route size={16} /><span>{templates.find((template) => template.id === item.templateId)?.name}</span><b>{new Date(`${item.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</b><span className={`status status-${item.status}`}>{labelStatus[item.status]}</span></button>)}</div>
   <Card className="route-journey"><CardContent><div className="journey-header"><div><span className="eyebrow">{route.date}</span><h3>Ruta {template.name}</h3></div><span className="status status-activa">{labelStatus[route.status]}</span></div><ol>{template.stops.map((stop, index) => { const actions = route.actions.filter((action) => action.stop === stop.locality); return <li key={`${stop.id}-${index}`}><div className="journey-node">{index + 1}</div><div className="journey-stop"><div className="journey-place"><div><h4>{stop.locality}</h4><p>{stop.place}</p></div><a href={stop.mapUrl} target="_blank" rel="noreferrer"><MapPin size={18} /> Abrir mapa</a></div>{actions.length > 0 && <div className="services">{actions.map((action) => <ServiceCard key={action.id} action={action} onToggle={() => onAction(action.id)} />)}</div>}</div></li> })}</ol></CardContent></Card>
@@ -181,7 +196,7 @@ function VanPage({ route, assignments, onPrint }: { route: DailyRoute; assignmen
 
 function ImportDialog({ onClose, onPick }: { onClose: () => void; onPick: () => void }) { return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="import-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><FilePlus2 size={24} /></div><h2 id="import-title">Importar carta de porte</h2><p>Sube un PDF digital. Extraeremos el contenido y podrás revisarlo antes de guardarlo.</p><button type="button" className="dropzone" onClick={onPick}><Upload size={24} /><strong>Seleccionar PDF</strong><span>Máximo 10 MB · solo PDF con texto</span></button><p className="hint">El identificador será el encabezado «CARTA DE PORTE Nº …».</p></CardContent></Card></div> }
 function InvoiceDialog({ letter, onClose }: { letter: Letter; onClose: () => void }) { const [payer, setPayer] = useState<'remitente' | 'destinatario'>('remitente'); const [total, setTotal] = useState('200'); const customer = payer === 'remitente' ? letter.sender : letter.recipient; return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="invoice-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Printer size={24} /></div><h2 id="invoice-title">Preparar borrador</h2><p>Elige quién paga y ajusta el importe con IVA antes de generar el PDF provisional.</p><div className="payer-options"><button type="button" className={payer === 'remitente' ? 'is-selected' : ''} onClick={() => setPayer('remitente')}><span>Remitente</span><strong>{letter.sender}</strong></button><button type="button" className={payer === 'destinatario' ? 'is-selected' : ''} onClick={() => setPayer('destinatario')}><span>Destinatario</span><strong>{letter.recipient}</strong></button></div><label className="date-field">Total (IVA incluido)<input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></label><Button className="dialog-submit" onClick={() => { downloadInvoice(letter.id, customer, Number(total) || 0); onClose() }}><Printer /> Generar PDF provisional</Button></CardContent></Card></div> }
-function NewRouteDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (template: RouteTemplate, date: string) => void }) { const [date, setDate] = useState('2026-08-09'); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="route-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Route size={24} /></div><h2 id="route-title">Crear ruta diaria</h2><p>Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida.</p><label className="date-field">Fecha de servicio<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></CardContent></Card></div> }
+function NewRouteDialog({ templates, onClose, onCreate }: { templates: RouteTemplate[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string) => void }) { const [date, setDate] = useState('2026-08-09'); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="route-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Route size={24} /></div><h2 id="route-title">Crear ruta diaria</h2><p>Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida.</p><label className="date-field">Fecha de servicio<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></CardContent></Card></div> }
 function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) { return <Card className={`stat ${accent ? `stat-${accent}` : ''}`}><CardContent><p>{label}</p><strong>{value}</strong><span><ClipboardList size={15} /> actualizado ahora</span></CardContent></Card> }
 
 export default App
