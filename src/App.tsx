@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { initialDailyRoutes, initialLetters, templates } from './lib/data'
 import { parseCartaPdf } from './lib/carta-parser'
+import { saveImportedLetter } from './lib/letters'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
 import { boxSize } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -75,6 +76,7 @@ function Dashboard({ session }: { session: Session | null }) {
         importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals: extracted.animals ?? [],
       }
       if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
+      if (session) await saveImportedLetter(letter, file, session.user.id)
       setLetters((current) => [letter, ...current]); setShowImport(false); toast(`${file.name} importado. Revisa los campos extraídos.`)
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')

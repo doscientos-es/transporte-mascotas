@@ -30,7 +30,7 @@ export async function parseCartaPdf(file: File): Promise<Partial<Letter>> {
   if (!text) throw new Error('No se ha encontrado texto digital en el PDF. Sube una carta de porte con texto seleccionable.')
   const number = text.match(/CARTA\s+DE\s+PORTE\s*(?:N[º°O.]*)?\s*([A-Z0-9\-/]+)/i)?.[1]
   const id = number ? `CARTA DE PORTE Nº ${number}` : ''
-  const breed = fieldAfter(text, ['Raza', 'Raza\/es']) || 'Sin clasificar'
+  const breed = fieldAfter(text, ['Raza', 'Raza/es']) || 'Sin clasificar'
   const normalizedBreed = breed.toLocaleLowerCase('es-ES')
   const origin = fieldAfter(text, ['Origen', 'Punto de origen']) || 'Sin asignar'
   const destination = fieldAfter(text, ['Destino', 'Punto de destino']) || 'Sin asignar'
