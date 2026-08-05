@@ -23,6 +23,7 @@ export interface Letter {
   status: LetterStatus
   animals: Animal[]
   importedAt: string
+  extractionEmail?: string
 }
 
 export interface RouteStop {

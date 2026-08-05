@@ -1,0 +1,20 @@
+create index carriage_letters_default_route_template_id_idx on public.carriage_letters(default_route_template_id);
+create index carriage_letters_origin_location_id_idx on public.carriage_letters(origin_location_id);
+create index carriage_letters_destination_location_id_idx on public.carriage_letters(destination_location_id);
+create index carriage_letters_imported_by_idx on public.carriage_letters(imported_by);
+create index daily_route_stops_template_stop_id_idx on public.daily_route_stops(template_stop_id);
+create index daily_routes_created_by_idx on public.daily_routes(created_by);
+create index invoice_drafts_letter_id_idx on public.invoice_drafts(letter_id);
+create index invoice_drafts_created_by_idx on public.invoice_drafts(created_by);
+create index route_actions_stop_id_idx on public.route_actions(daily_route_stop_id);
+create index route_actions_letter_id_idx on public.route_actions(letter_id);
+create index route_actions_animal_id_idx on public.route_actions(animal_id);
+create index route_actions_completed_by_idx on public.route_actions(completed_by);
+create index route_template_stops_location_id_idx on public.route_template_stops(location_id);
+create index van_assignments_animal_id_idx on public.van_assignments(animal_id);
+create index audit_logs_actor_id_idx on public.audit_logs(actor_id);
+
+revoke execute on function public.assign_van_box(uuid, uuid, integer, integer, integer) from anon;
+revoke execute on function public.record_route_action(uuid, public.service_action_status, text) from anon;
+revoke execute on function public.create_profile_for_new_user() from anon, authenticated;
+revoke execute on function public.is_admin() from anon;

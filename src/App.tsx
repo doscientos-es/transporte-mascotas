@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { initialDailyRoutes, initialLetters, templates } from './lib/data'
+import { parseCartaPdf } from './lib/carta-parser'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
 import { boxSize } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -59,11 +60,25 @@ function Dashboard({ session }: { session: Session | null }) {
     const update = (route: DailyRoute): DailyRoute => route.id === selectedRoute.id ? { ...route, actions: route.actions.map((action): ServiceAction => action.id === actionId ? { ...action, status: action.status === 'completada' ? 'pendiente' : 'completada' } : action) } : route
     const next = update(selectedRoute); setSelectedRoute(next); setDailyRoutes((current) => current.map(update))
   }
-  function importPdf(file?: File) {
+  async function importPdf(file?: File) {
     if (!file) return
-    const nextNumber = 445 + letters.length
-    const letter: Letter = { id: `CARTA DE PORTE Nº 2026-${nextNumber}`, sender: 'Pendiente de revisar', senderPhone: '', recipient: 'Pendiente de revisar', recipientPhone: '', origin: 'Sin asignar', destination: 'Sin asignar', route: 'Sin asignar', serviceDate: '2026-08-08', status: 'pendiente', importedAt: new Date().toLocaleString('es-ES'), animals: [{ id: `a-${nextNumber}-1`, species: 'Canina', breed: 'Sin clasificar', size: 'pequeno' }] }
-    setLetters((current) => [letter, ...current]); setShowImport(false); toast(`${file.name} importado. Revisa los campos extraídos.`)
+    try {
+      const extracted = await parseCartaPdf(file)
+      const fallbackNumber = 445 + letters.length
+      const route = templates.find((template) => template.stops.some((stop) => stop.locality.toLocaleLowerCase().includes((extracted.destination ?? '').toLocaleLowerCase())))
+      const letter: Letter = {
+        id: extracted.id || `CARTA DE PORTE Nº 2026-${fallbackNumber}`,
+        sender: extracted.sender || 'Pendiente de revisar', senderPhone: extracted.senderPhone || '',
+        recipient: extracted.recipient || 'Pendiente de revisar', recipientPhone: extracted.recipientPhone || '',
+        origin: extracted.origin || 'Sin asignar', destination: extracted.destination || 'Sin asignar',
+        route: route?.name ?? 'Sin asignar', serviceDate: '2026-08-08', status: 'pendiente',
+        importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals: extracted.animals ?? [],
+      }
+      if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
+      setLetters((current) => [letter, ...current]); setShowImport(false); toast(`${file.name} importado. Revisa los campos extraídos.`)
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
+    }
   }
   function createDailyRoute(template: RouteTemplate) {
     const route: DailyRoute = { id: `route-${Date.now()}`, templateId: template.id, date: '2026-08-09', status: 'borrador', actions: [] }
@@ -97,6 +112,8 @@ function Dashboard({ session }: { session: Session | null }) {
 }
 
 function LoginScreen() {
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -106,12 +123,15 @@ function LoginScreen() {
     event.preventDefault()
     if (!supabase) return
     setSending(true); setError('')
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const response = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password, options: { data: { display_name: displayName } } })
     setSending(false)
-    if (signInError) setError('No hemos podido iniciar sesión. Revisa tus datos.')
+    if (response.error) setError(mode === 'login' ? 'No hemos podido iniciar sesión. Revisa tus datos.' : 'No hemos podido crear el acceso. Revisa los datos e inténtalo de nuevo.')
+    else if (mode === 'signup' && !response.data.session) setError('Revisa tu correo y confirma el acceso antes de iniciar sesión.')
   }
 
-  return <main className="login-screen"><section className="login-card"><img src={brandLogo} alt="doscientos" /><p className="eyebrow">Kache envíos</p><h1>Operaciones de transporte</h1><p>Accede con tu cuenta de administración o transportista.</p><form onSubmit={signIn}><label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label><label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required /></label>{error && <p className="form-error" role="alert">{error}</p>}<Button type="submit" disabled={sending}>{sending ? 'Accediendo…' : 'Acceder'}</Button></form></section></main>
+  return <main className="login-screen"><section className="login-card"><img src={brandLogo} alt="doscientos" /><p className="eyebrow">Kache envíos</p><h1>Operaciones de transporte</h1><p>{mode === 'login' ? 'Accede con tu cuenta de administración o transportista.' : 'Crea una cuenta de transportista. Un administrador podrá asignarte permisos.'}</p><form onSubmit={signIn}>{mode === 'signup' && <label>Nombre<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" required /></label>}<label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label><label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required /></label>{error && <p className="form-error" role="alert">{error}</p>}<Button type="submit" disabled={sending}>{sending ? 'Procesando…' : mode === 'login' ? 'Acceder' : 'Crear acceso'}</Button></form><button type="button" className="auth-switch" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}>{mode === 'login' ? '¿No tienes cuenta? Crear acceso' : 'Ya tengo una cuenta'}</button></section></main>
 }
 
 function PageIntro({ title, text, children }: { title: string; text: string; children?: React.ReactNode }) { return <div className="page-intro"><div><h2>{title}</h2><p>{text}</p></div>{children}</div> }
