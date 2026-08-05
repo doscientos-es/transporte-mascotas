@@ -12,7 +12,7 @@ import { parseCartaPdf } from './lib/carta-parser'
 import { saveImportedLetter } from './lib/letters'
 import { loadOrSeedRouteTemplates, saveDailyRoute } from './lib/routes'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
-import { boxesBySize, boxSize } from './lib/van'
+import { boxesBySize, boxSize, boxGridSpan, vanLanes } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import type { DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from './lib/types'
 import './App.css'
@@ -200,10 +200,10 @@ function RoutesPage({ route, template, templates, routes, onSelect, onAction, on
 
 function ServiceCard({ action, onToggle }: { action: ServiceAction; onToggle: () => void }) { const done = action.status === 'completada'; return <div className={`service-card ${done ? 'is-done' : ''}`}><div className="service-icon">{action.type === 'recogida' ? <PackageOpen size={18} /> : <PawPrint size={18} />}</div><div><span>{action.type === 'recogida' ? 'Recogida' : 'Entrega'} · Box {action.box}</span><strong>{action.customer}</strong><a href={`tel:${action.phone.replaceAll(' ', '')}`}><Phone size={13} /> {action.phone}</a></div><Button variant={done ? 'outline' : 'default'} size="sm" onClick={onToggle}>{done ? 'Deshacer' : action.type === 'recogida' ? 'Recogido' : 'Entregado'}</Button></div> }
 
-function VanPage({ route, assignments, onPrint }: { route: DailyRoute; assignments: Array<{ box: number; label: string }>; onPrint: () => void }) { return <>
+function VanPage({ route, assignments, onPrint }: { route: DailyRoute; assignments: Array<{ box: number; label: string }>; onPrint: () => void }) { const leftLanes = vanLanes.filter((lane) => lane.side === 'left'); const rightLanes = vanLanes.filter((lane) => lane.side === 'right'); const renderLane = (lane: typeof vanLanes[number]) => <div className={`van-lane ${lane.id}`} key={lane.id}>{lane.boxes.map((box) => { const assignment = assignments.find((entry) => entry.box === box); return <button type="button" style={{ gridRow: `span ${boxGridSpan[lane.size]}` }} title={assignment ? assignment.label : `Box ${box} libre`} key={box} className={`van-box box-${boxSize(box)} ${assignment ? 'is-occupied' : ''}`}><b>{box}</b>{assignment && <span>{assignment.label.replace('CARTA DE PORTE Nº ', '#')}</span>}</button> })}</div>; return <>
   <PageIntro title="Furgoneta" text="Ocupación actual por tramo. Los boxes se liberan después de cada entrega."><Button onClick={onPrint}><Printer /> Imprimir tramo</Button></PageIntro>
   <div className="van-legend"><span><i className="box-large" /> Grandes 1–4, 37–40</span><span><i className="box-medium" /> Medianos 5–12, 41–48</span><span><i className="box-small" /> Pequeños 13–36, 49–72</span></div>
-  <Card className="van-card"><CardContent><div className="van-front">PARTE DELANTERA · CONDUCTORES</div><div className="van-grid">{Array.from({ length: 72 }, (_, index) => index + 1).map((box) => { const assignment = assignments.find((entry) => entry.box === box); return <button type="button" title={assignment ? assignment.label : `Box ${box} libre`} key={box} className={`van-box box-${boxSize(box)} ${assignment ? 'is-occupied' : ''}`}><b>{box}</b>{assignment && <span>{assignment.label.replace('CARTA DE PORTE Nº ', '#')}</span>}</button> })}</div><div className="van-aisle">PASILLO</div></CardContent></Card>
+  <Card className="van-card"><CardContent><div className="van-title">F U R G Ó N</div><div className="van-plan"><div className="van-front">PARTE DELANTERA (CONDUCTORES)</div><div className="van-banks van-banks-left">{leftLanes.map(renderLane)}</div><div className="van-aisle">P A S I L L O</div><div className="van-banks van-banks-right">{rightLanes.map(renderLane)}</div></div></CardContent></Card>
   <section className="assignments"><h3>Asignaciones activas</h3>{route.actions.filter((action) => action.box).map((action) => <div key={action.id}><span className={`box-chip box-${boxSize(action.box!)}`}>{action.box}</span><div><strong>{action.letterId}</strong><p>{action.type === 'recogida' ? 'Recogida' : 'Entrega'} · {action.stop}</p></div><span className={`status status-${action.status}`}>{labelStatus[action.status]}</span></div>)}</section>
   </> }
 
