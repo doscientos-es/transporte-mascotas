@@ -88,4 +88,23 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
   if (!actions.length) return
   const { error: actionsError } = await supabase.from('route_actions').insert(actions)
   if (actionsError) throw actionsError
+
+  const byAnimal = new Map<string, DailyRoute['actions']>()
+  route.actions.forEach((action) => byAnimal.set(action.animalId, [...(byAnimal.get(action.animalId) ?? []), action]))
+  for (const animalActions of byAnimal.values()) {
+    const pickup = animalActions.find((action) => action.type === 'recogida' && action.box && allowedLetters.has(action.letterId))
+    const delivery = animalActions.find((action) => action.type === 'entrega' && action.box && allowedLetters.has(action.letterId))
+    if (!pickup || !delivery || !pickup.box) continue
+    const pickupSequence = template.stops.findIndex((stop) => stop.locality === pickup.stop) + 1
+    const deliverySequence = template.stops.findIndex((stop) => stop.locality === delivery.stop) + 1
+    if (!pickupSequence || !deliverySequence) continue
+    const { error: assignmentError } = await supabase.rpc('assign_van_box', {
+      p_daily_route_id: route.id,
+      p_animal_id: pickup.animalId,
+      p_box_number: pickup.box,
+      p_pickup_sequence: pickupSequence,
+      p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
+    })
+    if (assignmentError) throw assignmentError
+  }
 }
