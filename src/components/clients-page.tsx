@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
-import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import type { Client, ClientInvoice, Letter } from '../lib/types'
 
 type ClientInput = Omit<Client, 'id' | 'createdAt'>
@@ -25,7 +25,7 @@ export function ClientsPage({ clients, invoices, letters, onSave, onDelete }: {
   }
 
   return <>
-    <div className="page-intro"><div><h2>Clientes</h2><p>Ficha y actividad comercial de remitentes y destinatarios.</p></div><Button onClick={() => setEditing(null)}><Plus /> Nuevo cliente</Button></div>
+    <div className="page-intro"><p>Ficha y actividad comercial de remitentes y destinatarios.</p><Button onClick={() => setEditing(null)}><Plus /> Nuevo cliente</Button></div>
     <div className="clients-layout">
       <Card className="clients-list"><CardContent><div className="clients-list-heading"><h3>Directorio</h3><span>{clients.length} clientes</span></div>{clients.length === 0 ? <p className="empty-copy">Aún no hay clientes. Crea uno o genera la primera factura.</p> : clients.map((client) => <button type="button" className={`client-row ${selected?.id === client.id ? 'is-selected' : ''}`} key={client.id} onClick={() => setSelectedId(client.id)}><span className="client-initials">{client.fullName.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</span><span><strong>{client.fullName}</strong><small>{client.city || client.email || 'Sin datos de contacto'}</small></span></button>)}</CardContent></Card>
       {selected ? <div className="client-detail">
