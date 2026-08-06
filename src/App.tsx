@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { initialDailyRoutes, initialLetters, templates } from './lib/data'
+import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from './lib/data'
 import { parseCartaPdf } from './lib/carta-parser'
 import { saveImportedLetter } from './lib/letters'
 import { createClient, deleteClient, loadClientInvoices, loadClients, persistInvoice, updateClient } from './lib/clients'
@@ -57,7 +57,7 @@ function Dashboard({ session }: { session: Session | null }) {
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
   const [clients, setClients] = useState<Client[]>(() => demoClients(initialLetters))
-  const [invoices, setInvoices] = useState<ClientInvoice[]>([])
+  const [invoices, setInvoices] = useState<ClientInvoice[]>(initialClientInvoices)
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(templates[0])
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
   const [showImport, setShowImport] = useState(false)
@@ -76,6 +76,10 @@ function Dashboard({ session }: { session: Session | null }) {
     loadOrSeedRouteTemplates(templates).then((loaded) => {
       setRouteTemplates(loaded)
       setSelectedTemplate((current) => loaded.find((template) => template.name === current.name) ?? loaded[0])
+      const namesByDemoRoute: Record<string, string> = { 'route-2026-08-08': 'Mediterráneo', 'route-2026-08-09': 'Norte', 'route-2026-08-10': 'Andalucía' }
+      const hydrateRoute = (route: DailyRoute): DailyRoute => ({ ...route, templateId: loaded.find((template) => template.name === namesByDemoRoute[route.id])?.id ?? route.templateId })
+      setDailyRoutes((current) => current.map(hydrateRoute))
+      setSelectedRoute((current) => hydrateRoute(current))
     }).catch(() => undefined)
     Promise.all([loadClients(), loadClientInvoices()]).then(([storedClients, storedInvoices]) => {
       setClients(storedClients); setInvoices(storedInvoices)
