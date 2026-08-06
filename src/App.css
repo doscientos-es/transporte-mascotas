@@ -761,6 +761,31 @@ main {
   gap: 7px;
 }
 
+.route-total {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 5px;
+  align-items: center;
+  min-width: 144px;
+  color: #52604e;
+}
+
+.route-total svg {
+  grid-row: 1 / span 2;
+  color: #47743e;
+}
+
+.route-total span,
+.route-total small {
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.route-total strong {
+  font-size: 13px;
+  color: #263c23;
+}
+
 .itinerary-toolbar {
   justify-content: space-between;
   gap: 12px;
@@ -1472,6 +1497,16 @@ main {
   }
 
   .stop-editor-actions {
+    justify-content: flex-end;
+  }
+
+  .journey-header,
+  .journey-actions {
+    align-items: flex-start;
+  }
+
+  .journey-actions {
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 
