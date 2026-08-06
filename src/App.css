@@ -141,14 +141,10 @@ main {
 }
 
 .topbar h1 {
-  margin: 2px 0 0;
+  margin: 0;
   color: #182119;
   font-size: 25px;
   letter-spacing: -.04em;
-}
-
-.topbar .eyebrow {
-  color: #6d786b;
 }
 
 .avatar {
@@ -164,7 +160,6 @@ main {
   font-size: 12px;
 }
 
-.mobile-menu,
 .mobile-nav {
   display: none;
 }
@@ -1119,23 +1114,6 @@ main {
 
   .topbar h1 {
     font-size: 21px
-  }
-
-  .mobile-menu {
-    display: inline-grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    margin-right: 8px;
-    border: 0;
-    border-radius: 8px;
-    background: #eef3eb;
-    color: #2a4227;
-    vertical-align: middle
-  }
-
-  .topbar .eyebrow {
-    display: none
   }
 
   .table-heading .search {

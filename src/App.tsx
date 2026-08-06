@@ -3,8 +3,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Session } from '@supabase/supabase-js'
 import {
   ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, FilePlus2,
-  FileText, GitFork, MapPin, Menu, MoreHorizontal, PackageOpen, PawPrint,
-  Phone, Plus, Printer, Route,
+  FileText, GitFork, MapPin,
+  MoreHorizontal, PackageOpen, PawPrint,
+  Phone, Plus, Printer, Route, Search,
   ShieldCheck, Truck, Upload, UsersRound, X
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -191,7 +192,7 @@ function Dashboard({ session }: { session: Session | null }) {
         </div>
       </aside>
       <main>
-        <header className="topbar"><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></header>
+        <header className="topbar"><h1>{nav.find(([id]) => id === section)?.[1]}</h1></header>
         <div className="page-content">
           {section === 'cartas' && <LettersPage letters={filteredLetters} search={search} onSearchChange={setSearch} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
           {section === 'clientes' && <ClientsPage clients={clients} invoices={invoices} letters={letters} onSave={saveClient} onDelete={removeClient} />}
