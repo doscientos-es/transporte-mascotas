@@ -68,6 +68,6 @@ export const initialDailyRoutes: DailyRoute[] = [{
 }]
 
 export const initialClientInvoices: ClientInvoice[] = [
-  { id: 'demo-invoice-442', letterId: 'CARTA DE PORTE Nº 2026-442', clientId: 'demo-carmen maría fabios jordán', payer: 'remitente', concept: 'Servicio de transporte de mascota', total: 200, status: 'generado', createdAt: '2026-08-05T10:30:00.000Z' },
-  { id: 'demo-invoice-446', letterId: 'CARTA DE PORTE Nº 2026-446', clientId: 'demo-sergi costa pujol', payer: 'destinatario', concept: 'Servicio de transporte de mascota', total: 185, status: 'generado', createdAt: '2026-08-05T11:48:00.000Z' },
+  { id: 'demo-invoice-442', letterId: 'CARTA DE PORTE Nº 2026-442', clientId: 'demo-carmen maría fabios jordán', payer: 'remitente', concept: 'Servicio de transporte de mascota', total: 200, status: 'solicitud_pago', createdAt: '2026-08-05T10:30:00.000Z' },
+  { id: 'demo-invoice-446', letterId: 'CARTA DE PORTE Nº 2026-446', clientId: 'demo-sergi costa pujol', payer: 'destinatario', concept: 'Servicio de transporte de mascota', total: 185, status: 'solicitud_pago', createdAt: '2026-08-05T11:48:00.000Z' },
 ]

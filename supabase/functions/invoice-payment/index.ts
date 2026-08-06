@@ -14,7 +14,7 @@ Deno.serve(async (request) => {
     const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=id,total_amount,status`)
     const [invoice] = await invoiceResponse.json() as Invoice[]
     if (!invoice) return json({ error: 'Factura no encontrada.' }, 404)
-    if (invoice.status === 'pagada') return json({ error: 'Esta factura ya está pagada.' }, 409)
+    if (invoice.status !== 'solicitud_pago') return json({ error: 'Esta solicitud ya no admite pagos.' }, 409)
 
     const existingResponse = await rest(`invoice_payments?invoice_id=eq.${encodeURIComponent(invoice.id)}&status=eq.pendiente&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=public_token,status,expires_at&order=created_at.desc&limit=1`)
     const [existing] = await existingResponse.json() as Payment[]

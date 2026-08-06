@@ -51,6 +51,13 @@ export interface Client {
 
 export type InvoicePayer = 'remitente' | 'destinatario' | 'manual'
 export type InvoiceClientInput = Omit<Client, 'id' | 'createdAt'>
+export type PaymentDeliveryChannel = 'email' | 'whatsapp' | 'both'
+
+export interface PaymentDelivery {
+  channel: PaymentDeliveryChannel
+  email: string
+  phone: string
+}
 
 export interface ClientInvoice {
   id: string
@@ -59,7 +66,7 @@ export interface ClientInvoice {
   payer: InvoicePayer
   concept: string
   total: number
-  status: 'generado' | 'pagada'
+  status: 'solicitud_pago' | 'emitida'
   createdAt: string
 }
 

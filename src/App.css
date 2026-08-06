@@ -2163,3 +2163,308 @@ main {
     grid-column: auto
   }
 }
+
+/* Corporate theme: neutral workspace, black navigation and red actions. */
+.app-shell {
+  background: #f7f7f7;
+}
+
+.sidebar,
+.profile-menu,
+.toast {
+  background: #171717;
+}
+
+.sidebar {
+  color: #f5f5f5;
+}
+
+.workspace-label,
+.role-dot,
+.profile-menu-header span,
+.nav-item,
+.help-link {
+  color: #bdbdbd;
+}
+
+.nav-item:hover,
+.profile-trigger:hover,
+.profile-trigger[data-popup-open],
+.help-link:hover {
+  background: #303030;
+}
+
+.nav-item.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.nav-item b {
+  background: rgb(255 255 255 / 18%);
+}
+
+.sidebar-footer,
+.profile-menu-header {
+  border-color: #3b3b3b;
+}
+
+.profile-trigger:hover strong,
+.profile-trigger[data-popup-open] strong {
+  color: #fff;
+}
+
+.profile-menu {
+  border-color: #4a4a4a;
+  box-shadow: 0 14px 30px rgb(0 0 0 / 42%);
+}
+
+.profile-menu-item {
+  color: #fff;
+}
+
+.profile-menu-item:hover,
+.profile-menu-item[data-highlighted] {
+  background: #3b2022;
+}
+
+.topbar h1,
+.stat strong,
+.table-heading h3,
+.template-list h3,
+.template-header h3,
+.journey-header h3,
+.assignments h3,
+.dialog-card h2,
+.van-title,
+.clients-list-heading h3,
+.client-profile-head h3,
+.history-heading h3 {
+  color: #171717;
+}
+
+.page-intro p,
+.stat p,
+.stat span,
+.table-heading p,
+.responsive-table th,
+.responsive-table small,
+.pagination p,
+.pagination i,
+.template-row small,
+.stops-list p,
+.duration,
+.page-loading,
+.journey-place p,
+.journey-times,
+.service-card span,
+.service-card a,
+.van-legend,
+.dialog-card p,
+.hint,
+.dropzone span,
+.import-selected small,
+.dialog-options small,
+.login-card>p:not(.eyebrow),
+.invoice-card span,
+.invoice-card small,
+.invoice-empty p,
+.invoice-empty [data-slot="card-content"],
+.clients-list-heading span,
+.client-profile-head p,
+.client-row small,
+.client-contact-grid,
+.history-list small,
+.empty-copy {
+  color: #686868;
+}
+
+.stat-lime,
+.itinerary-toolbar,
+.stop-editor,
+.service-card,
+.dropzone,
+.import-selected,
+.letter-card {
+  background: #fffafa;
+}
+
+.stat-lime {
+  border-top: 3px solid var(--accent);
+}
+
+.search,
+.status-filter,
+.row-actions button,
+.route-selector button,
+.pagination button,
+.stop-editor,
+.stop-editor input,
+.stop-editor select,
+.service-duration input,
+.service-card,
+.assignments>div,
+.dialog-options button,
+.date-field input,
+.date-field select,
+.payer-options button,
+.login-card,
+.login-card input,
+.client-form input,
+.letter-card {
+  border-color: #dedede;
+}
+
+.search,
+.status-filter,
+.row-actions button,
+.pagination button,
+.stop-editor,
+.service-card.is-done,
+.profile-actions button {
+  background: #f5f5f5;
+}
+
+.search,
+.status-filter,
+.status-filter span,
+.row-actions button,
+.route-selector button,
+.pagination button,
+.template-row,
+.route-total,
+.itinerary-toolbar,
+.stop-editor label,
+.service-duration,
+.date-field,
+.payer-options button,
+.client-row,
+.client-form label {
+  color: #4b4b4b;
+}
+
+.search input,
+.status-filter select,
+.stop-editor input,
+.stop-editor select,
+.service-duration input,
+.date-field input,
+.date-field select,
+.responsive-table strong,
+.responsive-table td,
+.journey-place h4,
+.service-card strong,
+.invoice-card strong,
+.letter-card-heading strong,
+.letter-card-route,
+.history-list strong,
+.assignments strong {
+  color: #171717;
+}
+
+.row-actions button:hover,
+.pagination button:hover:not(:disabled),
+.pagination button.is-active,
+.route-selector button.is-selected,
+.payer-options button.is-selected,
+.template-row:hover,
+.template-row.is-selected,
+.client-row:hover,
+.client-row.is-selected,
+.mobile-nav a.is-active {
+  border-color: var(--accent);
+  background: #fff0f1;
+  color: #9f1720;
+}
+
+.stop-index,
+.journey-node,
+.service-icon,
+.dialog-icon,
+.invoice-icon,
+.client-initials,
+.history-heading b,
+.letter-card-footer button,
+.order-mark {
+  background: #fff0f1;
+  color: #b51e27;
+}
+
+.stops-list a,
+.journey-place a,
+.route-total svg,
+.invoice-paid {
+  color: #b51e27;
+}
+
+.itinerary-toolbar,
+.stop-editor,
+.service-card,
+.import-selected {
+  border-color: #f0cdd0;
+}
+
+.stop-kind-recogida,
+.status-en_ruta,
+.status-activa,
+.status-entregada,
+.status-completada {
+  background: #f1f1f1;
+  color: #292929;
+}
+
+.van-plan {
+  border-color: #303030;
+}
+
+.van-front {
+  border-color: #303030;
+  color: #171717;
+}
+
+.van-lane,
+.van-box,
+.van-aisle {
+  border-color: #9c9c9c;
+}
+
+.van-box.is-occupied {
+  outline-color: var(--accent);
+}
+
+.box-medium,
+.box-mediano {
+  background: #f3a6aa;
+}
+
+.box-small,
+.box-pequeno {
+  background: #f7dddd;
+}
+
+.dialog-card {
+  box-shadow: 0 28px 90px rgb(0 0 0 / 24%);
+}
+
+.login-screen,
+.loading-screen {
+  background: radial-gradient(circle at top right, #ffdadd, transparent 40%), var(--background);
+}
+
+.login-card {
+  box-shadow: 0 20px 60px rgb(0 0 0 / 8%);
+}
+
+.login-card input:focus {
+  border-color: var(--accent);
+  outline-color: rgb(207 31 42 / 22%);
+}
+
+@media (max-width: 850px) {
+  .mobile-nav {
+    border-color: #dedede;
+  }
+
+  .mobile-nav a {
+    color: #686868;
+  }
+}

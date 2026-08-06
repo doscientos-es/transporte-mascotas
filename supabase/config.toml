@@ -420,3 +420,6 @@ verify_jwt = false
 
 [functions.caixabank-webhook]
 verify_jwt = false
+
+[functions.issued-invoice]
+verify_jwt = false

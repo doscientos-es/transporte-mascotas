@@ -3,10 +3,9 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { saveImportedLetter } from '../lib/letters'
-import { downloadInvoice } from '../lib/pdf'
 import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
+import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, PaymentDelivery, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
@@ -273,7 +272,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function generateInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+  async function generateInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput, delivery?: PaymentDelivery) {
     const clientInput = payer === 'manual'
       ? manualClient
       : { fullName: payer === 'remitente' ? letter.sender : letter.recipient, phone: payer === 'remitente' ? letter.senderPhone : letter.recipientPhone, nif: '', email: '', address: '', city: '', postalCode: '' }
@@ -288,31 +287,29 @@ export function useDashboard(session: Session | null, role: AppRole) {
       setClients((current) => current.map((item) => item.id === client!.id ? client! : item))
     }
     const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
-    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'generado', createdAt: new Date().toISOString() }, ...current])
+    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'solicitud_pago', createdAt: new Date().toISOString() }, ...current])
     if (session) {
-      try {
-        const stored = await persistInvoice(letter, payer, total, session.user.id, clientInput)
-        if (stored) {
-          setClients((current) => [...current.filter((item) => item.id !== client.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
-          const storedInvoice = stored.invoice
-          if (storedInvoice) setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
-          else toast('La factura ya estaba guardada para esta carta de porte.')
-        }
-      } catch {
-        toast('La factura se ha generado, pero no se ha podido guardar en Supabase.')
+      const stored = await persistInvoice(letter, payer, total, session.user.id, clientInput, delivery)
+      if (stored) {
+        setClients((current) => [...current.filter((item) => item.id !== client.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+        const storedInvoice = stored.invoice
+        if (storedInvoice) {
+          setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
+          await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
+        } else toast('La solicitud ya estaba guardada para esta carta de porte.')
       }
     }
     if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    await downloadInvoice(letter, payer, total, clientInput)
+    toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
   }
 
-  async function startInvoicePayment(invoice: ClientInvoice) {
-    if (!supabase || !session) throw new Error('Inicia sesión para generar el enlace de pago.')
-    const { data, error } = await supabase.functions.invoke('invoice-payment', { body: { invoiceId: invoice.id } })
-    if (error) throw new Error('No se ha podido iniciar el pago con Bizum.')
-    const paymentUrl = (data as { paymentUrl?: string; error?: string } | null)?.paymentUrl
-    if (!paymentUrl) throw new Error((data as { error?: string } | null)?.error ?? 'Bizum para comercios de CaixaBank todavía no está configurado.')
-    window.location.assign(paymentUrl)
+  async function sendInvoiceNotification(invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida' = 'solicitud_pago', notify = true) {
+    if (!supabase || !session) throw new Error('Inicia sesión para enviar el documento.')
+    const { data, error } = await supabase.functions.invoke('send-billing-notifications', { body: { invoiceId: invoice.id, kind } })
+    if (error) throw new Error(kind === 'solicitud_pago' ? 'La solicitud se ha creado, pero no se ha podido enviar.' : 'No se ha podido reenviar la factura.')
+    const result = data as { error?: string; sent?: number } | null
+    if (result?.error) throw new Error(result.error)
+    if (notify) toast(`${kind === 'solicitud_pago' ? 'Solicitud' : 'Factura'} enviada por ${result?.sent === 2 ? 'email y WhatsApp' : 'el canal seleccionado'}.`)
   }
 
   return {
@@ -320,6 +317,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
     setInvoiceLetter, notice, fileInput, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, importPdf, createDailyRoute, saveClient,
-    removeClient, generateInvoice, startInvoicePayment,
+    removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

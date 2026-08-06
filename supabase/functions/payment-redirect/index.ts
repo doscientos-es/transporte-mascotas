@@ -14,7 +14,7 @@ Deno.serve(async (request) => {
     if (!payment || payment.status !== 'pendiente' || new Date(payment.expires_at) <= new Date()) return page('Este enlace de pago ya no está disponible.', 410)
     const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(payment.invoice_id)}&select=status,concept`)
     const [invoice] = await invoiceResponse.json() as Invoice[]
-    if (!invoice || invoice.status === 'pagada') return page('Esta factura ya está pagada.', 409)
+    if (!invoice || invoice.status !== 'solicitud_pago') return page('Esta solicitud de pago ya no está disponible.', 409)
     const config = configuration()
     const parameters = encodeMerchantParameters({
       DS_MERCHANT_AMOUNT: String(payment.amount_cents),
