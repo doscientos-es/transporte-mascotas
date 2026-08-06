@@ -1,6 +1,6 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type NavSection = 'cartas' | 'plantillas' | 'rutas' | 'furgoneta'
+export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta'
 
 export interface Animal {
   id: string
@@ -24,6 +24,29 @@ export interface Letter {
   animals: Animal[]
   importedAt: string
   extractionEmail?: string
+}
+
+export interface Client {
+  id: string
+  fullName: string
+  nif: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+  createdAt: string
+}
+
+export interface ClientInvoice {
+  id: string
+  letterId: string
+  clientId: string
+  payer: 'remitente' | 'destinatario'
+  concept: string
+  total: number
+  status: 'generado'
+  createdAt: string
 }
 
 export interface RouteStop {

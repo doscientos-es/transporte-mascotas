@@ -3,27 +3,37 @@ import type { Session } from '@supabase/supabase-js'
 import {
   ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, FilePlus2,
   FileText, GitFork, MapPin, Menu, MoreHorizontal, PackageOpen, PawPrint,
-  Phone, Plus, Printer, Route, Search, ShieldCheck, Truck, Upload, X,
+  Phone, Plus, Printer, Route, Search, ShieldCheck, Truck, Upload, UsersRound, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { initialDailyRoutes, initialLetters, templates } from './lib/data'
 import { parseCartaPdf } from './lib/carta-parser'
 import { saveImportedLetter } from './lib/letters'
+import { createClient, deleteClient, loadClientInvoices, loadClients, persistInvoice, updateClient } from './lib/clients'
 import { loadOrSeedRouteTemplates, saveDailyRoute } from './lib/routes'
 import { downloadInvoice, downloadVanManifest } from './lib/pdf'
 import { boxesBySize, boxSize, boxGridSpan, vanLanes } from './lib/van'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import type { DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from './lib/types'
+import type { Client, ClientInvoice, DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from './lib/types'
 import brandLogo from './assets/kache-logo.png'
+import { ClientsPage } from './components/clients-page'
 import './App.css'
 
 const nav = [
   ['cartas', 'Cartas de porte', FileText], ['plantillas', 'Rutas preestablecidas', GitFork],
-  ['rutas', 'Rutas', Route], ['furgoneta', 'Furgoneta', Truck],
+  ['rutas', 'Rutas', Route], ['furgoneta', 'Furgoneta', Truck], ['clientes', 'Clientes', UsersRound],
 ] as const
 
 const labelStatus: Record<string, string> = { pendiente: 'Pendiente', revisada: 'Revisada', en_ruta: 'En ruta', entregada: 'Entregada', borrador: 'Borrador', activa: 'Activa', completada: 'Completada', incidencia: 'Incidencia' }
+
+function demoClients(letters: Letter[]): Client[] {
+  const names = new Map<string, Pick<Client, 'fullName' | 'phone'>>()
+  letters.forEach((letter) => [[letter.sender, letter.senderPhone], [letter.recipient, letter.recipientPhone]].forEach(([fullName, phone]) => {
+    const key = fullName.trim().toLocaleLowerCase(); if (key) names.set(key, { fullName, phone })
+  }))
+  return [...names.entries()].map(([key, client]) => ({ id: `demo-${key}`, ...client, nif: '', email: '', address: '', city: '', postalCode: '', createdAt: new Date().toISOString() }))
+}
 
 function App() {
   const [session, setSession] = useState<Session | null>(null)
@@ -46,6 +56,8 @@ function Dashboard({ session }: { session: Session | null }) {
   const [letters, setLetters] = useState<Letter[]>(initialLetters)
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
+  const [clients, setClients] = useState<Client[]>(() => demoClients(initialLetters))
+  const [invoices, setInvoices] = useState<ClientInvoice[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(templates[0])
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
   const [showImport, setShowImport] = useState(false)
@@ -65,6 +77,9 @@ function Dashboard({ session }: { session: Session | null }) {
       setRouteTemplates(loaded)
       setSelectedTemplate((current) => loaded.find((template) => template.name === current.name) ?? loaded[0])
     }).catch(() => undefined)
+    Promise.all([loadClients(), loadClientInvoices()]).then(([storedClients, storedInvoices]) => {
+      setClients(storedClients); setInvoices(storedInvoices)
+    }).catch(() => toast('No se ha podido cargar el historial de clientes.'))
   }, [session])
 
   function toast(message: string) { setNotice(message); window.setTimeout(() => setNotice(''), 3200) }
@@ -119,6 +134,45 @@ function Dashboard({ session }: { session: Session | null }) {
       toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
     }
   }
+  async function saveClient(client: Client | Omit<Client, 'id' | 'createdAt'>) {
+    try {
+      if ('id' in client) {
+        const saved = session ? await updateClient(client) : client
+        setClients((current) => current.map((item) => item.id === saved.id ? saved : item)); toast('Cliente actualizado.')
+      } else {
+        const local = { ...client, id: crypto.randomUUID(), createdAt: new Date().toISOString() }
+        const saved = session ? await createClient(client) : local
+        setClients((current) => [...current, saved].sort((a, b) => a.fullName.localeCompare(b.fullName))); toast('Cliente creado.')
+      }
+    } catch (error) { toast(error instanceof Error ? error.message : 'No se ha podido guardar el cliente.'); throw error }
+  }
+  async function removeClient(client: Client) {
+    try { if (session) await deleteClient(client.id); setClients((current) => current.filter((item) => item.id !== client.id)); toast('Cliente eliminado.') }
+    catch (error) { toast(error instanceof Error ? error.message : 'No se ha podido eliminar el cliente.'); throw error }
+  }
+  async function generateInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number) {
+    const fullName = payer === 'remitente' ? letter.sender : letter.recipient
+    const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+    let client = clients.find((item) => item.fullName.trim().toLocaleLowerCase() === fullName.trim().toLocaleLowerCase())
+    if (!client) {
+      client = { id: crypto.randomUUID(), fullName, phone, nif: '', email: '', address: '', city: '', postalCode: '', createdAt: new Date().toISOString() }
+      setClients((current) => [...current, client!].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+    }
+    const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
+    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client!.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'generado', createdAt: new Date().toISOString() }, ...current])
+    if (session) {
+      try {
+        const stored = await persistInvoice(letter, payer, total, session.user.id)
+        if (stored) {
+          setClients((current) => [...current.filter((item) => item.id !== client!.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+          if (stored.invoice) setInvoices((current) => [stored.invoice!, ...current.filter((item) => item.letterId !== letter.id)])
+          else toast('La factura ya estaba guardada para esta carta de porte.')
+        }
+      } catch { toast('La factura se ha generado, pero no se ha podido guardar en Supabase.') }
+    }
+    if (duplicate) toast('La factura ya existe en el historial del cliente.')
+    await downloadInvoice(letter, payer, total)
+  }
 
   return (
     <div className="app-shell">
@@ -132,6 +186,7 @@ function Dashboard({ session }: { session: Session | null }) {
         <header className="topbar"><div><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></div><div className="topbar-actions"><label className="search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar" aria-label="Buscar" /></label><span className="avatar">GM</span></div></header>
         <div className="page-content">
           {section === 'cartas' && <LettersPage letters={filteredLetters} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
+          {section === 'clientes' && <ClientsPage clients={clients} invoices={invoices} letters={letters} onSave={saveClient} onDelete={removeClient} />}
           {section === 'plantillas' && <TemplatesPage templates={routeTemplates} selected={selectedTemplate} onSelect={setSelectedTemplate} />}
           {section === 'rutas' && <RoutesPage route={selectedRoute} template={activeTemplate} templates={routeTemplates} routes={dailyRoutes} onSelect={setSelectedRoute} onAction={updateAction} onCreate={() => setShowNewRoute(true)} />}
           {section === 'furgoneta' && <VanPage route={selectedRoute} assignments={assignments} onPrint={() => downloadVanManifest(assignments, activeTemplate.name)} />}
@@ -140,7 +195,7 @@ function Dashboard({ session }: { session: Session | null }) {
       <nav className="mobile-nav" aria-label="Navegación móvil">{nav.map(([id, label, Icon]) => <button type="button" className={section === id ? 'is-active' : ''} key={id} onClick={() => setSection(id)}><Icon size={19} /><span>{label.split(' ')[0]}</span></button>)}</nav>
       {showImport && <ImportDialog onClose={() => setShowImport(false)} onPick={() => fileInput.current?.click()} />}
       {showNewRoute && <NewRouteDialog templates={routeTemplates} onClose={() => setShowNewRoute(false)} onCreate={createDailyRoute} />}
-      {invoiceLetter && <InvoiceDialog letter={invoiceLetter} onClose={() => setInvoiceLetter(null)} />}
+      {invoiceLetter && <InvoiceDialog letter={invoiceLetter} onClose={() => setInvoiceLetter(null)} onGenerate={generateInvoice} />}
       <input ref={fileInput} hidden type="file" accept="application/pdf" onChange={(event) => importPdf(event.target.files?.[0])} />
       {notice && <div className="toast" role="status"><CheckCircle2 size={18} /> {notice}</div>}
     </div>
@@ -208,7 +263,7 @@ function VanPage({ route, assignments, onPrint }: { route: DailyRoute; assignmen
   </> }
 
 function ImportDialog({ onClose, onPick }: { onClose: () => void; onPick: () => void }) { return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="import-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><FilePlus2 size={24} /></div><h2 id="import-title">Importar carta de porte</h2><p>Sube un PDF digital. Extraeremos el contenido y podrás revisarlo antes de guardarlo.</p><button type="button" className="dropzone" onClick={onPick}><Upload size={24} /><strong>Seleccionar PDF</strong><span>Máximo 10 MB · solo PDF con texto</span></button><p className="hint">El identificador será el encabezado «CARTA DE PORTE Nº …».</p></CardContent></Card></div> }
-function InvoiceDialog({ letter, onClose }: { letter: Letter; onClose: () => void }) { const [payer, setPayer] = useState<'remitente' | 'destinatario'>('remitente'); const [total, setTotal] = useState('200'); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="invoice-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Printer size={24} /></div><h2 id="invoice-title">Preparar factura</h2><p>Elige quién paga y ajusta el importe con IVA antes de generar la factura.</p><div className="payer-options"><button type="button" className={payer === 'remitente' ? 'is-selected' : ''} onClick={() => setPayer('remitente')}><span>Remitente</span><strong>{letter.sender}</strong></button><button type="button" className={payer === 'destinatario' ? 'is-selected' : ''} onClick={() => setPayer('destinatario')}><span>Destinatario</span><strong>{letter.recipient}</strong></button></div><label className="date-field">Total (IVA incluido)<input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></label><Button className="dialog-submit" onClick={() => { downloadInvoice(letter, payer, Number(total) || 0); onClose() }}><Printer /> Generar factura</Button></CardContent></Card></div> }
+function InvoiceDialog({ letter, onClose, onGenerate }: { letter: Letter; onClose: () => void; onGenerate: (letter: Letter, payer: 'remitente' | 'destinatario', total: number) => Promise<void> }) { const [payer, setPayer] = useState<'remitente' | 'destinatario'>('remitente'); const [total, setTotal] = useState('200'); const [generating, setGenerating] = useState(false); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="invoice-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Printer size={24} /></div><h2 id="invoice-title">Preparar factura</h2><p>Elige quién paga y ajusta el importe con IVA antes de generar la factura. Se guardará automáticamente en su ficha de cliente.</p><div className="payer-options"><button type="button" className={payer === 'remitente' ? 'is-selected' : ''} onClick={() => setPayer('remitente')}><span>Remitente</span><strong>{letter.sender}</strong></button><button type="button" className={payer === 'destinatario' ? 'is-selected' : ''} onClick={() => setPayer('destinatario')}><span>Destinatario</span><strong>{letter.recipient}</strong></button></div><label className="date-field">Total (IVA incluido)<input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></label><Button className="dialog-submit" disabled={generating} onClick={() => { setGenerating(true); onGenerate(letter, payer, Number(total) || 0).finally(() => { setGenerating(false); onClose() }) }}><Printer /> {generating ? 'Generando…' : 'Generar factura'}</Button></CardContent></Card></div> }
 function NewRouteDialog({ templates, onClose, onCreate }: { templates: RouteTemplate[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string) => void }) { const [date, setDate] = useState('2026-08-09'); return <div className="dialog-backdrop" role="presentation"><Card className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="route-title"><CardContent><button type="button" className="close-button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button><div className="dialog-icon"><Route size={24} /></div><h2 id="route-title">Crear ruta diaria</h2><p>Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida.</p><label className="date-field">Fecha de servicio<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></CardContent></Card></div> }
 function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) { return <Card className={`stat ${accent ? `stat-${accent}` : ''}`}><CardContent><p>{label}</p><strong>{value}</strong><span><ClipboardList size={15} /> actualizado ahora</span></CardContent></Card> }
 
