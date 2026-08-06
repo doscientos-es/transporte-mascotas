@@ -1543,6 +1543,16 @@ main {
   }
 }
 
+@media (max-width: 390px) {
+  .table-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .status-filter {
+    justify-content: space-between;
+  }
+}
+
 .van-title {
   padding: 0 0 12px;
   color: #1d281c;
