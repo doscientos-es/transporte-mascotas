@@ -99,9 +99,27 @@
 }
 
 .sidebar-profile {
+  position: relative;
+}
+
+.profile-trigger {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.profile-trigger:not(:disabled) {
+  cursor: pointer;
+}
+
+.profile-trigger:not(:disabled):hover strong {
+  color: var(--accent);
 }
 
 .sidebar-profile strong {
@@ -116,6 +134,39 @@
   gap: 5px;
   margin-top: 2px;
   color: #a4b6a0;
+}
+
+.profile-menu {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 10px);
+  left: 0;
+  min-width: 158px;
+  padding: 5px;
+  border: 1px solid #496446;
+  border-radius: 9px;
+  background: #294326;
+  box-shadow: 0 10px 24px rgba(7, 19, 6, .24);
+}
+
+.profile-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #f1f6ef;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.profile-menu button:hover {
+  background: #3b5a37;
 }
 
 .help-link {

@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { Session } from '@supabase/supabase-js'
 import {
   ArrowUpRight, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FilePlus2,
-  FileText, GitFork, MapPin,
+  FileText, GitFork, LogOut, MapPin,
   PackageOpen, PawPrint,
   Phone, Plus, Printer, Route, Search,
   ShieldCheck, Truck, Upload, UsersRound, X
@@ -67,6 +67,7 @@ function Dashboard({ session }: { session: Session | null }) {
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
@@ -89,6 +90,12 @@ function Dashboard({ session }: { session: Session | null }) {
   }, [session])
 
   function toast(message: string) { setNotice(message); window.setTimeout(() => setNotice(''), 3200) }
+  async function signOut() {
+    if (!supabase) return
+    const { error } = await supabase.auth.signOut()
+    if (error) toast('No se ha podido cerrar la sesión.')
+    else setShowProfileMenu(false)
+  }
   async function updateAction(actionId: string) {
     const target = selectedRoute.actions.find((action) => action.id === actionId)
     const status = target?.status === 'completada' ? 'pendiente' : 'completada'
@@ -187,7 +194,7 @@ function Dashboard({ session }: { session: Session | null }) {
         <div className="workspace-label">OPERACIONES</div>
         <nav>{nav.map(([id, label, Icon]) => <button type="button" className={`nav-item ${section === id ? 'is-active' : ''}`} key={id} onClick={() => setSection(id)}><Icon size={18} /><span>{label}</span>{id === 'cartas' && <b>{letters.filter((letter) => letter.status === 'pendiente').length}</b>}</button>)}</nav>
         <div className="sidebar-footer">
-          <div className="sidebar-profile"><span className="avatar">GM</span><div><strong>Gestor</strong><span className="role-dot"><ShieldCheck size={13} /> {session ? 'Sesión activa' : 'Modo demostración'}</span></div></div>
+          <div className="sidebar-profile"><button type="button" className="profile-trigger" onClick={() => setShowProfileMenu((visible) => !visible)} aria-expanded={showProfileMenu} aria-haspopup="menu" disabled={!session}><span className="avatar">GM</span><span><strong>Gestor</strong><span className="role-dot"><ShieldCheck size={13} /> Sesión segura</span></span></button>{showProfileMenu && session && <div className="profile-menu" role="menu"><button type="button" role="menuitem" onClick={signOut}><LogOut size={15} /> Cerrar sesión</button></div>}</div>
           <button type="button" className="help-link">Ayuda y soporte <ArrowUpRight size={14} /></button>
         </div>
       </aside>
