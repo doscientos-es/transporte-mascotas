@@ -107,19 +107,35 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 0;
+  min-height: 52px;
+  padding: 8px;
   border: 0;
+  border-radius: 10px;
   background: transparent;
   color: inherit;
   text-align: left;
+  transition: background .16s ease, color .16s ease;
 }
 
-.profile-trigger:not(:disabled) {
+.profile-trigger {
   cursor: pointer;
 }
 
-.profile-trigger:not(:disabled):hover strong {
+.profile-trigger:hover,
+.profile-trigger[data-popup-open] {
+  background: #355533;
+}
+
+.profile-trigger:hover strong,
+.profile-trigger[data-popup-open] strong {
   color: var(--accent);
+}
+
+.profile-trigger:focus-visible,
+.help-link:focus-visible,
+.profile-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .sidebar-profile strong {
@@ -136,48 +152,78 @@
   color: #a4b6a0;
 }
 
-.profile-menu {
-  position: absolute;
+.profile-menu-positioner {
   z-index: 2;
-  bottom: calc(100% + 10px);
-  left: 0;
-  min-width: 158px;
-  padding: 5px;
-  border: 1px solid #496446;
-  border-radius: 9px;
-  background: #294326;
-  box-shadow: 0 10px 24px rgba(7, 19, 6, .24);
 }
 
-.profile-menu button {
+.profile-menu {
+  min-width: 196px;
+  padding: 8px;
+  border: 1px solid #52704e;
+  border-radius: 12px;
+  background: #203b1e;
+  box-shadow: 0 14px 30px rgba(7, 19, 6, .32);
+}
+
+.profile-menu-header {
+  display: grid;
+  gap: 2px;
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid #496446;
+}
+
+.profile-menu-header span {
+  color: #a4b6a0;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.profile-menu-header strong {
+  color: #f1f6ef;
+  font-size: 13px;
+}
+
+.profile-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 34px;
-  padding: 0 8px;
+  min-height: 38px;
+  margin-top: 6px;
+  padding: 0 9px;
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #f1f6ef;
+  color: #ffe2e2;
   font: inherit;
   font-size: 12px;
   text-align: left;
 }
 
-.profile-menu button:hover {
-  background: #3b5a37;
+.profile-menu-item:hover,
+.profile-menu-item[data-highlighted] {
+  background: #533937;
 }
 
 .help-link {
-  border: 0;
-  padding: 0;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 8px;
   color: #bcd0b8;
   background: none;
   display: flex;
   align-items: center;
   gap: 4px;
+  font-size: 12px;
   text-align: left;
+  text-decoration: none;
+}
+
+.help-link:hover {
+  color: #fff;
+  background: #355533;
 }
 
 main {
@@ -347,7 +393,6 @@ main {
   color: #182119;
 }
 
-.filter-button,
 .row-actions button {
   display: grid;
   place-items: center;

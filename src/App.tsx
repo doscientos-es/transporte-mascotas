@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Menu } from '@base-ui/react/menu'
 import type { Session } from '@supabase/supabase-js'
 import {
   ArrowUpRight, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FilePlus2,
@@ -67,7 +68,6 @@ function Dashboard({ session }: { session: Session | null }) {
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
@@ -91,10 +91,12 @@ function Dashboard({ session }: { session: Session | null }) {
 
   function toast(message: string) { setNotice(message); window.setTimeout(() => setNotice(''), 3200) }
   async function signOut() {
-    if (!supabase) return
+    if (!supabase || !session) {
+      toast('No hay una sesión autenticada que cerrar.')
+      return
+    }
     const { error } = await supabase.auth.signOut()
     if (error) toast('No se ha podido cerrar la sesión.')
-    else setShowProfileMenu(false)
   }
   async function updateAction(actionId: string) {
     const target = selectedRoute.actions.find((action) => action.id === actionId)
@@ -194,8 +196,8 @@ function Dashboard({ session }: { session: Session | null }) {
         <div className="workspace-label">OPERACIONES</div>
         <nav>{nav.map(([id, label, Icon]) => <button type="button" className={`nav-item ${section === id ? 'is-active' : ''}`} key={id} onClick={() => setSection(id)}><Icon size={18} /><span>{label}</span>{id === 'cartas' && <b>{letters.filter((letter) => letter.status === 'pendiente').length}</b>}</button>)}</nav>
         <div className="sidebar-footer">
-          <div className="sidebar-profile"><button type="button" className="profile-trigger" onClick={() => setShowProfileMenu((visible) => !visible)} aria-expanded={showProfileMenu} aria-haspopup="menu" disabled={!session}><span className="avatar">GM</span><span><strong>Gestor</strong><span className="role-dot"><ShieldCheck size={13} /> Sesión segura</span></span></button>{showProfileMenu && session && <div className="profile-menu" role="menu"><button type="button" role="menuitem" onClick={signOut}><LogOut size={15} /> Cerrar sesión</button></div>}</div>
-          <button type="button" className="help-link">Ayuda y soporte <ArrowUpRight size={14} /></button>
+          <div className="sidebar-profile"><Menu.Root modal={false}><Menu.Trigger className="profile-trigger"><span className="avatar">GM</span><span><strong>Gestor</strong><span className="role-dot"><ShieldCheck size={13} /> Sesión segura</span></span></Menu.Trigger><Menu.Portal><Menu.Positioner className="profile-menu-positioner" side="top" align="start" sideOffset={10}><Menu.Popup className="profile-menu"><div className="profile-menu-header"><span>Cuenta</span><strong>Gestor</strong></div><Menu.Item className="profile-menu-item" onClick={signOut}><LogOut size={15} /> Cerrar sesión</Menu.Item></Menu.Popup></Menu.Positioner></Menu.Portal></Menu.Root></div>
+          <a className="help-link" href="mailto:hola@doscientos.es?subject=Ayuda%20y%20soporte%20Kache%20Env%C3%ADos">Ayuda y soporte <ArrowUpRight size={14} /></a>
         </div>
       </aside>
       <main>
