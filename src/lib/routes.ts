@@ -1,6 +1,5 @@
-import { supabase } from './supabase'
-import type { RouteTemplate } from './types'
-import type { DailyRoute } from './types'
+import { supabase } from './supabase';
+import type { DailyRoute, RouteTemplate } from './types';
 
 type TemplateRow = { id: string; name: string; color: string; route_template_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null }> }
 
@@ -59,15 +58,18 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     created_by: userId,
   })
   if (routeError) throw routeError
-  const { data: savedStops, error: stopsError } = await supabase.from('daily_route_stops').insert(template.stops.map((stop, index) => ({
+  const routeStops = route.stops ?? template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 0 }))
+  const { data: savedStops, error: stopsError } = await supabase.from('daily_route_stops').insert(routeStops.map((stop, index) => ({
     daily_route_id: route.id,
-    template_stop_id: stop.id,
+    template_stop_id: template.stops.find((templateStop) => templateStop.id === stop.id)?.id ?? null,
     sequence: index + 1,
     locality: stop.locality,
     meeting_point: stop.place,
     map_url: stop.mapUrl,
     minutes_to_next: stop.minutes || null,
-  }))).select('id,locality')
+    stop_kind: stop.kind,
+    dwell_minutes: stop.dwellMinutes,
+  }))).select('id,locality,sequence')
   if (stopsError) throw stopsError
 
   const letterIds = [...new Set(route.actions.map((action) => action.letterId))]
@@ -75,15 +77,17 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
   const { data: storedLetters, error: lettersError } = await supabase.from('carriage_letters').select('id').in('id', letterIds)
   if (lettersError) throw lettersError
   const allowedLetters = new Set(storedLetters.map((letter) => letter.id))
-  const stopIds = new Map(savedStops.map((stop) => [stop.locality, stop.id]))
-  const actions = route.actions.filter((action) => allowedLetters.has(action.letterId) && stopIds.has(action.stop)).map((action) => ({
+  const stopIds = new Map(savedStops.map((stop, index) => [routeStops[index].id, stop.id]))
+  const stopIdsByLocality = new Map(savedStops.map((stop) => [stop.locality, stop.id]))
+  const actions = route.actions.filter((action) => allowedLetters.has(action.letterId) && (stopIds.get(action.stopId ?? '') ?? stopIdsByLocality.get(action.stop))).map((action) => ({
     id: action.id,
     daily_route_id: route.id,
-    daily_route_stop_id: stopIds.get(action.stop),
+    daily_route_stop_id: stopIds.get(action.stopId ?? '') ?? stopIdsByLocality.get(action.stop),
     letter_id: action.letterId,
     animal_id: action.animalId,
     action_type: action.type,
     status: action.status,
+    dwell_minutes: action.dwellMinutes ?? 15,
   }))
   if (!actions.length) return
   const { error: actionsError } = await supabase.from('route_actions').insert(actions)
@@ -95,8 +99,8 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     const pickup = animalActions.find((action) => action.type === 'recogida' && action.box && allowedLetters.has(action.letterId))
     const delivery = animalActions.find((action) => action.type === 'entrega' && action.box && allowedLetters.has(action.letterId))
     if (!pickup || !delivery || !pickup.box) continue
-    const pickupSequence = template.stops.findIndex((stop) => stop.locality === pickup.stop) + 1
-    const deliverySequence = template.stops.findIndex((stop) => stop.locality === delivery.stop) + 1
+    const pickupSequence = routeStops.findIndex((stop) => stop.id === pickup.stopId || stop.locality === pickup.stop) + 1
+    const deliverySequence = routeStops.findIndex((stop) => stop.id === delivery.stopId || stop.locality === delivery.stop) + 1
     if (!pickupSequence || !deliverySequence) continue
     const { error: assignmentError } = await supabase.rpc('assign_van_box', {
       p_daily_route_id: route.id,

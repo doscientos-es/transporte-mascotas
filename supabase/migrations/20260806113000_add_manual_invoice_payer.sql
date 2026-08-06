@@ -1,0 +1,1 @@
+alter type public.payer_type add value if not exists 'manual';

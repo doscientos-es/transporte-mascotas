@@ -6,13 +6,25 @@ import { saveImportedLetter } from '../lib/letters'
 import { downloadInvoice } from '../lib/pdf'
 import { loadOrSeedRouteTemplates, saveDailyRoute } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Client, ClientInvoice, DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from '../lib/types'
+import type { Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, RouteTemplate, ServiceAction } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
   'route-2026-08-08': 'Mediterráneo',
   'route-2026-08-09': 'Norte',
   'route-2026-08-10': 'Andalucía',
+}
+
+function copyTemplateStops(template: RouteTemplate): DailyRouteStop[] {
+  return template.stops.map((stop) => ({ ...stop, kind: 'parada', dwellMinutes: 0 }))
+}
+
+function stopsForRoute(route: DailyRoute, templates: RouteTemplate[]) {
+  return route.stops ?? copyTemplateStops(templates.find((template) => template.id === route.templateId) ?? templates[0])
+}
+
+function linkActionsToStops(actions: ServiceAction[], stops: DailyRouteStop[]): ServiceAction[] {
+  return actions.map((action) => action.stopId ? action : { ...action, stopId: stops.find((stop) => stop.locality === action.stop)?.id })
 }
 
 function createDemoClients(letters: Letter[]): Client[] {
@@ -30,7 +42,6 @@ function createDemoClients(letters: Letter[]): Client[] {
 }
 
 export function useDashboard(session: Session | null) {
-  const [section, setSection] = useState<NavSection>('cartas')
   const [letters, setLetters] = useState<Letter[]>(initialLetters)
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
@@ -103,6 +114,35 @@ export function useDashboard(session: Session | null) {
     setDailyRoutes((current) => current.map(update))
   }
 
+  function updateRouteStops(routeId: string, stops: DailyRouteStop[]) {
+    const update = (route: DailyRoute): DailyRoute => {
+      if (route.id !== routeId) return route
+      const existingStops = stopsForRoute(route, routeTemplates)
+      const actions = linkActionsToStops(route.actions, existingStops).filter((action) => !action.stopId || stops.some((stop) => stop.id === action.stopId))
+      return { ...route, stops, actions }
+    }
+    setSelectedRoute((current) => update(current))
+    setDailyRoutes((current) => current.map(update))
+  }
+
+  function updateRouteService(routeId: string, service: ServiceAction) {
+    const update = (route: DailyRoute): DailyRoute => {
+      if (route.id !== routeId) return route
+      const actions = linkActionsToStops(route.actions, stopsForRoute(route, routeTemplates))
+      return { ...route, actions: actions.map((action) => action.id === service.id ? service : action) }
+    }
+    setSelectedRoute((current) => update(current))
+    setDailyRoutes((current) => current.map(update))
+  }
+
+  function removeRouteService(routeId: string, serviceId: string) {
+    const update = (route: DailyRoute): DailyRoute => route.id === routeId
+      ? { ...route, actions: route.actions.filter((action) => action.id !== serviceId) }
+      : route
+    setSelectedRoute((current) => update(current))
+    setDailyRoutes((current) => current.map(update))
+  }
+
   async function importPdf(file?: File) {
     if (!file) return
     try {
@@ -139,14 +179,14 @@ export function useDashboard(session: Session | null) {
         ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
       ]
     }))
-    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', actions }
+    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', stops: copyTemplateStops(template), actions }
     try {
       if (session) await saveDailyRoute(route, template, session.user.id)
       setDailyRoutes((current) => [route, ...current])
       setSelectedRoute(route)
       setShowNewRoute(false)
-      setSection('rutas')
       toast(`Ruta ${template.name} creada como borrador.`)
+      return route
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
     }
@@ -181,19 +221,25 @@ export function useDashboard(session: Session | null) {
     }
   }
 
-  async function generateInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number) {
-    const fullName = payer === 'remitente' ? letter.sender : letter.recipient
-    const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
-    let client = clients.find((item) => item.fullName.trim().toLocaleLowerCase() === fullName.trim().toLocaleLowerCase())
+  async function generateInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+    const clientInput = payer === 'manual'
+      ? manualClient
+      : { fullName: payer === 'remitente' ? letter.sender : letter.recipient, phone: payer === 'remitente' ? letter.senderPhone : letter.recipientPhone, nif: '', email: '', address: '', city: '', postalCode: '' }
+    if (!clientInput?.fullName.trim()) throw new Error('Falta el titular de la factura.')
+    const fullName = clientInput.fullName.trim()
+    let client = clients.find((item) => item.fullName.trim().toLocaleLowerCase() === fullName.toLocaleLowerCase())
     if (!client) {
-      client = { id: crypto.randomUUID(), fullName, phone, nif: '', email: '', address: '', city: '', postalCode: '', createdAt: new Date().toISOString() }
+      client = { id: crypto.randomUUID(), ...clientInput, fullName, createdAt: new Date().toISOString() }
       setClients((current) => [...current, client!].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+    } else if (payer === 'manual') {
+      client = { ...client, ...clientInput, fullName }
+      setClients((current) => current.map((item) => item.id === client!.id ? client! : item))
     }
     const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
     if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'generado', createdAt: new Date().toISOString() }, ...current])
     if (session) {
       try {
-        const stored = await persistInvoice(letter, payer, total, session.user.id)
+        const stored = await persistInvoice(letter, payer, total, session.user.id, clientInput)
         if (stored) {
           setClients((current) => [...current.filter((item) => item.id !== client.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
           const storedInvoice = stored.invoice
@@ -205,14 +251,14 @@ export function useDashboard(session: Session | null) {
       }
     }
     if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    await downloadInvoice(letter, payer, total)
+    await downloadInvoice(letter, payer, total, clientInput)
   }
 
   return {
-    section, setSection, letters, routeTemplates, dailyRoutes, clients, invoices, selectedTemplate,
+    letters, routeTemplates, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, fileInput, signOut, updateAction, importPdf, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, fileInput, signOut, updateAction, updateRouteStops, updateRouteService, removeRouteService, importPdf, createDailyRoute, saveClient,
     removeClient, generateInvoice,
   }
 }

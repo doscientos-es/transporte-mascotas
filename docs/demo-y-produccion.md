@@ -8,7 +8,7 @@ La app funciona sin Supabase usando los datos locales de ejemplo de `src/lib/dat
 2. Ejecuta `pnpm dev`.
 3. Abre la URL que muestra Vite.
 
-La demo incluye cartas, rutas, clientes y facturas de ejemplo. Puedes buscar y filtrar cartas, cambiar de página, crear rutas locales, editar clientes y generar PDFs. Los cambios locales se pierden al recargar.
+La demo incluye cartas, rutas, clientes y facturas de ejemplo. Puedes buscar y filtrar cartas, cambiar de página, crear rutas locales, reordenar o personalizar sus paradas, editar clientes y generar PDFs. Los cambios locales se pierden al recargar.
 
 ## Estado de la demo
 
@@ -20,7 +20,8 @@ La demo incluye cartas, rutas, clientes y facturas de ejemplo. Puedes buscar y f
 
 ## Activar Supabase después de la demo
 
-1. Revisa y aplica la migración `supabase/migrations/20260806103000_scale_pagination.sql`.
+1. Revisa y aplica las migraciones presentes en `supabase/migrations/`.
+   - `20260806113000_add_manual_invoice_payer.sql` permite facturar a una empresa u otro titular manual.
 2. Configura las variables de entorno de Supabase con credenciales publicables del proyecto.
 3. Crea usuarios y sus perfiles con el rol adecuado para las políticas RLS.
 4. Implementa las consultas paginadas en servidor pendientes:
@@ -31,4 +32,4 @@ La demo incluye cartas, rutas, clientes y facturas de ejemplo. Puedes buscar y f
 
 ## Por qué no activar Supabase durante la demo
 
-La UI de cartas y rutas todavía consume los conjuntos demo. La migración deja tablas e índices preparados, pero no sustituye automáticamente esos datos por consultas remotas. Mantener el modo demo evita mostrar una pantalla vacía o una autenticación incompleta durante la presentación.
+La UI de cartas y rutas todavía consume los conjuntos demo. La estructura de Supabase no sustituye automáticamente esos datos por consultas remotas. Mantener el modo demo evita mostrar una pantalla vacía o una autenticación incompleta durante la presentación.

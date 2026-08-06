@@ -38,11 +38,14 @@ export interface Client {
   createdAt: string
 }
 
+export type InvoicePayer = 'remitente' | 'destinatario' | 'manual'
+export type InvoiceClientInput = Omit<Client, 'id' | 'createdAt'>
+
 export interface ClientInvoice {
   id: string
   letterId: string
   clientId: string
-  payer: 'remitente' | 'destinatario'
+  payer: InvoicePayer
   concept: string
   total: number
   status: 'generado'
@@ -55,6 +58,13 @@ export interface RouteStop {
   place: string
   mapUrl: string
   minutes: number
+}
+
+export type DailyStopKind = 'parada' | 'recogida' | 'entrega'
+
+export interface DailyRouteStop extends RouteStop {
+  kind: DailyStopKind
+  dwellMinutes: number
 }
 
 export interface RouteTemplate {
@@ -74,6 +84,8 @@ export interface ServiceAction {
   phone: string
   status: 'pendiente' | 'completada' | 'incidencia'
   box?: number
+  stopId?: string
+  dwellMinutes?: number
 }
 
 export interface DailyRoute {
@@ -82,4 +94,5 @@ export interface DailyRoute {
   date: string
   status: 'borrador' | 'activa' | 'completada'
   actions: ServiceAction[]
+  stops?: DailyRouteStop[]
 }

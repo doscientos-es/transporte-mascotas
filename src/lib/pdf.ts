@@ -1,6 +1,6 @@
-import { boxGridSpan, vanLanes } from './van'
-import type { Letter } from './types'
 import kacheLogo from '../assets/kache-logo.png'
+import type { InvoiceClientInput, InvoicePayer, Letter } from './types'
+import { boxGridSpan, vanLanes } from './van'
 
 const invoiceRed = [248, 66, 69] as const
 const money = (value: number) => `${value.toFixed(2).replace('.', ',')} €`
@@ -23,13 +23,16 @@ async function imageAsDataUrl(source: string) {
   return canvas.toDataURL('image/png')
 }
 
-export async function downloadInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number) {
+export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const base = total / 1.21
   const tax = total - base
-  const customer = payer === 'remitente' ? letter.sender : letter.recipient
-  const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
+  const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  const clientLines = (payer === 'manual'
+    ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
+    : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
   const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
   const date = shortDate(letter.serviceDate)
   const logo = await imageAsDataUrl(kacheLogo)
@@ -47,7 +50,7 @@ export async function downloadInvoice(letter: Letter, payer: 'remitente' | 'dest
   doc.text('CLIENTE', left, 62); doc.text('NÚMERO', 166, 62, { align: 'center' })
   doc.setDrawColor(225, 227, 230); doc.setLineWidth(.35); doc.line(left, 66, 77, 66); doc.line(124, 66, right, 66)
   doc.setTextColor(18, 18, 18); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
-  doc.text([customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`], left, 73, { lineHeightFactor: 1.38 })
+  doc.text(clientLines, left, 73, { lineHeightFactor: 1.38 })
   doc.text(number, 166, 72, { align: 'center' })
   doc.setFont('helvetica', 'bold'); doc.setTextColor(...invoiceRed); doc.setFontSize(8); doc.text('FECHA', 166, 81, { align: 'center' })
   doc.setDrawColor(225, 227, 230); doc.line(124, 84, right, 84)
