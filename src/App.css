@@ -694,14 +694,13 @@ main {
 }
 
 .route-selector {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 9px;
-  overflow: auto;
   padding-bottom: 14px;
 }
 
 .route-selector button {
-  flex: 0 0 auto;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -712,6 +711,14 @@ main {
   background: #fff;
   color: #4b5848;
   font-size: 12px;
+}
+
+.page-loading {
+  display: grid;
+  min-height: 220px;
+  place-items: center;
+  color: #647060;
+  font-size: 14px;
 }
 
 .route-selector button.is-selected {
@@ -1014,20 +1021,7 @@ main {
   font-size: 11px;
 }
 
-.dialog-backdrop {
-  position: fixed;
-  z-index: 10;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(21, 34, 20, .48);
-}
-
 .dialog-card {
-  position: relative;
-  width: min(460px, 100%);
-  --card-spacing: 26px;
   background: #fff;
   box-shadow: 0 28px 90px rgba(10, 25, 9, .28);
 }
@@ -1052,20 +1046,6 @@ main {
   color: #315a2d;
   background: #e5fbd5;
   border-radius: 12px;
-}
-
-.close-button {
-  position: absolute;
-  right: 14px;
-  top: 14px;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: #f1f4ef;
-  color: #566254;
-  border-radius: 8px;
 }
 
 .dropzone {
@@ -1337,7 +1317,7 @@ main {
     grid-template-columns: 1fr
   }
 
-  .template-list .card-content {
+  .template-list [data-slot="card-content"] {
     display: flex;
     gap: 6px;
     overflow: auto
@@ -1382,8 +1362,7 @@ main {
   }
 
   .route-selector {
-    margin-inline: -16px;
-    padding-inline: 16px
+    grid-template-columns: 1fr;
   }
 
   .van-plan {
@@ -1571,6 +1550,10 @@ main {
 
 .clients-list {
   height: max-content
+}
+
+.client-rows {
+  display: grid;
 }
 
 .clients-list-heading {
@@ -1799,7 +1782,8 @@ main {
 }
 
 .client-dialog {
-  width: min(590px, 100%)
+  max-height: calc(100dvh - 2.5rem);
+  overflow-y: auto
 }
 
 .client-form {
@@ -1842,18 +1826,17 @@ main {
     grid-template-columns: 1fr
   }
 
-  .clients-list .card-content {
-    display: flex;
-    gap: 6px;
-    overflow: auto
+  .clients-list [data-slot="card-content"] {
+    display: grid;
+    gap: 10px;
   }
 
   .clients-list-heading {
-    display: none
+    display: flex;
   }
 
   .client-row {
-    min-width: 180px
+    min-width: 0;
   }
 
   .client-contact-grid {
