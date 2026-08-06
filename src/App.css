@@ -167,7 +167,7 @@ main {
 .page-content {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 20px clamp(20px, 4vw, 52px) 56px;
+  padding: 12px clamp(20px, 4vw, 52px) 56px;
 }
 
 .page-intro {
@@ -312,6 +312,10 @@ main {
   overflow: auto;
 }
 
+.letter-cards {
+  display: none;
+}
+
 .responsive-table table {
   width: 100%;
   border-collapse: collapse;
@@ -367,6 +371,64 @@ main {
 .row-actions button:hover {
   color: white;
   background: var(--primary);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #edf0ec;
+}
+
+.pagination p {
+  margin: 0;
+  color: #748070;
+  font-size: 12px;
+}
+
+.pagination>div {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-page {
+  display: contents;
+}
+
+.pagination i {
+  width: 16px;
+  color: #748070;
+  font-style: normal;
+  text-align: center;
+}
+
+.pagination button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #dce3da;
+  border-radius: 8px;
+  background: #fff;
+  color: #50604d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pagination button:hover:not(:disabled),
+.pagination button.is-active {
+  border-color: #2a4227;
+  background: #eaffd5;
+  color: #1d391a;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: .4;
 }
 
 .status {
@@ -1226,8 +1288,101 @@ main {
   }
 
   .responsive-table {
-    margin-inline: -20px;
-    padding-inline: 10px
+    display: none
+  }
+
+  .letter-cards {
+    display: grid;
+    gap: 9px;
+    margin-top: 16px;
+  }
+
+  .letter-card {
+    display: grid;
+    gap: 11px;
+    padding: 13px;
+    border: 1px solid #e2e8df;
+    border-radius: 10px;
+    background: #fbfdf9;
+  }
+
+  .letter-card-heading,
+  .letter-card-footer,
+  .letter-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .letter-card-heading>div {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .letter-card-heading strong {
+    overflow: hidden;
+    color: #253022;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .letter-card-heading small,
+  .letter-card-meta,
+  .letter-card-footer>span {
+    color: #788375;
+    font-size: 11px;
+  }
+
+  .letter-card-route {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #283826;
+    font-size: 14px;
+    font-weight: 750;
+  }
+
+  .letter-card-meta {
+    justify-content: flex-start;
+    gap: 15px;
+  }
+
+  .letter-card-meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .letter-card-footer {
+    padding-top: 10px;
+    border-top: 1px solid #e7ece4;
+  }
+
+  .letter-card-footer button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 31px;
+    border: 0;
+    border-radius: 7px;
+    padding: 0 9px;
+    background: #edf4e9;
+    color: #315f2a;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .pagination>div {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .table-heading {

@@ -2,9 +2,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { Session } from '@supabase/supabase-js'
 import {
-  ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, FilePlus2,
+  ArrowUpRight, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, ClipboardList, FilePlus2,
   FileText, GitFork, MapPin,
-  MoreHorizontal, PackageOpen, PawPrint,
+  PackageOpen, PawPrint,
   Phone, Plus, Printer, Route, Search,
   ShieldCheck, Truck, Upload, UsersRound, X
 } from 'lucide-react'
@@ -244,11 +244,27 @@ function LoginScreen() {
 function PageIntro({ text, children }: { text: string; children?: React.ReactNode }) { return <div className="page-intro"><p>{text}</p>{children}</div> }
 
 function LettersPage({ letters, search, onSearchChange, onImport, onInvoice }: { letters: Letter[]; search: string; onSearchChange: (value: string) => void; onImport: () => void; onInvoice: (letter: Letter) => void }) {
+  const pageSize = 8
+  const [page, setPage] = useState(1)
+  const pageCount = Math.max(1, Math.ceil(letters.length / pageSize))
+  const visibleLetters = letters.slice((page - 1) * pageSize, page * pageSize)
+  const firstRecord = letters.length === 0 ? 0 : (page - 1) * pageSize + 1
+  const lastRecord = Math.min(page * pageSize, letters.length)
+
+  useEffect(() => { setPage(1) }, [search])
+  useEffect(() => { setPage((current) => Math.min(current, pageCount)) }, [pageCount])
+
   return <>
     <PageIntro text="Importa, revisa y prepara los servicios para cada ruta."><Button onClick={onImport}><Upload /> Importar carta</Button></PageIntro>
     <section className="stats-grid"><Stat label="Pendientes de revisión" value={letters.filter((letter) => letter.status === 'pendiente').length} accent="lime" /><Stat label="Programadas esta semana" value={letters.filter((letter) => letter.status !== 'pendiente').length} /><Stat label="Animales en transporte" value={letters.flatMap((letter) => letter.animals).length} /></section>
-    <Card className="table-card"><CardContent><div className="table-heading"><div><h3>Últimas cartas</h3><p>{letters.length} registros</p></div><label className="search"><Search size={17} /><input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar" aria-label="Buscar cartas" /></label><button type="button" className="filter-button"><MoreHorizontal size={18} /></button></div><div className="responsive-table"><table><thead><tr><th>Referencia</th><th>Trayecto</th><th>Mascotas</th><th>Fecha</th><th>Estado</th><th aria-label="Acciones" /></tr></thead><tbody>{letters.map((letter) => <tr key={letter.id}><td><strong>{letter.id}</strong><small>Importada {letter.importedAt}</small></td><td><span className="route-cell"><b>{letter.origin}</b><ChevronRight size={14} /><b>{letter.destination}</b></span><small>{letter.route}</small></td><td><span className="pet-list"><PawPrint size={15} /> {letter.animals.map((animal) => animal.breed).join(', ')}</span><small>{letter.animals.length} animal{letter.animals.length !== 1 && 'es'}</small></td><td>{new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td><td><span className={`status status-${letter.status}`}>{labelStatus[letter.status]}</span></td><td><div className="row-actions"><button type="button" title="Editar carta"><FileText size={17} /></button><button type="button" title="Generar borrador" onClick={() => onInvoice(letter)}><Printer size={17} /></button></div></td></tr>)}</tbody></table></div></CardContent></Card>
+    <Card className="table-card"><CardContent><div className="table-heading"><div><h3>Últimas cartas</h3><p>{letters.length} registros</p></div><label className="search"><Search size={17} /><input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar" aria-label="Buscar cartas" /></label></div>{letters.length === 0 ? <p className="empty-copy">No hay cartas que coincidan con la búsqueda.</p> : <><div className="responsive-table"><table><thead><tr><th>Referencia</th><th>Trayecto</th><th>Mascotas</th><th>Fecha</th><th>Estado</th><th aria-label="Acciones" /></tr></thead><tbody>{visibleLetters.map((letter) => <tr key={letter.id}><td><strong>{letter.id}</strong><small>Importada {letter.importedAt}</small></td><td><span className="route-cell"><b>{letter.origin}</b><ChevronRight size={14} /><b>{letter.destination}</b></span><small>{letter.route}</small></td><td><span className="pet-list"><PawPrint size={15} /> {letter.animals.map((animal) => animal.breed).join(', ')}</span><small>{letter.animals.length} animal{letter.animals.length !== 1 && 'es'}</small></td><td>{new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td><td><span className={`status status-${letter.status}`}>{labelStatus[letter.status]}</span></td><td><div className="row-actions"><button type="button" title="Editar carta"><FileText size={17} /></button><button type="button" title="Generar borrador" onClick={() => onInvoice(letter)}><Printer size={17} /></button></div></td></tr>)}</tbody></table></div><div className="letter-cards">{visibleLetters.map((letter) => <article className="letter-card" key={letter.id}><div className="letter-card-heading"><div><strong>{letter.id}</strong><small>Importada {letter.importedAt}</small></div><span className={`status status-${letter.status}`}>{labelStatus[letter.status]}</span></div><div className="letter-card-route"><span>{letter.origin}</span><ChevronRight size={15} /><span>{letter.destination}</span></div><div className="letter-card-meta"><span><PawPrint size={15} /> {letter.animals.length} animal{letter.animals.length !== 1 && 'es'}</span><span>{new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span></div><div className="letter-card-footer"><span>{letter.route}</span><button type="button" onClick={() => onInvoice(letter)}><Printer size={16} /> Facturar</button></div></article>)}</div><Pagination page={page} pageCount={pageCount} firstRecord={firstRecord} lastRecord={lastRecord} total={letters.length} onChange={setPage} /></>}</CardContent></Card>
   </>
+}
+
+function Pagination({ page, pageCount, firstRecord, lastRecord, total, onChange }: { page: number; pageCount: number; firstRecord: number; lastRecord: number; total: number; onChange: (page: number) => void }) {
+  if (pageCount <= 1) return null
+  const pageNumbers = [...new Set([1, page - 1, page, page + 1, pageCount].filter((number) => number >= 1 && number <= pageCount))].sort((a, b) => a - b)
+  return <nav className="pagination" aria-label="Paginación de cartas"><p>Mostrando {firstRecord}–{lastRecord} de {total}</p><div><button type="button" onClick={() => onChange(page - 1)} disabled={page === 1} aria-label="Página anterior"><ChevronLeft size={17} /></button>{pageNumbers.map((number, index) => <span className="pagination-page" key={number}>{number > pageNumbers[index - 1] + 1 && <i aria-hidden="true">…</i>}<button type="button" className={number === page ? 'is-active' : ''} onClick={() => onChange(number)} aria-current={number === page ? 'page' : undefined}>{number}</button></span>)}<button type="button" onClick={() => onChange(page + 1)} disabled={page === pageCount} aria-label="Página siguiente"><ChevronRight size={17} /></button></div></nav>
 }
 
 function TemplatesPage({ templates, selected, onSelect }: { templates: RouteTemplate[]; selected: RouteTemplate; onSelect: (template: RouteTemplate) => void }) {
