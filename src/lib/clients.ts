@@ -19,11 +19,21 @@ export async function loadClients() {
 
 export async function loadClientInvoices() {
   if (!supabase) return []
-  const { data, error } = await supabase.from('invoice_drafts').select('id, letter_id, client_id, payer, concept, total_amount, status, created_at').eq('status', 'generado').order('created_at', { ascending: false })
+  const { data, error } = await supabase.from('invoice_drafts').select('id, letter_id, client_id, payer, concept, total_amount, status, created_at').in('status', ['generado', 'pagada']).order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((row): ClientInvoice => ({
     id: row.id, letterId: row.letter_id, clientId: row.client_id, payer: row.payer,
-    concept: row.concept, total: Number(row.total_amount), status: 'generado', createdAt: row.created_at,
+    concept: row.concept, total: Number(row.total_amount), status: row.status === 'pagada' ? 'pagada' : 'generado', createdAt: row.created_at,
+  }))
+}
+
+export async function loadTransporterInvoices() {
+  if (!supabase) return []
+  const { data, error } = await supabase.from('transporter_invoices').select('id, letter_id, payer, concept, total_amount, status, created_at').in('status', ['generado', 'pagada']).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row): ClientInvoice => ({
+    id: row.id, letterId: row.letter_id, clientId: '', payer: row.payer,
+    concept: row.concept, total: Number(row.total_amount), status: row.status === 'pagada' ? 'pagada' : 'generado', createdAt: row.created_at,
   }))
 }
 
@@ -76,7 +86,7 @@ export async function persistInvoice(letter: Letter, payer: InvoicePayer, total:
   return {
     client, invoice: row ? {
       id: row.id, letterId: row.letter_id, clientId: row.client_id, payer: row.payer,
-      concept: row.concept, total: Number(row.total_amount), status: 'generado' as const, createdAt: row.created_at,
+      concept: row.concept, total: Number(row.total_amount), status: row.status === 'pagada' ? 'pagada' as const : 'generado' as const, createdAt: row.created_at,
     } : null
   }
 }

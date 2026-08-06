@@ -6,6 +6,7 @@ export const dashboardPaths: Record<NavSection, string> = {
   rutas: '/rutas',
   furgoneta: '/furgoneta',
   clientes: '/clientes',
+  facturas: '/facturas',
 }
 
 export type DashboardLocation = {
@@ -19,6 +20,7 @@ export function dashboardLocationForPath(pathname: string): DashboardLocation {
   if (path === dashboardPaths.plantillas) return { section: 'plantillas' }
   if (path === dashboardPaths.furgoneta) return { section: 'furgoneta' }
   if (path === dashboardPaths.clientes) return { section: 'clientes' }
+  if (path === dashboardPaths.facturas) return { section: 'facturas' }
   if (path === dashboardPaths.rutas) return { section: 'rutas' }
 
   const routeMatch = path.match(/^\/rutas\/([^/]+)$/)

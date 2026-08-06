@@ -22,14 +22,16 @@ La demo incluye cartas, rutas, clientes y facturas de ejemplo. Puedes buscar y f
 
 1. Revisa y aplica las migraciones presentes en `supabase/migrations/`.
    - `20260806113000_add_manual_invoice_payer.sql` permite facturar a una empresa u otro titular manual.
+   - `20260806143000_transporter_route_access.sql` asigna las rutas a transportistas y limita sus datos a su ruta y facturas relacionadas.
 2. Configura las variables de entorno de Supabase con credenciales publicables del proyecto.
 3. Crea usuarios y sus perfiles con el rol adecuado para las políticas RLS.
 4. Implementa las consultas paginadas en servidor pendientes:
    - cartas: `range`, `count`, orden por `imported_at`, búsqueda y estado;
-   - rutas: página de metadatos y detalle de la ruta seleccionada bajo demanda;
+   - rutas: paginación de metadatos y carga bajo demanda del detalle de la ruta seleccionada;
    - clientes: página de directorio e historial solo del cliente seleccionado.
 5. Valida RLS con un administrador y un transportista antes de importar datos reales.
+   - Al crear una ruta, asígnala al transportista correspondiente; una ruta sin asignar no será visible para ningún transportista.
 
 ## Por qué no activar Supabase durante la demo
 
-La UI de cartas y rutas todavía consume los conjuntos demo. La estructura de Supabase no sustituye automáticamente esos datos por consultas remotas. Mantener el modo demo evita mostrar una pantalla vacía o una autenticación incompleta durante la presentación.
+La UI de cartas todavía consume los conjuntos demo. Al activar Supabase, las rutas diarias, sus servicios y las facturas se consultan con las restricciones de rol correspondientes. Mantener el modo demo evita mostrar una pantalla vacía o una autenticación incompleta durante la presentación.

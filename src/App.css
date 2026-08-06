@@ -1235,6 +1235,38 @@ main {
   margin-top: 14px !important;
 }
 
+.import-selected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 11px;
+  border: 1px solid #dce7d8;
+  border-radius: 9px;
+  color: #365f31;
+  background: #f8fcf6;
+}
+
+.import-selected>span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.import-selected strong {
+  overflow: hidden;
+  color: #293c27;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-selected small {
+  color: #788575;
+  font-size: 11px;
+}
+
 .dialog-options {
   display: grid;
   gap: 7px;
@@ -1384,13 +1416,90 @@ main {
   font-weight: 700
 }
 
-.date-field input {
+.date-field input,
+.date-field select {
   min-height: 42px;
   border: 1px solid #dce3da;
   border-radius: 8px;
   padding: 0 10px;
   font: inherit;
   color: #263326
+}
+
+.invoices-list {
+  display: grid;
+  gap: 10px;
+  max-width: 760px;
+}
+
+.invoice-card [data-slot="card-content"],
+.invoice-empty [data-slot="card-content"] {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.invoice-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #385e34;
+  background: #e5f7dd;
+}
+
+.invoice-card [data-slot="card-content"]>div:nth-child(2) {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.invoice-card span,
+.invoice-card small,
+.invoice-empty p {
+  color: #71806d;
+  font-size: 12px;
+}
+
+.invoice-card small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.invoice-card strong {
+  color: #253323;
+  font-size: 14px;
+}
+
+.invoice-amount {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.invoice-pay-button,
+.invoice-paid {
+  flex: 0 0 auto;
+}
+
+.invoice-paid {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #287244;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invoice-empty [data-slot="card-content"] {
+  color: #71806d;
+}
+
+.invoice-empty h3,
+.invoice-empty p {
+  margin: 0;
 }
 
 .payer-options {

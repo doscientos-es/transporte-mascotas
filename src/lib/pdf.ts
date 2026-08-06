@@ -75,7 +75,7 @@ export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total
   doc.save(`factura-${number.replace('/', '-')}.pdf`)
 }
 
-export async function downloadVanManifest(assignments: Array<{ box: number; label: string }>, routeName: string) {
+export async function downloadVanManifest(assignments: Array<{ box: number; label: string; animalCount: number }>, routeName: string) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   doc.setFont('helvetica', 'bold'); doc.setFontSize(30); doc.text('F U R G Ó N', 148, 17, { align: 'center' })
@@ -92,8 +92,8 @@ export async function downloadVanManifest(assignments: Array<{ box: number; labe
       const fill = lane.size === 'grande' ? [183, 183, 183] : lane.size === 'mediano' ? [255, 198, 185] : [222, 246, 226]
       doc.setFillColor(fill[0], fill[1], fill[2]); doc.setDrawColor(80, 80, 80); doc.setLineWidth(.25); doc.rect(x, y, laneWidth, h, 'FD')
       doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(20, 20, 20); doc.text(String(box), x + laneWidth - 3, y + 5, { align: 'right' })
-      const label = assignments.find((entry) => entry.box === box)?.label
-      if (label) { doc.setFont('helvetica', 'normal'); doc.setFontSize(4.5); doc.text(label.replace('CARTA DE PORTE Nº ', '#'), x + laneWidth / 2, y + h / 2, { align: 'center', maxWidth: laneWidth - 5 }) }
+      const assignment = assignments.find((entry) => entry.box === box)
+      if (assignment) { doc.setFont('helvetica', 'normal'); doc.setFontSize(4.5); doc.text(`${assignment.label.replace('CARTA DE PORTE Nº ', '#')} · ${assignment.animalCount} ${assignment.animalCount === 1 ? 'animal' : 'animales'}`, x + laneWidth / 2, y + h / 2, { align: 'center', maxWidth: laneWidth - 5 }) }
       row += span
     })
   })

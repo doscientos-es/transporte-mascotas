@@ -412,3 +412,11 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# La redirección del cliente y la notificación bancaria no incluyen el JWT de Supabase.
+# Su acceso se protege respectivamente con un token opaco de un solo pago y una firma Cyberpac.
+[functions.payment-redirect]
+verify_jwt = false
+
+[functions.caixabank-webhook]
+verify_jwt = false

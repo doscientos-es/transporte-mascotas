@@ -1,6 +1,17 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta'
+export type AppRole = 'admin' | 'transportista'
+export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta' | 'facturas'
+
+export interface UserProfile {
+  displayName: string
+  role: AppRole
+}
+
+export interface Transporter {
+  id: string
+  displayName: string
+}
 
 export interface Animal {
   id: string
@@ -48,7 +59,7 @@ export interface ClientInvoice {
   payer: InvoicePayer
   concept: string
   total: number
-  status: 'generado'
+  status: 'generado' | 'pagada'
   createdAt: string
 }
 
@@ -86,6 +97,7 @@ export interface ServiceAction {
   box?: number
   stopId?: string
   dwellMinutes?: number
+  animalLabel?: string
 }
 
 export interface DailyRoute {
@@ -93,6 +105,7 @@ export interface DailyRoute {
   templateId: string
   date: string
   status: 'borrador' | 'activa' | 'completada'
+  transporterId?: string
   actions: ServiceAction[]
   stops?: DailyRouteStop[]
 }

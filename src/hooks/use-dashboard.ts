@@ -1,12 +1,12 @@
 import type { Session } from '@supabase/supabase-js'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { createClient, deleteClient, loadClientInvoices, loadClients, persistInvoice, updateClient } from '../lib/clients'
+import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { saveImportedLetter } from '../lib/letters'
 import { downloadInvoice } from '../lib/pdf'
-import { loadOrSeedRouteTemplates, saveDailyRoute } from '../lib/routes'
+import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, RouteTemplate, ServiceAction } from '../lib/types'
+import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
@@ -27,6 +27,27 @@ function linkActionsToStops(actions: ServiceAction[], stops: DailyRouteStop[]): 
   return actions.map((action) => action.stopId ? action : { ...action, stopId: stops.find((stop) => stop.locality === action.stop)?.id })
 }
 
+const sizeRank = { pequeno: 0, mediano: 1, grande: 2 } as const
+
+function largestAnimal(animals: Animal[]) {
+  return animals.reduce((largest, animal) => sizeRank[animal.size] > sizeRank[largest.size] ? animal : largest)
+}
+
+function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Letter) {
+  if (!letter.animals.length) return []
+  const stops = route.stops ?? copyTemplateStops(template)
+  const usedBoxes = new Set(route.actions.map((action) => action.box).filter((box): box is number => Boolean(box)))
+  const representative = largestAnimal(letter.animals)
+  const requestedBox = letter.animals.find((animal) => animal.box && !usedBoxes.has(animal.box))?.box
+  const box = requestedBox ?? boxesBySize[representative.size].find((candidate) => !usedBoxes.has(candidate))
+  const originStop = stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()))
+  const destinationStop = stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()))
+  return letter.animals.flatMap((animal) => [
+    ...(originStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'recogida' as const, stop: originStop.locality, stopId: originStop.id, customer: letter.sender, phone: letter.senderPhone, status: 'pendiente' as const, box }] : []),
+    ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, stopId: destinationStop.id, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
+  ])
+}
+
 function createDemoClients(letters: Letter[]): Client[] {
   const names = new Map<string, Pick<Client, 'fullName' | 'phone'>>()
   letters.forEach((letter) => [[letter.sender, letter.senderPhone], [letter.recipient, letter.recipientPhone]].forEach(([fullName, phone]) => {
@@ -41,9 +62,10 @@ function createDemoClients(letters: Letter[]): Client[] {
   }))
 }
 
-export function useDashboard(session: Session | null) {
+export function useDashboard(session: Session | null, role: AppRole) {
   const [letters, setLetters] = useState<Letter[]>(initialLetters)
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
+  const [transporters, setTransporters] = useState<Transporter[]>([])
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
   const [clients, setClients] = useState<Client[]>(() => createDemoClients(initialLetters))
   const [invoices, setInvoices] = useState<ClientInvoice[]>(initialClientInvoices)
@@ -67,9 +89,15 @@ export function useDashboard(session: Session | null) {
       ...letter.animals.map((animal) => animal.breed),
     ].join(' ').toLocaleLowerCase().includes(term))
   }, [letters, deferredSearch])
-  const assignments = useMemo(() => selectedRoute.actions
-    .filter((action) => action.type === 'recogida' && action.box)
-    .map((action) => ({ box: action.box!, label: action.letterId })), [selectedRoute])
+  const assignments = useMemo(() => {
+    const byLetterAndBox = new Map<string, { box: number; label: string; animalCount: number }>()
+    selectedRoute.actions.filter((action) => action.type === 'recogida' && action.box).forEach((action) => {
+      const key = `${action.letterId}:${action.box}`
+      const current = byLetterAndBox.get(key)
+      byLetterAndBox.set(key, current ? { ...current, animalCount: current.animalCount + 1 } : { box: action.box!, label: action.letterId, animalCount: 1 })
+    })
+    return [...byLetterAndBox.values()]
+  }, [selectedRoute])
 
   function toast(message: string) {
     setNotice(message)
@@ -88,11 +116,20 @@ export function useDashboard(session: Session | null) {
       setDailyRoutes((current) => current.map(hydrateRoute))
       setSelectedRoute((current) => hydrateRoute(current))
     }).catch(() => undefined)
-    Promise.all([loadClients(), loadClientInvoices()]).then(([storedClients, storedInvoices]) => {
-      setClients(storedClients)
-      setInvoices(storedInvoices)
-    }).catch(() => toast('No se ha podido cargar el historial de clientes.'))
-  }, [session])
+    loadDailyRoutes().then((loaded) => {
+      setDailyRoutes(loaded)
+      if (loaded[0]) setSelectedRoute(loaded[0])
+    }).catch(() => toast('No se han podido cargar las rutas asignadas.'))
+    if (role === 'admin') {
+      loadTransporters().then(setTransporters).catch(() => toast('No se ha podido cargar el equipo de transporte.'))
+      Promise.all([loadClients(), loadClientInvoices()]).then(([storedClients, storedInvoices]) => {
+        setClients(storedClients)
+        setInvoices(storedInvoices)
+      }).catch(() => toast('No se ha podido cargar el historial de clientes.'))
+    } else {
+      loadTransporterInvoices().then(setInvoices).catch(() => toast('No se han podido cargar las facturas asignadas.'))
+    }
+  }, [role, session])
 
   async function signOut() {
     if (!supabase || !session) return toast('No hay una sesión autenticada que cerrar.')
@@ -100,15 +137,18 @@ export function useDashboard(session: Session | null) {
     if (error) toast('No se ha podido cerrar la sesión.')
   }
 
-  async function updateAction(actionId: string) {
-    const target = selectedRoute.actions.find((action) => action.id === actionId)
-    const status = target?.status === 'completada' ? 'pendiente' : 'completada'
-    if (session && supabase && target) {
-      const { error } = await supabase.rpc('record_route_action', { p_action_id: actionId, p_status: status })
-      if (error) return toast('No se ha podido actualizar la acción en la ruta.')
+  async function updateActions(actionIds: string[]) {
+    const actionIdSet = new Set(actionIds)
+    const targets = selectedRoute.actions.filter((action) => actionIdSet.has(action.id))
+    if (!targets.length) return
+    const status = targets.every((action) => action.status === 'completada') ? 'pendiente' : 'completada'
+    if (session && supabase) {
+      const database = supabase
+      const results = await Promise.all(targets.map((action) => database.rpc('record_route_action', { p_action_id: action.id, p_status: status })))
+      if (results.some(({ error }) => error)) return toast('No se han podido actualizar las acciones en la ruta.')
     }
     const update = (route: DailyRoute): DailyRoute => route.id === selectedRoute.id
-      ? { ...route, actions: route.actions.map((action): ServiceAction => action.id === actionId ? { ...action, status: action.status === 'completada' ? 'pendiente' : 'completada' } : action) }
+      ? { ...route, actions: route.actions.map((action): ServiceAction => actionIdSet.has(action.id) ? { ...action, status } : action) }
       : route
     setSelectedRoute(update(selectedRoute))
     setDailyRoutes((current) => current.map(update))
@@ -143,43 +183,55 @@ export function useDashboard(session: Session | null) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function importPdf(file?: File) {
-    if (!file) return
+  async function importPdf(file: File, routeId: string, dogCount: number) {
     try {
+      const dailyRoute = dailyRoutes.find((route) => route.id === routeId)
+      const routeTemplate = dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
+      if (!dailyRoute || !routeTemplate) throw new Error('Selecciona una ruta existente para importar la carta.')
       const { parseCartaPdf } = await import('../lib/carta-parser')
       const extracted = await parseCartaPdf(file)
-      const route = routeTemplates.find((template) => template.stops.some((stop) => stop.locality.toLocaleLowerCase().includes((extracted.destination ?? '').toLocaleLowerCase())))
+      const detectedAnimal = extracted.animals?.[0]
+      const animals: Animal[] = Array.from({ length: dogCount }, () => ({
+        id: crypto.randomUUID(), species: 'Canina', breed: detectedAnimal?.breed || 'Sin clasificar', size: detectedAnimal?.size ?? 'pequeno',
+      }))
       const letter: Letter = {
         id: extracted.id || `CARTA DE PORTE Nº 2026-${445 + letters.length}`,
         sender: extracted.sender || 'Pendiente de revisar', senderPhone: extracted.senderPhone || '',
         recipient: extracted.recipient || 'Pendiente de revisar', recipientPhone: extracted.recipientPhone || '',
         origin: extracted.origin || 'Sin asignar', destination: extracted.destination || 'Sin asignar',
-        route: route?.name ?? 'Sin asignar', serviceDate: '2026-08-08', status: 'pendiente',
-        importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals: extracted.animals ?? [],
+        route: routeTemplate.name, serviceDate: dailyRoute.date, status: 'pendiente',
+        importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals,
       }
       if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
+      const routeActions = actionsForLetter(dailyRoute, routeTemplate, letter)
       if (session) await saveImportedLetter(letter, file, session.user.id)
+      if (session) await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
       setLetters((current) => [letter, ...current])
+      const updateRoute = (route: DailyRoute) => route.id === dailyRoute.id ? { ...route, actions: [...route.actions, ...routeActions] } : route
+      setDailyRoutes((current) => current.map(updateRoute))
+      setSelectedRoute((current) => updateRoute(current))
       setShowImport(false)
-      toast(`${file.name} importado. Revisa los campos extraídos.`)
+      toast(`${file.name} importado y vinculado a ${routeTemplate.name}.`)
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
     }
   }
 
-  async function createDailyRoute(template: RouteTemplate, date: string) {
+  async function createDailyRoute(template: RouteTemplate, date: string, transporterId?: string) {
     const usedBoxes = new Set<number>()
-    const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => letter.animals.flatMap((animal) => {
-      const box = animal.box ?? boxesBySize[animal.size].find((candidate) => !usedBoxes.has(candidate))
+    const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => {
+      const representative = largestAnimal(letter.animals)
+      const requestedBox = letter.animals.find((animal) => animal.box && !usedBoxes.has(animal.box))?.box
+      const box = requestedBox ?? boxesBySize[representative.size].find((candidate) => !usedBoxes.has(candidate))
       if (box) usedBoxes.add(box)
       const originStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()))
       const destinationStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()))
-      return [
+      return letter.animals.flatMap((animal) => [
         ...(originStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'recogida' as const, stop: originStop.locality, customer: letter.sender, phone: letter.senderPhone, status: 'pendiente' as const, box }] : []),
         ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
-      ]
-    }))
-    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', stops: copyTemplateStops(template), actions }
+      ])
+    })
+    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, stops: copyTemplateStops(template), actions }
     try {
       if (session) await saveDailyRoute(route, template, session.user.id)
       setDailyRoutes((current) => [route, ...current])
@@ -254,11 +306,20 @@ export function useDashboard(session: Session | null) {
     await downloadInvoice(letter, payer, total, clientInput)
   }
 
+  async function startInvoicePayment(invoice: ClientInvoice) {
+    if (!supabase || !session) throw new Error('Inicia sesión para generar el enlace de pago.')
+    const { data, error } = await supabase.functions.invoke('invoice-payment', { body: { invoiceId: invoice.id } })
+    if (error) throw new Error('No se ha podido iniciar el pago con Bizum.')
+    const paymentUrl = (data as { paymentUrl?: string; error?: string } | null)?.paymentUrl
+    if (!paymentUrl) throw new Error((data as { error?: string } | null)?.error ?? 'Bizum para comercios de CaixaBank todavía no está configurado.')
+    window.location.assign(paymentUrl)
+  }
+
   return {
-    letters, routeTemplates, dailyRoutes, clients, invoices, selectedTemplate,
+    letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, fileInput, signOut, updateAction, updateRouteStops, updateRouteService, removeRouteService, importPdf, createDailyRoute, saveClient,
-    removeClient, generateInvoice,
+    setInvoiceLetter, notice, fileInput, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, importPdf, createDailyRoute, saveClient,
+    removeClient, generateInvoice, startInvoicePayment,
   }
 }
