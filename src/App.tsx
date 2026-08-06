@@ -4,7 +4,8 @@ import type { Session } from '@supabase/supabase-js'
 import {
   ArrowUpRight, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, FilePlus2,
   FileText, GitFork, MapPin, Menu, MoreHorizontal, PackageOpen, PawPrint,
-  Phone, Plus, Printer, Route, Search, ShieldCheck, Truck, Upload, UsersRound, X,
+  Phone, Plus, Printer, Route,
+  ShieldCheck, Truck, Upload, UsersRound, X
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
@@ -184,12 +185,15 @@ function Dashboard({ session }: { session: Session | null }) {
         <div className="brand"><img src={brandLogo} alt="Kache Envíos" /><span>Transporte<br />de mascotas</span></div>
         <div className="workspace-label">OPERACIONES</div>
         <nav>{nav.map(([id, label, Icon]) => <button type="button" className={`nav-item ${section === id ? 'is-active' : ''}`} key={id} onClick={() => setSection(id)}><Icon size={18} /><span>{label}</span>{id === 'cartas' && <b>{letters.filter((letter) => letter.status === 'pendiente').length}</b>}</button>)}</nav>
-        <div className="sidebar-footer"><div className="role-dot"><ShieldCheck size={17} /> {session ? 'Sesión activa' : 'Modo demostración'}</div><button type="button" className="help-link">Ayuda y soporte <ArrowUpRight size={14} /></button></div>
+        <div className="sidebar-footer">
+          <div className="sidebar-profile"><span className="avatar">GM</span><div><strong>Gestor</strong><span className="role-dot"><ShieldCheck size={13} /> {session ? 'Sesión activa' : 'Modo demostración'}</span></div></div>
+          <button type="button" className="help-link">Ayuda y soporte <ArrowUpRight size={14} /></button>
+        </div>
       </aside>
       <main>
-        <header className="topbar"><div><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></div><div className="topbar-actions"><label className="search"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar" aria-label="Buscar" /></label><span className="avatar">GM</span></div></header>
+        <header className="topbar"><button type="button" className="mobile-menu" aria-label="Abrir menú"><Menu size={20} /></button><p className="eyebrow">Gestión logística</p><h1>{nav.find(([id]) => id === section)?.[1]}</h1></header>
         <div className="page-content">
-          {section === 'cartas' && <LettersPage letters={filteredLetters} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
+          {section === 'cartas' && <LettersPage letters={filteredLetters} search={search} onSearchChange={setSearch} onImport={() => setShowImport(true)} onInvoice={setInvoiceLetter} />}
           {section === 'clientes' && <ClientsPage clients={clients} invoices={invoices} letters={letters} onSave={saveClient} onDelete={removeClient} />}
           {section === 'plantillas' && <TemplatesPage templates={routeTemplates} selected={selectedTemplate} onSelect={setSelectedTemplate} />}
           {section === 'rutas' && <RoutesPage route={selectedRoute} template={activeTemplate} templates={routeTemplates} routes={dailyRoutes} onSelect={setSelectedRoute} onAction={updateAction} onCreate={() => setShowNewRoute(true)} />}
@@ -238,11 +242,11 @@ function LoginScreen() {
 
 function PageIntro({ text, children }: { text: string; children?: React.ReactNode }) { return <div className="page-intro"><p>{text}</p>{children}</div> }
 
-function LettersPage({ letters, onImport, onInvoice }: { letters: Letter[]; onImport: () => void; onInvoice: (letter: Letter) => void }) {
+function LettersPage({ letters, search, onSearchChange, onImport, onInvoice }: { letters: Letter[]; search: string; onSearchChange: (value: string) => void; onImport: () => void; onInvoice: (letter: Letter) => void }) {
   return <>
     <PageIntro text="Importa, revisa y prepara los servicios para cada ruta."><Button onClick={onImport}><Upload /> Importar carta</Button></PageIntro>
     <section className="stats-grid"><Stat label="Pendientes de revisión" value={letters.filter((letter) => letter.status === 'pendiente').length} accent="lime" /><Stat label="Programadas esta semana" value={letters.filter((letter) => letter.status !== 'pendiente').length} /><Stat label="Animales en transporte" value={letters.flatMap((letter) => letter.animals).length} /></section>
-    <Card className="table-card"><CardContent><div className="table-heading"><div><h3>Últimas cartas</h3><p>{letters.length} registros</p></div><button type="button" className="filter-button"><MoreHorizontal size={18} /></button></div><div className="responsive-table"><table><thead><tr><th>Referencia</th><th>Trayecto</th><th>Mascotas</th><th>Fecha</th><th>Estado</th><th aria-label="Acciones" /></tr></thead><tbody>{letters.map((letter) => <tr key={letter.id}><td><strong>{letter.id}</strong><small>Importada {letter.importedAt}</small></td><td><span className="route-cell"><b>{letter.origin}</b><ChevronRight size={14} /><b>{letter.destination}</b></span><small>{letter.route}</small></td><td><span className="pet-list"><PawPrint size={15} /> {letter.animals.map((animal) => animal.breed).join(', ')}</span><small>{letter.animals.length} animal{letter.animals.length !== 1 && 'es'}</small></td><td>{new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td><td><span className={`status status-${letter.status}`}>{labelStatus[letter.status]}</span></td><td><div className="row-actions"><button type="button" title="Editar carta"><FileText size={17} /></button><button type="button" title="Generar borrador" onClick={() => onInvoice(letter)}><Printer size={17} /></button></div></td></tr>)}</tbody></table></div></CardContent></Card>
+    <Card className="table-card"><CardContent><div className="table-heading"><div><h3>Últimas cartas</h3><p>{letters.length} registros</p></div><label className="search"><Search size={17} /><input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Buscar" aria-label="Buscar cartas" /></label><button type="button" className="filter-button"><MoreHorizontal size={18} /></button></div><div className="responsive-table"><table><thead><tr><th>Referencia</th><th>Trayecto</th><th>Mascotas</th><th>Fecha</th><th>Estado</th><th aria-label="Acciones" /></tr></thead><tbody>{letters.map((letter) => <tr key={letter.id}><td><strong>{letter.id}</strong><small>Importada {letter.importedAt}</small></td><td><span className="route-cell"><b>{letter.origin}</b><ChevronRight size={14} /><b>{letter.destination}</b></span><small>{letter.route}</small></td><td><span className="pet-list"><PawPrint size={15} /> {letter.animals.map((animal) => animal.breed).join(', ')}</span><small>{letter.animals.length} animal{letter.animals.length !== 1 && 'es'}</small></td><td>{new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</td><td><span className={`status status-${letter.status}`}>{labelStatus[letter.status]}</span></td><td><div className="row-actions"><button type="button" title="Editar carta"><FileText size={17} /></button><button type="button" title="Generar borrador" onClick={() => onInvoice(letter)}><Printer size={17} /></button></div></td></tr>)}</tbody></table></div></CardContent></Card>
   </>
 }
 
