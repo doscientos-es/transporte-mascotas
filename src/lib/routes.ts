@@ -92,7 +92,7 @@ export async function loadDailyRoutes() {
 }
 
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {
-  if (!supabase) return
+  if (!supabase) return route
   const { error: routeError } = await supabase.from('daily_routes').insert({
     id: route.id,
     route_template_id: template.id,
@@ -115,9 +115,10 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     dwell_minutes: stop.dwellMinutes,
   }))).select('id,locality,sequence')
   if (stopsError) throw stopsError
+  const savedRoute: DailyRoute = { ...route, stops: routeStops.map((stop, index) => ({ ...stop, id: savedStops[index]?.id ?? stop.id })) }
 
   const letterIds = [...new Set(route.actions.map((action) => action.letterId))]
-  if (!letterIds.length) return
+  if (!letterIds.length) return savedRoute
   const { data: storedLetters, error: lettersError } = await supabase.from('carriage_letters').select('id').in('id', letterIds)
   if (lettersError) throw lettersError
   const allowedLetters = new Set(storedLetters.map((letter) => letter.id))
@@ -133,7 +134,7 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     status: action.status,
     dwell_minutes: action.dwellMinutes ?? 15,
   }))
-  if (!actions.length) return
+  if (!actions.length) return savedRoute
   const { error: actionsError } = await supabase.from('route_actions').insert(actions)
   if (actionsError) throw actionsError
 
@@ -156,6 +157,18 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     })
     if (assignmentError) throw assignmentError
   }
+  return savedRoute
+}
+
+export async function updateDailyRouteStops(routeId: string, stops: DailyRouteStop[]) {
+  if (!supabase) return
+  const updates = await Promise.all(stops.map((stop, index) => supabase.from('daily_route_stops').update({
+    sequence: index + 1,
+    dwell_minutes: stop.dwellMinutes,
+  }).eq('id', stop.id).eq('daily_route_id', routeId).select('id')))
+  const failure = updates.find(({ error, data }) => error || !data?.length)
+  if (failure?.error) throw failure.error
+  if (failure) throw new Error('No se ha podido guardar una de las paradas de la ruta.')
 }
 
 export async function appendLetterToDailyRoute(route: DailyRoute, letter: Letter, actions: ServiceAction[]) {

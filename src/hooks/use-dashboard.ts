@@ -3,7 +3,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { saveManualLetter } from '../lib/letters'
-import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute } from '../lib/routes'
+import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
@@ -15,7 +15,7 @@ const routeNamesByDemoId: Record<string, string> = {
 }
 
 function copyTemplateStops(template: RouteTemplate): DailyRouteStop[] {
-  return template.stops.map((stop) => ({ ...stop, kind: 'parada', dwellMinutes: 0 }))
+  return template.stops.map((stop) => ({ ...stop, kind: 'parada', dwellMinutes: 15 }))
 }
 
 function stopsForRoute(route: DailyRoute, templates: RouteTemplate[]) {
@@ -161,6 +161,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
     setSelectedRoute((current) => update(current))
     setDailyRoutes((current) => current.map(update))
+    if (session) updateDailyRouteStops(routeId, stops).catch(() => toast('No se han podido guardar los cambios de las paradas.'))
   }
 
   function updateRouteService(routeId: string, service: ServiceAction) {
@@ -233,12 +234,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
     })
     const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, stops: copyTemplateStops(template), actions }
     try {
-      if (session) await saveDailyRoute(route, template, session.user.id)
-      setDailyRoutes((current) => [route, ...current])
-      setSelectedRoute(route)
+      const savedRoute = session ? await saveDailyRoute(route, template, session.user.id) : route
+      setDailyRoutes((current) => [savedRoute, ...current])
+      setSelectedRoute(savedRoute)
       setShowNewRoute(false)
       toast(`Ruta ${template.name} creada como borrador.`)
-      return route
+      return savedRoute
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
     }
