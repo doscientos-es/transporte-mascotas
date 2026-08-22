@@ -3,13 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ChevronRight, FilePlus2, MapPin, PawPrint, Plus, Printer, Route, Trash2, UserRound } from 'lucide-react'
-import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import type { DailyRoute, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, PaymentDeliveryChannel, RouteTemplate, Transporter } from '../lib/types'
 
 type OperationDialogProps = { children: ReactNode; description: string; icon: ReactNode; onClose: () => void; title: string; wide?: boolean }
 
 function OperationDialog({ children, description, icon, onClose, title, wide = false }: OperationDialogProps) {
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className={`dialog-card !w-[calc(100%-2.5rem)] !p-[26px] ${wide ? '!max-w-[760px]' : '!max-w-[460px]'}`}><DialogHeader className="gap-0"><div className="dialog-icon">{icon}</div><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className={`dialog-card w-[calc(100%-2.5rem)]! p-6.5! ${wide ? 'max-w-190!' : 'max-w-115!'}`}><DialogHeader className="gap-0"><div className="dialog-icon">{icon}</div><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>
 }
 
 const emptyAnimal = () => ({ species: 'Canina', breed: '', size: 'pequeno' as const })
@@ -21,10 +21,10 @@ export function LetterFormDialog({ routes, templates, onClose, onCreate }: { rou
   const [error, setError] = useState('')
   const selectedRoute = routes.find((route) => route.id === draft.routeId)
   const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
-  const stops = useMemo(() => selectedRoute?.stops?.map((stop) => stop.locality) ?? selectedTemplate?.stops.map((stop) => stop.locality) ?? [], [selectedRoute, selectedTemplate])
+  const stops = useMemo(() => [...new Set(selectedRoute?.stops?.map((stop) => stop.locality) ?? selectedTemplate?.stops.map((stop) => stop.locality) ?? [])], [selectedRoute, selectedTemplate])
   const update = <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => setDraft((current) => ({ ...current, [field]: value }))
   const updateAnimal = (index: number, field: keyof LetterDraft['animals'][number], value: string) => setDraft((current) => ({ ...current, animals: current.animals.map((animal, itemIndex) => itemIndex === index ? { ...animal, [field]: value } : animal) }))
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: { preventDefault: () => void }) {
     event.preventDefault()
     setError('')
     setSaving(true)
