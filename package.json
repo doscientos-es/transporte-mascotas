@@ -17,7 +17,6 @@
     "clsx": "^2.1.1",
     "jspdf": "^4.0.0",
     "lucide-react": "^0.575.0",
-    "pdfjs-dist": "^5.5.207",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "shadcn": "^4.16.1",
