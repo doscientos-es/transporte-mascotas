@@ -2791,3 +2791,98 @@ main {
     flex: 1;
   }
 }
+
+/* Route direction selection and status */
+.direction-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 17px;
+  color: #4b4b4b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.route-direction-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.route-direction-options button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  align-items: center;
+  min-height: 76px;
+  padding: 11px;
+  border: 1px solid #dedede;
+  border-radius: 9px;
+  background: #fff;
+  color: #333;
+  text-align: left;
+}
+
+.route-direction-options button svg {
+  grid-row: 1 / span 2;
+  color: #9d1921;
+}
+
+.route-direction-options button strong {
+  font-size: 13px;
+}
+
+.route-direction-options button small {
+  color: #777;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.route-direction-options button.is-selected {
+  border-color: #b51e27;
+  background: #fff0f1;
+}
+
+.direction-field>p {
+  margin: 0;
+  color: #777;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.direction-field>p strong {
+  color: #9d1921;
+  font-weight: 700;
+}
+
+.route-direction-badge {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #444;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.route-direction-badge.direction-inversa {
+  background: #fff0f1;
+  color: #9d1921;
+}
+
+.route-selector button>span:first-of-type {
+  display: grid;
+  gap: 2px;
+}
+
+.route-selector button>span:first-of-type small {
+  color: #777;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .route-direction-options {
+    grid-template-columns: 1fr;
+  }
+}
