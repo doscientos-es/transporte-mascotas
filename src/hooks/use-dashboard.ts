@@ -1,11 +1,11 @@
 import type { Session } from '@supabase/supabase-js'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
-import { saveImportedLetter } from '../lib/letters'
+import { saveManualLetter } from '../lib/letters'
 import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, PaymentDelivery, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
+import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
@@ -75,7 +75,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
-  const fileInput = useRef<HTMLInputElement>(null)
   const deferredSearch = useDeferredValue(search)
 
   const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
@@ -182,37 +181,39 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function importPdf(file: File, routeId: string, dogCount: number) {
+  async function createLetter(draft: LetterDraft) {
     try {
-      const dailyRoute = dailyRoutes.find((route) => route.id === routeId)
+      const dailyRoute = dailyRoutes.find((route) => route.id === draft.routeId)
       const routeTemplate = dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
-      if (!dailyRoute || !routeTemplate) throw new Error('Selecciona una ruta existente para importar la carta.')
-      const { parseCartaPdf } = await import('../lib/carta-parser')
-      const extracted = await parseCartaPdf(file)
-      const detectedAnimal = extracted.animals?.[0]
-      const animals: Animal[] = Array.from({ length: dogCount }, () => ({
-        id: crypto.randomUUID(), species: 'Canina', breed: detectedAnimal?.breed || 'Sin clasificar', size: detectedAnimal?.size ?? 'pequeno',
-      }))
+      if (!dailyRoute || !routeTemplate) throw new Error('Selecciona la ruta diaria donde se realizará el servicio.')
+      const animals: Animal[] = draft.animals.map((animal) => ({ ...animal, id: crypto.randomUUID(), breed: animal.breed.trim() || 'Sin clasificar' }))
+      const reference = draft.reference.trim()
+      const id = reference
+        ? (reference.toLocaleUpperCase('es-ES').startsWith('CARTA DE PORTE Nº') ? reference : `CARTA DE PORTE Nº ${reference}`)
+        : `CARTA DE PORTE Nº 2026-${445 + letters.length}`
       const letter: Letter = {
-        id: extracted.id || `CARTA DE PORTE Nº 2026-${445 + letters.length}`,
-        sender: extracted.sender || 'Pendiente de revisar', senderPhone: extracted.senderPhone || '',
-        recipient: extracted.recipient || 'Pendiente de revisar', recipientPhone: extracted.recipientPhone || '',
-        origin: extracted.origin || 'Sin asignar', destination: extracted.destination || 'Sin asignar',
+        id,
+        sender: draft.sender.trim(), senderPhone: draft.senderPhone.trim(),
+        recipient: draft.recipient.trim(), recipientPhone: draft.recipientPhone.trim(),
+        origin: draft.origin.trim(), destination: draft.destination.trim(),
         route: routeTemplate.name, serviceDate: dailyRoute.date, status: 'pendiente',
-        importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals,
+        importedAt: new Date().toLocaleString('es-ES'), animals,
       }
       if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
       const routeActions = actionsForLetter(dailyRoute, routeTemplate, letter)
-      if (session) await saveImportedLetter(letter, file, session.user.id)
+      if (routeActions.length !== animals.length * 2) throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
+      if (session) await saveManualLetter(letter, routeTemplate.id, session.user.id)
       if (session) await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
       setLetters((current) => [letter, ...current])
       const updateRoute = (route: DailyRoute) => route.id === dailyRoute.id ? { ...route, actions: [...route.actions, ...routeActions] } : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => updateRoute(current))
       setShowImport(false)
-      toast(`${file.name} importado y vinculado a ${routeTemplate.name}.`)
+      toast(`Carta creada y vinculada a ${routeTemplate.name}.`)
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
+      const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
+      toast(message)
+      throw error
     }
   }
 
@@ -316,7 +317,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, fileInput, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, importPdf, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

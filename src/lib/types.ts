@@ -37,6 +37,18 @@ export interface Letter {
   extractionEmail?: string
 }
 
+export interface LetterDraft {
+  reference: string
+  routeId: string
+  sender: string
+  senderPhone: string
+  recipient: string
+  recipientPhone: string
+  origin: string
+  destination: string
+  animals: Array<Omit<Animal, 'id'>>
+}
+
 export interface Client {
   id: string
   fullName: string

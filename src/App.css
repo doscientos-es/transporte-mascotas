@@ -2468,3 +2468,261 @@ main {
     color: #686868;
   }
 }
+
+/* Guided manual carriage-letter form */
+.letter-form {
+  max-height: min(68vh, 670px);
+  overflow-y: auto;
+  margin: 18px -10px -10px;
+  padding: 0 10px 10px;
+}
+
+.form-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 18px;
+  color: #666;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.form-progress span {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff0f1;
+  color: #b51e27;
+  font-weight: 800;
+}
+
+.form-progress strong {
+  color: #333;
+  font-weight: 700;
+}
+
+.form-progress i {
+  height: 1px;
+  flex: 1;
+  background: #dedede;
+}
+
+.letter-form-section {
+  padding: 18px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.letter-form-section+.letter-form-section {
+  margin-top: 12px;
+}
+
+.letter-form-section-title {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  color: #b51e27;
+}
+
+.letter-form-section-title h3 {
+  margin: 0;
+  color: #171717;
+  font-size: 14px;
+}
+
+.letter-form-section-title p {
+  margin: 3px 0 0;
+  color: #707070;
+  font-size: 12px;
+}
+
+.letter-form-grid,
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.letter-form label,
+.people-grid label,
+.size-selector legend {
+  display: grid;
+  gap: 6px;
+  color: #454545;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.letter-form input,
+.letter-form select {
+  min-height: 42px;
+  border-color: #dedede;
+  color: #171717;
+}
+
+.letter-form .form-span {
+  grid-column: 1 / -1;
+}
+
+.field-help {
+  align-self: end;
+  margin: 0 0 2px;
+  color: #767676;
+  font-size: 11px;
+}
+
+.route-guidance {
+  display: grid;
+  gap: 3px;
+  margin: 13px 0;
+  padding: 12px;
+  border: 1px solid #f0cdd0;
+  border-radius: 9px;
+  background: #fffafa;
+  color: #4d4d4d;
+  font-size: 12px;
+}
+
+.route-guidance strong {
+  color: #b51e27;
+}
+
+.route-guidance span {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.people-grid {
+  gap: 18px;
+}
+
+.people-grid fieldset,
+.size-selector {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.people-grid fieldset {
+  display: grid;
+  gap: 10px;
+}
+
+.people-grid legend {
+  margin-bottom: 11px;
+  color: #171717;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.animal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.animal-form-card {
+  padding: 13px;
+  border: 1px solid #e4e4e4;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.animal-form-card>div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #222;
+  font-size: 13px;
+}
+
+.animal-form-card>div:first-child button {
+  min-height: 28px;
+  padding-inline: 7px;
+  color: #b51e27;
+  font-size: 11px;
+}
+
+.animal-fields {
+  margin-bottom: 12px;
+}
+
+.size-selector>div {
+  display: flex;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.size-selector label {
+  flex: 1;
+  display: block;
+  cursor: pointer;
+}
+
+.size-selector input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.size-selector span {
+  display: grid;
+  min-height: 36px;
+  place-items: center;
+  border: 1px solid #dedede;
+  border-radius: 7px;
+  background: #fff;
+  color: #555;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.size-selector label.is-selected span {
+  border-color: #b51e27;
+  background: #fff0f1;
+  color: #9d1921;
+}
+
+.add-animal {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 11px;
+  border-style: dashed;
+  color: #9d1921;
+}
+
+.letter-form .dialog-submit {
+  position: sticky;
+  bottom: 0;
+  margin-top: 14px;
+  box-shadow: 0 -8px 14px #fff;
+}
+
+@media (max-width: 600px) {
+  .letter-form {
+    max-height: min(69vh, 620px);
+  }
+
+  .form-progress {
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .letter-form-grid,
+  .people-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .letter-form .form-span {
+    grid-column: auto;
+  }
+
+  .field-help {
+    margin: -5px 0 0;
+  }
+}

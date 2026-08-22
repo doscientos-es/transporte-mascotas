@@ -2,65 +2,60 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ChevronRight, FilePlus2, Printer, Route, Upload } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
-import type { DailyRoute, InvoiceClientInput, InvoicePayer, Letter, PaymentDelivery, PaymentDeliveryChannel, RouteTemplate, Transporter } from '../lib/types'
+import { ChevronRight, FilePlus2, MapPin, PawPrint, Plus, Printer, Route, Trash2, UserRound } from 'lucide-react'
+import { type FormEvent, type ReactNode, useMemo, useState } from 'react'
+import type { DailyRoute, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, PaymentDeliveryChannel, RouteTemplate, Transporter } from '../lib/types'
 
-type OperationDialogProps = {
-  children: ReactNode
-  description: string
-  icon: ReactNode
-  onClose: () => void
-  title: string
+type OperationDialogProps = { children: ReactNode; description: string; icon: ReactNode; onClose: () => void; title: string; wide?: boolean }
+
+function OperationDialog({ children, description, icon, onClose, title, wide = false }: OperationDialogProps) {
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className={`dialog-card !w-[calc(100%-2.5rem)] !p-[26px] ${wide ? '!max-w-[760px]' : '!max-w-[460px]'}`}><DialogHeader className="gap-0"><div className="dialog-icon">{icon}</div><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>
 }
 
-function OperationDialog({ children, description, icon, onClose, title }: OperationDialogProps) {
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]"><DialogHeader className="gap-0"><div className="dialog-icon">{icon}</div><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>
-}
+const emptyAnimal = () => ({ species: 'Canina', breed: '', size: 'pequeno' as const })
+const emptyLetter: LetterDraft = { reference: '', routeId: '', sender: '', senderPhone: '', recipient: '', recipientPhone: '', origin: '', destination: '', animals: [emptyAnimal()] }
 
-export function ImportDialog({ file, routes, templates, onClose, onPick, onFile, onImport }: { file: File | null; routes: DailyRoute[]; templates: RouteTemplate[]; onClose: () => void; onPick: () => void; onFile: (file?: File) => void; onImport: (file: File, routeId: string, dogCount: number) => Promise<void> }) {
-  const [routeId, setRouteId] = useState('')
-  const [dogCount, setDogCount] = useState('1')
-  const [importing, setImporting] = useState(false)
-  const selectedRoute = routes.find((route) => route.id === routeId)
-  async function submit() {
-    if (!file || !routeId) return
-    setImporting(true)
-    try { await onImport(file, routeId, Math.max(1, Number(dogCount) || 1)) } finally { setImporting(false) }
+export function LetterFormDialog({ routes, templates, onClose, onCreate }: { routes: DailyRoute[]; templates: RouteTemplate[]; onClose: () => void; onCreate: (draft: LetterDraft) => Promise<void> }) {
+  const [draft, setDraft] = useState<LetterDraft>(emptyLetter)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const selectedRoute = routes.find((route) => route.id === draft.routeId)
+  const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
+  const stops = useMemo(() => selectedRoute?.stops?.map((stop) => stop.locality) ?? selectedTemplate?.stops.map((stop) => stop.locality) ?? [], [selectedRoute, selectedTemplate])
+  const update = <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => setDraft((current) => ({ ...current, [field]: value }))
+  const updateAnimal = (index: number, field: keyof LetterDraft['animals'][number], value: string) => setDraft((current) => ({ ...current, animals: current.animals.map((animal, itemIndex) => itemIndex === index ? { ...animal, [field]: value } : animal) }))
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setSaving(true)
+    try { await onCreate(draft) } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido guardar la carta.') } finally { setSaving(false) }
   }
-  return <OperationDialog title="Importar carta de porte" description={file ? 'Elige la ruta diaria a la que pertenece la carta antes de incorporarla.' : 'Suelta un PDF digital o selecciónalo desde tu equipo.'} icon={<FilePlus2 size={24} />} onClose={onClose}>{file ? <><div className="import-selected"><FilePlus2 size={18} /><span><strong>{file.name}</strong><small>{(file.size / 1024 / 1024).toFixed(1)} MB</small></span><Button variant="outline" size="sm" onClick={onPick}>Cambiar</Button></div><Label className="date-field">Ruta diaria<select value={routeId} onChange={(event) => setRouteId(event.target.value)} autoComplete="off"><option value="">Selecciona una ruta…</option>{routes.map((route) => <option value={route.id} key={route.id}>{templates.find((template) => template.id === route.templateId)?.name ?? 'Ruta sin plantilla'} · {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</option>)}</select></Label>{selectedRoute && <p className="hint">Fecha de servicio: <strong>{new Date(`${selectedRoute.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>}<Label className="date-field">Número de perros<Input type="number" min="1" step="1" value={dogCount} onChange={(event) => setDogCount(event.target.value)} /></Label><Button className="dialog-submit" disabled={importing || !routeId} onClick={submit}><FilePlus2 /> {importing ? 'Importando…' : 'Confirmar e importar'}</Button></> : <><button type="button" className="dropzone" onClick={onPick} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); onFile(event.dataTransfer.files?.[0]) }}><Upload size={24} /><strong>Soltar PDF o seleccionar archivo</strong><span>Máximo 10 MB · solo PDF con texto</span></button><p className="hint">Después seleccionarás la ruta diaria y cuántos perros incluye.</p></>}</OperationDialog>
+  return <OperationDialog title="Nueva carta de porte" description="Rellena estos datos sencillos. La carta se añadirá directamente a la ruta elegida." icon={<FilePlus2 size={24} />} onClose={onClose} wide><form className="letter-form" onSubmit={submit}><div className="form-progress"><span>1</span><strong>Ruta</strong><i /><span>2</span><strong>Personas</strong><i /><span>3</span><strong>Mascotas</strong></div><TripSection draft={draft} routes={routes} templates={templates} selectedRoute={selectedRoute} stops={stops} update={update} /><ContactsSection draft={draft} update={update} /><AnimalsSection animals={draft.animals} updateAnimal={updateAnimal} onAdd={() => setDraft((current) => ({ ...current, animals: [...current.animals, emptyAnimal()] }))} onRemove={(index) => setDraft((current) => ({ ...current, animals: current.animals.filter((_, itemIndex) => itemIndex !== index) }))} />{error && <p className="form-error" role="alert">{error}</p>}<Button className="dialog-submit" type="submit" disabled={saving}><FilePlus2 /> {saving ? 'Guardando carta…' : 'Crear carta y añadir a la ruta'}</Button></form></OperationDialog>
+}
+
+function TripSection({ draft, routes, templates, selectedRoute, stops, update }: { draft: LetterDraft; routes: DailyRoute[]; templates: RouteTemplate[]; selectedRoute?: DailyRoute; stops: string[]; update: <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => void }) {
+  const template = templates.find((item) => item.id === selectedRoute?.templateId)
+  return <section className="letter-form-section"><div className="letter-form-section-title"><MapPin size={17} /><div><h3>¿Dónde se realiza el servicio?</h3><p>Selecciona la ruta y los dos puntos del trayecto.</p></div></div><div className="letter-form-grid"><Label className="form-span">Ruta diaria<select value={draft.routeId} onChange={(event) => update('routeId', event.target.value)} required><option value="">Selecciona una ruta…</option>{routes.map((route) => <option value={route.id} key={route.id}>{templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'} · {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</option>)}</select></Label><Label>Número de carta<Input value={draft.reference} onChange={(event) => update('reference', event.target.value)} placeholder="Se asigna automáticamente" /></Label><p className="field-help">Puedes dejarlo vacío si no tienes una referencia.</p></div>{selectedRoute && <div className="route-guidance" role="status"><strong>{template?.name}</strong><span>Paradas de esta ruta: {stops.join(' · ')}</span></div>}<div className="letter-form-grid"><Label>Origen<Input value={draft.origin} onChange={(event) => update('origin', event.target.value)} list="route-stops" placeholder="Punto de recogida" required /></Label><Label>Destino<Input value={draft.destination} onChange={(event) => update('destination', event.target.value)} list="route-stops" placeholder="Punto de entrega" required /></Label></div><datalist id="route-stops">{stops.map((stop) => <option value={stop} key={stop} />)}</datalist></section>
+}
+
+function ContactsSection({ draft, update }: { draft: LetterDraft; update: <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => void }) {
+  return <section className="letter-form-section"><div className="letter-form-section-title"><UserRound size={17} /><div><h3>Personas de contacto</h3><p>Usaremos estos teléfonos para la recogida y la entrega.</p></div></div><div className="people-grid"><fieldset><legend>Quien entrega</legend><Label>Nombre y apellidos<Input value={draft.sender} onChange={(event) => update('sender', event.target.value)} autoComplete="name" required /></Label><Label>Teléfono<Input type="tel" value={draft.senderPhone} onChange={(event) => update('senderPhone', event.target.value)} autoComplete="tel" inputMode="tel" required /></Label></fieldset><fieldset><legend>Quien recibe</legend><Label>Nombre y apellidos<Input value={draft.recipient} onChange={(event) => update('recipient', event.target.value)} autoComplete="name" required /></Label><Label>Teléfono<Input type="tel" value={draft.recipientPhone} onChange={(event) => update('recipientPhone', event.target.value)} autoComplete="tel" inputMode="tel" required /></Label></fieldset></div></section>
+}
+
+function AnimalsSection({ animals, updateAnimal, onAdd, onRemove }: { animals: LetterDraft['animals']; updateAnimal: (index: number, field: keyof LetterDraft['animals'][number], value: string) => void; onAdd: () => void; onRemove: (index: number) => void }) {
+  return <section className="letter-form-section"><div className="letter-form-section-title"><PawPrint size={17} /><div><h3>Mascotas que viajan</h3><p>Añade una ficha por cada mascota. El tamaño ayuda a asignar el box.</p></div></div><div className="animal-list">{animals.map((animal, index) => <article className="animal-form-card" key={index}><div><strong>Mascota {index + 1}</strong>{animals.length > 1 && <Button variant="ghost" size="sm" type="button" onClick={() => onRemove(index)}><Trash2 size={16} /> Quitar</Button>}</div><div className="letter-form-grid animal-fields"><Label>Especie<select value={animal.species} onChange={(event) => updateAnimal(index, 'species', event.target.value)}><option>Canina</option><option>Felina</option><option>Otra</option></select></Label><Label>Raza<Input value={animal.breed} onChange={(event) => updateAnimal(index, 'breed', event.target.value)} placeholder="Opcional" /></Label></div><fieldset className="size-selector"><legend>Tamaño aproximado</legend><div>{([['pequeno', 'Pequeño'], ['mediano', 'Mediano'], ['grande', 'Grande']] as const).map(([size, label]) => <label className={animal.size === size ? 'is-selected' : ''} key={size}><input type="radio" name={`animal-size-${index}`} checked={animal.size === size} onChange={() => updateAnimal(index, 'size', size)} /><span>{label}</span></label>)}</div></fieldset></article>)}</div><Button variant="outline" type="button" className="add-animal" onClick={onAdd}><Plus size={17} /> Añadir otra mascota</Button></section>
 }
 
 const emptyInvoiceClient: InvoiceClientInput = { fullName: '', nif: '', email: '', phone: '', address: '', city: '', postalCode: '' }
 
 export function InvoiceDialog({ letter, onClose, onGenerate }: { letter: Letter; onClose: () => void; onGenerate: (letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput, delivery?: PaymentDelivery) => Promise<void> }) {
-  const [payer, setPayer] = useState<InvoicePayer>('remitente')
-  const [total, setTotal] = useState('200')
-  const [generating, setGenerating] = useState(false)
-  const [manualClient, setManualClient] = useState<InvoiceClientInput>(emptyInvoiceClient)
-  const [deliveryChannel, setDeliveryChannel] = useState<PaymentDeliveryChannel>('email')
-  const [deliveryEmail, setDeliveryEmail] = useState(letter.extractionEmail ?? '')
-  const [deliveryPhone, setDeliveryPhone] = useState(letter.senderPhone)
-  const [error, setError] = useState('')
-  const updateManualClient = (field: keyof InvoiceClientInput, value: string) => setManualClient((current) => ({ ...current, [field]: value }))
-  const selectPayer = (nextPayer: InvoicePayer) => { setPayer(nextPayer); setError('') }
-  const generate = async () => {
-    if (payer === 'manual' && !manualClient.fullName.trim()) return setError('Indica la razón social o el nombre de la persona a facturar.')
-    if ((deliveryChannel === 'email' || deliveryChannel === 'both') && !deliveryEmail.trim()) return setError('Indica el email al que se enviará la solicitud de pago.')
-    if ((deliveryChannel === 'whatsapp' || deliveryChannel === 'both') && !deliveryPhone.trim()) return setError('Indica el móvil al que se enviará el WhatsApp.')
-    setGenerating(true)
-    try {
-      await onGenerate(letter, payer, Number(total) || 0, payer === 'manual' ? manualClient : undefined, { channel: deliveryChannel, email: deliveryEmail, phone: deliveryPhone })
-      onClose()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se ha podido generar la factura.')
-    } finally { setGenerating(false) }
-  }
+  const [payer, setPayer] = useState<InvoicePayer>('remitente'); const [total, setTotal] = useState('200'); const [generating, setGenerating] = useState(false); const [manualClient, setManualClient] = useState<InvoiceClientInput>(emptyInvoiceClient); const [deliveryChannel, setDeliveryChannel] = useState<PaymentDeliveryChannel>('email'); const [deliveryEmail, setDeliveryEmail] = useState(letter.extractionEmail ?? ''); const [deliveryPhone, setDeliveryPhone] = useState(letter.senderPhone); const [error, setError] = useState('')
+  const updateManualClient = (field: keyof InvoiceClientInput, value: string) => setManualClient((current) => ({ ...current, [field]: value })); const selectPayer = (nextPayer: InvoicePayer) => { setPayer(nextPayer); setError('') }
+  const generate = async () => { if (payer === 'manual' && !manualClient.fullName.trim()) return setError('Indica la razón social o el nombre de la persona a facturar.'); if ((deliveryChannel === 'email' || deliveryChannel === 'both') && !deliveryEmail.trim()) return setError('Indica el email al que se enviará la solicitud de pago.'); if ((deliveryChannel === 'whatsapp' || deliveryChannel === 'both') && !deliveryPhone.trim()) return setError('Indica el móvil al que se enviará el WhatsApp.'); setGenerating(true); try { await onGenerate(letter, payer, Number(total) || 0, payer === 'manual' ? manualClient : undefined, { channel: deliveryChannel, email: deliveryEmail, phone: deliveryPhone }); onClose() } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido generar la factura.') } finally { setGenerating(false) } }
   return <OperationDialog title="Solicitar pago" description="Se enviará un enlace de Bizum. La factura fiscal sólo se emitirá después de confirmar el cobro." icon={<Printer size={24} />} onClose={onClose}><div className="payer-options" role="radiogroup" aria-label="Titular de la factura"><button type="button" role="radio" aria-checked={payer === 'remitente'} className={payer === 'remitente' ? 'is-selected' : ''} onClick={() => { selectPayer('remitente'); setDeliveryPhone(letter.senderPhone) }}><span>Remitente</span><strong>{letter.sender}</strong></button><button type="button" role="radio" aria-checked={payer === 'destinatario'} className={payer === 'destinatario' ? 'is-selected' : ''} onClick={() => { selectPayer('destinatario'); setDeliveryPhone(letter.recipientPhone) }}><span>Destinatario</span><strong>{letter.recipient}</strong></button><button type="button" role="radio" aria-checked={payer === 'manual'} className={payer === 'manual' ? 'is-selected' : ''} onClick={() => selectPayer('manual')}><span>Empresa u otro</span><strong>Introducir datos</strong></button></div>{payer === 'manual' && <div className="client-form invoice-client-form"><Label className="form-span">Razón social o nombre<Input value={manualClient.fullName} onChange={(event) => updateManualClient('fullName', event.target.value)} required /></Label><Label>NIF / CIF<Input value={manualClient.nif} onChange={(event) => updateManualClient('nif', event.target.value)} /></Label><Label className="form-span">Dirección<Input value={manualClient.address} onChange={(event) => updateManualClient('address', event.target.value)} /></Label><Label>Código postal<Input value={manualClient.postalCode} onChange={(event) => updateManualClient('postalCode', event.target.value)} /></Label><Label>Ciudad<Input value={manualClient.city} onChange={(event) => updateManualClient('city', event.target.value)} /></Label></div>}<Label className="date-field">Total (IVA incluido)<Input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></Label><Label className="date-field">Enviar solicitud por<select value={deliveryChannel} onChange={(event) => setDeliveryChannel(event.target.value as PaymentDeliveryChannel)}><option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="both">Email y WhatsApp</option></select></Label>{(deliveryChannel === 'email' || deliveryChannel === 'both') && <Label className="date-field">Email de entrega<Input type="email" value={deliveryEmail} onChange={(event) => setDeliveryEmail(event.target.value)} /></Label>}{(deliveryChannel === 'whatsapp' || deliveryChannel === 'both') && <Label className="date-field">Móvil con WhatsApp<Input type="tel" value={deliveryPhone} onChange={(event) => setDeliveryPhone(event.target.value)} /></Label>}{error && <p className="form-error" role="alert">{error}</p>}<Button className="dialog-submit" disabled={generating} onClick={generate}><Printer /> {generating ? 'Preparando…' : 'Enviar solicitud de pago'}</Button></OperationDialog>
 }
 
 export function NewRouteDialog({ templates, transporters, onClose, onCreate }: { templates: RouteTemplate[]; transporters: Transporter[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string, transporterId?: string) => void }) {
-  const [date, setDate] = useState('2026-08-09')
-  const [transporterId, setTransporterId] = useState('')
+  const [date, setDate] = useState('2026-08-09'); const [transporterId, setTransporterId] = useState('')
   return <OperationDialog title="Crear ruta diaria" description="Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Label><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date, transporterId || undefined)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
 }
