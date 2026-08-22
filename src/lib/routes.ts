@@ -1,9 +1,9 @@
 import { supabase } from './supabase';
-import type { DailyRoute, DailyRouteStop, Letter, RouteTemplate, ServiceAction, Transporter } from './types';
+import type { DailyRoute, DailyRouteStop, Letter, RouteDirection, RouteTemplate, ServiceAction, Transporter } from './types';
 
 type TemplateRow = { id: string; name: string; color: string; route_template_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null }> }
 type DailyRouteRow = {
-  id: string; route_template_id: string | null; service_date: string; status: DailyRoute['status']; transporter_id: string | null
+  id: string; route_template_id: string | null; service_date: string; status: DailyRoute['status']; transporter_id: string | null; route_direction: RouteDirection
   daily_route_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null; stop_kind: 'parada' | 'recogida' | 'entrega'; dwell_minutes: number }>
 }
 type RouteActionRow = {
@@ -65,7 +65,7 @@ export async function loadTransporters() {
 export async function loadDailyRoutes() {
   if (!supabase) return []
   const [{ data: routes, error: routesError }, { data: actions, error: actionsError }] = await Promise.all([
-    supabase.from('daily_routes').select('id,route_template_id,service_date,status,transporter_id,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_kind,dwell_minutes)').order('service_date'),
+    supabase.from('daily_routes').select('id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_kind,dwell_minutes)').order('service_date'),
     supabase.from('transporter_route_actions').select('id,daily_route_id,daily_route_stop_id,letter_id,animal_id,action_type,status,dwell_minutes,customer_name,customer_phone,animal_breed,animal_species,box_number'),
   ])
   if (routesError) throw routesError
@@ -80,7 +80,7 @@ export async function loadDailyRoutes() {
       minutes: stop.minutes_to_next ?? 0, kind: stop.stop_kind, dwellMinutes: stop.dwell_minutes,
     }))
     return {
-      id: route.id, templateId: route.route_template_id ?? '', date: route.service_date, status: route.status, transporterId: route.transporter_id ?? undefined, stops,
+      id: route.id, templateId: route.route_template_id ?? '', date: route.service_date, status: route.status, transporterId: route.transporter_id ?? undefined, direction: route.route_direction, stops,
       actions: (actionsByRoute.get(route.id) ?? []).map((action) => ({
         id: action.id, letterId: action.letter_id, animalId: action.animal_id, type: action.action_type,
         stop: stops.find((stop) => stop.id === action.daily_route_stop_id)?.locality ?? '', stopId: action.daily_route_stop_id,
@@ -99,6 +99,7 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     service_date: route.date,
     status: route.status,
     transporter_id: route.transporterId ?? null,
+    route_direction: route.direction ?? 'normal',
     created_by: userId,
   })
   if (routeError) throw routeError

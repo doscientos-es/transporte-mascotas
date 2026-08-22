@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { CheckCircle2 } from 'lucide-react'
 import { lazy, Suspense, useEffect } from 'react'
 import { DashboardLayout } from '../components/dashboard-layout'
-import { InvoiceDialog, LetterFormDialog, NewRouteDialog } from '../components/operation-dialogs'
+import { InvoiceDialog, LetterFormDialog, NewRouteDirectionDialog } from '../components/operation-dialogs'
 import { useDashboard } from '../hooks/use-dashboard'
 import { useDashboardNavigation } from '../hooks/use-dashboard-navigation'
 import { downloadVanManifest } from '../lib/pdf'
@@ -40,8 +40,8 @@ export function DashboardPage({ session, profile }: { session: Session | null; p
     else replaceWithSection('rutas')
   }, [dashboard, replaceWithSection, routeFromUrl, routeId, section])
 
-  async function createRouteAndNavigate(template: Parameters<typeof dashboard.createDailyRoute>[0], date: string, transporterId?: string) {
-    const route = await dashboard.createDailyRoute(template, date, transporterId)
+  async function createRouteAndNavigate(template: Parameters<typeof dashboard.createDailyRoute>[0], date: string, transporterId?: string, direction: Parameters<typeof dashboard.createDailyRoute>[3] = 'normal') {
+    const route = await dashboard.createDailyRoute(template, date, transporterId, direction)
     if (route) navigateToRoute(route.id)
   }
 
@@ -55,7 +55,7 @@ export function DashboardPage({ session, profile }: { session: Session | null; p
       {section === 'facturas' && <InvoicesPage invoices={visibleInvoices} transportista={isTransporter} onSend={dashboard.sendInvoiceNotification} />}
     </DashboardLayout>
     {!isTransporter && dashboard.showImport && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} onClose={() => dashboard.setShowImport(false)} onCreate={dashboard.createLetter} />}
-    {!isTransporter && dashboard.showNewRoute && <NewRouteDialog templates={dashboard.routeTemplates} transporters={dashboard.transporters} onClose={() => dashboard.setShowNewRoute(false)} onCreate={createRouteAndNavigate} />}
+    {!isTransporter && dashboard.showNewRoute && <NewRouteDirectionDialog templates={dashboard.routeTemplates} transporters={dashboard.transporters} onClose={() => dashboard.setShowNewRoute(false)} onCreate={createRouteAndNavigate} />}
     {!isTransporter && dashboard.invoiceLetter && <InvoiceDialog letter={dashboard.invoiceLetter} onClose={() => dashboard.setInvoiceLetter(null)} onGenerate={dashboard.generateInvoice} />}
     {dashboard.notice && <div className="toast" role="status"><CheckCircle2 size={18} /> {dashboard.notice}</div>}
   </>

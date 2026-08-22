@@ -5,7 +5,7 @@ import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } 
 import { saveManualLetter } from '../lib/letters'
 import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
+import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
@@ -14,8 +14,9 @@ const routeNamesByDemoId: Record<string, string> = {
   'route-2026-08-10': 'Andalucía',
 }
 
-function copyTemplateStops(template: RouteTemplate): DailyRouteStop[] {
-  return template.stops.map((stop) => ({ ...stop, kind: 'parada', dwellMinutes: 15 }))
+function copyTemplateStops(template: RouteTemplate, direction: RouteDirection = 'normal'): DailyRouteStop[] {
+  const stops = template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
+  return direction === 'inversa' ? stops.toReversed() : stops
 }
 
 function stopsForRoute(route: DailyRoute, templates: RouteTemplate[]) {
@@ -218,7 +219,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function createDailyRoute(template: RouteTemplate, date: string, transporterId?: string) {
+  async function createDailyRoute(template: RouteTemplate, date: string, transporterId?: string, direction: RouteDirection = 'normal') {
     const usedBoxes = new Set<number>()
     const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => {
       const representative = largestAnimal(letter.animals)
@@ -232,13 +233,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
       ])
     })
-    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, stops: copyTemplateStops(template), actions }
+    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, direction, stops: copyTemplateStops(template, direction), actions }
     try {
       const savedRoute = session ? await saveDailyRoute(route, template, session.user.id) : route
       setDailyRoutes((current) => [savedRoute, ...current])
       setSelectedRoute(savedRoute)
       setShowNewRoute(false)
-      toast(`Ruta ${template.name} creada como borrador.`)
+      toast(`Ruta ${template.name} creada en sentido ${direction === 'inversa' ? 'inverso' : 'habitual'}.`)
       return savedRoute
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')

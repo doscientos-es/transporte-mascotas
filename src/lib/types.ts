@@ -91,6 +91,7 @@ export interface RouteStop {
 }
 
 export type DailyStopKind = 'parada' | 'recogida' | 'entrega'
+export type RouteDirection = 'normal' | 'inversa'
 
 export interface DailyRouteStop extends RouteStop {
   kind: DailyStopKind
@@ -125,6 +126,7 @@ export interface DailyRoute {
   date: string
   status: 'borrador' | 'activa' | 'completada'
   transporterId?: string
+  direction?: RouteDirection
   actions: ServiceAction[]
   stops?: DailyRouteStop[]
 }

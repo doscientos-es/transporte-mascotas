@@ -2,9 +2,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ChevronRight, FilePlus2, MapPin, PawPrint, Plus, Printer, Route, Trash2, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight, FilePlus2, MapPin, PawPrint, Plus, Printer, Route, Trash2, UserRound } from 'lucide-react'
 import { type ReactNode, useMemo, useState } from 'react'
-import type { DailyRoute, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, PaymentDeliveryChannel, RouteTemplate, Transporter } from '../lib/types'
+import type { DailyRoute, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, PaymentDeliveryChannel, RouteDirection, RouteTemplate, Transporter } from '../lib/types'
 
 type OperationDialogProps = { children: ReactNode; description: string; icon: ReactNode; onClose: () => void; title: string; wide?: boolean }
 
@@ -47,6 +47,14 @@ function AnimalsSection({ animals, updateAnimal, onAdd, onRemove }: { animals: L
 }
 
 const emptyInvoiceClient: InvoiceClientInput = { fullName: '', nif: '', email: '', phone: '', address: '', city: '', postalCode: '' }
+
+export function NewRouteDirectionDialog({ templates, transporters, onClose, onCreate }: { templates: RouteTemplate[]; transporters: Transporter[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string, transporterId?: string, direction?: RouteDirection) => void }) {
+  const [date, setDate] = useState('2026-08-09')
+  const [transporterId, setTransporterId] = useState('')
+  const [direction, setDirection] = useState<RouteDirection>('normal')
+  const directionLabel = direction === 'normal' ? 'sentido habitual' : 'sentido inverso'
+  return <OperationDialog title="Crear ruta diaria" description="Elige primero hacia dónde recorrerás la ruta. Las paradas se crearán ya en ese orden." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Label><div className="direction-field"><span>Sentido de la ruta</span><div className="route-direction-options" role="radiogroup" aria-label="Sentido de la ruta"><button type="button" role="radio" aria-checked={direction === 'normal'} className={direction === 'normal' ? 'is-selected' : ''} onClick={() => setDirection('normal')}><ArrowRight /><strong>Habitual</strong><small>Como está guardada la ruta</small></button><button type="button" role="radio" aria-checked={direction === 'inversa'} className={direction === 'inversa' ? 'is-selected' : ''} onClick={() => setDirection('inversa')}><ArrowLeft /><strong>Inverso</strong><small>Las mismas paradas al revés</small></button></div><p>Crearás la ruta en <strong>{directionLabel}</strong>.</p></div><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date, transporterId || undefined, direction)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas · {directionLabel}</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
+}
 
 export function InvoiceDialog({ letter, onClose, onGenerate }: { letter: Letter; onClose: () => void; onGenerate: (letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput, delivery?: PaymentDelivery) => Promise<void> }) {
   const [payer, setPayer] = useState<InvoicePayer>('remitente'); const [total, setTotal] = useState('200'); const [generating, setGenerating] = useState(false); const [manualClient, setManualClient] = useState<InvoiceClientInput>(emptyInvoiceClient); const [deliveryChannel, setDeliveryChannel] = useState<PaymentDeliveryChannel>('email'); const [deliveryEmail, setDeliveryEmail] = useState(letter.extractionEmail ?? ''); const [deliveryPhone, setDeliveryPhone] = useState(letter.senderPhone); const [error, setError] = useState('')
