@@ -102,7 +102,7 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     created_by: userId,
   })
   if (routeError) throw routeError
-  const routeStops = route.stops ?? template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 0 }))
+  const routeStops = route.stops ?? template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
   const { data: savedStops, error: stopsError } = await supabase.from('daily_route_stops').insert(routeStops.map((stop, index) => ({
     daily_route_id: route.id,
     template_stop_id: template.stops.find((templateStop) => templateStop.id === stop.id)?.id ?? null,
