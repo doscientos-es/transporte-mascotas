@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { DailyRoute, Letter, RouteTemplate, ServiceAction, Transporter } from './types';
+import type { DailyRoute, DailyRouteStop, Letter, RouteTemplate, ServiceAction, Transporter } from './types';
 
 type TemplateRow = { id: string; name: string; color: string; route_template_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null }> }
 type DailyRouteRow = {
@@ -162,7 +162,8 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
 
 export async function updateDailyRouteStops(routeId: string, stops: DailyRouteStop[]) {
   if (!supabase) return
-  const updates = await Promise.all(stops.map((stop, index) => supabase.from('daily_route_stops').update({
+  const database = supabase
+  const updates = await Promise.all(stops.map((stop, index) => database.from('daily_route_stops').update({
     sequence: index + 1,
     dwell_minutes: stop.dwellMinutes,
   }).eq('id', stop.id).eq('daily_route_id', routeId).select('id')))
