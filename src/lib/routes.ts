@@ -49,6 +49,24 @@ export async function loadOrSeedRouteTemplates(source: RouteTemplate[]) {
   return loadOrSeedRouteTemplates(source)
 }
 
+export async function loadRouteTemplates(): Promise<RouteTemplate[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.from('route_templates').select('id,name,color,route_template_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next)').eq('active', true).order('name')
+  if (error) throw error
+  return (data as TemplateRow[] ?? []).map(mapTemplate)
+}
+
+export async function loadDailyRoutes(): Promise<DailyRoute[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.from('daily_routes').select('id,route_template_id,service_date,status,published,daily_route_stops(locality,route_actions(id,letter_id,animal_id,action_type,status,carriage_letters(sender_name,sender_phone,recipient_name,recipient_phone),van_assignments(box_number)))').order('service_date', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((route: any) => ({ id: route.id, templateId: route.route_template_id ?? '', date: route.service_date, status: route.status, published: route.published, actions: (route.daily_route_stops ?? []).flatMap((stop: any) => (stop.route_actions ?? []).map((action: any) => {
+    const letter = action.carriage_letters
+    const pickup = action.action_type === 'recogida'
+    return { id: action.id, letterId: action.letter_id, animalId: action.animal_id, type: action.action_type, stop: stop.locality, customer: pickup ? letter?.sender_name ?? '' : letter?.recipient_name ?? '', phone: pickup ? letter?.sender_phone ?? '' : letter?.recipient_phone ?? '', status: action.status, box: action.van_assignments?.[0]?.box_number }
+  })) }))
+}
+
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {
   if (!supabase) return
   const { error: routeError } = await supabase.from('daily_routes').insert({
@@ -107,4 +125,10 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     })
     if (assignmentError) throw assignmentError
   }
+}
+
+export async function setDailyRoutePublished(routeId: string, published: boolean) {
+  if (!supabase) throw new Error('Supabase no está configurado.')
+  const { error } = await supabase.from('daily_routes').update({ published }).eq('id', routeId)
+  if (error) throw error
 }

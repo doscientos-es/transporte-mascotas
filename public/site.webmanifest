@@ -13,7 +13,9 @@
       "type": "image/png"
     }
   ],
-  "theme_color": "#2a4227",
-  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "background_color": "#fafafa",
+  "start_url": "/reservas",
+  "scope": "/",
   "display": "standalone"
 }

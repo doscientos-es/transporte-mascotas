@@ -19,11 +19,11 @@ export async function loadClients() {
 
 export async function loadClientInvoices() {
   if (!supabase) return []
-  const { data, error } = await supabase.from('invoice_drafts').select('id, letter_id, client_id, payer, concept, total_amount, status, created_at').eq('status', 'generado').order('created_at', { ascending: false })
+  const { data, error } = await supabase.from('invoice_drafts').select('id, letter_id, client_id, payer, concept, total_amount, status, created_at').in('status', ['generado', 'pagado']).order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((row): ClientInvoice => ({
     id: row.id, letterId: row.letter_id, clientId: row.client_id, payer: row.payer,
-    concept: row.concept, total: Number(row.total_amount), status: 'generado', createdAt: row.created_at,
+    concept: row.concept, total: Number(row.total_amount), status: row.status === 'pagado' ? 'pagado' : 'generado', createdAt: row.created_at,
   }))
 }
 
@@ -53,10 +53,11 @@ export async function deleteClient(clientId: string) {
   if (error) throw error
 }
 
-export async function persistInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number, userId: string) {
+export async function persistInvoice(letter: Letter, payer: 'remitente' | 'destinatario' | 'third_party', total: number, userId: string, thirdParty?: { fullName: string; phone: string }) {
   if (!supabase) return null
-  const fullName = payer === 'remitente' ? letter.sender : letter.recipient
-  const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  const fullName = payer === 'third_party' ? thirdParty?.fullName.trim() : payer === 'remitente' ? letter.sender : letter.recipient
+  const phone = payer === 'third_party' ? thirdParty?.phone.trim() : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  if (!fullName) throw new Error('Indica los datos de la persona o empresa que factura.')
   const { data: clientRow, error: clientError } = await supabase.from('clients').upsert({ full_name: fullName, phone }, { onConflict: 'normalized_name' }).select('id, full_name, nif, email, phone, address, city, postal_code, created_at').single()
   if (clientError) throw clientError
   const client = toClient(clientRow as ClientRow)

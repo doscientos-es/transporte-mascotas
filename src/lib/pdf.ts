@@ -23,13 +23,13 @@ async function imageAsDataUrl(source: string) {
   return canvas.toDataURL('image/png')
 }
 
-export async function downloadInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number) {
+export async function downloadInvoice(letter: Letter, payer: 'remitente' | 'destinatario' | 'third_party', total: number, thirdParty?: { fullName: string; phone: string }) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const base = total / 1.21
   const tax = total - base
-  const customer = payer === 'remitente' ? letter.sender : letter.recipient
-  const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  const customer = payer === 'third_party' ? thirdParty?.fullName ?? 'Tercero' : payer === 'remitente' ? letter.sender : letter.recipient
+  const phone = payer === 'third_party' ? thirdParty?.phone ?? '' : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
   const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
   const date = shortDate(letter.serviceDate)
   const logo = await imageAsDataUrl(kacheLogo)
@@ -70,6 +70,26 @@ export async function downloadInvoice(letter: Letter, payer: 'remitente' | 'dest
   doc.setFontSize(8); doc.text(cancellationNote, left, 195); doc.setFont('helvetica', 'bold'); doc.text('LA RESERVA', left + doc.getTextWidth(cancellationNote), 195)
   doc.setFont('helvetica', 'normal'); doc.setTextColor(83, 93, 109); doc.setFontSize(7); doc.text('1 / 1', right, 289, { align: 'right' })
   doc.save(`factura-${number.replace('/', '-')}.pdf`)
+}
+
+export async function downloadCarriageLetter(letter: Letter) {
+  const { jsPDF } = await import('jspdf')
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const logo = await imageAsDataUrl(kacheLogo)
+  const left = 18
+  doc.addImage(logo, 'PNG', 145, 14, 47, 27)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.text('Carta de porte', left, 21)
+  doc.setFontSize(10); doc.setTextColor(...invoiceRed); doc.text(letter.id, left, 29)
+  doc.setTextColor(18, 18, 18); doc.setFont('helvetica', 'normal'); doc.setFontSize(9)
+  doc.text(`Fecha de servicio: ${shortDate(letter.serviceDate)}     Ruta: ${letter.route}`, left, 39)
+  const block = (title: string, lines: string[], y: number) => { doc.setDrawColor(225, 227, 230); doc.roundedRect(left, y, 174, 34, 3, 3, 'S'); doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text(title.toUpperCase(), left + 5, y + 7); doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text(lines, left + 5, y + 14, { lineHeightFactor: 1.4 }) }
+  block('Remitente', [letter.sender, letter.senderPhone, `Origen: ${letter.origin}`], 49)
+  block('Destinatario', [letter.recipient, letter.recipientPhone, `Destino: ${letter.destination}`], 88)
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.text('ANIMALES TRANSPORTADOS', left, 137)
+  let y = 145
+  letter.animals.forEach((animal, index) => { doc.setDrawColor(235, 235, 235); doc.rect(left, y, 174, 15); doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.text(`${index + 1}. ${animal.species} · ${animal.breed}`, left + 5, y + 6); doc.setFont('helvetica', 'normal'); doc.text(`Tamaño: ${animal.size}     Box: ${animal.box ?? 'Pendiente'}`, left + 5, y + 11); y += 17 })
+  doc.setFontSize(8); doc.setTextColor(83, 93, 109); doc.text('Documento generado por Kache Envíos. Debe acompañar al animal durante el transporte.', left, 280)
+  doc.save(`carta-porte-${letter.id.replaceAll(/[^a-zA-Z0-9]/g, '-')}.pdf`)
 }
 
 export async function downloadVanManifest(assignments: Array<{ box: number; label: string }>, routeName: string) {

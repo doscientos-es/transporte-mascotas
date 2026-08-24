@@ -193,7 +193,10 @@ create trigger carriage_letters_updated_at before update on public.carriage_lett
 create trigger daily_routes_updated_at before update on public.daily_routes for each row execute function public.set_updated_at();
 
 create function public.is_admin() returns boolean language sql stable set search_path = '' as $$
-  select coalesce((select auth.jwt() ->> 'user_role') = 'admin', false);
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin' and active
+  );
 $$;
 
 create function public.box_matches_animal_size(p_box integer, p_size public.animal_size) returns boolean language sql immutable set search_path = '' as $$
@@ -280,10 +283,18 @@ grant usage on schema public to authenticated;
 grant select on public.locations, public.route_templates, public.route_template_stops, public.route_defaults, public.animal_size_rules to authenticated;
 grant select, insert, update, delete on public.profiles, public.carriage_letters, public.animals, public.daily_routes, public.daily_route_stops, public.route_actions, public.van_assignments, public.invoice_drafts, public.audit_logs to authenticated;
 
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('carriage-letters', 'carriage-letters', false, 10485760, array['application/pdf']), ('generated-documents', 'generated-documents', false, 10485760, array['application/pdf'])
-on conflict (id) do nothing;
-
-create policy "admins manage carriage letters files" on storage.objects for all to authenticated using (bucket_id = 'carriage-letters' and public.is_admin()) with check (bucket_id = 'carriage-letters' and public.is_admin());
-create policy "authenticated read generated files" on storage.objects for select to authenticated using (bucket_id = 'generated-documents');
-create policy "admins manage generated files" on storage.objects for all to authenticated using (bucket_id = 'generated-documents' and public.is_admin()) with check (bucket_id = 'generated-documents' and public.is_admin());
+-- Storage is installed by Supabase before migrations in hosted projects.  Keep
+-- local Postgres-only restores valid too; the document function creates the
+-- operational bucket lazily if Storage arrives afterwards.
+do $$
+begin
+  if to_regclass('storage.buckets') is not null and to_regclass('storage.objects') is not null then
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    values ('carriage-letters', 'carriage-letters', false, 10485760, array['application/pdf']), ('generated-documents', 'generated-documents', false, 10485760, array['application/pdf'])
+    on conflict (id) do nothing;
+    execute 'create policy "admins manage carriage letters files" on storage.objects for all to authenticated using (bucket_id = ''carriage-letters'' and public.is_admin()) with check (bucket_id = ''carriage-letters'' and public.is_admin())';
+    execute 'create policy "authenticated read generated files" on storage.objects for select to authenticated using (bucket_id = ''generated-documents'')';
+    execute 'create policy "admins manage generated files" on storage.objects for all to authenticated using (bucket_id = ''generated-documents'' and public.is_admin()) with check (bucket_id = ''generated-documents'' and public.is_admin())';
+  end if;
+end;
+$$;

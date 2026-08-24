@@ -1,11 +1,12 @@
 import { Menu } from '@base-ui/react/menu'
-import { ArrowUpRight, FileText, GitFork, LogOut, Route, ShieldCheck, Truck, UsersRound } from 'lucide-react'
+import { ArrowUpRight, CalendarCheck2, FileText, GitFork, LogOut, Route, ShieldCheck, Truck, UsersRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import brandLogo from '../assets/kache-logo.png'
 import type { NavSection } from '../lib/types'
 
 const navigationItems = [
   ['cartas', 'Cartas de porte', FileText],
+  ['reservas', 'Reservas', CalendarCheck2],
   ['plantillas', 'Rutas preestablecidas', GitFork],
   ['rutas', 'Rutas', Route],
   ['furgoneta', 'Furgoneta', Truck],

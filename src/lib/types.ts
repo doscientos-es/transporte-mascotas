@@ -1,6 +1,6 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta'
+export type NavSection = 'cartas' | 'reservas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta'
 
 export interface Animal {
   id: string
@@ -42,10 +42,10 @@ export interface ClientInvoice {
   id: string
   letterId: string
   clientId: string
-  payer: 'remitente' | 'destinatario'
+  payer: 'remitente' | 'destinatario' | 'third_party'
   concept: string
   total: number
-  status: 'generado'
+  status: 'generado' | 'pagado'
   createdAt: string
 }
 
@@ -81,5 +81,6 @@ export interface DailyRoute {
   templateId: string
   date: string
   status: 'borrador' | 'activa' | 'completada'
+  published?: boolean
   actions: ServiceAction[]
 }

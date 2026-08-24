@@ -1,52 +1,35 @@
 import type { Session } from '@supabase/supabase-js'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, persistInvoice, updateClient } from '../lib/clients'
-import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
-import { saveImportedLetter } from '../lib/letters'
+import { createManualLetter, loadLetters } from '../lib/letters'
 import { downloadInvoice } from '../lib/pdf'
-import { loadOrSeedRouteTemplates, saveDailyRoute } from '../lib/routes'
+import { loadDailyRoutes, loadRouteTemplates, saveDailyRoute, setDailyRoutePublished } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Client, ClientInvoice, DailyRoute, Letter, NavSection, RouteTemplate, ServiceAction } from '../lib/types'
 import { boxesBySize } from '../lib/van'
+import { confirmReservationPayment, loadBackofficeReservations, type BackofficeReservation } from '../lib/backoffice-reservations'
 
-const routeNamesByDemoId: Record<string, string> = {
-  'route-2026-08-08': 'Mediterráneo',
-  'route-2026-08-09': 'Norte',
-  'route-2026-08-10': 'Andalucía',
-}
-
-function createDemoClients(letters: Letter[]): Client[] {
-  const names = new Map<string, Pick<Client, 'fullName' | 'phone'>>()
-  letters.forEach((letter) => [[letter.sender, letter.senderPhone], [letter.recipient, letter.recipientPhone]].forEach(([fullName, phone]) => {
-    const key = fullName.trim().toLocaleLowerCase()
-    if (key) names.set(key, { fullName, phone })
-  }))
-  return [...names.entries()].map(([key, client]) => ({
-    id: `demo-${key}`,
-    ...client,
-    nif: '', email: '', address: '', city: '', postalCode: '',
-    createdAt: new Date().toISOString(),
-  }))
-}
+const emptyTemplate: RouteTemplate = { id: '', name: 'Sin plantilla', color: '#171717', stops: [] }
+const emptyRoute: DailyRoute = { id: '', templateId: '', date: new Date().toISOString().slice(0, 10), status: 'borrador', actions: [] }
 
 export function useDashboard(session: Session | null) {
   const [section, setSection] = useState<NavSection>('cartas')
-  const [letters, setLetters] = useState<Letter[]>(initialLetters)
-  const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>(templates)
-  const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>(initialDailyRoutes)
-  const [clients, setClients] = useState<Client[]>(() => createDemoClients(initialLetters))
-  const [invoices, setInvoices] = useState<ClientInvoice[]>(initialClientInvoices)
-  const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(templates[0])
-  const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
-  const [showImport, setShowImport] = useState(false)
+  const [letters, setLetters] = useState<Letter[]>([])
+  const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
+  const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
+  const [clients, setClients] = useState<Client[]>([])
+  const [invoices, setInvoices] = useState<ClientInvoice[]>([])
+  const [reservations, setReservations] = useState<BackofficeReservation[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(emptyTemplate)
+  const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(emptyRoute)
+  const [showLetterEditor, setShowLetterEditor] = useState(false)
   const [showNewRoute, setShowNewRoute] = useState(false)
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
-  const fileInput = useRef<HTMLInputElement>(null)
   const deferredSearch = useDeferredValue(search)
 
-  const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
+  const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0] ?? emptyTemplate
   const filteredLetters = useMemo(() => {
     const term = deferredSearch.trim().toLocaleLowerCase()
     if (!term) return letters
@@ -67,19 +50,17 @@ export function useDashboard(session: Session | null) {
 
   useEffect(() => {
     if (!session) return
-    loadOrSeedRouteTemplates(templates).then((loaded) => {
+    loadRouteTemplates().then((loaded) => {
       setRouteTemplates(loaded)
-      setSelectedTemplate((current) => loaded.find((template) => template.name === current.name) ?? loaded[0])
-      const hydrateRoute = (route: DailyRoute): DailyRoute => ({
-        ...route,
-        templateId: loaded.find((template) => template.name === routeNamesByDemoId[route.id])?.id ?? route.templateId,
-      })
-      setDailyRoutes((current) => current.map(hydrateRoute))
-      setSelectedRoute((current) => hydrateRoute(current))
+      setSelectedTemplate((current) => loaded.find((template) => template.id === current.id) ?? loaded[0] ?? emptyTemplate)
     }).catch(() => undefined)
-    Promise.all([loadClients(), loadClientInvoices()]).then(([storedClients, storedInvoices]) => {
+    Promise.all([loadClients(), loadClientInvoices(), loadBackofficeReservations(), loadLetters(), loadDailyRoutes()]).then(([storedClients, storedInvoices, storedReservations, storedLetters, storedRoutes]) => {
       setClients(storedClients)
       setInvoices(storedInvoices)
+      setReservations(storedReservations)
+      setLetters(storedLetters)
+      setDailyRoutes(storedRoutes)
+      setSelectedRoute(storedRoutes[0] ?? emptyRoute)
     }).catch(() => toast('No se ha podido cargar el historial de clientes.'))
   }, [session])
 
@@ -103,28 +84,14 @@ export function useDashboard(session: Session | null) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function importPdf(file?: File) {
-    if (!file) return
+  async function saveManualLetter(letter: Letter) {
     try {
-      const { parseCartaPdf } = await import('../lib/carta-parser')
-      const extracted = await parseCartaPdf(file)
-      const route = routeTemplates.find((template) => template.stops.some((stop) => stop.locality.toLocaleLowerCase().includes((extracted.destination ?? '').toLocaleLowerCase())))
-      const letter: Letter = {
-        id: extracted.id || `CARTA DE PORTE Nº 2026-${445 + letters.length}`,
-        sender: extracted.sender || 'Pendiente de revisar', senderPhone: extracted.senderPhone || '',
-        recipient: extracted.recipient || 'Pendiente de revisar', recipientPhone: extracted.recipientPhone || '',
-        origin: extracted.origin || 'Sin asignar', destination: extracted.destination || 'Sin asignar',
-        route: route?.name ?? 'Sin asignar', serviceDate: '2026-08-08', status: 'pendiente',
-        importedAt: extracted.importedAt ?? new Date().toLocaleString('es-ES'), animals: extracted.animals ?? [],
-      }
-      if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
-      if (session) await saveImportedLetter(letter, file, session.user.id)
+      if (!session) throw new Error('Inicia sesión para crear una carta.')
+      await createManualLetter(letter, session.user.id)
       setLetters((current) => [letter, ...current])
-      setShowImport(false)
-      toast(`${file.name} importado. Revisa los campos extraídos.`)
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'No se ha podido importar el PDF.')
-    }
+      setShowLetterEditor(false)
+      toast('Carta de porte creada.')
+    } catch (error) { toast(error instanceof Error ? error.message : 'No se ha podido crear la carta.'); throw error }
   }
 
   async function createDailyRoute(template: RouteTemplate, date: string) {
@@ -150,6 +117,16 @@ export function useDashboard(session: Session | null) {
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
     }
+  }
+
+  async function setRoutePublished(routeId: string, published: boolean) {
+    try {
+      await setDailyRoutePublished(routeId, published)
+      const update = (route: DailyRoute): DailyRoute => route.id === routeId ? { ...route, published } : route
+      setDailyRoutes((current) => current.map(update))
+      setSelectedRoute((current) => update(current))
+      toast(published ? 'Ruta publicada para reservas.' : 'Ruta retirada de reservas públicas.')
+    } catch (error) { toast(error instanceof Error ? error.message : 'No se ha podido actualizar la publicación de la ruta.') }
   }
 
   async function saveClient(client: Client | Omit<Client, 'id' | 'createdAt'>) {
@@ -181,21 +158,23 @@ export function useDashboard(session: Session | null) {
     }
   }
 
-  async function generateInvoice(letter: Letter, payer: 'remitente' | 'destinatario', total: number) {
-    const fullName = payer === 'remitente' ? letter.sender : letter.recipient
-    const phone = payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  async function generateInvoice(letter: Letter, payer: 'remitente' | 'destinatario' | 'third_party', total: number, thirdParty?: { fullName: string; phone: string }) {
+    const fullName = payer === 'third_party' ? thirdParty?.fullName.trim() : payer === 'remitente' ? letter.sender : letter.recipient
+    const phone = payer === 'third_party' ? thirdParty?.phone.trim() ?? '' : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+    if (!fullName) return toast('Indica los datos de la persona o empresa que factura.')
     let client = clients.find((item) => item.fullName.trim().toLocaleLowerCase() === fullName.trim().toLocaleLowerCase())
     if (!client) {
       client = { id: crypto.randomUUID(), fullName, phone, nif: '', email: '', address: '', city: '', postalCode: '', createdAt: new Date().toISOString() }
       setClients((current) => [...current, client!].sort((a, b) => a.fullName.localeCompare(b.fullName)))
     }
+    const activeClient = client!
     const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
-    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'generado', createdAt: new Date().toISOString() }, ...current])
+    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: activeClient.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'generado', createdAt: new Date().toISOString() }, ...current])
     if (session) {
       try {
-        const stored = await persistInvoice(letter, payer, total, session.user.id)
+        const stored = await persistInvoice(letter, payer, total, session.user.id, thirdParty)
         if (stored) {
-          setClients((current) => [...current.filter((item) => item.id !== client.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+          setClients((current) => [...current.filter((item) => item.id !== activeClient.id && item.id !== stored.client.id), stored.client].sort((a, b) => a.fullName.localeCompare(b.fullName)))
           const storedInvoice = stored.invoice
           if (storedInvoice) setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
           else toast('La factura ya estaba guardada para esta carta de porte.')
@@ -205,14 +184,22 @@ export function useDashboard(session: Session | null) {
       }
     }
     if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    await downloadInvoice(letter, payer, total)
+    await downloadInvoice(letter, payer, total, thirdParty)
+  }
+
+  async function markReservationPaid(id: string) {
+    try {
+      await confirmReservationPayment(id)
+      setReservations((current) => current.map((item) => item.id === id ? { ...item, status: 'confirmed', paymentStatus: 'paid' } : item))
+      toast('Cobro confirmado. Documentación generada y comunicaciones enviadas.')
+    } catch (error) { toast(error instanceof Error ? error.message : 'No se ha podido confirmar el cobro.') }
   }
 
   return {
-    section, setSection, letters, routeTemplates, dailyRoutes, clients, invoices, selectedTemplate,
+    section, setSection, letters, routeTemplates, dailyRoutes, clients, invoices, reservations, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
-    search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, fileInput, signOut, updateAction, importPdf, createDailyRoute, saveClient,
-    removeClient, generateInvoice,
+    search, setSearch, showLetterEditor, setShowLetterEditor, showNewRoute, setShowNewRoute, invoiceLetter,
+    setInvoiceLetter, notice, signOut, updateAction, createDailyRoute, saveClient,
+    removeClient, generateInvoice, markReservationPaid, saveManualLetter, setRoutePublished,
   }
 }

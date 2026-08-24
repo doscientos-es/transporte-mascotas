@@ -1,0 +1,8 @@
+import { CheckCircle2, CircleDollarSign, PawPrint } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import type { BackofficeReservation } from '../lib/backoffice-reservations'
+
+export function ReservationsPage({ reservations, onConfirm }: { reservations: BackofficeReservation[]; onConfirm: (id: string) => Promise<void> }) {
+  return <><div className="page-intro"><p>Solicitudes enviadas desde la aplicación pública. Confirma el cobro antes de programar y enviar documentación.</p></div><div className="reservation-list">{reservations.length === 0 ? <Card><CardContent><p className="empty-copy">No hay reservas pendientes.</p></CardContent></Card> : reservations.map((reservation) => <Card key={reservation.id}><CardContent><div className="reservation-head"><div><span className="eyebrow">{reservation.reference}</span><h3>{reservation.senderName} → {reservation.recipientName}</h3><p>{reservation.routeName} · {reservation.date}</p></div><span className={`status status-${reservation.paymentStatus === 'paid' ? 'entregada' : 'pendiente'}`}>{reservation.paymentStatus === 'paid' ? 'Cobrado' : 'Pendiente de cobro'}</span></div><div className="reservation-meta"><span><PawPrint size={16} /> {reservation.animal}</span><strong>{reservation.amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</strong></div>{reservation.paymentStatus !== 'paid' ? <Button onClick={() => void onConfirm(reservation.id)}><CircleDollarSign /> Marcar como cobrada</Button> : <p className="reservation-confirmed"><CheckCircle2 size={17} /> Reserva confirmada; pendiente de envío documental.</p>}</CardContent></Card>)}</div></>
+}
