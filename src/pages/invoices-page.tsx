@@ -41,6 +41,7 @@ function InvoicePreviewDialog({ invoice, letter, client, onClose }: { invoice: C
       .then(({ url }) => { objectUrl = url.toString(); setPreviewUrl(objectUrl) })
       .catch(() => setError('No se ha podido preparar la vista previa de la factura.'))
       .finally(() => setLoading(false))
+    // The PDF preview is generated in memory, so release its temporary URL when the dialog closes.
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [client, invoice.payer, invoice.total, letter])
 
