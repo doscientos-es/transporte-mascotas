@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
-import { saveManualLetter } from '../lib/letters'
+import { saveManualLetter, updateLetter } from '../lib/letters'
 import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
@@ -72,6 +72,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate>(templates[0])
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute>(initialDailyRoutes[0])
   const [showImport, setShowImport] = useState(false)
+  const [editingLetter, setEditingLetter] = useState<Letter | null>(null)
   const [showNewRoute, setShowNewRoute] = useState(false)
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [search, setSearch] = useState('')
@@ -219,6 +220,52 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
+  async function editLetter(draft: LetterDraft) {
+    const currentLetter = editingLetter
+    if (!currentLetter) return
+    try {
+      const dailyRoute = dailyRoutes.find((route) => route.id === draft.routeId)
+      const routeTemplate = dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
+      if (!dailyRoute || !routeTemplate) throw new Error('Selecciona la ruta diaria donde se realizará el servicio.')
+      const animals: Animal[] = draft.animals.map((animal, index) => ({
+        ...animal,
+        id: currentLetter.animals[index]?.id ?? crypto.randomUUID(),
+        box: currentLetter.animals[index]?.box,
+        breed: animal.breed.trim() || 'Sin clasificar',
+      }))
+      const letter: Letter = {
+        ...currentLetter,
+        sender: draft.sender.trim(), senderPhone: draft.senderPhone.trim(),
+        recipient: draft.recipient.trim(), recipientPhone: draft.recipientPhone.trim(),
+        origin: draft.origin.trim(), destination: draft.destination.trim(),
+        route: routeTemplate.name, serviceDate: dailyRoute.date, animals,
+      }
+      const rebuiltActions = actionsForLetter(dailyRoute, routeTemplate, letter)
+      if (rebuiltActions.length !== animals.length * 2) throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
+      const previousActions = dailyRoutes.flatMap((route) => route.actions).filter((action) => action.letterId === letter.id)
+      const previousStatus = new Map(previousActions.map((action) => [`${action.animalId}:${action.type}`, action.status]))
+      const routeActions = rebuiltActions.map((action) => ({ ...action, status: previousStatus.get(`${action.animalId}:${action.type}`) ?? action.status }))
+      const affectedRoutes = dailyRoutes.filter((route) => route.actions.some((action) => action.letterId === letter.id))
+      if (session) {
+        await updateLetter(letter, routeTemplate.id, affectedRoutes)
+        await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
+      }
+      setLetters((current) => current.map((item) => item.id === letter.id ? letter : item))
+      const updateRoute = (route: DailyRoute): DailyRoute => {
+        const withoutLetter = route.actions.filter((action) => action.letterId !== letter.id)
+        return route.id === dailyRoute.id ? { ...route, actions: [...withoutLetter, ...routeActions] } : { ...route, actions: withoutLetter }
+      }
+      setDailyRoutes((current) => current.map(updateRoute))
+      setSelectedRoute((current) => updateRoute(current))
+      setEditingLetter(null)
+      toast(`Carta actualizada. Se mantiene en estado ${letter.status.replace('_', ' ')}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido actualizar la carta.'
+      toast(message)
+      throw error
+    }
+  }
+
   async function createDailyRoute(template: RouteTemplate, date: string, transporterId?: string, direction: RouteDirection = 'normal') {
     const usedBoxes = new Set<number>()
     const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => {
@@ -298,12 +345,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
         const storedInvoice = stored.invoice
         if (storedInvoice) {
           setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
-          await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
-        } else toast('La solicitud ya estaba guardada para esta carta de porte.')
+          if (delivery?.channel !== 'manual') await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
+        } else toast('La factura ya estaba guardada para esta carta de porte.')
       }
     }
     if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
+    toast(delivery?.channel === 'manual' ? 'Factura generada. El envío se gestionará manualmente.' : 'Factura generada y enviada por el canal seleccionado.')
   }
 
   async function sendInvoiceNotification(invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida' = 'solicitud_pago', notify = true) {
@@ -318,8 +365,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
   return {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
-    search, setSearch, showImport, setShowImport, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, createDailyRoute, saveClient,
+    search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
+    setInvoiceLetter, notice, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

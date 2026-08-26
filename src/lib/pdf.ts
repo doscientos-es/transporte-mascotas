@@ -23,7 +23,7 @@ async function imageAsDataUrl(source: string) {
   return canvas.toDataURL('image/png')
 }
 
-export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
   const { jsPDF } = await import('jspdf')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const base = total / 1.21
@@ -72,7 +72,17 @@ export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total
   const cancellationNote = 'EN CASO DE ANULACIÓN DEL TRANSPORTE, NO SE PROCEDERÁ A LA DEVOLUCIÓN DE '
   doc.setFontSize(8); doc.text(cancellationNote, left, 195); doc.setFont('helvetica', 'bold'); doc.text('LA RESERVA', left + doc.getTextWidth(cancellationNote), 195)
   doc.setFont('helvetica', 'normal'); doc.setTextColor(83, 93, 109); doc.setFontSize(7); doc.text('1 / 1', right, 289, { align: 'right' })
-  doc.save(`factura-${number.replace('/', '-')}.pdf`)
+  return { doc, fileName: `factura-${number.replace('/', '-')}.pdf` }
+}
+
+export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+  const { doc, fileName } = await createInvoiceDocument(letter, payer, total, manualClient)
+  doc.save(fileName)
+}
+
+export async function previewInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+  const { doc, fileName } = await createInvoiceDocument(letter, payer, total, manualClient)
+  return { url: doc.output('bloburl'), fileName }
 }
 
 export async function downloadVanManifest(assignments: Array<{ box: number; label: string; animalCount: number }>, routeName: string) {
