@@ -2,16 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { dashboardLocationForPath, dashboardPathFor, isDashboardPath, routePathFor } from '../lib/dashboard-navigation'
 import type { NavSection } from '../lib/types'
 
-export function useDashboardNavigation() {
-  const [location, setLocation] = useState(() => dashboardLocationForPath(window.location.pathname))
+export function useDashboardNavigation(fallback: NavSection = 'cartas') {
+  const [location, setLocation] = useState(() => dashboardLocationForPath(window.location.pathname, fallback))
 
   useEffect(() => {
-    if (!isDashboardPath(window.location.pathname)) window.history.replaceState(null, '', dashboardPathFor('cartas'))
-    const syncLocation = () => setLocation(dashboardLocationForPath(window.location.pathname))
+    if (!isDashboardPath(window.location.pathname)) window.history.replaceState(null, '', dashboardPathFor(fallback))
+    const syncLocation = () => setLocation(dashboardLocationForPath(window.location.pathname, fallback))
     syncLocation()
     window.addEventListener('popstate', syncLocation)
     return () => window.removeEventListener('popstate', syncLocation)
-  }, [])
+  }, [fallback])
 
   const setPath = useCallback((path: string, replace = false) => {
     if (window.location.pathname === path) return

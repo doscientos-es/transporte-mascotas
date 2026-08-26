@@ -29,9 +29,9 @@
 }
 
 .brand img {
-  width: 72px;
-  height: auto;
-  max-height: 52px;
+  width: 42px;
+  height: 34px;
+  border-radius: 6px;
   object-fit: contain;
 }
 
@@ -573,12 +573,15 @@ main {
 }
 
 .status-pendiente,
+.status-pago_pendiente,
+.status-por_verificar,
 .status-borrador {
   background: #fff3d2;
   color: #936b00;
 }
 
-.status-revisada {
+.status-revisada,
+.status-confirmada {
   background: #e8f1ff;
   color: #1d62ae;
 }
@@ -595,7 +598,9 @@ main {
   color: #16723e;
 }
 
-.status-incidencia {
+.status-incidencia,
+.status-rechazada,
+.status-cancelada {
   background: #fee2e2;
   color: #b42318;
 }
@@ -1338,8 +1343,8 @@ main {
 }
 
 .login-card>img {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 52px;
   object-fit: contain;
   margin-bottom: 24px
 }
@@ -2420,7 +2425,8 @@ main {
 .status-en_ruta,
 .status-activa,
 .status-entregada,
-.status-completada {
+.status-completada,
+.status-confirmada {
   background: #f1f1f1;
   color: #292929;
 }
@@ -2898,4 +2904,123 @@ main {
   .route-direction-options {
     grid-template-columns: 1fr;
   }
+}
+
+/* Customer transport flow */
+.client-portal-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 4px 0 18px;
+  padding: 26px 28px;
+  border-radius: 16px;
+  background: #171717;
+  color: #fff;
+}
+
+.client-portal-hero .eyebrow,
+.request-form-heading .eyebrow {
+  color: #bdff7b;
+}
+
+.client-portal-hero h2,
+.request-form-heading h2 {
+  margin: 7px 0 8px;
+  letter-spacing: -.045em;
+}
+
+.client-portal-hero h2 { font-size: clamp(23px, 3.4vw, 34px); }
+.client-portal-hero p,
+.request-form-heading p { max-width: 600px; margin: 0; color: #c9c9c9; font-size: 13px; line-height: 1.55; }
+.client-portal-hero button { flex: 0 0 auto; min-height: 42px; background: #bdff7b; color: #182119; }
+
+.client-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 760px;
+  margin-bottom: 24px;
+}
+
+.client-overview [data-slot="card-content"] { display: flex; align-items: center; gap: 10px; }
+.client-overview svg { color: #b51e27; }
+.client-overview span { display: block; color: #686868; font-size: 11px; }
+.client-overview strong { display: block; margin-top: 2px; color: #171717; font-size: 22px; letter-spacing: -.04em; }
+
+.client-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  max-width: 760px;
+  margin: 10px 0 12px;
+}
+
+.client-section-heading h3 { margin: 0; color: #171717; font-size: 16px; }
+.client-section-heading p { margin: 3px 0 0; color: #686868; font-size: 12px; }
+.client-transport-card { border-left: 3px solid #dedede; }
+.client-transport-card:has(.status-por_verificar) { border-left-color: #ca8a04; }
+.client-transport-card:has(.status-confirmada),
+.client-transport-card:has(.status-en_ruta) { border-left-color: #171717; }
+.payment-state { justify-content: end; color: #3f7a3e !important; font-weight: 700; }
+
+.client-request-card { max-width: 830px; }
+.request-form { max-height: none; overflow: visible; margin-top: 8px; }
+.request-form-heading { display: flex; justify-content: space-between; gap: 18px; align-items: start; margin-bottom: 20px; }
+.request-form-heading h2 { color: #171717; font-size: 23px; }
+.request-form-heading p { color: #686868; }
+
+.request-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.request-steps li { display: flex; align-items: center; gap: 7px; color: #858585; font-size: 11px; font-weight: 700; }
+.request-steps li span { display: grid; width: 23px; height: 23px; place-items: center; border: 1px solid #d7d7d7; border-radius: 50%; background: #fff; color: #777; }
+.request-steps li.is-current,
+.request-steps li.is-complete { color: #171717; }
+.request-steps li.is-current span { border-color: #171717; background: #171717; color: #fff; }
+.request-steps li.is-complete span { border-color: #bdff7b; background: #bdff7b; color: #182119; }
+
+.request-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.request-review-grid > div { display: grid; gap: 3px; min-width: 0; padding: 12px; border-radius: 9px; background: #f6f6f6; }
+.request-review-grid span { color: #777; font-size: 10px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.request-review-grid strong { overflow: hidden; color: #171717; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.request-review-grid small { color: #676767; font-size: 11px; line-height: 1.4; }
+.payment-note { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; color: #4c4c4c; font-size: 12px; }
+.payment-note svg { color: #b51e27; }
+.request-form-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 18px; }
+.request-form-actions button { min-width: 120px; min-height: 42px; }
+
+.signup-benefits { display: grid; gap: 8px; margin: 18px 0 -5px; padding: 12px; border-radius: 10px; background: #f6f6f6; color: #424242; font-size: 12px; }
+.signup-benefits span { display: flex; align-items: center; gap: 7px; }
+.signup-benefits svg { color: #b51e27; }
+.password-help { margin: -8px 0 0; color: #686868; font-size: 11px; }
+
+.request-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin: 4px 0 13px; }
+.request-details span { display: grid; gap: 2px; color: #555; font-size: 12px; line-height: 1.4; }
+.request-details b { color: #777; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+
+@media (max-width: 700px) {
+  .client-portal-hero { align-items: stretch; flex-direction: column; padding: 22px; }
+  .client-portal-hero button { width: 100%; }
+  .client-overview { grid-template-columns: 1fr; }
+  .request-steps { gap: 4px; }
+  .request-steps li { font-size: 0; }
+  .request-steps li span { font-size: 11px; }
+  .request-review-grid,
+  .request-details { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .client-section-heading { align-items: stretch; flex-direction: column; }
+  .client-section-heading button { width: 100%; }
+  .request-form-heading { flex-direction: column; }
+  .request-form-heading button { align-self: flex-end; }
+  .request-form-actions > * { flex: 1; }
 }

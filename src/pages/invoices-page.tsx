@@ -22,6 +22,7 @@ export function InvoicesPage({ invoices, letters, clients, transportista, onSend
       await onSend(invoice, invoice.status === 'emitida' ? 'factura_emitida' : 'solicitud_pago')
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'No se ha podido iniciar el pago.')
+    } finally {
       setPayingInvoiceId(null)
     }
   }

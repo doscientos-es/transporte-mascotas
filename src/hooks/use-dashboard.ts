@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { saveManualLetter, updateLetter } from '../lib/letters'
@@ -78,6 +78,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const noticeTimer = useRef<number>(0)
 
   const activeTemplate = routeTemplates.find((template) => template.id === selectedRoute.templateId) ?? routeTemplates[0]
   const filteredLetters = useMemo(() => {
@@ -101,8 +102,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
 
   function toast(message: string) {
     setNotice(message)
-    window.setTimeout(() => setNotice(''), 3200)
+    window.clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => setNotice(''), 3200)
   }
+
+  useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
   useEffect(() => {
     if (!session) return
@@ -338,6 +342,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
     const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
     if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'solicitud_pago', createdAt: new Date().toISOString() }, ...current])
+    let alreadyStored = false
     if (session) {
       const stored = await persistInvoice(letter, payer, total, session.user.id, clientInput, delivery)
       if (stored) {
@@ -346,11 +351,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         if (storedInvoice) {
           setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
           if (delivery?.channel !== 'manual') await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
-        } else toast('La factura ya estaba guardada para esta carta de porte.')
+        } else alreadyStored = true
       }
     }
-    if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    toast(delivery?.channel === 'manual' ? 'Factura generada. El envío se gestionará manualmente.' : 'Factura generada y enviada por el canal seleccionado.')
+    if (alreadyStored) toast('La solicitud ya estaba guardada para esta carta de porte.')
+    else if (duplicate) toast('La factura ya existe en el historial del cliente.')
+    else if (delivery?.channel === 'manual') toast('Factura generada. El envío se gestionará manualmente.')
+    else toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
   }
 
   async function sendInvoiceNotification(invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida' = 'solicitud_pago', notify = true) {
@@ -366,7 +373,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

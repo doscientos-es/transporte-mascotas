@@ -1,7 +1,7 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type AppRole = 'admin' | 'transportista'
-export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta' | 'facturas'
+export type AppRole = 'admin' | 'transportista' | 'cliente'
+export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta' | 'facturas' | 'solicitudes' | 'proximas-rutas' | 'mis-transportes'
 
 export interface UserProfile {
   displayName: string
@@ -129,4 +129,45 @@ export interface DailyRoute {
   direction?: RouteDirection
   actions: ServiceAction[]
   stops?: DailyRouteStop[]
+}
+
+export type TransportRequestStatus = 'pago_pendiente' | 'por_verificar' | 'confirmada' | 'rechazada' | 'en_ruta' | 'entregada' | 'cancelada'
+
+export interface TransportRequestAnimal {
+  id?: string
+  ordinal: number
+  species: string
+  breed: string
+  weightKg: number
+  lengthCm: number
+  heightCm: number
+  widthCm: number
+  size?: AnimalSize
+}
+
+export interface TransportRequest {
+  id: string
+  requesterId: string
+  contactName: string
+  contactPhone: string
+  contactEmail: string
+  origin: string
+  destination: string
+  desiredDate: string
+  notes: string
+  status: TransportRequestStatus
+  paymentReference: string
+  paidAt?: string
+  adminNote: string
+  createdAt: string
+  animals: TransportRequestAnimal[]
+}
+
+export interface UpcomingRoute {
+  id: string
+  serviceDate: string
+  routeDirection: RouteDirection
+  templateName: string
+  templateColor: string
+  localities: string[]
 }

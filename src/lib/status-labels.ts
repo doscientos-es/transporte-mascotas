@@ -7,4 +7,9 @@ export const statusLabels: Record<string, string> = {
   activa: 'Activa',
   completada: 'Completada',
   incidencia: 'Incidencia',
+  pago_pendiente: 'Pago pendiente',
+  por_verificar: 'Por verificar',
+  confirmada: 'Confirmada',
+  rechazada: 'Rechazada',
+  cancelada: 'Cancelada',
 }

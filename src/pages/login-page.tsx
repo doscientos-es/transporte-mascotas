@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
+import { CheckCircle2, PawPrint, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import brandLogo from '../assets/kache-logo.png'
+import { BrandLogo } from '../components/brand-logo'
 import { supabase } from '../lib/supabase'
 
 export function LoginPage() {
@@ -28,5 +29,9 @@ export function LoginPage() {
     else if (mode === 'signup' && !response.data.session) setError('Revisa tu correo y confirma el acceso antes de iniciar sesión.')
   }
 
-  return <main className="login-screen"><section className="login-card"><img src={brandLogo} alt="doscientos" /><p className="eyebrow">Kache envíos</p><h1>Operaciones de transporte</h1><p>{mode === 'login' ? 'Accede con tu cuenta de administración o transportista.' : 'Crea una cuenta de transportista. Un administrador podrá asignarte permisos.'}</p><form onSubmit={signIn}>{mode === 'signup' && <label>Nombre<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" required /></label>}<label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label><label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required /></label>{error && <p className="form-error" role="alert">{error}</p>}<Button type="submit" disabled={sending}>{sending ? 'Procesando…' : mode === 'login' ? 'Acceder' : 'Crear acceso'}</Button></form><button type="button" className="auth-switch" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}>{mode === 'login' ? '¿No tienes cuenta? Crear acceso' : 'Ya tengo una cuenta'}</button></section></main>
+  return <main className="login-screen"><section className="login-card"><BrandLogo /><p className="eyebrow">Kache envíos</p><h1>{mode === 'login' ? 'Accede a tu transporte' : 'Crea tu área de cliente'}</h1><p>{mode === 'login' ? 'Consulta tus solicitudes y el estado de cada transporte.' : 'Solo necesitas tus datos de contacto para empezar a solicitar transportes.'}</p>{mode === 'signup' && <div className="signup-benefits"><Benefit icon={PawPrint} text="Pide un transporte para una o varias mascotas" /><Benefit icon={CheckCircle2} text="Consulta la confirmación y las actualizaciones" /></div>}<form onSubmit={signIn}>{mode === 'signup' && <label>Nombre y apellidos<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="name" placeholder="Como quieres que te llamemos" required /></label>}<label>Correo electrónico<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="tu@email.com" required /></label><label>Contraseña<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} placeholder={mode === 'signup' ? 'Al menos 8 caracteres' : undefined} required /></label>{mode === 'signup' && <p className="password-help">Usa al menos 8 caracteres. Podrás iniciar sesión en cuanto creemos tu acceso.</p>}{error && <p className="form-error" role="alert">{error}</p>}<Button type="submit" disabled={sending}>{sending ? 'Procesando…' : mode === 'login' ? 'Entrar' : 'Crear mi cuenta'}</Button></form><button type="button" className="auth-switch" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}>{mode === 'login' ? '¿Es tu primera vez? Crea tu cuenta' : 'Ya tengo una cuenta, quiero entrar'}</button></section></main>
+}
+
+function Benefit({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
+  return <span><Icon size={15} /> {text}</span>
 }

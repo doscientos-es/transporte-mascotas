@@ -1,4 +1,3 @@
-import kacheLogo from '../assets/kache-logo.png'
 import type { InvoiceClientInput, InvoicePayer, Letter } from './types'
 import { boxGridSpan, vanLanes } from './van'
 
@@ -35,12 +34,12 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
     : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
   const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
   const date = shortDate(letter.serviceDate)
-  const logo = await imageAsDataUrl(kacheLogo)
+  const logo = await imageAsDataUrl('/logo-light.svg')
   const left = 18; const right = 192
 
   doc.setFont('helvetica', 'normal'); doc.setTextColor(18, 18, 18)
   doc.setFontSize(21); doc.text('Factura', left, 16)
-  doc.addImage(logo, 'PNG', 143, 18, 49, 29)
+  doc.addImage(logo, 'PNG', 158, 18, 34, 27)
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('EMISOR', left, 24)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
