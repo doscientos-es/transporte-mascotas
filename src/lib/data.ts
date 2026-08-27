@@ -1,11 +1,34 @@
 import type { ClientInvoice, DailyRoute, Letter, RouteTemplate } from './types'
 
+const mediterraneoStops = [
+  ['Pozoblanco', 'Día Aparcamientos', 'Avenida Villanueva de Córdoba', '10', '14400', 'Córdoba', 60],
+  ['Córdoba', 'Arcángel Aparcamientos', 'Avenida del Arcángel', '1', '14010', 'Córdoba', 40],
+  ['Sevilla-Écija', 'N4 Centro Comercial', 'Avenida del Genil', '2', '41400', 'Sevilla', 50],
+  ['Sevilla', 'Aparcamientos Peugeot', 'Avenida de Jerez', '1', '41013', 'Sevilla', 60],
+  ['Cádiz-Jerez de la Frontera', 'Repsol', 'Avenida de Europa', '1', '11405', 'Cádiz', 60],
+  ['Cádiz-Algeciras', 'BP Gasolinera', 'Avenida Virgen del Carmen', '1', '11204', 'Cádiz', 35],
+  ['Málaga', 'Cepsa', 'Avenida de Velázquez', '1', '29004', 'Málaga', 65],
+  ['Almería', 'Repsol junto a IKEA', 'Avenida de Montserrat', '1', '04009', 'Almería', 75],
+  ['Murcia', 'Polígono Gasolinera Plenoil', 'Avenida Juan de Borbón', '1', '30009', 'Murcia', 45],
+  ['Alicante', 'Media rotonda', 'Avenida de Denia', '1', '03016', 'Alicante', 45],
+  ['Valencia', 'Repsol junto a Decathlon', 'Avenida de Cataluña', '1', '46021', 'Valencia', 35],
+  ['Castellón', 'Gasolinera', 'Avenida de Valencia', '1', '12006', 'Castellón', 75],
+  ['Tarragona-Cambrils', 'Cepsa', 'Avenida de la Diputación', '1', '43850', 'Tarragona', 25],
+  ['Barcelona', 'Gasolinera Autonetoil', 'Carrer de la Marina', '1', '08013', 'Barcelona', 15],
+  ['Zaragoza', 'Aparcamientos Burger King', 'Avenida de Cataluña', '1', '50015', 'Zaragoza', 85],
+  ['Madrid Sur-Getafe', 'Repsol junto a Decathlon', 'Avenida de la Industria', '1', '28906', 'Madrid', 40],
+  ['Ciudad Real', 'Aparcamientos Leroy Merlin', 'Avenida de Europa', '1', '13005', 'Ciudad Real', 25],
+  ['Pozoblanco', 'Día Aparcamientos', 'Avenida Villanueva de Córdoba', '10', '14400', 'Córdoba', 0],
+] as const
+
 export const templates: RouteTemplate[] = [
   {
     id: 'mediterraneo', name: 'Mediterráneo', color: '#bdff7b',
-    stops: [
-      ['Pozoblanco', 'Día Aparcamientos', 60], ['Córdoba', 'Arcángel Aparcamientos', 40], ['Sevilla-Écija', 'N4 Centro Comercial', 50], ['Sevilla', 'Aparcamientos Peugeot', 60], ['Cádiz-Jerez de la Frontera', 'Repsol', 60], ['Cádiz-Algeciras', 'BP Gasolinera', 35], ['Málaga', 'Cepsa', 65], ['Almería', 'Repsol junto a IKEA', 75], ['Murcia', 'Polígono Gasolinera Plenoil', 45], ['Alicante', 'Media rotonda', 45], ['Valencia', 'Repsol junto a Decathlon', 35], ['Castellón', 'Gasolinera', 75], ['Tarragona-Cambrils', 'Cepsa', 25], ['Barcelona', 'Gasolinera Autonetoil', 15], ['Zaragoza', 'Aparcamientos Burger King', 85], ['Madrid Sur-Getafe', 'Repsol junto a Decathlon', 40], ['Ciudad Real', 'Aparcamientos Leroy Merlin', 25], ['Pozoblanco', 'Día Aparcamientos', 0],
-    ].map(([locality, place, minutes], index) => ({ id: `m-${index}`, locality: String(locality), place: String(place), minutes: Number(minutes), mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(String(locality))}` })),
+    stops: mediterraneoStops.map(([locality, alias, street, streetNumber, postalCode, province, minutes], index) => {
+      const country = 'España'
+      const mapQuery = [`${street} ${streetNumber}`, postalCode, locality, province, country].join(', ')
+      return { id: `m-${index}`, locality, place: alias, alias, street, streetNumber, postalCode, province, country, minutes, mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` }
+    }),
   },
   {
     id: 'norte', name: 'Norte', color: '#c5d9ff',

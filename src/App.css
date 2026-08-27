@@ -1847,6 +1847,50 @@ main {
   background: #f5f5f5;
 }
 
+.street-field {
+  position: relative;
+}
+
+.street-suggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  overflow: hidden;
+  border: 1px solid #dedede;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 12%);
+}
+
+.street-suggestions button {
+  display: grid;
+  width: 100%;
+  gap: 2px;
+  padding: 9px 10px;
+  border: 0;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  color: #171717;
+  text-align: left;
+}
+
+.street-suggestions button:last-child {
+  border-bottom: 0;
+}
+
+.street-suggestions button:hover,
+.street-suggestions button:focus-visible {
+  background: #fff0f1;
+  outline: none;
+}
+
+.street-suggestions span {
+  color: #686868;
+  font-size: 11px;
+}
+
 @media (max-width: 390px) {
   .table-controls {
     grid-template-columns: 1fr;

@@ -88,6 +88,13 @@ export interface RouteStop {
   place: string
   mapUrl: string
   minutes: number
+  alias?: string
+  street?: string
+  streetNumber?: string
+  floor?: string
+  postalCode?: string
+  province?: string
+  country?: string
 }
 
 export type DailyStopKind = 'parada' | 'recogida' | 'entrega'

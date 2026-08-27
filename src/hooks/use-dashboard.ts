@@ -2,8 +2,9 @@ import type { Session } from '@supabase/supabase-js'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
+import { calculateDrivingTimes, findBestStopInsertion } from '../lib/driving-times'
 import { saveManualLetter, updateLetter } from '../lib/letters'
-import { appendLetterToDailyRoute, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
+import { addDailyRouteStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
@@ -158,16 +159,82 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  function updateRouteStops(routeId: string, stops: DailyRouteStop[]) {
+  async function updateRouteStops(routeId: string, stops: DailyRouteStop[], recalculate = true) {
+    let updatedStops = stops
+    if (recalculate) {
+      try {
+        updatedStops = await calculateDrivingTimes(stops)
+      } catch {
+        toast('No se han podido recalcular los trayectos en coche. Se conservan las duraciones anteriores.')
+      }
+    }
     const update = (route: DailyRoute): DailyRoute => {
       if (route.id !== routeId) return route
       const existingStops = stopsForRoute(route, routeTemplates)
-      const actions = linkActionsToStops(route.actions, existingStops).filter((action) => !action.stopId || stops.some((stop) => stop.id === action.stopId))
-      return { ...route, stops, actions }
+      const actions = linkActionsToStops(route.actions, existingStops).filter((action) => !action.stopId || updatedStops.some((stop) => stop.id === action.stopId))
+      return { ...route, stops: updatedStops, actions }
     }
     setSelectedRoute((current) => update(current))
     setDailyRoutes((current) => current.map(update))
-    if (session) updateDailyRouteStops(routeId, stops).catch(() => toast('No se han podido guardar los cambios de las paradas.'))
+    if (session) {
+      try { await updateDailyRouteStops(routeId, updatedStops) } catch { toast('No se han podido guardar los cambios de las paradas.') }
+    }
+  }
+
+  async function suggestRouteStop(routeId: string, stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) {
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const nextStop: DailyRouteStop = {
+      ...stop,
+      id: crypto.randomUUID(),
+      kind: 'parada',
+      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[stop.street, stop.streetNumber].filter(Boolean).join(' '), stop.postalCode, stop.locality, stop.province, stop.country || 'España'].filter(Boolean).join(', '))}`,
+    }
+    return findBestStopInsertion(stopsForRoute(route, routeTemplates), nextStop)
+  }
+
+  async function addRouteStop(routeId: string, stops: DailyRouteStop[]) {
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const existingIds = new Set(stopsForRoute(route, routeTemplates).map((stop) => stop.id))
+    const nextStop = stops.find((stop) => !existingIds.has(stop.id))
+    if (!nextStop) throw new Error('No se ha encontrado la nueva parada para guardar.')
+    try {
+      if (session) await addDailyRouteStop(routeId, nextStop, stops.length)
+      if (session) await updateDailyRouteStops(routeId, stops)
+      const update = (item: DailyRoute): DailyRoute => item.id === routeId ? { ...item, stops } : item
+      setDailyRoutes((current) => current.map(update))
+      setSelectedRoute((current) => update(current))
+      toast(`${nextStop.locality} se ha añadido a la ruta.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido añadir la parada.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function removeRouteStop(routeId: string, stopId: string) {
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const currentStops = stopsForRoute(route, routeTemplates)
+    const actions = linkActionsToStops(route.actions, currentStops)
+    if (actions.some((action) => action.stopId === stopId)) throw new Error('No se puede eliminar una parada con recogidas o entregas asociadas.')
+    const remaining = currentStops.filter((stop) => stop.id !== stopId)
+    if (remaining.length === currentStops.length) throw new Error('No se ha encontrado la parada.')
+    let stops = remaining
+    try { stops = await calculateDrivingTimes(remaining) } catch { toast('La parada se eliminará, pero no se han podido recalcular los trayectos en coche.') }
+    try {
+      if (session) await deleteDailyRouteStop(routeId, stopId)
+      if (session) await updateDailyRouteStops(routeId, stops)
+      const update = (item: DailyRoute): DailyRoute => item.id === routeId ? { ...item, stops } : item
+      setDailyRoutes((current) => current.map(update))
+      setSelectedRoute((current) => update(current))
+      toast('Parada eliminada de la ruta.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido eliminar la parada.'
+      toast(message)
+      throw error
+    }
   }
 
   function updateRouteService(routeId: string, service: ServiceAction) {
@@ -284,7 +351,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
         ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
       ])
     })
-    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, direction, stops: copyTemplateStops(template, direction), actions }
+    let stops = copyTemplateStops(template, direction)
+    try { stops = await calculateDrivingTimes(stops) } catch { toast('No se han podido calcular los trayectos en coche al crear la ruta.') }
+    const route: DailyRoute = { id: crypto.randomUUID(), templateId: template.id, date, status: 'borrador', transporterId, direction, stops, actions }
     try {
       const savedRoute = session ? await saveDailyRoute(route, template, session.user.id) : route
       setDailyRoutes((current) => [savedRoute, ...current])
@@ -373,7 +442,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

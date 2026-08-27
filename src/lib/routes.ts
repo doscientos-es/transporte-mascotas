@@ -1,13 +1,36 @@
 import { supabase } from './supabase';
 import type { DailyRoute, DailyRouteStop, Letter, RouteDirection, RouteTemplate, ServiceAction, Transporter } from './types';
 
-type TemplateRow = { id: string; name: string; color: string; route_template_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null }> }
+type StoredStop = { id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null; stop_alias: string; street: string; street_number: string; floor: string; postal_code: string; province: string; country: string }
+type TemplateRow = { id: string; name: string; color: string; route_template_stops: StoredStop[] }
 type DailyRouteRow = {
   id: string; route_template_id: string | null; service_date: string; status: DailyRoute['status']; transporter_id: string | null; route_direction: RouteDirection
-  daily_route_stops: Array<{ id: string; sequence: number; locality: string; meeting_point: string; map_url: string | null; minutes_to_next: number | null; stop_kind: 'parada' | 'recogida' | 'entrega'; dwell_minutes: number }>
+  daily_route_stops: Array<StoredStop & { stop_kind: 'parada' | 'recogida' | 'entrega'; dwell_minutes: number }>
 }
 type RouteActionRow = {
   id: string; daily_route_id: string; daily_route_stop_id: string; letter_id: string; animal_id: string; action_type: 'recogida' | 'entrega'; status: DailyRoute['actions'][number]['status']; dwell_minutes: number; customer_name: string; customer_phone: string; animal_breed: string; animal_species: string; box_number: number | null
+}
+
+function mapUrlFor(stop: Pick<StoredStop, 'stop_alias' | 'street' | 'street_number' | 'floor' | 'postal_code' | 'locality' | 'province' | 'country'>) {
+  const address = [[stop.street, stop.street_number].filter(Boolean).join(' '), stop.postal_code, stop.locality, stop.province, stop.country || 'España'].filter(Boolean)
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((address.length ? address : [stop.stop_alias]).join(', '))}`
+}
+
+function mapStop(stop: StoredStop) {
+  return {
+    id: stop.id,
+    locality: stop.locality,
+    place: stop.meeting_point,
+    mapUrl: stop.street || stop.postal_code ? mapUrlFor(stop) : stop.map_url ?? mapUrlFor(stop),
+    minutes: stop.minutes_to_next ?? 0,
+    alias: stop.stop_alias,
+    street: stop.street,
+    streetNumber: stop.street_number,
+    floor: stop.floor,
+    postalCode: stop.postal_code,
+    province: stop.province,
+    country: stop.country,
+  }
 }
 
 function mapTemplate(row: TemplateRow): RouteTemplate {
@@ -15,13 +38,7 @@ function mapTemplate(row: TemplateRow): RouteTemplate {
     id: row.id,
     name: row.name,
     color: row.color,
-    stops: row.route_template_stops.toSorted((a, b) => a.sequence - b.sequence).map((stop) => ({
-      id: stop.id,
-      locality: stop.locality,
-      place: stop.meeting_point,
-      mapUrl: stop.map_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.locality)}`,
-      minutes: stop.minutes_to_next ?? 0,
-    })),
+    stops: row.route_template_stops.toSorted((a, b) => a.sequence - b.sequence).map(mapStop),
   }
 }
 
@@ -29,7 +46,7 @@ export async function loadOrSeedRouteTemplates(source: RouteTemplate[]) {
   if (!supabase) return source
   const { data: existing, error: readError } = await supabase
     .from('route_templates')
-    .select('id,name,color,route_template_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next)')
+    .select('id,name,color,route_template_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country)')
     .order('name')
   if (readError) throw readError
   if (existing.length) return (existing as TemplateRow[]).map(mapTemplate)
@@ -48,6 +65,13 @@ export async function loadOrSeedRouteTemplates(source: RouteTemplate[]) {
       meeting_point: stop.place,
       map_url: stop.mapUrl,
       minutes_to_next: stop.minutes || null,
+      stop_alias: stop.alias ?? '',
+      street: stop.street ?? '',
+      street_number: stop.streetNumber ?? '',
+      floor: stop.floor ?? '',
+      postal_code: stop.postalCode ?? '',
+      province: stop.province ?? '',
+      country: stop.country ?? 'España',
     }))
   })
   const { error: stopError } = await supabase.from('route_template_stops').insert(stops)
@@ -65,7 +89,7 @@ export async function loadTransporters() {
 export async function loadDailyRoutes() {
   if (!supabase) return []
   const [{ data: routes, error: routesError }, { data: actions, error: actionsError }] = await Promise.all([
-    supabase.from('daily_routes').select('id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_kind,dwell_minutes)').order('service_date'),
+    supabase.from('daily_routes').select('id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,stop_kind,dwell_minutes)').order('service_date'),
     supabase.from('transporter_route_actions').select('id,daily_route_id,daily_route_stop_id,letter_id,animal_id,action_type,status,dwell_minutes,customer_name,customer_phone,animal_breed,animal_species,box_number'),
   ])
   if (routesError) throw routesError
@@ -74,11 +98,7 @@ export async function loadDailyRoutes() {
   const savedActions = (actions ?? []) as RouteActionRow[]
   savedActions.forEach((action) => actionsByRoute.set(action.daily_route_id, [...(actionsByRoute.get(action.daily_route_id) ?? []), action]))
   return ((routes ?? []) as DailyRouteRow[]).map((route): DailyRoute => {
-    const stops = route.daily_route_stops.toSorted((a, b) => a.sequence - b.sequence).map((stop) => ({
-      id: stop.id, locality: stop.locality, place: stop.meeting_point,
-      mapUrl: stop.map_url ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.locality)}`,
-      minutes: stop.minutes_to_next ?? 0, kind: stop.stop_kind, dwellMinutes: stop.dwell_minutes,
-    }))
+    const stops = route.daily_route_stops.toSorted((a, b) => a.sequence - b.sequence).map((stop) => ({ ...mapStop(stop), kind: stop.stop_kind, dwellMinutes: stop.dwell_minutes }))
     return {
       id: route.id, templateId: route.route_template_id ?? '', date: route.service_date, status: route.status, transporterId: route.transporter_id ?? undefined, direction: route.route_direction, stops,
       actions: (actionsByRoute.get(route.id) ?? []).map((action) => ({
@@ -112,6 +132,13 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     meeting_point: stop.place,
     map_url: stop.mapUrl,
     minutes_to_next: stop.minutes || null,
+    stop_alias: stop.alias ?? '',
+    street: stop.street ?? '',
+    street_number: stop.streetNumber ?? '',
+    floor: stop.floor ?? '',
+    postal_code: stop.postalCode ?? '',
+    province: stop.province ?? '',
+    country: stop.country ?? 'España',
     stop_kind: stop.kind,
     dwell_minutes: stop.dwellMinutes,
   }))).select('id,locality,sequence')
@@ -167,10 +194,53 @@ export async function updateDailyRouteStops(routeId: string, stops: DailyRouteSt
   const updates = await Promise.all(stops.map((stop, index) => database.from('daily_route_stops').update({
     sequence: index + 1,
     dwell_minutes: stop.dwellMinutes,
+    minutes_to_next: stop.minutes || null,
+    locality: stop.locality,
+    meeting_point: stop.place,
+    map_url: stop.mapUrl,
+    stop_alias: stop.alias ?? '',
+    street: stop.street ?? '',
+    street_number: stop.streetNumber ?? '',
+    floor: stop.floor ?? '',
+    postal_code: stop.postalCode ?? '',
+    province: stop.province ?? '',
+    country: stop.country ?? 'España',
   }).eq('id', stop.id).eq('daily_route_id', routeId).select('id')))
   const failure = updates.find(({ error, data }) => error || !data?.length)
   if (failure?.error) throw failure.error
   if (failure) throw new Error('No se ha podido guardar una de las paradas de la ruta.')
+}
+
+export async function addDailyRouteStop(routeId: string, stop: DailyRouteStop, sequence: number) {
+  if (!supabase) return
+  const { error } = await supabase.from('daily_route_stops').insert({
+    id: stop.id,
+    daily_route_id: routeId,
+    sequence,
+    locality: stop.locality,
+    meeting_point: stop.place,
+    map_url: stop.mapUrl,
+    minutes_to_next: stop.minutes || null,
+    stop_alias: stop.alias ?? '',
+    street: stop.street ?? '',
+    street_number: stop.streetNumber ?? '',
+    floor: stop.floor ?? '',
+    postal_code: stop.postalCode ?? '',
+    province: stop.province ?? '',
+    country: stop.country ?? 'España',
+    stop_kind: stop.kind,
+    dwell_minutes: stop.dwellMinutes,
+  })
+  if (error) throw error
+}
+
+export async function deleteDailyRouteStop(routeId: string, stopId: string) {
+  if (!supabase) return
+  const { count, error: actionsError } = await supabase.from('route_actions').select('id', { count: 'exact', head: true }).eq('daily_route_id', routeId).eq('daily_route_stop_id', stopId)
+  if (actionsError) throw actionsError
+  if (count) throw new Error('No se puede eliminar una parada con servicios asociados.')
+  const { error } = await supabase.from('daily_route_stops').delete().eq('id', stopId).eq('daily_route_id', routeId)
+  if (error) throw error
 }
 
 export async function appendLetterToDailyRoute(route: DailyRoute, letter: Letter, actions: ServiceAction[]) {
