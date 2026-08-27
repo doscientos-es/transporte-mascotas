@@ -4,7 +4,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CheckCircle2, CreditCard, Download, Eye, FileText, ReceiptText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { PageIntro } from '../components/page-intro'
-import { downloadInvoice, previewInvoice } from '../lib/pdf'
+import { prepareInvoiceDocument } from '../lib/invoice-preview'
+import { previewInvoice } from '../lib/pdf'
+import { isSupabaseConfigured } from '../lib/supabase'
 import type { Client, ClientInvoice, Letter } from '../lib/types'
 
 const currency = (amount: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -32,24 +34,29 @@ export function InvoicesPage({ invoices, letters, clients, transportista, onSend
 
 function InvoicePreviewDialog({ invoice, letter, client, onClose }: { invoice: ClientInvoice; letter?: Letter; client?: Client; onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState('')
+  const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!letter) { setError('No se han encontrado los datos de la carta para generar esta factura.'); setLoading(false); return }
+    const letterForInvoice = letter
+    if (!letterForInvoice) { setError('No se han encontrado los datos de la carta para generar esta factura.'); setLoading(false); return }
+    const preparedLetter: Letter = letterForInvoice
     let objectUrl = ''
-    previewInvoice(letter, invoice.payer, invoice.total, invoice.payer === 'manual' && client ? client : undefined)
-      .then(({ url }) => { objectUrl = url.toString(); setPreviewUrl(objectUrl) })
-      .catch(() => setError('No se ha podido preparar la vista previa de la factura.'))
+    async function loadPreview() {
+      const serverPreview = await prepareInvoiceDocument(invoice.id)
+      if (serverPreview) return serverPreview
+      if (isSupabaseConfigured) throw new Error('No se ha podido recuperar la factura guardada.')
+      const generatedPreview = await previewInvoice(preparedLetter, invoice.payer, invoice.total, invoice.payer === 'manual' && client ? client : undefined)
+      return { url: generatedPreview.url.toString(), fileName: generatedPreview.fileName }
+    }
+    loadPreview()
+      .then(({ url, fileName: generatedFileName }) => { objectUrl = url; setPreviewUrl(objectUrl); setFileName(generatedFileName) })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'No se ha podido preparar la vista previa de la factura.'))
       .finally(() => setLoading(false))
     // The PDF preview is generated in memory, so release its temporary URL when the dialog closes.
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
-  }, [client, invoice.payer, invoice.total, letter])
+  }, [client, invoice.id, invoice.payer, invoice.total, letter])
 
-  async function download() {
-    if (!letter) return
-    await downloadInvoice(letter, invoice.payer, invoice.total, invoice.payer === 'manual' && client ? client : undefined)
-  }
-
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Vista previa de factura</DialogTitle><DialogDescription>{invoice.letterId}</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de ${invoice.letterId}`} />}{previewUrl && <Button className="dialog-submit" onClick={() => void download()}><Download /> Descargar factura</Button>}</DialogContent></Dialog>
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Vista previa de factura</DialogTitle><DialogDescription>{invoice.letterId}</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de ${invoice.letterId}`} />}{previewUrl && <a className="dialog-submit" href={previewUrl} download={fileName}><Download /> Descargar factura</a>}</DialogContent></Dialog>
 }

@@ -7,11 +7,18 @@ const shortDate = (value: string) => {
   const [year, month, day] = value.split('-')
   return year && month && day ? `${day}/${month}/${year}` : new Date().toLocaleDateString('es-ES')
 }
+const filePart = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
 
 async function imageAsDataUrl(source: string) {
   const response = await fetch(source)
+  if (!response.ok) throw new Error('No se ha podido cargar el logotipo de la factura.')
   const blob = await response.blob()
-  const image = await createImageBitmap(blob)
+  let image: ImageBitmap
+  try {
+    image = await createImageBitmap(blob)
+  } catch {
+    throw new Error('El navegador no ha podido preparar el logotipo de la factura.')
+  }
   const canvas = document.createElement('canvas')
   canvas.width = image.width; canvas.height = image.height
   const context = canvas.getContext('2d')
@@ -34,12 +41,13 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
     : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
   const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
   const date = shortDate(letter.serviceDate)
-  const logo = await imageAsDataUrl('/logo-light.svg')
+  // A raster asset avoids SVG decoding failures in browsers when producing the PDF in memory.
+  const logo = await imageAsDataUrl('/icon-512.png')
   const left = 18; const right = 192
 
   doc.setFont('helvetica', 'normal'); doc.setTextColor(18, 18, 18)
   doc.setFontSize(21); doc.text('Factura', left, 16)
-  doc.addImage(logo, 'PNG', 158, 18, 34, 27)
+  doc.addImage(logo, 'PNG', 164, 18, 28, 28)
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('EMISOR', left, 24)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
@@ -71,7 +79,7 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
   const cancellationNote = 'EN CASO DE ANULACIÓN DEL TRANSPORTE, NO SE PROCEDERÁ A LA DEVOLUCIÓN DE '
   doc.setFontSize(8); doc.text(cancellationNote, left, 195); doc.setFont('helvetica', 'bold'); doc.text('LA RESERVA', left + doc.getTextWidth(cancellationNote), 195)
   doc.setFont('helvetica', 'normal'); doc.setTextColor(83, 93, 109); doc.setFontSize(7); doc.text('1 / 1', right, 289, { align: 'right' })
-  return { doc, fileName: `factura-${number.replace('/', '-')}.pdf` }
+  return { doc, fileName: `factura_${filePart(customer ?? 'cliente')}_${filePart(letter.serviceDate)}.pdf` }
 }
 
 export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
