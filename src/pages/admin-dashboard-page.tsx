@@ -6,7 +6,7 @@ import { InvoiceDialog, LetterFormDialog, NewRouteDirectionDialog } from '../com
 import { useDashboard } from '../hooks/use-dashboard'
 import { useDashboardNavigation } from '../hooks/use-dashboard-navigation'
 import { clientSections } from '../lib/dashboard-navigation'
-import { downloadVanManifest } from '../lib/pdf'
+import { downloadVanManifest } from '../lib/van-manifest-pdf'
 import type { UserProfile } from '../lib/types'
 import { InvoicesPage } from './invoices-page'
 import { LettersPage } from './letters-page'

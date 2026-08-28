@@ -1,4 +1,5 @@
 import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
+import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import { json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 const paymentMethods = new Set(['Transferencia', 'Efectivo', 'Bizum', 'Tarjeta', 'Otro'])
@@ -9,18 +10,24 @@ Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
-    await requireAdmin(request)
+    const userId = await requireAdmin(request)
     const { invoiceId, paymentMethod } = await request.json() as { invoiceId?: string; paymentMethod?: string }
     if (!invoiceId || !/^[0-9a-f-]{36}$/i.test(invoiceId) || !paymentMethod || !paymentMethods.has(paymentMethod)) return json({ error: 'Datos de cobro no válidos.' }, 400)
     const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=id,status,total_amount,client_snapshot`)
     const [invoice] = await invoiceResponse.json() as Invoice[]
     if (!invoice) return json({ error: 'Solicitud de pago no encontrada.' }, 404)
-    if (invoice.status !== 'solicitud_pago') return json({ error: 'Esta solicitud ya está emitida o no admite cobros.' }, 409)
+    if (invoice.status === 'emitida') {
+      await persistIssuedInvoiceDocument(invoice.id, userId)
+      try { await dispatchBillingNotifications(invoice.id, 'factura_emitida') } catch (error) { console.error('Invoice notification deferred', error instanceof Error ? error.message : 'unknown error') }
+      return json({ alreadyIssued: true })
+    }
+    if (invoice.status !== 'solicitud_pago') return json({ error: 'Esta solicitud no admite cobros.' }, 409)
     validateFiscalClient(invoice.client_snapshot)
     const payment = await manualPayment(invoice)
     const paidAt = new Date().toISOString()
     const issuedResponse = await rest('rpc/confirm_invoice_payment', { method: 'POST', body: JSON.stringify({ p_payment_id: payment.id, p_paid_at: paidAt, p_gateway_response: { paymentMethod, registeredAt: paidAt }, p_issuer_snapshot: issuerSnapshot() }) })
     const issuedInvoiceId = await issuedResponse.json() as string
+    await persistIssuedInvoiceDocument(invoice.id, userId)
     try { await dispatchBillingNotifications(invoice.id, 'factura_emitida') } catch (error) { console.error('Invoice notification deferred', error instanceof Error ? error.message : 'unknown error') }
     return json({ issuedInvoiceId })
   } catch (error) {

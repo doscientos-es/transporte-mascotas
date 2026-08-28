@@ -3,7 +3,6 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmManualInvoicePayment, createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { calculateDrivingTimes, findBestStopInsertion } from '../lib/driving-times'
-import { prepareInvoiceDocument } from '../lib/invoice-preview'
 import { saveManualLetter, updateLetter } from '../lib/letters'
 import { addDailyRouteStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
@@ -432,7 +431,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
         const storedInvoice = stored.invoice
         if (storedInvoice) {
           setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
-          await prepareInvoiceDocument(storedInvoice.id)
           if (delivery?.channel !== 'manual') await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
           toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
           return

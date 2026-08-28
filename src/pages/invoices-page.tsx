@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Download, Eye, FileText, ReceiptText } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { PageIntro } from '../components/page-intro'
-import { downloadIssuedInvoice, previewIssuedInvoice } from '../lib/pdf'
+import { prepareInvoiceDocument } from '../lib/invoice-preview'
 import type { Client, ClientInvoice, ManualPaymentMethod } from '../lib/types'
 
 const PAGE_SIZE = 12
@@ -34,8 +34,8 @@ function InvoiceCard({ invoice, clientName, transportista, sending, onPreview, o
 
 function InvoicePreviewDialog({ invoice, onClose }: { invoice: NonNullable<ClientInvoice['issuedInvoice']>; onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState(''); const [loading, setLoading] = useState(true); const [error, setError] = useState('')
-  useEffect(() => { let objectUrl = ''; previewIssuedInvoice(invoice).then(({ url }) => { objectUrl = url.toString(); setPreviewUrl(objectUrl) }).catch(() => setError('No se ha podido preparar la vista previa de la factura.')).finally(() => setLoading(false)); return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) } }, [invoice])
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Factura {invoice.number}</DialogTitle><DialogDescription>Documento creado desde la instantánea fiscal emitida.</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de la factura ${invoice.number}`} />}{previewUrl && <Button className="dialog-submit" onClick={() => void downloadIssuedInvoice(invoice)}><Download /> Descargar factura</Button>}</DialogContent></Dialog>
+  useEffect(() => { prepareInvoiceDocument(invoice.invoiceDraftId).then((document) => setPreviewUrl(document?.url ?? '')).catch(() => setError('No se ha podido preparar la vista previa de la factura.')).finally(() => setLoading(false)) }, [invoice.invoiceDraftId])
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Factura {invoice.number}</DialogTitle><DialogDescription>Documento creado desde la instantánea fiscal emitida.</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de la factura ${invoice.number}`} />}{previewUrl && <Button className="dialog-submit" onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}><Download /> Descargar factura</Button>}</DialogContent></Dialog>
 }
 
 function ManualPaymentDialog({ invoice, onClose, onConfirm }: { invoice: ClientInvoice; onClose: () => void; onConfirm: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void> }) {

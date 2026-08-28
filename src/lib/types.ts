@@ -89,6 +89,7 @@ export interface InvoiceFiscalSnapshot {
 
 export interface IssuedInvoice {
   id: string
+  invoiceDraftId: string
   number: string
   issuedAt: string
   fiscalSnapshot: InvoiceFiscalSnapshot

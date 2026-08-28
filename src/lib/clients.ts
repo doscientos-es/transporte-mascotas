@@ -24,7 +24,7 @@ export async function loadClientInvoices() {
   return (data ?? []).map((row): ClientInvoice => ({
     id: row.id, letterId: row.letter_id, clientId: row.client_id, payer: row.payer,
     concept: row.concept, total: Number(row.total_amount), status: row.status === 'solicitud_pago' ? 'solicitud_pago' : 'emitida', createdAt: row.created_at,
-    clientName: snapshotClientName(row.client_snapshot), issuedInvoice: toIssuedInvoice(row.issued_invoices),
+    clientName: snapshotClientName(row.client_snapshot), issuedInvoice: toIssuedInvoice(row.issued_invoices, row.id),
   }))
 }
 
@@ -45,7 +45,7 @@ function snapshotClientName(snapshot: unknown) {
   return typeof fullName === 'string' ? fullName : ''
 }
 
-function toIssuedInvoice(value: unknown): IssuedInvoice | undefined {
+function toIssuedInvoice(value: unknown, invoiceDraftId: string): IssuedInvoice | undefined {
   const row = Array.isArray(value) ? value[0] : value
   if (!row || typeof row !== 'object') return undefined
   const invoice = row as Record<string, unknown>
@@ -53,7 +53,7 @@ function toIssuedInvoice(value: unknown): IssuedInvoice | undefined {
   const number = typeof (invoice.fiscal_snapshot as Record<string, unknown> | null)?.number === 'string'
     ? (invoice.fiscal_snapshot as Record<string, unknown>).number as string
     : `${invoice.series}-${invoice.fiscal_year}-${String(invoice.sequence_number).padStart(6, '0')}`
-  return { id: invoice.id, number, issuedAt: invoice.issued_at, fiscalSnapshot: (invoice.fiscal_snapshot ?? {}) as InvoiceFiscalSnapshot }
+  return { id: invoice.id, invoiceDraftId, number, issuedAt: invoice.issued_at, fiscalSnapshot: (invoice.fiscal_snapshot ?? {}) as InvoiceFiscalSnapshot }
 }
 
 export async function createClient(client: Omit<Client, 'id' | 'createdAt'>) {
