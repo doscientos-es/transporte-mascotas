@@ -1433,8 +1433,8 @@ main {
 
 .invoices-list {
   display: grid;
-  gap: 10px;
-  max-width: 760px;
+  gap: 12px;
+  max-width: 920px;
 }
 
 .invoice-filters {
@@ -1490,11 +1490,42 @@ main {
   font-size: 12px;
 }
 
-.invoice-card [data-slot="card-content"],
+.invoice-card {
+  border-color: #e2e2e2;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.invoice-card:hover {
+  border-color: #d8a1a6;
+  box-shadow: 0 10px 24px rgb(23 23 23 / 7%);
+  transform: translateY(-1px);
+}
+
+.invoice-card [data-slot="card-content"] {
+  display: grid;
+  gap: 14px;
+}
+
 .invoice-empty [data-slot="card-content"] {
   display: flex;
   align-items: center;
   gap: 13px;
+}
+
+.invoice-card-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+}
+
+.invoice-card-identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
 }
 
 .invoice-icon {
@@ -1507,13 +1538,12 @@ main {
   background: #e5f7dd;
 }
 
-.invoice-card [data-slot="card-content"]>div:nth-child(2) {
+.invoice-card-details {
   display: grid;
   gap: 3px;
-  flex: 1;
+  min-width: 0;
 }
 
-.invoice-card span,
 .invoice-card small,
 .invoice-empty p {
   color: #71806d;
@@ -1531,31 +1561,80 @@ main {
   font-size: 14px;
 }
 
+.invoice-card-details strong {
+  overflow-wrap: anywhere;
+}
+
+.invoice-type {
+  color: #7a7a7a;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.invoice-reference {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-card-financial {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
 .invoice-amount {
   display: grid;
   justify-items: end;
   gap: 3px;
 }
 
-.invoice-pay-button,
-.invoice-paid {
-  flex: 0 0 auto;
+.invoice-amount strong {
+  font-size: 16px;
+  line-height: 1;
 }
 
-.invoice-pending {
-  flex: 0 0 auto;
-  color: #9d1921 !important;
-  font-size: 12px;
-  font-weight: 700;
+.invoice-amount span {
+  color: #686868;
+  font-size: 11px;
 }
 
-.invoice-paid {
+.invoice-status {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #287244;
-  font-size: 12px;
+  min-height: 25px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
   font-weight: 700;
+}
+
+.invoice-pending {
+  background: #fff0f1;
+  color: #b51e27 !important;
+}
+
+.invoice-paid {
+  background: #f1f1f1;
+  color: #292929;
+}
+
+.invoice-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid #ededed;
+  padding-top: 13px;
+}
+
+.invoice-card-actions button {
+  white-space: nowrap;
 }
 
 .invoice-empty [data-slot="card-content"] {
@@ -1619,6 +1698,26 @@ main {
 @media (max-width: 850px) {
   .invoice-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .invoice-card-main {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .invoice-card-financial {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-items: start;
+  }
+
+  .invoice-card-actions {
+    justify-content: stretch;
+  }
+
+  .invoice-card-actions button {
+    flex: 1 1 145px;
   }
 
   .app-shell {
@@ -2126,7 +2225,7 @@ main {
 
 .client-history-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 18px
 }
 
