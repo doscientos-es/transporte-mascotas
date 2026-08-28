@@ -423,3 +423,6 @@ verify_jwt = false
 
 [functions.issued-invoice]
 verify_jwt = false
+
+[functions.confirm-manual-invoice-payment]
+verify_jwt = true

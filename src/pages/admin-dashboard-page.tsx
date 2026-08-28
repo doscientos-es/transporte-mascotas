@@ -30,7 +30,7 @@ export function AdminDashboardPage({ session, profile }: { session: Session | nu
   const activeRoute = routeFromUrl ?? selectedVisibleRoute ?? visibleRoutes[0]
   const editingRouteId = dashboard.editingLetter
     ? dashboard.dailyRoutes.find((route) => route.actions.some((action) => action.letterId === dashboard.editingLetter?.id))?.id
-      ?? dashboard.dailyRoutes.find((route) => route.date === dashboard.editingLetter?.serviceDate && dashboard.routeTemplates.find((template) => template.id === route.templateId)?.name === dashboard.editingLetter?.route)?.id
+    ?? dashboard.dailyRoutes.find((route) => route.date === dashboard.editingLetter?.serviceDate && dashboard.routeTemplates.find((template) => template.id === route.templateId)?.name === dashboard.editingLetter?.route)?.id
     : undefined
   const pendingLetters = isTransporter ? 0 : dashboard.letters.filter((letter) => letter.status === 'pendiente').length
   const routeLetterIds = new Set(visibleRoutes.flatMap((route) => route.actions.map((action) => action.letterId)))
@@ -60,7 +60,7 @@ export function AdminDashboardPage({ session, profile }: { session: Session | nu
       {section === 'rutas' && (activeRoute ? <RoutesPage route={activeRoute} template={dashboard.routeTemplates.find((template) => template.id === activeRoute.templateId) ?? dashboard.activeTemplate} templates={dashboard.routeTemplates} routes={visibleRoutes} letters={dashboard.letters} onSelect={(route) => { dashboard.setSelectedRoute(route); navigateToRoute(route.id) }} onAction={dashboard.updateActions} onUpdateStops={dashboard.updateRouteStops} onSuggestStop={dashboard.suggestRouteStop} onAddStop={dashboard.addRouteStop} onRemoveStop={dashboard.removeRouteStop} onUpdateService={dashboard.updateRouteService} onRemoveService={dashboard.removeRouteService} onCreate={() => dashboard.setShowNewRoute(true)} canManage={!isTransporter} /> : <EmptyRoute />)}
       {!isTransporter && section === 'furgoneta' && activeRoute && <VanPage route={activeRoute} assignments={dashboard.assignments} onPrint={() => downloadVanManifest(dashboard.assignments, dashboard.activeTemplate.name)} />}
       {!isTransporter && section === 'solicitudes' && <RequestsPage routes={visibleRoutes} onNotify={dashboard.toast} />}
-      {section === 'facturas' && <InvoicesPage invoices={visibleInvoices} letters={dashboard.letters} clients={dashboard.clients} transportista={isTransporter} onSend={dashboard.sendInvoiceNotification} />}
+      {section === 'facturas' && <InvoicesPage invoices={visibleInvoices} clients={dashboard.clients} transportista={isTransporter} onSend={dashboard.sendInvoiceNotification} onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment} />}
     </DashboardLayout>
     {!isTransporter && dashboard.showImport && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} onClose={() => dashboard.setShowImport(false)} onCreate={dashboard.createLetter} onAddStop={dashboard.addLetterRouteStop} />}
     {!isTransporter && dashboard.editingLetter && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} letter={dashboard.editingLetter} routeId={editingRouteId} onClose={() => dashboard.setEditingLetter(null)} onCreate={dashboard.editLetter} onAddStop={dashboard.addLetterRouteStop} />}

@@ -1,43 +1,55 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { CheckCircle2, CreditCard, Download, Eye, FileText, ReceiptText } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CheckCircle2, ChevronLeft, ChevronRight, CreditCard, Download, Eye, FileText, ReceiptText } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { PageIntro } from '../components/page-intro'
+<<<<<<< HEAD
 import { prepareInvoiceDocument } from '../lib/invoice-preview'
 import { previewInvoice } from '../lib/pdf'
 import { isSupabaseConfigured } from '../lib/supabase'
 import type { Client, ClientInvoice, Letter } from '../lib/types'
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+import { downloadInvoice, previewInvoice } from '../lib/pdf'
+import type { Client, ClientInvoice, Letter } from '../lib/types'
+=======
+import { downloadIssuedInvoice, previewIssuedInvoice } from '../lib/pdf'
+import type { Client, ClientInvoice, ManualPaymentMethod } from '../lib/types'
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
 
+const PAGE_SIZE = 12
 const currency = (amount: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
-export function InvoicesPage({ invoices, letters, clients, transportista, onSend }: { invoices: ClientInvoice[]; letters: Letter[]; clients: Client[]; transportista: boolean; onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void> }) {
-  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null)
-  const [previewing, setPreviewing] = useState<ClientInvoice | null>(null)
-  const description = transportista
-    ? 'Solicitudes y facturas vinculadas a los servicios de tu ruta asignada.'
-    : 'Solicitudes de pago y facturas emitidas para los servicios de transporte.'
-
-  async function send(invoice: ClientInvoice) {
-    setPayingInvoiceId(invoice.id)
-    try {
-      await onSend(invoice, invoice.status === 'emitida' ? 'factura_emitida' : 'solicitud_pago')
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'No se ha podido iniciar el pago.')
-    } finally {
-      setPayingInvoiceId(null)
-    }
-  }
-
-  return <><PageIntro text={description} /><div className="invoices-list">{invoices.length ? invoices.map((invoice) => <Card key={invoice.id} className="invoice-card"><CardContent><div className="invoice-icon"><ReceiptText size={19} /></div><div><span>{invoice.status === 'emitida' ? 'Factura emitida tras el pago' : 'Solicitud de pago pendiente'}</span><strong>{invoice.concept}</strong><small><FileText size={13} /> {invoice.letterId}</small></div><div className="invoice-amount"><strong>{currency(invoice.total)}</strong><span>{new Date(invoice.createdAt).toLocaleDateString('es-ES')}</span></div>{invoice.status === 'emitida' && <span className="invoice-paid"><CheckCircle2 size={15} /> Emitida</span>}<Button size="sm" variant="outline" className="invoice-preview-button" onClick={() => setPreviewing(invoice)}><Eye size={15} /> Ver factura</Button>{!transportista && <Button size="sm" className="invoice-pay-button" disabled={payingInvoiceId === invoice.id} onClick={() => void send(invoice)}><CreditCard size={15} /> {payingInvoiceId === invoice.id ? 'Enviando…' : invoice.status === 'emitida' ? 'Reenviar factura' : 'Reenviar solicitud'}</Button>}</CardContent></Card>) : <Card className="invoice-empty"><CardContent><ReceiptText size={22} /><div><h3>No hay facturas disponibles</h3><p>{transportista ? 'Las facturas de los servicios de tu ruta aparecerán aquí.' : 'Las solicitudes y facturas aparecerán aquí.'}</p></div></CardContent></Card>}</div>{previewing && <InvoicePreviewDialog invoice={previewing} letter={letters.find((letter) => letter.id === previewing.letterId)} client={clients.find((client) => client.id === previewing.clientId)} onClose={() => setPreviewing(null)} />}</>
+export function InvoicesPage({ invoices, clients, transportista, onSend, onConfirmManualPayment }: { invoices: ClientInvoice[]; clients: Client[]; transportista: boolean; onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void>; onConfirmManualPayment?: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void> }) {
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null); const [previewing, setPreviewing] = useState<ClientInvoice | null>(null); const [manualPayment, setManualPayment] = useState<ClientInvoice | null>(null); const [query, setQuery] = useState(''); const [status, setStatus] = useState<'todas' | ClientInvoice['status']>('todas'); const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [page, setPage] = useState(1)
+  const filteredInvoices = useMemo(() => { const term = query.trim().toLocaleLowerCase(); return invoices.filter((invoice) => { const clientName = invoice.clientName || clients.find((client) => client.id === invoice.clientId)?.fullName || ''; const date = invoice.issuedInvoice?.issuedAt ?? invoice.createdAt; return (status === 'todas' || invoice.status === status) && (!from || date.slice(0, 10) >= from) && (!to || date.slice(0, 10) <= to) && (!term || [invoice.issuedInvoice?.number, invoice.letterId, invoice.concept, clientName, invoice.status].join(' ').toLocaleLowerCase().includes(term)) }) }, [clients, from, invoices, query, status, to])
+  const pageCount = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE)); const currentPage = Math.min(page, pageCount); const visibleInvoices = filteredInvoices.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE); const resetPage = () => setPage(1)
+  async function send(invoice: ClientInvoice) { setSendingInvoiceId(invoice.id); try { await onSend(invoice, invoice.status === 'emitida' ? 'factura_emitida' : 'solicitud_pago') } catch (error) { window.alert(error instanceof Error ? error.message : 'No se ha podido enviar el documento.') } finally { setSendingInvoiceId(null) } }
+  return <><PageIntro text={transportista ? 'Consulta las solicitudes y facturas vinculadas a tus servicios asignados.' : 'Gestiona solicitudes de pago y facturas emitidas. Solo las facturas emitidas se pueden descargar.'} /><div className="invoice-filters" aria-label="Filtros de facturas"><label>Buscar<input value={query} onChange={(event) => { setQuery(event.target.value); resetPage() }} placeholder="Nº, cliente, carta o concepto" /></label><label>Estado<select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); resetPage() }}><option value="todas">Todos</option><option value="solicitud_pago">Solicitud de pago</option><option value="emitida">Emitida</option></select></label><label>Desde<input type="date" value={from} onChange={(event) => { setFrom(event.target.value); resetPage() }} /></label><label>Hasta<input type="date" value={to} onChange={(event) => { setTo(event.target.value); resetPage() }} /></label></div><div className="invoice-results" role="status"><span>{filteredInvoices.length} {filteredInvoices.length === 1 ? 'resultado' : 'resultados'}</span>{!transportista && <Button size="sm" variant="outline" onClick={() => downloadInvoiceRegister(filteredInvoices, clients)}><Download size={15} /> Exportar CSV</Button>}</div><div className="invoices-list">{visibleInvoices.length ? visibleInvoices.map((invoice) => <InvoiceCard key={invoice.id} invoice={invoice} clientName={invoice.clientName || clients.find((client) => client.id === invoice.clientId)?.fullName || 'Cliente'} transportista={transportista} sending={sendingInvoiceId === invoice.id} onPreview={() => setPreviewing(invoice)} onSend={() => void send(invoice)} onManualPayment={() => setManualPayment(invoice)} />) : <Card className="invoice-empty"><CardContent><ReceiptText size={22} /><div><h3>No hay facturas disponibles</h3><p>Prueba a cambiar los filtros o crea una solicitud de pago desde una carta de porte.</p></div></CardContent></Card>}</div>{filteredInvoices.length > PAGE_SIZE && <nav className="invoice-pagination" aria-label="Paginación de facturas"><Button size="sm" variant="outline" disabled={currentPage <= 1} onClick={() => setPage((current) => current - 1)}><ChevronLeft /> Anterior</Button><span>Página {currentPage} de {pageCount}</span><Button size="sm" variant="outline" disabled={currentPage >= pageCount} onClick={() => setPage((current) => current + 1)}>Siguiente <ChevronRight /></Button></nav>}{previewing?.issuedInvoice && <InvoicePreviewDialog invoice={previewing.issuedInvoice} onClose={() => setPreviewing(null)} />}{manualPayment && onConfirmManualPayment && <ManualPaymentDialog invoice={manualPayment} onClose={() => setManualPayment(null)} onConfirm={onConfirmManualPayment} />}</>
 }
 
+<<<<<<< HEAD
 function InvoicePreviewDialog({ invoice, letter, client, onClose }: { invoice: ClientInvoice; letter?: Letter; client?: Client; onClose: () => void }) {
   const [previewUrl, setPreviewUrl] = useState('')
   const [fileName, setFileName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+function InvoicePreviewDialog({ invoice, letter, client, onClose }: { invoice: ClientInvoice; letter?: Letter; client?: Client; onClose: () => void }) {
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+=======
+function downloadInvoiceRegister(invoices: ClientInvoice[], clients: Client[]) {
+  const cell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`
+  const header = ['Número', 'Estado', 'Fecha', 'Cliente', 'NIF/CIF', 'Carta de porte', 'Concepto', 'Base', 'IVA', 'Total']
+  const rows = invoices.map((invoice) => { const fiscal = invoice.issuedInvoice?.fiscalSnapshot; const client = fiscal?.client; return [invoice.issuedInvoice?.number ?? '', invoice.status, invoice.issuedInvoice?.issuedAt ?? invoice.createdAt, client?.fullName ?? invoice.clientName ?? clients.find((item) => item.id === invoice.clientId)?.fullName ?? '', client?.nif ?? '', invoice.letterId, fiscal?.concept ?? invoice.concept, fiscal?.net_amount ?? '', fiscal?.vat_amount ?? '', invoice.total] })
+  const url = URL.createObjectURL(new Blob([[header, ...rows].map((row) => row.map(cell).join(';')).join('\n')], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = `registro-facturacion-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url)
+}
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
 
+<<<<<<< HEAD
   useEffect(() => {
     const letterForInvoice = letter
     if (!letterForInvoice) { setError('No se han encontrado los datos de la carta para generar esta factura.'); setLoading(false); return }
@@ -57,6 +69,44 @@ function InvoicePreviewDialog({ invoice, letter, client, onClose }: { invoice: C
     // The PDF preview is generated in memory, so release its temporary URL when the dialog closes.
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [client, invoice.id, invoice.payer, invoice.total, letter])
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+  useEffect(() => {
+    if (!letter) { setError('No se han encontrado los datos de la carta para generar esta factura.'); setLoading(false); return }
+    let objectUrl = ''
+    previewInvoice(letter, invoice.payer, invoice.total, invoice.payer === 'manual' && client ? client : undefined)
+      .then(({ url }) => { objectUrl = url.toString(); setPreviewUrl(objectUrl) })
+      .catch(() => setError('No se ha podido preparar la vista previa de la factura.'))
+      .finally(() => setLoading(false))
+    // The PDF preview is generated in memory, so release its temporary URL when the dialog closes.
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [client, invoice.payer, invoice.total, letter])
+=======
+function InvoiceCard({ invoice, clientName, transportista, sending, onPreview, onSend, onManualPayment }: { invoice: ClientInvoice; clientName: string; transportista: boolean; sending: boolean; onPreview: () => void; onSend: () => void; onManualPayment: () => void }) {
+  const issued = invoice.status === 'emitida' ? invoice.issuedInvoice : undefined
+  const isIssued = invoice.status === 'emitida'
+  return <Card className="invoice-card"><CardContent><div className="invoice-icon"><ReceiptText size={19} /></div><div><span>{isIssued ? 'Factura emitida' : 'Solicitud de pago pendiente'}</span><strong>{issued?.number ?? invoice.concept}</strong><small><FileText size={13} /> {clientName} · {invoice.letterId}</small></div><div className="invoice-amount"><strong>{currency(invoice.total)}</strong><span>{new Date(issued?.issuedAt ?? invoice.createdAt).toLocaleDateString('es-ES')}</span></div>{isIssued ? <span className="invoice-paid"><CheckCircle2 size={15} /> Emitida</span> : <span className="invoice-pending">Pendiente de cobro</span>}{issued && <Button size="sm" variant="outline" className="invoice-preview-button" onClick={onPreview}><Eye size={15} /> Ver factura</Button>}{!transportista && !isIssued && <Button size="sm" variant="outline" disabled={sending} onClick={onManualPayment}><CheckCircle2 size={15} /> Registrar cobro</Button>}{!transportista && <Button size="sm" className="invoice-pay-button" disabled={sending} onClick={onSend}><CreditCard size={15} /> {sending ? 'Enviando…' : isIssued ? 'Reenviar factura' : 'Reenviar solicitud'}</Button>}</CardContent></Card>
+}
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
 
+<<<<<<< HEAD
   return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Vista previa de factura</DialogTitle><DialogDescription>{invoice.letterId}</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de ${invoice.letterId}`} />}{previewUrl && <a className="dialog-submit" href={previewUrl} download={fileName}><Download /> Descargar factura</a>}</DialogContent></Dialog>
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+  async function download() {
+    if (!letter) return
+    await downloadInvoice(letter, invoice.payer, invoice.total, invoice.payer === 'manual' && client ? client : undefined)
+  }
+
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Vista previa de factura</DialogTitle><DialogDescription>{invoice.letterId}</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de ${invoice.letterId}`} />}{previewUrl && <Button className="dialog-submit" onClick={() => void download()}><Download /> Descargar factura</Button>}</DialogContent></Dialog>
+=======
+function InvoicePreviewDialog({ invoice, onClose }: { invoice: NonNullable<ClientInvoice['issuedInvoice']>; onClose: () => void }) {
+  const [previewUrl, setPreviewUrl] = useState(''); const [loading, setLoading] = useState(true); const [error, setError] = useState('')
+  useEffect(() => { let objectUrl = ''; previewIssuedInvoice(invoice).then(({ url }) => { objectUrl = url.toString(); setPreviewUrl(objectUrl) }).catch(() => setError('No se ha podido preparar la vista previa de la factura.')).finally(() => setLoading(false)); return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) } }, [invoice])
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>Factura {invoice.number}</DialogTitle><DialogDescription>Documento creado desde la instantánea fiscal emitida.</DialogDescription></DialogHeader>{loading && <p className="page-loading">Preparando factura…</p>}{error && <p className="form-error" role="alert">{error}</p>}{previewUrl && <iframe className="invoice-preview" src={previewUrl} title={`Vista previa de la factura ${invoice.number}`} />}{previewUrl && <Button className="dialog-submit" onClick={() => void downloadIssuedInvoice(invoice)}><Download /> Descargar factura</Button>}</DialogContent></Dialog>
+}
+
+function ManualPaymentDialog({ invoice, onClose, onConfirm }: { invoice: ClientInvoice; onClose: () => void; onConfirm: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void> }) {
+  const [method, setMethod] = useState<ManualPaymentMethod>('Transferencia'); const [saving, setSaving] = useState(false); const [error, setError] = useState('')
+  async function confirm() { setSaving(true); setError(''); try { await onConfirm(invoice, method); onClose() } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido registrar el cobro.') } finally { setSaving(false) } }
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card"><DialogHeader className="gap-0"><DialogTitle>Registrar cobro manual</DialogTitle><DialogDescription>Se emitirá y numerará la factura {invoice.letterId}. Esta acción no se puede deshacer.</DialogDescription></DialogHeader><label className="date-field">Método de cobro<select value={method} onChange={(event) => setMethod(event.target.value as ManualPaymentMethod)}><option>Transferencia</option><option>Efectivo</option><option>Bizum</option><option>Tarjeta</option><option>Otro</option></select></label>{error && <p className="form-error" role="alert">{error}</p>}<Button className="dialog-submit" disabled={saving} onClick={() => void confirm()}><CheckCircle2 /> {saving ? 'Emitiendo…' : 'Confirmar cobro y emitir'}</Button></DialogContent></Dialog>
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
 }

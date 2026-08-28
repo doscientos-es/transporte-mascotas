@@ -1,13 +1,13 @@
 import type { Session } from '@supabase/supabase-js'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
+import { confirmManualInvoicePayment, createClient, deleteClient, loadClientInvoices, loadClients, loadTransporterInvoices, persistInvoice, updateClient } from '../lib/clients'
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { calculateDrivingTimes, findBestStopInsertion } from '../lib/driving-times'
 import { prepareInvoiceDocument } from '../lib/invoice-preview'
 import { saveManualLetter, updateLetter } from '../lib/letters'
 import { addDailyRouteStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
-import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
+import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, ManualPaymentMethod, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
 
 const routeNamesByDemoId: Record<string, string> = {
@@ -415,23 +415,16 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function generateInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput, delivery?: PaymentDelivery) {
-    const clientInput = payer === 'manual'
-      ? manualClient
-      : { fullName: payer === 'remitente' ? letter.sender : letter.recipient, phone: payer === 'remitente' ? letter.senderPhone : letter.recipientPhone, nif: '', email: '', address: '', city: '', postalCode: '' }
-    if (!clientInput?.fullName.trim()) throw new Error('Falta el titular de la factura.')
+  async function generateInvoice(letter: Letter, payer: InvoicePayer, total: number, clientInput: InvoiceClientInput, delivery?: PaymentDelivery) {
+    if (!clientInput.fullName.trim()) throw new Error('Falta el titular de la factura.')
     const fullName = clientInput.fullName.trim()
     let client = clients.find((item) => item.fullName.trim().toLocaleLowerCase() === fullName.toLocaleLowerCase())
     if (!client) {
       client = { id: crypto.randomUUID(), ...clientInput, fullName, createdAt: new Date().toISOString() }
-      setClients((current) => [...current, client!].sort((a, b) => a.fullName.localeCompare(b.fullName)))
-    } else if (payer === 'manual') {
+    } else {
       client = { ...client, ...clientInput, fullName }
-      setClients((current) => current.map((item) => item.id === client!.id ? client! : item))
     }
     const duplicate = invoices.some((invoice) => invoice.letterId === letter.id)
-    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'solicitud_pago', createdAt: new Date().toISOString() }, ...current])
-    let alreadyStored = false
     if (session) {
       const stored = await persistInvoice(letter, payer, total, session.user.id, clientInput, delivery)
       if (stored) {
@@ -441,13 +434,24 @@ export function useDashboard(session: Session | null, role: AppRole) {
           setInvoices((current) => [storedInvoice, ...current.filter((item) => item.letterId !== letter.id)])
           await prepareInvoiceDocument(storedInvoice.id)
           if (delivery?.channel !== 'manual') await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
-        } else alreadyStored = true
+          toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
+          return
+        }
+        toast('La solicitud ya estaba guardada para esta carta de porte.')
+        return
       }
     }
-    if (alreadyStored) toast('La solicitud ya estaba guardada para esta carta de porte.')
-    else if (duplicate) toast('La factura ya existe en el historial del cliente.')
-    else if (delivery?.channel === 'manual') toast('Factura generada. El envío se gestionará manualmente.')
-    else toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
+    setClients((current) => [...current.filter((item) => item.id !== client.id), client!].sort((a, b) => a.fullName.localeCompare(b.fullName)))
+    if (!duplicate) setInvoices((current) => [{ id: crypto.randomUUID(), letterId: letter.id, clientId: client.id, payer, concept: 'Servicio de transporte de mascota', total, status: 'solicitud_pago', createdAt: new Date().toISOString(), clientName: client.fullName }, ...current])
+    toast(duplicate ? 'La solicitud ya existe en el historial del cliente.' : 'Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
+  }
+
+  async function confirmManualPayment(invoice: ClientInvoice, paymentMethod: ManualPaymentMethod) {
+    if (!session) throw new Error('Inicia sesión para registrar un cobro.')
+    await confirmManualInvoicePayment(invoice.id, paymentMethod)
+    const storedInvoices = await loadClientInvoices()
+    setInvoices(storedInvoices)
+    toast('Cobro registrado y factura emitida.')
   }
 
   async function sendInvoiceNotification(invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida' = 'solicitud_pago', notify = true) {
@@ -463,7 +467,15 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
+<<<<<<< HEAD
     setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    removeClient, generateInvoice, sendInvoiceNotification,
+=======
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    removeClient, generateInvoice, confirmManualPayment, sendInvoiceNotification,
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
   }
 }

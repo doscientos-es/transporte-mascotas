@@ -71,6 +71,29 @@ export interface PaymentDelivery {
   phone: string
 }
 
+export type ManualPaymentMethod = 'Transferencia' | 'Efectivo' | 'Bizum' | 'Tarjeta' | 'Otro'
+
+export interface InvoiceFiscalSnapshot {
+  number?: string
+  issuer?: { name?: string; taxId?: string; address?: string }
+  client?: { fullName?: string; nif?: string; address?: string; city?: string; postalCode?: string; email?: string; phone?: string }
+  concept?: string
+  net_amount?: number
+  vat_rate?: number
+  vat_amount?: number
+  total_amount?: number
+  payment_method?: string
+  payment_date?: string
+  operation_date?: string
+}
+
+export interface IssuedInvoice {
+  id: string
+  number: string
+  issuedAt: string
+  fiscalSnapshot: InvoiceFiscalSnapshot
+}
+
 export interface ClientInvoice {
   id: string
   letterId: string
@@ -80,6 +103,8 @@ export interface ClientInvoice {
   total: number
   status: 'solicitud_pago' | 'emitida'
   createdAt: string
+  clientName: string
+  issuedInvoice?: IssuedInvoice
 }
 
 export interface RouteStop {

@@ -1,4 +1,4 @@
-import type { InvoiceClientInput, InvoicePayer, Letter } from './types'
+import type { IssuedInvoice } from './types'
 import { boxGridSpan, vanLanes } from './van'
 
 const invoiceRed = [248, 66, 69] as const
@@ -29,9 +29,14 @@ async function imageAsDataUrl(source: string) {
   return canvas.toDataURL('image/png')
 }
 
-async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
+async function createIssuedInvoiceDocument(invoice: IssuedInvoice) {
   const { jsPDF } = await import('jspdf')
+  const snapshot = invoice.fiscalSnapshot
+  const issuer = snapshot.issuer
+  const client = snapshot.client
+  if (!issuer?.name || !issuer.taxId || !issuer.address || !client?.fullName || !client.nif || !client.address || !client.postalCode || !client.city || !snapshot.concept || !Number.isFinite(snapshot.net_amount) || !Number.isFinite(snapshot.vat_amount) || !Number.isFinite(snapshot.total_amount)) throw new Error('La instantánea fiscal de esta factura está incompleta.')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+<<<<<<< HEAD
   const base = total / 1.21
   const tax = total - base
   const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
@@ -43,6 +48,27 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
   const date = shortDate(letter.serviceDate)
   // A raster asset avoids SVG decoding failures in browsers when producing the PDF in memory.
   const logo = await imageAsDataUrl('/icon-512.png')
+||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
+  const base = total / 1.21
+  const tax = total - base
+  const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
+  const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+  const clientLines = (payer === 'manual'
+    ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
+    : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
+  const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
+  const date = shortDate(letter.serviceDate)
+  const logo = await imageAsDataUrl('/logo-light.svg')
+=======
+  const clientLines = [client.fullName, `NIF/CIF: ${client.nif}`, client.address, `${client.postalCode} ${client.city}`, client.email, client.phone && `Tel.: ${client.phone}`].filter(Boolean) as string[]
+  const number = invoice.number
+  const issuedDate = new Date(invoice.issuedAt).toLocaleDateString('es-ES')
+  const operationDate = snapshot.operation_date ? shortDate(snapshot.operation_date) : issuedDate
+  const base = Number(snapshot.net_amount)
+  const tax = Number(snapshot.vat_amount)
+  const total = Number(snapshot.total_amount)
+  const logo = await imageAsDataUrl('/logo-light.svg')
+>>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
   const left = 18; const right = 192
 
   doc.setFont('helvetica', 'normal'); doc.setTextColor(18, 18, 18)
@@ -51,7 +77,7 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
 
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('EMISOR', left, 24)
   doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
-  doc.text(['Kache Envíos', 'NIF: 80156982G', 'Ctra. Pedroche s/n km 1,5', '14400 Pozoblanco', 'Córdoba (España)', 'transportedemascotas@kacheenvios.com', 'https://kacheenvios.com'], left, 29, { lineHeightFactor: 1.36 })
+  doc.text([issuer.name, `NIF/CIF: ${issuer.taxId}`, issuer.address], left, 29, { lineHeightFactor: 1.36 })
 
   doc.setFont('helvetica', 'bold'); doc.setTextColor(...invoiceRed); doc.setFontSize(8)
   doc.text('CLIENTE', left, 62); doc.text('NÚMERO', 166, 62, { align: 'center' })
@@ -61,34 +87,33 @@ async function createInvoiceDocument(letter: Letter, payer: InvoicePayer, total:
   doc.text(number, 166, 72, { align: 'center' })
   doc.setFont('helvetica', 'bold'); doc.setTextColor(...invoiceRed); doc.setFontSize(8); doc.text('FECHA', 166, 81, { align: 'center' })
   doc.setDrawColor(225, 227, 230); doc.line(124, 84, right, 84)
-  doc.setTextColor(18, 18, 18); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(date, 166, 90, { align: 'center' })
+  doc.setTextColor(18, 18, 18); doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(issuedDate, 166, 90, { align: 'center' })
 
   doc.setFillColor(...invoiceRed); doc.rect(left, 100, 174, 7, 'F')
   doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(8)
   doc.text('CONCEPTO', 19, 104.7); doc.text('CANT.', 137, 104.7, { align: 'center' }); doc.text('PRECIO', 156, 104.7, { align: 'center' }); doc.text('IVA', 171, 104.7, { align: 'center' }); doc.text('BASE', 187, 104.7, { align: 'center' })
-  doc.setTextColor(18, 18, 18); doc.setFontSize(8); doc.text('Servicio de transporte de mascota', 19, 112)
-  doc.setFont('helvetica', 'normal'); doc.text('1', 137, 112, { align: 'center' }); doc.text(money(base), 156, 112, { align: 'center' }); doc.text('21 %', 171, 112, { align: 'center' }); doc.text(money(base), 192, 112, { align: 'right' })
+  doc.setTextColor(18, 18, 18); doc.setFontSize(8); doc.text(snapshot.concept, 19, 112, { maxWidth: 112 })
+  doc.setFont('helvetica', 'normal'); doc.text('1', 137, 112, { align: 'center' }); doc.text(money(base), 156, 112, { align: 'center' }); doc.text(`${snapshot.vat_rate ?? 0} %`, 171, 112, { align: 'center' }); doc.text(money(base), 192, 112, { align: 'right' })
   doc.setDrawColor(239, 240, 241); doc.setLineWidth(.25); doc.line(left, 116, right, 116)
   doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.text('BASE IMPONIBLE', 143, 126); doc.text(money(base), right, 126, { align: 'right' }); doc.text('IVA general (21 %)', 143, 132); doc.text(money(tax), right, 132, { align: 'right' })
   doc.setFontSize(13); doc.text('Total', 143, 142); doc.setFontSize(15); doc.text(money(total), right, 142, { align: 'right' })
 
-  doc.setFontSize(9); doc.text('COBROS / VENCIMIENTOS', left, 160)
-  doc.setFontSize(8); doc.text('FECHA', 19, 169); doc.text('IMPORTE', 50, 169); doc.text('MÉTODO DE PAGO', 91, 169); doc.text('CUENTA DESTINO', 143, 169)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(date, 19, 177); doc.text(money(total), 50, 177); doc.text('Transferencia', 91, 177); doc.text('ES19 2100 2093 9702 0016 6247', 143, 177)
+  doc.setFontSize(9); doc.text('OPERACIÓN Y COBRO', left, 160)
+  doc.setFontSize(8); doc.text('FECHA OPERACIÓN', 19, 169); doc.text('IMPORTE', 63, 169); doc.text('MÉTODO DE PAGO', 102, 169)
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.text(operationDate, 19, 177); doc.text(money(total), 63, 177); doc.text(snapshot.payment_method ?? 'Pago confirmado', 102, 177)
   doc.setDrawColor(230, 231, 232); doc.line(left, 180, right, 180)
-  const cancellationNote = 'EN CASO DE ANULACIÓN DEL TRANSPORTE, NO SE PROCEDERÁ A LA DEVOLUCIÓN DE '
-  doc.setFontSize(8); doc.text(cancellationNote, left, 195); doc.setFont('helvetica', 'bold'); doc.text('LA RESERVA', left + doc.getTextWidth(cancellationNote), 195)
+  doc.setFontSize(7); doc.text('Factura emitida desde una instantánea fiscal inmutable.', left, 195)
   doc.setFont('helvetica', 'normal'); doc.setTextColor(83, 93, 109); doc.setFontSize(7); doc.text('1 / 1', right, 289, { align: 'right' })
   return { doc, fileName: `factura_${filePart(customer ?? 'cliente')}_${filePart(letter.serviceDate)}.pdf` }
 }
 
-export async function downloadInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
-  const { doc, fileName } = await createInvoiceDocument(letter, payer, total, manualClient)
+export async function downloadIssuedInvoice(invoice: IssuedInvoice) {
+  const { doc, fileName } = await createIssuedInvoiceDocument(invoice)
   doc.save(fileName)
 }
 
-export async function previewInvoice(letter: Letter, payer: InvoicePayer, total: number, manualClient?: InvoiceClientInput) {
-  const { doc, fileName } = await createInvoiceDocument(letter, payer, total, manualClient)
+export async function previewIssuedInvoice(invoice: IssuedInvoice) {
+  const { doc, fileName } = await createIssuedInvoiceDocument(invoice)
   return { url: doc.output('bloburl'), fileName }
 }
 

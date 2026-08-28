@@ -1,6 +1,6 @@
 import { json, requireAdmin, rest } from '../_shared/supabase.ts';
 
-type Invoice = { id: string; total_amount: string; status: string }
+type Invoice = { id: string; total_amount: string; status: string; client_snapshot: Record<string, unknown> }
 type Payment = { public_token: string; status: string; expires_at: string }
 
 Deno.serve(async (request) => {
@@ -11,10 +11,12 @@ Deno.serve(async (request) => {
     if (!isCyberpacConfigured()) return json({ error: 'Bizum para comercios de CaixaBank todavía no está configurado.' })
     const { invoiceId } = await request.json() as { invoiceId?: string }
     if (!invoiceId || !/^[0-9a-f-]{36}$/i.test(invoiceId)) return json({ error: 'Factura no válida.' }, 400)
-    const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=id,total_amount,status`)
+    const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=id,total_amount,status,client_snapshot`)
     const [invoice] = await invoiceResponse.json() as Invoice[]
     if (!invoice) return json({ error: 'Factura no encontrada.' }, 404)
     if (invoice.status !== 'solicitud_pago') return json({ error: 'Esta solicitud ya no admite pagos.' }, 409)
+    validateFiscalClient(invoice.client_snapshot)
+    validateIssuer()
 
     const existingResponse = await rest(`invoice_payments?invoice_id=eq.${encodeURIComponent(invoice.id)}&status=eq.pendiente&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=public_token,status,expires_at&order=created_at.desc&limit=1`)
     const [existing] = await existingResponse.json() as Payment[]
@@ -34,6 +36,15 @@ function isCyberpacConfigured() {
     && Deno.env.get('CAIXABANK_CYBERPAC_ENDPOINT')
     && Deno.env.get('PUBLIC_APP_URL'),
   )
+}
+
+function validateFiscalClient(client: Record<string, unknown>) {
+  const required = ['fullName', 'nif', 'address', 'postalCode', 'city']
+  if (required.some((field) => typeof client[field] !== 'string' || !client[field].trim())) throw new Error('Completa los datos fiscales antes de solicitar el cobro.')
+}
+
+function validateIssuer() {
+  if (!Deno.env.get('INVOICE_ISSUER_NAME') || !Deno.env.get('INVOICE_ISSUER_TAX_ID') || !Deno.env.get('INVOICE_ISSUER_ADDRESS')) throw new Error('Faltan los datos fiscales del emisor.')
 }
 
 async function createPayment(invoice: Invoice) {

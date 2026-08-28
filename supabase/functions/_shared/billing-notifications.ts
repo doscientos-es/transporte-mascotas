@@ -1,6 +1,7 @@
 import { rest } from './supabase.ts'
 
 type Payment = { public_token: string }
+type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
 type Notification = { id: string; channel: 'email' | 'whatsapp'; recipient: string; kind: 'solicitud_pago' | 'factura_emitida'; issued_invoice_id: string | null }
 type IssuedInvoice = { series: string; fiscal_year: number; sequence_number: number; public_token: string; document_expires_at: string }
 
@@ -38,9 +39,11 @@ export async function dispatchBillingNotifications(invoiceId: string, kind: Noti
 }
 
 async function createPayment(invoiceId: string) {
-  const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&status=eq.solicitud_pago&select=id,total_amount`)
-  const [invoice] = await invoiceResponse.json() as Array<{ id: string; total_amount: string }>
+  const invoiceResponse = await rest(`invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&status=eq.solicitud_pago&select=id,total_amount,client_snapshot`)
+  const [invoice] = await invoiceResponse.json() as PaymentInvoice[]
   if (!invoice) throw new Error('La solicitud de pago ya no está disponible.')
+  validateFiscalClient(invoice.client_snapshot)
+  validateIssuer()
   const amountCents = Math.round(Number(invoice.total_amount) * 100)
   if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw new Error('El importe de la solicitud no es válido.')
   const response = await rest('invoice_payments', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ invoice_id: invoice.id, merchant_order: `B${crypto.randomUUID().replaceAll('-', '').slice(0, 11)}`, amount_cents: amountCents }) })
@@ -49,11 +52,21 @@ async function createPayment(invoiceId: string) {
   return payment
 }
 
+function validateFiscalClient(client: Record<string, unknown>) {
+  const required = ['fullName', 'nif', 'address', 'postalCode', 'city']
+  if (required.some((field) => typeof client[field] !== 'string' || !client[field].trim())) throw new Error('Completa los datos fiscales antes de solicitar el cobro.')
+}
+
+function validateIssuer() {
+  if (!Deno.env.get('INVOICE_ISSUER_NAME') || !Deno.env.get('INVOICE_ISSUER_TAX_ID') || !Deno.env.get('INVOICE_ISSUER_ADDRESS')) throw new Error('Faltan los datos fiscales del emisor.')
+}
+
 async function invoiceUrl(issuedInvoiceId: string | null) {
   if (!issuedInvoiceId) return null
-  const response = await rest(`issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}&select=public_token,document_expires_at`)
+  const response = await rest(`issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}&select=public_token`)
   const [invoice] = await response.json() as Pick<IssuedInvoice, 'public_token' | 'document_expires_at'>[]
-  if (!invoice || new Date(invoice.document_expires_at) <= new Date()) return null
+  if (!invoice) return null
+  await rest(`issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}`, { method: 'PATCH', body: JSON.stringify({ document_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }) })
   const url = Deno.env.get('SUPABASE_URL')
   if (!url) throw new Error('Falta SUPABASE_URL.')
   return `${url}/functions/v1/issued-invoice?token=${encodeURIComponent(invoice.public_token)}`
