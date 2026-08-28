@@ -1,4 +1,4 @@
-import { fetchInvoiceDocument, findInvoiceDocument, persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import { fetchInvoiceDocument, findCanonicalInvoiceDocument, persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import { corsHeaders, json, requireAdmin } from '../_shared/supabase.ts'
 
 const encoder = new TextEncoder()
@@ -44,10 +44,11 @@ Deno.serve(async (request) => {
     const token = url.searchParams.get('token')
     if (!token) return json({ error: 'Falta el enlace de factura.' }, 400)
     const invoiceId = await verifyToken(token)
-    const document = await findInvoiceDocument(invoiceId)
+    const document = await findCanonicalInvoiceDocument(invoiceId)
     if (!document) return json({ error: 'La factura todavía no se ha generado.' }, 404)
     const storedFile = await fetchInvoiceDocument(document)
-    return new Response(storedFile.body, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${document.file_name}"; filename*=UTF-8''${encodeURIComponent(document.file_name)}`, 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' } })
+    const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline'
+    return new Response(storedFile.body, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `${disposition}; filename="${document.file_name}"; filename*=UTF-8''${encodeURIComponent(document.file_name)}`, 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' } })
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : 'No se ha podido generar la factura.' }, 500)
   }

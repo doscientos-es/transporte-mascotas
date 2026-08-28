@@ -20,7 +20,7 @@
 ## Antes de producción
 
 1. Aplicar las migraciones `20260828110000_invoice_integrity_and_access.sql` y `20260828120000_canonical_invoice_documents.sql` en un entorno de prueba.
-2. Desplegar la función `confirm-manual-invoice-payment` junto con las funciones de pago existentes.
+2. Desplegar `invoice-pdf`, `issued-invoice`, `confirm-manual-invoice-payment` y el webhook de Cyberpac junto con el nuevo módulo compartido `invoice-document`.
 3. Configurar los datos fiscales del emisor y probar: pago Cyberpac correcto, pago rechazado, cobro manual, reenvío y segundo intento del mismo cobro.
 4. Confirmar con la asesoría el momento de devengo del servicio y de los anticipos. El flujo actual presupone que el cobro confirmado es el hito de emisión; si se factura después de prestar el servicio sin anticipo, debe añadirse una emisión independiente antes del límite legal aplicable.
 

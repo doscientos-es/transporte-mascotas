@@ -42,6 +42,12 @@ async function issuedInvoice(invoiceDraftId: string): Promise<IssuedInvoice> {
   return invoice
 }
 
+export async function findCanonicalInvoiceDocument(invoiceDraftId: string): Promise<StoredInvoiceDocument | null> {
+  const invoice = await issuedInvoice(invoiceDraftId)
+  const document = await findInvoiceDocument(invoiceDraftId)
+  return document?.issued_invoice_id === invoice.id ? document : null
+}
+
 async function renderInvoice(invoice: IssuedInvoice) {
   const snapshot = invoice.fiscal_snapshot
   const issuer = snapshot.issuer ?? {}
