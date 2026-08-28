@@ -3,6 +3,10 @@ import type { DailyRouteStop } from './types'
 type PhotonFeature = { geometry?: { coordinates?: [number, number] }; properties?: { street?: string; name?: string; postcode?: string } }
 type OsrmRoute = { legs?: Array<{ duration?: number }> }
 type OsrmTable = { code?: string; durations?: Array<Array<number | null>> }
+type Coordinates = [number, number]
+
+const maxCoordinateCacheEntries = 200
+const coordinatesByAddress = new Map<string, Promise<Coordinates>>()
 
 function addressFor(stop: DailyRouteStop) {
   return [
@@ -18,7 +22,11 @@ function normalized(value: string | undefined) {
   return (value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase().replace(/\b(calle|carrer|avenida|avda|av)\b/g, '').replace(/[^a-z0-9]/g, '')
 }
 
-async function coordinatesFor(stop: DailyRouteStop) {
+function coordinateCacheKey(stop: DailyRouteStop) {
+  return addressFor(stop).toLocaleLowerCase()
+}
+
+async function resolveCoordinates(stop: DailyRouteStop) {
   const street = [stop.street, stop.streetNumber].filter(Boolean).join(' ')
   const queries = [
     addressFor(stop),
@@ -44,8 +52,25 @@ async function coordinatesFor(stop: DailyRouteStop) {
   throw new Error(`No se ha podido localizar ${stop.locality}.`)
 }
 
+function coordinatesFor(stop: DailyRouteStop) {
+  const key = coordinateCacheKey(stop)
+  const cached = coordinatesByAddress.get(key)
+  if (cached) return cached
+
+  const request = resolveCoordinates(stop).catch((error: unknown) => {
+    coordinatesByAddress.delete(key)
+    throw error
+  })
+  coordinatesByAddress.set(key, request)
+  if (coordinatesByAddress.size > maxCoordinateCacheEntries) {
+    const oldestKey = coordinatesByAddress.keys().next().value
+    if (oldestKey) coordinatesByAddress.delete(oldestKey)
+  }
+  return request
+}
+
 async function coordinatesForStops(stops: DailyRouteStop[]) {
-  const coordinates: Array<[number, number]> = []
+  const coordinates: Coordinates[] = []
   // Requests are deliberately sequential to respect the public geocoding service.
   for (const stop of stops) coordinates.push(await coordinatesFor(stop))
   return coordinates

@@ -199,14 +199,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const existingIds = new Set(stopsForRoute(route, routeTemplates).map((stop) => stop.id))
     const nextStop = stops.find((stop) => !existingIds.has(stop.id))
     if (!nextStop) throw new Error('No se ha encontrado la nueva parada para guardar.')
-    let timedStops = stops
-    try {
-      // The insertion proposal uses a distance matrix. Recalculate the actual
-      // consecutive route afterwards so every following leg reflects the new stop.
-      timedStops = await calculateDrivingTimes(stops)
-    } catch {
-      toast('No se han podido recalcular los trayectos en coche. Se conservarán los tiempos propuestos.')
-    }
+    // findBestStopInsertion already calculates every consecutive leg from the
+    // OSRM duration matrix, so it is safe to persist those values directly.
+    const timedStops = stops
     try {
       if (session) await addDailyRouteStop(routeId, nextStop, stops.length)
       if (session) await updateDailyRouteStops(routeId, timedStops)
