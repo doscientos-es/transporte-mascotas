@@ -322,9 +322,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       if (!dailyRoute || !routeTemplate) throw new Error('Selecciona la ruta diaria donde se realizará el servicio.')
       const animals: Animal[] = draft.animals.map((animal) => ({ ...animal, id: crypto.randomUUID(), breed: animal.breed.trim() || 'Sin clasificar' }))
       const reference = draft.reference.trim()
-      const id = reference
-        ? (reference.toLocaleUpperCase('es-ES').startsWith('CARTA DE PORTE Nº') ? reference : `CARTA DE PORTE Nº ${reference}`)
-        : `CARTA DE PORTE Nº 2026-${445 + letters.length}`
+      const id = reference || 'PENDIENTE'
       const letter: Letter = {
         id,
         sender: draft.sender.trim(), senderPhone: draft.senderPhone.trim(),
@@ -333,13 +331,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         route: routeTemplate.name, serviceDate: dailyRoute.date, status: 'pendiente',
         importedAt: new Date().toLocaleString('es-ES'), animals,
       }
-      if (letters.some((item) => item.id === letter.id)) throw new Error('Ya existe una carta con este identificador.')
       const routeActions = actionsForLetter(dailyRoute, routeTemplate, letter)
       if (routeActions.length !== animals.length * 2) throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
-      if (session) await saveManualLetter(letter, routeTemplate.id, session.user.id)
-      if (session) await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
-      setLetters((current) => [letter, ...current])
-      const updateRoute = (route: DailyRoute) => route.id === dailyRoute.id ? { ...route, actions: [...route.actions, ...routeActions] } : route
+      const savedId = session ? await saveManualLetter(letter, dailyRoute, routeActions, reference) : letter.id
+      const savedLetter = { ...letter, id: savedId ?? letter.id }
+      const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
+      setLetters((current) => [savedLetter, ...current])
+      const updateRoute = (route: DailyRoute) => route.id === dailyRoute.id ? { ...route, actions: [...route.actions, ...savedActions] } : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => updateRoute(current))
       setShowImport(false)

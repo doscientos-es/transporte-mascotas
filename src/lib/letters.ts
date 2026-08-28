@@ -1,32 +1,23 @@
 import { supabase } from './supabase'
-import type { DailyRoute, Letter } from './types'
+import type { DailyRoute, Letter, ServiceAction } from './types'
 
-export async function saveManualLetter(letter: Letter, routeTemplateId: string, userId: string) {
+export async function saveManualLetter(letter: Letter, route: DailyRoute, actions: ServiceAction[], reference: string) {
   if (!supabase) return
-  const { error: letterError } = await supabase.from('carriage_letters').insert({
-    id: letter.id,
-    service_date: letter.serviceDate,
-    default_route_template_id: routeTemplateId,
-    sender_name: letter.sender,
-    sender_phone: letter.senderPhone,
-    recipient_name: letter.recipient,
-    recipient_phone: letter.recipientPhone,
-    origin_text: letter.origin,
-    destination_text: letter.destination,
-    entry_source: 'manual',
-    imported_by: userId,
+  const { data, error } = await supabase.rpc('create_manual_carriage_letter', {
+    p_daily_route_id: route.id,
+    p_reference: reference,
+    p_sender_name: letter.sender,
+    p_sender_phone: letter.senderPhone,
+    p_recipient_name: letter.recipient,
+    p_recipient_phone: letter.recipientPhone,
+    p_origin: letter.origin,
+    p_destination: letter.destination,
+    p_animals: letter.animals.map(({ id, species, breed, size }) => ({ id, species, breed, size })),
+    p_actions: actions.map((action) => ({ id: action.id, animal_id: action.animalId, stop_id: action.stopId, type: action.type })),
+    p_box_number: actions.find((action) => action.type === 'recogida')?.box ?? null,
   })
-  if (letterError) throw letterError
-  const { error: animalsError } = await supabase.from('animals').insert(letter.animals.map((animal, index) => ({
-    id: animal.id,
-    letter_id: letter.id,
-    ordinal: index + 1,
-    species: animal.species,
-    breed: animal.breed,
-    size: animal.size,
-    size_source: animal.breed === 'Sin clasificar' ? 'manual' : 'regla',
-  })))
-  if (animalsError) throw animalsError
+  if (error) throw error
+  return data
 }
 
 /** Persists the editable data without ever changing a letter's operational status. */
