@@ -42,6 +42,34 @@ function mapTemplate(row: TemplateRow): RouteTemplate {
   }
 }
 
+export async function saveRouteTemplate(template: RouteTemplate) {
+  if (!supabase) return template
+  const { error } = await supabase.from('route_templates').insert({ id: template.id, name: template.name, color: template.color })
+  if (error) throw error
+  return template
+}
+
+export async function addRouteTemplateStop(templateId: string, stop: RouteTemplate['stops'][number], sequence: number) {
+  if (!supabase) return
+  const { error } = await supabase.from('route_template_stops').insert({
+    id: stop.id,
+    route_template_id: templateId,
+    sequence,
+    locality: stop.locality,
+    meeting_point: stop.place,
+    map_url: stop.mapUrl,
+    minutes_to_next: stop.minutes || null,
+    stop_alias: stop.alias ?? '',
+    street: stop.street ?? '',
+    street_number: stop.streetNumber ?? '',
+    floor: stop.floor ?? '',
+    postal_code: stop.postalCode ?? '',
+    province: stop.province ?? '',
+    country: stop.country ?? 'España',
+  })
+  if (error) throw error
+}
+
 export async function loadOrSeedRouteTemplates(source: RouteTemplate[]) {
   if (!supabase) return source
   const { data: existing, error: readError } = await supabase

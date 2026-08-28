@@ -4,7 +4,7 @@ import { confirmManualInvoicePayment, createClient, deleteClient, loadClientInvo
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { calculateDrivingTimes, findBestStopInsertion } from '../lib/driving-times'
 import { saveManualLetter, updateLetter } from '../lib/letters'
-import { addDailyRouteStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, updateDailyRouteStops } from '../lib/routes'
+import { addDailyRouteStop, addRouteTemplateStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, saveRouteTemplate, updateDailyRouteStops } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, ManualPaymentMethod, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
@@ -256,6 +256,44 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
+  async function createRouteTemplate(name: string, color: string) {
+    const trimmedName = name.trim()
+    if (!trimmedName) throw new Error('Indica un nombre para la ruta.')
+    if (routeTemplates.some((template) => template.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) throw new Error('Ya existe una ruta con ese nombre.')
+    const template: RouteTemplate = { id: crypto.randomUUID(), name: trimmedName, color, stops: [] }
+    try {
+      const saved = session ? await saveRouteTemplate(template) : template
+      setRouteTemplates((current) => [...current, saved].sort((left, right) => left.name.localeCompare(right.name)))
+      setSelectedTemplate(saved)
+      toast(`Ruta ${saved.name} creada. Añade sus paradas para completarla.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido crear la ruta.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function addTemplateStop(templateId: string, values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) {
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const stop = {
+      ...values,
+      id: crypto.randomUUID(),
+      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[values.street, values.streetNumber].filter(Boolean).join(' '), values.postalCode, values.locality, values.province, values.country || 'España'].filter(Boolean).join(', '))}`,
+    }
+    try {
+      if (session) await addRouteTemplateStop(templateId, stop, template.stops.length + 1)
+      const update = (item: RouteTemplate) => item.id === templateId ? { ...item, stops: [...item.stops, stop] } : item
+      setRouteTemplates((current) => current.map(update))
+      setSelectedTemplate((current) => update(current))
+      toast(`${stop.locality} se ha añadido a ${template.name}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido añadir la parada.'
+      toast(message)
+      throw error
+    }
+  }
+
   function updateRouteService(routeId: string, service: ServiceAction) {
     const update = (route: DailyRoute): DailyRoute => {
       if (route.id !== routeId) return route
@@ -465,7 +503,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, createRouteTemplate, addTemplateStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, confirmManualPayment, sendInvoiceNotification,
   }
 }

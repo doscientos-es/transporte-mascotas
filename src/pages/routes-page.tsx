@@ -18,6 +18,10 @@ const kindLabels: Record<DailyStopKind, string> = { parada: 'Parada', recogida: 
 const directionLabel = (direction: RouteDirection) => direction === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'
 const formatDuration = (minutes: number) => minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60 ? `${minutes % 60} min` : ''}`.trim() : `${minutes} min`
 const routeStops = (route: DailyRoute, template: RouteTemplate) => route.stops ?? template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
+const formatRouteDate = (date: string) => ({
+  day: new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric' }),
+  month: new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
+})
 const mapUrlFor = (stop: Pick<DailyRouteStop, 'alias' | 'street' | 'streetNumber' | 'postalCode' | 'locality' | 'province' | 'country'>) => {
   const address = [[stop.street, stop.streetNumber].filter(Boolean).join(' '), stop.postalCode, stop.locality, stop.province, stop.country || 'España'].filter(Boolean)
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((address.length ? address : [stop.alias]).join(', '))}`
@@ -73,8 +77,8 @@ export function RoutesPage({ route, template, templates, routes, letters, onSele
   useEffect(() => { if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / pageSize) + 1) }, [selectedIndex])
   useEffect(() => { setOrganizing(false); setPlannedStops(null) }, [route.id])
 
-  function moveStop(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= stops.length) return; const next = [...stops]; [next[index], next[target]] = [next[target], next[index]]; void onUpdateStops(route.id, next) }
-  async function movePlannedStop(index: number, direction: -1 | 1) { if (!plannedStops) return; const target = index + direction; if (target < 0 || target >= plannedStops.length) return; const next = [...plannedStops]; [next[index], next[target]] = [next[target], next[index]]; try { setPlannedStops(await calculateDrivingTimes(next)) } catch { setPlannedStops(next) } }
+  function moveStop(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= stops.length) return; const next = [...stops];[next[index], next[target]] = [next[target], next[index]]; void onUpdateStops(route.id, next) }
+  async function movePlannedStop(index: number, direction: -1 | 1) { if (!plannedStops) return; const target = index + direction; if (target < 0 || target >= plannedStops.length) return; const next = [...plannedStops];[next[index], next[target]] = [next[target], next[index]]; try { setPlannedStops(await calculateDrivingTimes(next)) } catch { setPlannedStops(next) } }
   function setDwellMinutes(index: number, value: string) { const dwellMinutes = Math.max(0, Number(value) || 0); const next = stops.map((stop, stopIndex) => stopIndex === index ? { ...stop, dwellMinutes } : stop); if (plannedStops) setPlannedStops(next); else void onUpdateStops(route.id, next, false) }
   async function acceptPlan() { if (!plannedStops) return; setSavingPlan(true); try { await onAddStop(route.id, plannedStops); setPlannedStops(null) } finally { setSavingPlan(false) } }
   async function removeStop() { if (!deletingStop) return; setDeleting(true); try { await onRemoveStop(route.id, deletingStop.id); setDeletingStop(null) } finally { setDeleting(false) } }
@@ -82,7 +86,10 @@ export function RoutesPage({ route, template, templates, routes, letters, onSele
 
   return <>
     <PageIntro text={canManage ? `Organiza las paradas y sus tiempos · ${directionLabel(direction)}.` : `Consulta el itinerario asignado · ${directionLabel(direction)}.`}>{canManage && <Button onClick={onCreate}><CalendarDays /> Crear ruta</Button>}</PageIntro>
-    <div className="route-selector">{visibleRoutes.map((item) => <button type="button" onClick={() => onSelect(item)} className={route.id === item.id ? 'is-selected' : ''} key={item.id}><Route size={16} /><span>{templates.find((current) => current.id === item.templateId)?.name}<small>{directionLabel(item.direction ?? 'normal')}</small></span><b>{new Date(`${item.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</b><span className={`status status-${item.status}`}>{statusLabels[item.status]}</span></button>)}</div>
+    <div className="route-selector">{visibleRoutes.map((item) => {
+      const itemDate = formatRouteDate(item.date)
+      return <button type="button" onClick={() => onSelect(item)} className={route.id === item.id ? 'is-selected' : ''} key={item.id}><span className="route-selector-icon"><Route size={17} /></span><span className="route-selector-details"><strong>{templates.find((current) => current.id === item.templateId)?.name}</strong><small>{directionLabel(item.direction ?? 'normal')}</small></span><time dateTime={item.date}><b>{itemDate.day}</b><small>{itemDate.month}</small></time><span className={`status status-${item.status}`}>{statusLabels[item.status]}</span></button>
+    })}</div>
     <Pagination page={page} pageCount={pageCount} firstRecord={routes.length === 0 ? 0 : (page - 1) * pageSize + 1} lastRecord={Math.min(page * pageSize, routes.length)} total={routes.length} ariaLabel="Paginación de rutas" onChange={setPage} />
     <Card className="route-journey"><CardContent>
       <div className="journey-header"><div><span className="eyebrow">{route.date}</span><h3>Ruta {template.name}</h3><span className={`route-direction-badge direction-${direction}`}>{directionLabel(direction)}</span></div><div className="journey-actions"><div className="route-total"><Clock3 size={16} /><span>Estimación total</span><strong>{formatDuration(travelMinutes + pointMinutes)}</strong><small>{formatDuration(travelMinutes)} trayectos · {formatDuration(pointMinutes)} paradas</small></div><span className={`status status-${route.status}`}>{statusLabels[route.status]}</span>{canManage && <Button variant="outline" size="sm" onClick={() => setAddingStop(true)} disabled={Boolean(plannedStops)}><Plus /> Añadir parada</Button>}{canManage && <Button variant="outline" size="sm" onClick={() => setOrganizing((current) => !current)}>{organizing ? 'Terminar' : 'Organizar paradas'}</Button>}</div></div>
