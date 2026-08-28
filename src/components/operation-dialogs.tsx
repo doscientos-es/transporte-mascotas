@@ -3,8 +3,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, ArrowRight, ChevronRight, FilePenLine, FilePlus2, MapPin, PawPrint, Pencil, Plus, Printer, Route, Trash2, UserRound } from 'lucide-react'
-import { type ReactNode, useEffect, useMemo, useState } from 'react'
-import { lookupPostalCode, lookupStreetSuggestions, type AddressSuggestion } from '../lib/address-lookup'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { lookupAddressSuggestions, type AddressSuggestion } from '../lib/address-lookup'
 import type { DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, PaymentDelivery, PaymentDeliveryChannel, RouteDirection, RouteTemplate, Transporter } from '../lib/types'
 
 type OperationDialogProps = { children: ReactNode; description: string; icon: ReactNode; onClose: () => void; title: string; wide?: boolean }
@@ -15,6 +15,11 @@ function OperationDialog({ children, description, icon, onClose, title, wide = f
 
 const emptyAnimal = () => ({ species: 'Canina', breed: '', size: 'pequeno' as const })
 const emptyLetter: LetterDraft = { reference: '', routeId: '', sender: '', senderPhone: '', recipient: '', recipientPhone: '', origin: '', destination: '', animals: [emptyAnimal()] }
+const todayIso = () => {
+  const today = new Date()
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset())
+  return today.toISOString().slice(0, 10)
+}
 
 export function LetterFormDialog({ routes, templates, onClose, onCreate, onAddStop, letter, routeId }: { routes: DailyRoute[]; templates: RouteTemplate[]; onClose: () => void; onCreate: (draft: LetterDraft) => Promise<void>; onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>; letter?: Letter; routeId?: string }) {
   const isEditing = Boolean(letter)
@@ -67,20 +72,54 @@ export function StopFormDialog({ initialStop, onClose, onAdd }: { initialStop?: 
   const [country, setCountry] = useState(initialStop?.country ?? 'España')
   const [street, setStreet] = useState(initialStop?.street ?? '')
   const [streetNumber, setStreetNumber] = useState(initialStop?.streetNumber ?? '')
+  const [addressQuery, setAddressQuery] = useState(() => [initialStop?.street, initialStop?.streetNumber, initialStop?.postalCode, initialStop?.locality].filter(Boolean).join(', '))
   const [floor, setFloor] = useState(initialStop?.floor ?? '')
   const [alias, setAlias] = useState(initialStop?.alias ?? '')
   const [place, setPlace] = useState(initialStop?.place ?? '')
   const [dwellMinutes, setDwellMinutes] = useState(String(initialStop?.dwellMinutes ?? 15))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [lookingUpPostcode, setLookingUpPostcode] = useState(false)
-  const [streetSuggestions, setStreetSuggestions] = useState<AddressSuggestion[]>([])
-  useEffect(() => { if (!/^\d{5}$/.test(postalCode.trim())) return; const controller = new AbortController(); setLookingUpPostcode(true); lookupPostalCode(postalCode.trim(), controller.signal).then((address) => { setLocality(address.locality); setProvince(address.province); setCountry(address.country) }).catch((reason: unknown) => { if (!(reason instanceof DOMException && reason.name === 'AbortError')) setError('No se ha podido identificar el código postal. Puedes completar los datos manualmente.') }).finally(() => setLookingUpPostcode(false)); return () => controller.abort() }, [postalCode])
-  useEffect(() => { if (street.trim().length < 3 || !locality.trim() || !/^\d{5}$/.test(postalCode.trim())) { setStreetSuggestions([]); return }; const controller = new AbortController(); const timer = window.setTimeout(() => { lookupStreetSuggestions(street.trim(), locality.trim(), postalCode.trim(), controller.signal).then(setStreetSuggestions).catch(() => setStreetSuggestions([])) }, 400); return () => { window.clearTimeout(timer); controller.abort() } }, [street, locality, postalCode])
-  function selectStreet(suggestion: AddressSuggestion) { setStreet(suggestion.street); setStreetNumber(suggestion.streetNumber || streetNumber); setAlias(suggestion.alias || alias); setLocality(suggestion.locality || locality); setPostalCode(suggestion.postalCode || postalCode); setProvince(suggestion.province || province); setCountry(suggestion.country || country); setStreetSuggestions([]) }
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
+  const [addressLookupState, setAddressLookupState] = useState<'idle' | 'searching' | 'empty' | 'failed'>('idle')
+  const selectedAddressQuery = useRef('')
+  const lookingUpAddress = addressLookupState === 'searching'
+  useEffect(() => {
+    const query = addressQuery.trim()
+    if (query.length < 5 || query === selectedAddressQuery.current) { setAddressSuggestions([]); setAddressLookupState('idle'); return }
+    const controller = new AbortController()
+    let cancelled = false
+    setAddressLookupState('searching')
+    setAddressSuggestions([])
+    const timer = window.setTimeout(() => {
+      lookupAddressSuggestions(query, controller.signal).then((suggestions) => {
+        if (cancelled) return
+        setAddressSuggestions(suggestions)
+        setAddressLookupState(suggestions.length ? 'idle' : 'empty')
+      }).catch((reason: unknown) => {
+        if (cancelled || (reason instanceof DOMException && reason.name === 'AbortError')) return
+        setAddressLookupState('failed')
+      })
+    }, 400)
+    return () => { cancelled = true; window.clearTimeout(timer); controller.abort() }
+  }, [addressQuery])
+  function updateAddressQuery(value: string) { selectedAddressQuery.current = ''; setAddressQuery(value) }
+  function selectAddress(suggestion: AddressSuggestion) {
+    const selectedAddress = [suggestion.street, suggestion.streetNumber, suggestion.postalCode, suggestion.locality].filter(Boolean).join(', ')
+    selectedAddressQuery.current = selectedAddress
+    setAddressQuery(selectedAddress)
+    setStreet(suggestion.street)
+    setStreetNumber(suggestion.streetNumber)
+    setAlias(suggestion.alias)
+    setLocality(suggestion.locality)
+    setPostalCode(suggestion.postalCode)
+    setProvince(suggestion.province)
+    setCountry(suggestion.country)
+    setAddressSuggestions([])
+    setAddressLookupState('idle')
+  }
   async function submit(event: { preventDefault: () => void }) { event.preventDefault(); setSaving(true); setError(''); try { await onAdd({ locality: locality.trim(), postalCode: postalCode.trim(), province: province.trim(), country: country.trim() || 'España', street: street.trim(), streetNumber: streetNumber.trim(), floor: floor.trim(), alias: alias.trim(), place: place.trim(), dwellMinutes: Math.max(0, Number(dwellMinutes) || 0), minutes: 0 }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido añadir la parada.') } finally { setSaving(false) } }
   const editing = Boolean(initialStop)
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>{editing ? 'Editar parada' : 'Añadir parada'}</DialogTitle><DialogDescription>Escribe primero el código postal para completar la ubicación y buscar calles disponibles.</DialogDescription></DialogHeader><form className="client-form" onSubmit={submit}><Label>Código postal<Input value={postalCode} onChange={(event) => setPostalCode(event.target.value.replace(/\D/g, '').slice(0, 5))} inputMode="numeric" required autoFocus />{lookingUpPostcode && <small>Buscando localidad…</small>}</Label><Label>Localidad<Input value={locality} onChange={(event) => setLocality(event.target.value)} required /></Label><Label>Provincia<Input value={province} onChange={(event) => setProvince(event.target.value)} required /></Label><Label>País<Input value={country} onChange={(event) => setCountry(event.target.value)} required /></Label><Label>Alias o negocio<Input value={alias} onChange={(event) => setAlias(event.target.value)} placeholder="Ej. Repsol Norte" /></Label><div className="street-field"><Label>Vía / calle<Input value={street} onChange={(event) => setStreet(event.target.value)} autoComplete="off" required /></Label>{streetSuggestions.length > 0 && <div className="street-suggestions" role="listbox" aria-label="Calles disponibles">{streetSuggestions.map((suggestion) => <button type="button" role="option" key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.alias}`} onClick={() => selectStreet(suggestion)}><strong>{suggestion.street}{suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}</strong><span>{[suggestion.alias, suggestion.locality, suggestion.postalCode].filter(Boolean).join(' · ')}</span></button>)}</div>}</div><Label>Número<Input value={streetNumber} onChange={(event) => setStreetNumber(event.target.value)} required /></Label><Label>Piso, portal o local<Input value={floor} onChange={(event) => setFloor(event.target.value)} placeholder="Opcional" /></Label><Label className="form-span">Indicaciones o punto de encuentro<Input value={place} onChange={(event) => setPlace(event.target.value)} placeholder="Ej. aparcamiento lateral" /></Label><Label>Espera en la parada (min)<Input type="number" min="0" step="5" value={dwellMinutes} onChange={(event) => setDwellMinutes(event.target.value)} /></Label>{error && <p className="form-error form-span" role="alert">{error}</p>}<Button className="dialog-submit form-span" type="submit" disabled={saving}><Pencil /> {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Añadir parada'}</Button></form></DialogContent></Dialog>
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>{editing ? 'Editar parada' : 'Añadir parada'}</DialogTitle><DialogDescription>Busca primero la dirección completa. Al elegir una coincidencia completaremos el resto; si no aparece, puedes rellenarlo manualmente.</DialogDescription></DialogHeader><form className="client-form" onSubmit={submit}><div className="street-field form-span" aria-busy={lookingUpAddress}><Label>Buscar dirección<Input value={addressQuery} onChange={(event) => updateAddressQuery(event.target.value)} placeholder="Ej. Calle Mayor 12, Madrid" autoComplete="street-address" autoFocus /></Label>{lookingUpAddress && <p className="address-lookup-status" role="status">Buscando la dirección… espera antes de completar los demás campos.</p>}{addressLookupState === 'empty' && <p className="address-lookup-status" role="status">No hemos encontrado esa dirección. Puedes completar los campos manualmente.</p>}{addressLookupState === 'failed' && <p className="address-lookup-status" role="status">No se ha podido comprobar la dirección. Puedes completar los campos manualmente.</p>}{addressSuggestions.length > 0 && <div className="street-suggestions" role="listbox" aria-label="Direcciones disponibles">{addressSuggestions.map((suggestion) => <button type="button" role="option" key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.alias}-${suggestion.postalCode}`} onClick={() => selectAddress(suggestion)}><strong>{suggestion.street}{suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}</strong><span>{[suggestion.alias, suggestion.locality, suggestion.postalCode, suggestion.province].filter(Boolean).join(' · ')}</span></button>)}</div>}</div><Label>Vía / calle<Input value={street} onChange={(event) => setStreet(event.target.value)} disabled={lookingUpAddress} required /></Label><Label>Número<Input value={streetNumber} onChange={(event) => setStreetNumber(event.target.value)} disabled={lookingUpAddress} required /></Label><Label>Código postal<Input value={postalCode} onChange={(event) => setPostalCode(event.target.value.replace(/\D/g, '').slice(0, 5))} inputMode="numeric" disabled={lookingUpAddress} required /></Label><Label>Localidad<Input value={locality} onChange={(event) => setLocality(event.target.value)} disabled={lookingUpAddress} required /></Label><Label>Provincia<Input value={province} onChange={(event) => setProvince(event.target.value)} disabled={lookingUpAddress} required /></Label><Label>País<Input value={country} onChange={(event) => setCountry(event.target.value)} disabled={lookingUpAddress} required /></Label><Label>Alias o negocio<Input value={alias} onChange={(event) => setAlias(event.target.value)} disabled={lookingUpAddress} placeholder="Ej. Repsol Norte" /></Label><Label>Piso, portal o local<Input value={floor} onChange={(event) => setFloor(event.target.value)} disabled={lookingUpAddress} placeholder="Opcional" /></Label><Label className="form-span">Indicaciones o punto de encuentro<Input value={place} onChange={(event) => setPlace(event.target.value)} disabled={lookingUpAddress} placeholder="Ej. aparcamiento lateral" /></Label><Label>Espera en la parada (min)<Input type="number" min="0" step="5" value={dwellMinutes} onChange={(event) => setDwellMinutes(event.target.value)} disabled={lookingUpAddress} /></Label>{error && <p className="form-error form-span" role="alert">{error}</p>}<Button className="dialog-submit form-span" type="submit" disabled={saving || lookingUpAddress}><Pencil /> {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Añadir parada'}</Button></form></DialogContent></Dialog>
 }
 
 export function NewTemplateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string, color: string) => Promise<void> }) {
@@ -102,12 +141,22 @@ function AnimalsSection({ animals, updateAnimal, onAdd, onRemove }: { animals: L
 
 const emptyInvoiceClient: InvoiceClientInput = { fullName: '', nif: '', email: '', phone: '', address: '', city: '', postalCode: '' }
 
-export function NewRouteDirectionDialog({ templates, transporters, onClose, onCreate }: { templates: RouteTemplate[]; transporters: Transporter[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string, transporterId?: string, direction?: RouteDirection) => void }) {
-  const [date, setDate] = useState('2026-08-09')
+export function NewRouteDirectionDialog({ templates, transporters, onClose, onCreate }: { templates: RouteTemplate[]; transporters: Transporter[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string, transporterId?: string, direction?: RouteDirection) => Promise<void> }) {
+  const [date, setDate] = useState('')
   const [transporterId, setTransporterId] = useState('')
   const [direction, setDirection] = useState<RouteDirection>('normal')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const directionLabel = direction === 'normal' ? 'sentido habitual' : 'sentido inverso'
-  return <OperationDialog title="Crear ruta diaria" description="Elige primero hacia dónde recorrerás la ruta. Las paradas se crearán ya en ese orden." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Label><div className="direction-field"><span>Sentido de la ruta</span><div className="route-direction-options" role="radiogroup" aria-label="Sentido de la ruta"><button type="button" role="radio" aria-checked={direction === 'normal'} className={direction === 'normal' ? 'is-selected' : ''} onClick={() => setDirection('normal')}><ArrowRight /><strong>Habitual</strong><small>Como está guardada la ruta</small></button><button type="button" role="radio" aria-checked={direction === 'inversa'} className={direction === 'inversa' ? 'is-selected' : ''} onClick={() => setDirection('inversa')}><ArrowLeft /><strong>Inverso</strong><small>Las mismas paradas al revés</small></button></div><p>Crearás la ruta en <strong>{directionLabel}</strong>.</p></div><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date, transporterId || undefined, direction)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas · {directionLabel}</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
+  async function create(template: RouteTemplate) {
+    const minimumDate = todayIso()
+    if (!date) return setError('Selecciona la fecha de servicio.')
+    if (date < minimumDate) return setError('La fecha de servicio no puede ser anterior a hoy.')
+    setSaving(true)
+    setError('')
+    try { await onCreate(template, date, transporterId || undefined, direction) } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido crear la ruta.') } finally { setSaving(false) }
+  }
+  return <OperationDialog title="Crear ruta diaria" description="Elige primero la fecha y hacia dónde recorrerás la ruta. Las paradas se crearán ya en ese orden." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" min={todayIso()} value={date} onChange={(event) => setDate(event.target.value)} required /></Label><div className="direction-field"><span>Sentido de la ruta</span><div className="route-direction-options" role="radiogroup" aria-label="Sentido de la ruta"><button type="button" role="radio" aria-checked={direction === 'normal'} className={direction === 'normal' ? 'is-selected' : ''} onClick={() => setDirection('normal')}><ArrowRight /><strong>Habitual</strong><small>Como está guardada la ruta</small></button><button type="button" role="radio" aria-checked={direction === 'inversa'} className={direction === 'inversa' ? 'is-selected' : ''} onClick={() => setDirection('inversa')}><ArrowLeft /><strong>Inverso</strong><small>Las mismas paradas al revés</small></button></div><p>Crearás la ruta en <strong>{directionLabel}</strong>.</p></div><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label>{error && <p className="form-error" role="alert">{error}</p>}<div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} disabled={saving} onClick={() => void create(template)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas · {directionLabel}</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
 }
 
 /* Previous invoice dialog implementations:
@@ -132,6 +181,6 @@ export function InvoiceDialog({ letter, onClose, onGenerate }: { letter: Letter;
 }
 
 export function NewRouteDialog({ templates, transporters, onClose, onCreate }: { templates: RouteTemplate[]; transporters: Transporter[]; onClose: () => void; onCreate: (template: RouteTemplate, date: string, transporterId?: string) => void }) {
-  const [date, setDate] = useState('2026-08-09'); const [transporterId, setTransporterId] = useState('')
-  return <OperationDialog title="Crear ruta diaria" description="Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></Label><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} onClick={() => onCreate(template, date, transporterId || undefined)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
+  const [date, setDate] = useState(''); const [transporterId, setTransporterId] = useState('')
+  return <OperationDialog title="Crear ruta diaria" description="Se copiarán todas las paradas y se añadirán las recogidas y entregas compatibles con la fecha elegida." icon={<Route size={24} />} onClose={onClose}><Label className="date-field">Fecha de servicio<Input type="date" min={todayIso()} value={date} onChange={(event) => setDate(event.target.value)} required /></Label><Label className="date-field">Asignar a transportista<select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}><option value="">Sin asignar</option>{transporters.map((transporter) => <option value={transporter.id} key={transporter.id}>{transporter.displayName}</option>)}</select></Label><div className="dialog-options">{templates.map((template) => <button type="button" key={template.id} disabled={!date || date < todayIso()} onClick={() => onCreate(template, date, transporterId || undefined)}><span className="template-dot" style={{ background: template.color }} /><span><strong>{template.name}</strong><small>{template.stops.length} paradas</small></span><ChevronRight size={17} /></button>)}</div></OperationDialog>
 }

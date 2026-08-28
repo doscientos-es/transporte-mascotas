@@ -419,7 +419,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
       toast(`Ruta ${template.name} creada en sentido ${direction === 'inversa' ? 'inverso' : 'habitual'}.`)
       return savedRoute
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'No se ha podido guardar la ruta.')
+      const message = error instanceof Error ? error.message : 'No se ha podido guardar la ruta.'
+      toast(message)
+      throw error
     }
   }
 

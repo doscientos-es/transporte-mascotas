@@ -2054,6 +2054,13 @@ main {
   font-size: 11px;
 }
 
+.address-lookup-status {
+  margin: 7px 0 0;
+  color: #686868;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 @media (max-width: 390px) {
   .invoice-filters {
     grid-template-columns: 1fr;
