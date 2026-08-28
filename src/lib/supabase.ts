@@ -10,3 +10,8 @@ export const supabase = isSupabaseConfigured
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
     })
   : null
+
+export function requireSupabase() {
+  if (!supabase) throw new Error('Supabase no está configurado.')
+  return supabase
+}

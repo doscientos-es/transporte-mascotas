@@ -1,10 +1,33 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type AppRole = 'admin' | 'transportista' | 'cliente'
-export type NavSection = 'cartas' | 'clientes' | 'plantillas' | 'rutas' | 'furgoneta' | 'facturas' | 'solicitudes' | 'proximas-rutas' | 'mis-transportes'
+export type AppRole = 'admin' | 'transportista' | 'user' | 'cliente'
+export type AccompanyingDocument =
+  | 'cartilla_sanitaria'
+  | 'microchip'
+  | 'pasaporte'
+  | 'tatuaje'
+  | 'anillo'
+  | 'cites'
+  | 'otro'
+export type NavSection =
+  | 'cartas'
+  | 'clientes'
+  | 'plantillas'
+  | 'rutas'
+  | 'furgoneta'
+  | 'facturas'
+  | 'solicitudes'
+  | 'ajustes'
+  | 'proximas-rutas'
+  | 'mis-transportes'
+  | 'mis-mascotas'
+
+// `cliente` is kept only while installations apply the migration to `user`.
+export const isClientRole = (role: AppRole) => role === 'user' || role === 'cliente'
 
 export interface UserProfile {
   displayName: string
+  phone: string
   role: AppRole
 }
 
@@ -17,6 +40,7 @@ export interface Animal {
   id: string
   species: string
   breed: string
+  birthDate: string
   size: AnimalSize
   box?: number
 }
@@ -25,16 +49,34 @@ export interface Letter {
   id: string
   sender: string
   senderPhone: string
+  senderEmail: string
+  senderNif: string
+  senderAddress: string
+  senderPostalCode: string
+  senderCity: string
+  senderProvince: string
   recipient: string
   recipientPhone: string
+  recipientEmail: string
+  recipientNif: string
+  recipientAddress: string
+  recipientPostalCode: string
+  recipientCity: string
+  recipientProvince: string
   origin: string
   destination: string
+  originPoint: string
+  destinationPoint: string
+  accompanyingDocuments: AccompanyingDocument[]
+  billingPayer: InvoicePayer
+  billingClient: InvoiceClientInput
   route: string
   serviceDate: string
   status: LetterStatus
   animals: Animal[]
   importedAt: string
   extractionEmail?: string
+  signedAt?: string
 }
 
 export interface LetterDraft {
@@ -42,10 +84,28 @@ export interface LetterDraft {
   routeId: string
   sender: string
   senderPhone: string
+  senderEmail: string
+  senderNif: string
+  senderAddress: string
+  senderPostalCode: string
+  senderCity: string
+  senderProvince: string
   recipient: string
   recipientPhone: string
+  recipientEmail: string
+  recipientNif: string
+  recipientAddress: string
+  recipientPostalCode: string
+  recipientCity: string
+  recipientProvince: string
   origin: string
   destination: string
+  originPoint: string
+  destinationPoint: string
+  accompanyingDocuments: AccompanyingDocument[]
+  billingPayer: InvoicePayer
+  otherPayer: InvoiceClientInput
+  signatureConfirmed: boolean
   animals: Array<Omit<Animal, 'id'>>
 }
 
@@ -76,7 +136,15 @@ export type ManualPaymentMethod = 'Transferencia' | 'Efectivo' | 'Bizum' | 'Tarj
 export interface InvoiceFiscalSnapshot {
   number?: string
   issuer?: { name?: string; taxId?: string; address?: string }
-  client?: { fullName?: string; nif?: string; address?: string; city?: string; postalCode?: string; email?: string; phone?: string }
+  client?: {
+    fullName?: string
+    nif?: string
+    address?: string
+    city?: string
+    postalCode?: string
+    email?: string
+    phone?: string
+  }
   concept?: string
   net_amount?: number
   vat_rate?: number
@@ -164,7 +232,14 @@ export interface DailyRoute {
   stops?: DailyRouteStop[]
 }
 
-export type TransportRequestStatus = 'pago_pendiente' | 'por_verificar' | 'confirmada' | 'rechazada' | 'en_ruta' | 'entregada' | 'cancelada'
+export type TransportRequestStatus =
+  | 'pago_pendiente'
+  | 'por_verificar'
+  | 'confirmada'
+  | 'rechazada'
+  | 'en_ruta'
+  | 'entregada'
+  | 'cancelada'
 
 export interface TransportRequestAnimal {
   id?: string
@@ -187,6 +262,7 @@ export interface TransportRequest {
   origin: string
   destination: string
   desiredDate: string
+  dailyRouteId: string
   notes: string
   status: TransportRequestStatus
   paymentReference: string

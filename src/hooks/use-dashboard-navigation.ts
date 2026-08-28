@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
-import { dashboardLocationForPath, dashboardPathFor, isDashboardPath, routePathFor } from '../lib/dashboard-navigation'
+import {
+  dashboardLocationForPath,
+  dashboardPathFor,
+  isDashboardPath,
+  routePathFor,
+  vanPathFor,
+} from '../lib/dashboard-navigation'
 import type { NavSection } from '../lib/types'
 
 export function useDashboardNavigation(fallback: NavSection = 'cartas') {
-  const [location, setLocation] = useState(() => dashboardLocationForPath(window.location.pathname, fallback))
+  const [location, setLocation] = useState(() =>
+    dashboardLocationForPath(window.location.pathname, fallback),
+  )
 
   useEffect(() => {
-    if (!isDashboardPath(window.location.pathname)) window.history.replaceState(null, '', dashboardPathFor(fallback))
-    const syncLocation = () => setLocation(dashboardLocationForPath(window.location.pathname, fallback))
+    if (!isDashboardPath(window.location.pathname))
+      window.history.replaceState(null, '', dashboardPathFor(fallback))
+    const syncLocation = () =>
+      setLocation(dashboardLocationForPath(window.location.pathname, fallback))
     syncLocation()
     window.addEventListener('popstate', syncLocation)
     return () => window.removeEventListener('popstate', syncLocation)
@@ -24,6 +34,7 @@ export function useDashboardNavigation(fallback: NavSection = 'cartas') {
     ...location,
     navigateToSection: (section: NavSection) => setPath(dashboardPathFor(section)),
     navigateToRoute: (routeId: string) => setPath(routePathFor(routeId)),
+    navigateToVan: (routeId: string) => setPath(vanPathFor(routeId)),
     replaceWithSection: (section: NavSection) => setPath(dashboardPathFor(section), true),
   }
 }

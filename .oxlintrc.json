@@ -1,8 +1,152 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
+  "env": {
+    "browser": true
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "supabase/**"],
+  "plugins": ["import", "jsx-a11y", "react", "typescript", "oxc"],
+  "options": {
+    "reportUnusedDisableDirectives": "error"
+  },
+  "settings": {
+    "react": {
+      "version": "19.2.8"
+    }
+  },
   "rules": {
+    "eqeqeq": ["error", "always"],
+    "import/no-cycle": [
+      "error",
+      {
+        "maxDepth": 10
+      }
+    ],
+    "jsx-a11y/alt-text": "error",
+    "jsx-a11y/anchor-has-content": "error",
+    "jsx-a11y/anchor-is-valid": "error",
+    "jsx-a11y/aria-props": "error",
+    "jsx-a11y/aria-proptypes": "error",
+    "jsx-a11y/aria-role": "off",
+    "jsx-a11y/aria-unsupported-elements": "error",
+    "jsx-a11y/no-access-key": "error",
+    "no-console": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@supabase/supabase-js",
+            "allowTypeImports": true,
+            "message": "Accede a Supabase exclusivamente mediante el adaptador src/lib/supabase.ts."
+          }
+        ]
+      }
+    ],
+    "prefer-const": "error",
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+    "react/only-export-components": [
+      "error",
+      {
+        "allowConstantExport": true
+      }
+    ],
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "error"
+  },
+  "overrides": [
+    {
+      "files": ["@/components/ui/**"],
+      "rules": {
+        "react/only-export-components": "off"
+      }
+    },
+    {
+      "files": ["src/lib/supabase.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["src/components/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@supabase/supabase-js",
+                "allowTypeImports": true,
+                "message": "Accede a Supabase exclusivamente mediante el adaptador src/lib/supabase.ts."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/pages/**", "../pages/**", "../../pages/**"],
+                "message": "Los componentes son reutilizables y no pueden depender de rutas o páginas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/hooks/**", "src/lib/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@supabase/supabase-js",
+                "allowTypeImports": true,
+                "message": "Accede a Supabase exclusivamente mediante el adaptador src/lib/supabase.ts."
+              }
+            ],
+            "patterns": [
+              {
+                "group": [
+                  "@/components/**",
+                  "@/pages/**",
+                  "../components/**",
+                  "../pages/**",
+                  "../../components/**",
+                  "../../pages/**"
+                ],
+                "message": "Las capas de hooks y lib no pueden depender de la interfaz o de las rutas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**/ui/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@supabase/supabase-js",
+                "allowTypeImports": true,
+                "message": "Accede a Supabase exclusivamente mediante el adaptador src/lib/supabase.ts."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["../data/**", "../../data/**", "@/features/*/data/**"],
+                "message": "La UI de una feature debe usar su capa application; nunca adaptadores data directamente."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/supabase.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }

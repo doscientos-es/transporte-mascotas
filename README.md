@@ -11,22 +11,17 @@ Currently, two official plugins are available:
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the Oxlint configuration
+## Calidad
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+La aplicación usa Oxlint para errores de calidad y arquitectura, y Oxfmt para un formato rápido y
+determinista.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+- `pnpm format`: aplica el formato.
+- `pnpm format:check`: comprueba el formato sin escribir.
+- `pnpm lint`: ejecuta las reglas que bloquean cambios inseguros.
+- `pnpm lint:strict`: también falla por advertencias; úsalo tras eliminar el backlog de avisos.
+- `pnpm typecheck`: verifica TypeScript.
+- `pnpm check`: ejecuta formato, lint y tipos de forma secuencial.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+La guía de capas y la migración incremental a features está en
+[`docs/frontend-architecture.md`](./docs/frontend-architecture.md).

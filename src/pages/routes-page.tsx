@@ -1,29 +1,103 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
-import { ArrowDown, ArrowUp, CalendarDays, Clock3, MapPin, PackageOpen, PawPrint, Pencil, Phone, Plus, Route, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarDays,
+  Clock3,
+  MapPin,
+  PackageOpen,
+  PawPrint,
+  Pencil,
+  Phone,
+  Plus,
+  Route,
+  Trash2,
+  Truck,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { PageIntro } from '../components/page-intro'
 import { Pagination } from '../components/pagination'
 import { StopFormDialog } from '../components/operation-dialogs'
 import { calculateDrivingTimes } from '../lib/driving-times'
 import { statusLabels } from '../lib/status-labels'
-import type { DailyRoute, DailyRouteStop, DailyStopKind, Letter, RouteDirection, RouteTemplate, ServiceAction } from '../lib/types'
+import type {
+  DailyRoute,
+  DailyRouteStop,
+  DailyStopKind,
+  Letter,
+  RouteDirection,
+  RouteTemplate,
+  ServiceAction,
+} from '../lib/types'
 
-type Props = { route: DailyRoute; template: RouteTemplate; templates: RouteTemplate[]; routes: DailyRoute[]; letters: Letter[]; onSelect: (route: DailyRoute) => void; onAction: (ids: string[]) => void; onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>; onSuggestStop: (routeId: string, stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) => Promise<{ index: number; stops: DailyRouteStop[] }>; onAddStop: (routeId: string, stops: DailyRouteStop[]) => Promise<void>; onRemoveStop: (routeId: string, stopId: string) => Promise<void>; onUpdateService: (routeId: string, service: ServiceAction) => void; onRemoveService: (routeId: string, serviceId: string) => void; onCreate: () => void; canManage?: boolean }
+type Props = {
+  route: DailyRoute
+  template: RouteTemplate
+  templates: RouteTemplate[]
+  routes: DailyRoute[]
+  letters: Letter[]
+  onSelect: (route: DailyRoute) => void
+  onOpenVan?: (route: DailyRoute) => void
+  onAction: (ids: string[]) => void
+  onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>
+  onSuggestStop: (
+    routeId: string,
+    stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
+  ) => Promise<{ index: number; stops: DailyRouteStop[] }>
+  onAddStop: (routeId: string, stops: DailyRouteStop[]) => Promise<void>
+  onRemoveStop: (routeId: string, stopId: string) => Promise<void>
+  onUpdateService: (routeId: string, service: ServiceAction) => void
+  onRemoveService: (routeId: string, serviceId: string) => void
+  onCreate: () => void
+  canManage?: boolean
+}
 type ServiceGroup = { key: string; actions: ServiceAction[]; animalLabels: string[] }
 
-const kindLabels: Record<DailyStopKind, string> = { parada: 'Parada', recogida: 'Recogida', entrega: 'Entrega' }
-const directionLabel = (direction: RouteDirection) => direction === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'
-const formatDuration = (minutes: number) => minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60 ? `${minutes % 60} min` : ''}`.trim() : `${minutes} min`
-const routeStops = (route: DailyRoute, template: RouteTemplate) => route.stops ?? template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
+const kindLabels: Record<DailyStopKind, string> = {
+  parada: 'Parada',
+  recogida: 'Recogida',
+  entrega: 'Entrega',
+}
+const directionLabel = (direction: RouteDirection) =>
+  direction === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'
+const formatDuration = (minutes: number) =>
+  minutes >= 60
+    ? `${Math.floor(minutes / 60)} h ${minutes % 60 ? `${minutes % 60} min` : ''}`.trim()
+    : `${minutes} min`
+const routeStops = (route: DailyRoute, template: RouteTemplate) =>
+  route.stops ??
+  template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
 const formatRouteDate = (date: string) => ({
   day: new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric' }),
-  month: new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
+  month: new Date(`${date}T12:00:00`)
+    .toLocaleDateString('es-ES', { month: 'short' })
+    .replace('.', ''),
 })
-const mapUrlFor = (stop: Pick<DailyRouteStop, 'alias' | 'street' | 'streetNumber' | 'postalCode' | 'locality' | 'province' | 'country'>) => {
-  const address = [[stop.street, stop.streetNumber].filter(Boolean).join(' '), stop.postalCode, stop.locality, stop.province, stop.country || 'España'].filter(Boolean)
+const mapUrlFor = (
+  stop: Pick<
+    DailyRouteStop,
+    'alias' | 'street' | 'streetNumber' | 'postalCode' | 'locality' | 'province' | 'country'
+  >,
+) => {
+  const address = [
+    [stop.street, stop.streetNumber].filter(Boolean).join(' '),
+    stop.postalCode,
+    stop.locality,
+    stop.province,
+    stop.country || 'España',
+  ].filter(Boolean)
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((address.length ? address : [stop.alias]).join(', '))}`
 }
 
@@ -43,15 +117,39 @@ function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Le
     const group = groups.find((item) => item.key === key) ?? { key, actions: [], animalLabels: [] }
     if (!groups.includes(group)) groups.push(group)
     group.actions.push({ ...action, stopId })
-    const animal = action.animalLabel ?? letters.find((letter) => letter.id === action.letterId)?.animals.find((candidate) => candidate.id === action.animalId)
-    const label = typeof animal === 'string' ? animal : animal ? [animal.breed, animal.species].filter(Boolean).join(' · ') : 'Mascota sin identificar'
+    const animal =
+      action.animalLabel ??
+      letters
+        .find((letter) => letter.id === action.letterId)
+        ?.animals.find((candidate) => candidate.id === action.animalId)
+    const label =
+      typeof animal === 'string'
+        ? animal
+        : animal
+          ? [animal.breed, animal.species].filter(Boolean).join(' · ')
+          : 'Mascota sin identificar'
     if (!group.animalLabels.includes(label)) group.animalLabels.push(label)
     groupsByStop.set(stopId, groups)
   })
   return groupsByStop
 }
 
-export function RoutesPage({ route, template, templates, routes, letters, onSelect, onAction, onUpdateStops, onSuggestStop, onAddStop, onRemoveStop, onCreate, canManage = true }: Props) {
+export function RoutesPage({
+  route,
+  template,
+  templates,
+  routes,
+  letters,
+  onSelect,
+  onOpenVan,
+  onAction,
+  onUpdateStops,
+  onSuggestStop,
+  onAddStop,
+  onRemoveStop,
+  onCreate,
+  canManage = true,
+}: Props) {
   const pageSize = 12
   const [page, setPage] = useState(1)
   const [organizing, setOrganizing] = useState(false)
@@ -66,50 +164,438 @@ export function RoutesPage({ route, template, templates, routes, letters, onSele
   const visibleRoutes = routes.slice((page - 1) * pageSize, page * pageSize)
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
-  const servicesByStop = useMemo(() => groupedServices(route, stops, letters), [route, stops, letters])
+  const servicesByStop = useMemo(
+    () => groupedServices(route, stops, letters),
+    [route, stops, letters],
+  )
   const travelMinutes = stops.slice(0, -1).reduce((total, stop) => total + stop.minutes, 0)
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const arrivalByStop = new Map<string, number>()
   let elapsedMinutes = 0
-  stops.forEach((stop, index) => { arrivalByStop.set(stop.id, elapsedMinutes); elapsedMinutes += stop.dwellMinutes + (index < stops.length - 1 ? stop.minutes : 0) })
+  stops.forEach((stop, index) => {
+    arrivalByStop.set(stop.id, elapsedMinutes)
+    elapsedMinutes += stop.dwellMinutes + (index < stops.length - 1 ? stop.minutes : 0)
+  })
 
-  useEffect(() => { setPage((current) => Math.min(current, pageCount)) }, [pageCount])
-  useEffect(() => { if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / pageSize) + 1) }, [selectedIndex])
-  useEffect(() => { setOrganizing(false); setPlannedStops(null) }, [route.id])
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount))
+  }, [pageCount])
+  useEffect(() => {
+    if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / pageSize) + 1)
+  }, [selectedIndex])
+  useEffect(() => {
+    setOrganizing(false)
+    setPlannedStops(null)
+  }, [route.id])
 
-  function moveStop(index: number, direction: -1 | 1) { const target = index + direction; if (target < 0 || target >= stops.length) return; const next = [...stops];[next[index], next[target]] = [next[target], next[index]]; void onUpdateStops(route.id, next) }
-  async function movePlannedStop(index: number, direction: -1 | 1) { if (!plannedStops) return; const target = index + direction; if (target < 0 || target >= plannedStops.length) return; const next = [...plannedStops];[next[index], next[target]] = [next[target], next[index]]; try { setPlannedStops(await calculateDrivingTimes(next)) } catch { setPlannedStops(next) } }
-  function setDwellMinutes(index: number, value: string) { const dwellMinutes = Math.max(0, Number(value) || 0); const next = stops.map((stop, stopIndex) => stopIndex === index ? { ...stop, dwellMinutes } : stop); if (plannedStops) setPlannedStops(next); else void onUpdateStops(route.id, next, false) }
-  async function acceptPlan() { if (!plannedStops) return; setSavingPlan(true); try { await onAddStop(route.id, plannedStops); setPlannedStops(null) } finally { setSavingPlan(false) } }
-  async function removeStop() { if (!deletingStop) return; setDeleting(true); try { await onRemoveStop(route.id, deletingStop.id); setDeletingStop(null) } finally { setDeleting(false) } }
-  async function saveEditedStop(values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) { if (!editingStop) return; const updated = { ...editingStop, ...values, mapUrl: mapUrlFor(values) }; await onUpdateStops(route.id, stops.map((stop) => stop.id === editingStop.id ? updated : stop)); setEditingStop(null) }
+  function moveStop(index: number, direction: -1 | 1) {
+    const target = index + direction
+    if (target < 0 || target >= stops.length) return
+    const next = [...stops]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    void onUpdateStops(route.id, next)
+  }
+  async function movePlannedStop(index: number, direction: -1 | 1) {
+    if (!plannedStops) return
+    const target = index + direction
+    if (target < 0 || target >= plannedStops.length) return
+    const next = [...plannedStops]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    try {
+      setPlannedStops(await calculateDrivingTimes(next))
+    } catch {
+      setPlannedStops(next)
+    }
+  }
+  function setDwellMinutes(index: number, value: string) {
+    const dwellMinutes = Math.max(0, Number(value) || 0)
+    const next = stops.map((stop, stopIndex) =>
+      stopIndex === index ? { ...stop, dwellMinutes } : stop,
+    )
+    if (plannedStops) setPlannedStops(next)
+    else void onUpdateStops(route.id, next, false)
+  }
+  async function acceptPlan() {
+    if (!plannedStops) return
+    setSavingPlan(true)
+    try {
+      await onAddStop(route.id, plannedStops)
+      setPlannedStops(null)
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+  async function removeStop() {
+    if (!deletingStop) return
+    setDeleting(true)
+    try {
+      await onRemoveStop(route.id, deletingStop.id)
+      setDeletingStop(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+  async function saveEditedStop(values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) {
+    if (!editingStop) return
+    const updated = { ...editingStop, ...values, mapUrl: mapUrlFor(values) }
+    await onUpdateStops(
+      route.id,
+      stops.map((stop) => (stop.id === editingStop.id ? updated : stop)),
+    )
+    setEditingStop(null)
+  }
 
-  return <>
-    <PageIntro text={canManage ? `Organiza las paradas y sus tiempos · ${directionLabel(direction)}.` : `Consulta el itinerario asignado · ${directionLabel(direction)}.`}>{canManage && <Button onClick={onCreate}><CalendarDays /> Crear ruta</Button>}</PageIntro>
-    <section className="route-catalog" aria-label="Rutas programadas">
-      <div className="route-catalog-heading"><div><span className="eyebrow">Planificación</span><strong>Rutas programadas</strong></div><span>{routes.length} {routes.length === 1 ? 'ruta' : 'rutas'}</span></div>
-      <div className="route-selector">{visibleRoutes.map((item) => {
-        const itemDate = formatRouteDate(item.date)
-        const isSelected = route.id === item.id
-        return <button type="button" onClick={() => onSelect(item)} aria-current={isSelected ? 'page' : undefined} className={isSelected ? 'is-selected' : ''} key={item.id}><span className="route-selector-icon"><Route size={17} /></span><span className="route-selector-details"><strong>{templates.find((current) => current.id === item.templateId)?.name}</strong><small>{directionLabel(item.direction ?? 'normal')}</small></span><time dateTime={item.date}><b>{itemDate.day}</b><small>{itemDate.month}</small></time><span className={`status status-${item.status}`}>{statusLabels[item.status]}</span></button>
-      })}</div>
-    </section>
-    <Pagination page={page} pageCount={pageCount} firstRecord={routes.length === 0 ? 0 : (page - 1) * pageSize + 1} lastRecord={Math.min(page * pageSize, routes.length)} total={routes.length} ariaLabel="Paginación de rutas" onChange={setPage} />
-    <Card className="route-journey"><CardContent>
-      <div className="journey-header route-journey-header"><div className="journey-route-title"><time className="route-date" dateTime={route.date}><b>{formatRouteDate(route.date).day}</b><small>{formatRouteDate(route.date).month}</small></time><div><span className="eyebrow">Itinerario del día</span><h3>Ruta {template.name}</h3><div className="journey-route-badges"><span className={`route-direction-badge direction-${direction}`}>{directionLabel(direction)}</span><span className={`status status-${route.status}`}>{statusLabels[route.status]}</span></div></div></div><div className="journey-actions"><div className="route-total"><Clock3 size={16} /><span>Estimación total</span><strong>{formatDuration(travelMinutes + pointMinutes)}</strong><small>{formatDuration(travelMinutes)} trayectos · {formatDuration(pointMinutes)} paradas</small></div>{canManage && <div className="journey-action-buttons"><Button variant="outline" size="sm" onClick={() => setAddingStop(true)} disabled={Boolean(plannedStops)}><Plus /> Añadir parada</Button><Button variant="outline" size="sm" onClick={() => setOrganizing((current) => !current)}>{organizing ? 'Terminar' : 'Organizar paradas'}</Button></div>}</div></div>
-      {plannedStops && <div className="itinerary-toolbar"><span><Clock3 size={15} /> Posición sugerida por cercanía y tiempo en coche. Muévela si lo necesitas antes de guardarla.</span><Button size="sm" variant="outline" onClick={() => setPlannedStops(null)} disabled={savingPlan}>Cancelar</Button><Button size="sm" onClick={() => void acceptPlan()} disabled={savingPlan}>{savingPlan ? 'Guardando…' : 'Aceptar posición'}</Button></div>}
-      {organizing && !plannedStops && <div className="itinerary-toolbar"><span><Clock3 size={15} /> Los trayectos se recalculan en coche al cambiar el orden. Ajusta los minutos de espera.</span></div>}
-      <ol>{stops.map((stop, index) => <JourneyStop key={stop.id} stop={stop} index={index} total={stops.length} arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)} organizing={organizing || Boolean(plannedStops)} services={servicesByStop.get(stop.id) ?? []} onMove={plannedStops ? movePlannedStop : moveStop} onDwellChange={setDwellMinutes} onEdit={plannedStops ? undefined : () => setEditingStop(stop)} onDelete={plannedStops ? undefined : () => setDeletingStop(stop)} onAction={onAction} />)}</ol>
-    </CardContent></Card>
-    {addingStop && <StopFormDialog onClose={() => setAddingStop(false)} onAdd={async (stop) => { const plan = await onSuggestStop(route.id, stop); setPlannedStops(plan.stops); setAddingStop(false) }} />}
-    {editingStop && <StopFormDialog initialStop={editingStop} onClose={() => setEditingStop(null)} onAdd={saveEditedStop} />}
-    <AlertDialog open={deletingStop !== null} onOpenChange={(open) => { if (!open) setDeletingStop(null) }}><AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]"><AlertDialogHeader><AlertDialogTitle>Eliminar parada</AlertDialogTitle><AlertDialogDescription>{deletingStop ? `¿Eliminar la parada de ${deletingStop.locality}? Se recalcularán los trayectos restantes.` : ''}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleting} onClick={() => void removeStop()}><Trash2 /> {deleting ? 'Eliminando…' : 'Eliminar parada'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-  </>
+  return (
+    <>
+      <PageIntro
+        text={
+          canManage
+            ? `Organiza las paradas y sus tiempos · ${directionLabel(direction)}.`
+            : `Consulta el itinerario asignado · ${directionLabel(direction)}.`
+        }
+      >
+        {canManage && (
+          <Button onClick={onCreate}>
+            <CalendarDays /> Crear ruta
+          </Button>
+        )}
+      </PageIntro>
+      <section className="route-catalog" aria-label="Rutas programadas">
+        <div className="route-catalog-heading">
+          <div>
+            <span className="eyebrow">Planificación</span>
+            <strong>Rutas programadas</strong>
+          </div>
+          <span>
+            {routes.length} {routes.length === 1 ? 'ruta' : 'rutas'}
+          </span>
+        </div>
+        <div className="route-selector">
+          {visibleRoutes.map((item) => {
+            const itemDate = formatRouteDate(item.date)
+            const isSelected = route.id === item.id
+            return (
+              <button
+                type="button"
+                onClick={() => onSelect(item)}
+                aria-current={isSelected ? 'page' : undefined}
+                className={isSelected ? 'is-selected' : ''}
+                key={item.id}
+              >
+                <span className="route-selector-icon">
+                  <Route size={17} />
+                </span>
+                <span className="route-selector-details">
+                  <strong>
+                    {templates.find((current) => current.id === item.templateId)?.name}
+                  </strong>
+                  <small>{directionLabel(item.direction ?? 'normal')}</small>
+                </span>
+                <time dateTime={item.date}>
+                  <b>{itemDate.day}</b>
+                  <small>{itemDate.month}</small>
+                </time>
+                <span className={`status status-${item.status}`}>{statusLabels[item.status]}</span>
+              </button>
+            )
+          })}
+        </div>
+      </section>
+      <Pagination
+        page={page}
+        pageCount={pageCount}
+        firstRecord={routes.length === 0 ? 0 : (page - 1) * pageSize + 1}
+        lastRecord={Math.min(page * pageSize, routes.length)}
+        total={routes.length}
+        ariaLabel="Paginación de rutas"
+        onChange={setPage}
+      />
+      <Card className="route-journey">
+        <CardContent>
+          <div className="journey-header route-journey-header">
+            <div className="journey-route-title">
+              <time className="route-date" dateTime={route.date}>
+                <b>{formatRouteDate(route.date).day}</b>
+                <small>{formatRouteDate(route.date).month}</small>
+              </time>
+              <div>
+                <span className="eyebrow">Itinerario del día</span>
+                <h3>Ruta {template.name}</h3>
+                <div className="journey-route-badges">
+                  <span className={`route-direction-badge direction-${direction}`}>
+                    {directionLabel(direction)}
+                  </span>
+                  <span className={`status status-${route.status}`}>
+                    {statusLabels[route.status]}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="journey-actions">
+              <div className="route-total">
+                <Clock3 size={16} />
+                <span>Estimación total</span>
+                <strong>{formatDuration(travelMinutes + pointMinutes)}</strong>
+                <small>
+                  {formatDuration(travelMinutes)} trayectos · {formatDuration(pointMinutes)} paradas
+                </small>
+              </div>
+              {(onOpenVan || canManage) && (
+                <div className="journey-action-buttons">
+                  {onOpenVan && (
+                    <Button variant="outline" size="sm" onClick={() => onOpenVan(route)}>
+                      <Truck /> Ver furgoneta
+                    </Button>
+                  )}
+                  {canManage && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAddingStop(true)}
+                        disabled={Boolean(plannedStops)}
+                      >
+                        <Plus /> Añadir parada
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOrganizing((current) => !current)}
+                      >
+                        {organizing ? 'Terminar' : 'Organizar paradas'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          {plannedStops && (
+            <div className="itinerary-toolbar">
+              <span>
+                <Clock3 size={15} /> Posición sugerida por cercanía y tiempo en coche. Muévela si lo
+                necesitas antes de guardarla.
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPlannedStops(null)}
+                disabled={savingPlan}
+              >
+                Cancelar
+              </Button>
+              <Button size="sm" onClick={() => void acceptPlan()} disabled={savingPlan}>
+                {savingPlan ? 'Guardando…' : 'Aceptar posición'}
+              </Button>
+            </div>
+          )}
+          {organizing && !plannedStops && (
+            <div className="itinerary-toolbar">
+              <span>
+                <Clock3 size={15} /> Los trayectos se recalculan en coche al cambiar el orden.
+                Ajusta los minutos de espera.
+              </span>
+            </div>
+          )}
+          <ol>
+            {stops.map((stop, index) => (
+              <JourneyStop
+                key={stop.id}
+                stop={stop}
+                index={index}
+                total={stops.length}
+                arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)}
+                organizing={organizing || Boolean(plannedStops)}
+                services={servicesByStop.get(stop.id) ?? []}
+                onMove={plannedStops ? movePlannedStop : moveStop}
+                onDwellChange={setDwellMinutes}
+                onEdit={plannedStops ? undefined : () => setEditingStop(stop)}
+                onDelete={plannedStops ? undefined : () => setDeletingStop(stop)}
+                onAction={onAction}
+              />
+            ))}
+          </ol>
+        </CardContent>
+      </Card>
+      {addingStop && (
+        <StopFormDialog
+          onClose={() => setAddingStop(false)}
+          onAdd={async (stop) => {
+            const plan = await onSuggestStop(route.id, stop)
+            setPlannedStops(plan.stops)
+            setAddingStop(false)
+          }}
+        />
+      )}
+      {editingStop && (
+        <StopFormDialog
+          initialStop={editingStop}
+          onClose={() => setEditingStop(null)}
+          onAdd={saveEditedStop}
+        />
+      )}
+      <AlertDialog
+        open={deletingStop !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeletingStop(null)
+        }}
+      >
+        <AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar parada</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingStop
+                ? `¿Eliminar la parada de ${deletingStop.locality}? Se recalcularán los trayectos restantes.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => void removeStop()}
+            >
+              <Trash2 /> {deleting ? 'Eliminando…' : 'Eliminar parada'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 }
 
-function JourneyStop({ stop, index, total, arrival, organizing, services, onMove, onDwellChange, onEdit, onDelete, onAction }: { stop: DailyRouteStop; index: number; total: number; arrival: string; organizing: boolean; services: ServiceGroup[]; onMove: (index: number, direction: -1 | 1) => void; onDwellChange: (index: number, value: string) => void; onEdit?: () => void; onDelete?: () => void; onAction: (ids: string[]) => void }) {
+function JourneyStop({
+  stop,
+  index,
+  total,
+  arrival,
+  organizing,
+  services,
+  onMove,
+  onDwellChange,
+  onEdit,
+  onDelete,
+  onAction,
+}: {
+  stop: DailyRouteStop
+  index: number
+  total: number
+  arrival: string
+  organizing: boolean
+  services: ServiceGroup[]
+  onMove: (index: number, direction: -1 | 1) => void
+  onDwellChange: (index: number, value: string) => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onAction: (ids: string[]) => void
+}) {
   const hasServices = services.length > 0
-  return <li><div className="journey-node">{index + 1}</div><div className="journey-stop"><div className="journey-place"><div><div className="journey-title"><h4>{stop.locality}</h4><span className={`stop-kind stop-kind-${stop.kind}`}>{kindLabels[stop.kind]}</span></div><p>{stop.place}</p><div className="journey-times"><span className="arrival-time">Llegada aprox.: <strong>{arrival}</strong></span><span>Espera: {formatDuration(stop.dwellMinutes)}</span><span>{index === total - 1 ? 'Fin de ruta' : `Trayecto sig.: ${formatDuration(stop.minutes)}`}</span></div></div>{stop.mapUrl && <a href={stop.mapUrl} target="_blank" rel="noreferrer"><MapPin size={18} /> Abrir mapa</a>}</div>{organizing && <div className="stop-planner"><label>Espera en esta parada <Input type="number" min="0" step="5" inputMode="numeric" value={stop.dwellMinutes} onChange={(event) => onDwellChange(index, event.target.value)} /><span>min</span></label><div className="stop-move-actions"><Button variant="outline" size="sm" disabled={index === 0} aria-label={`Subir ${stop.locality}`} onClick={() => onMove(index, -1)}><ArrowUp /> Subir</Button><Button variant="outline" size="sm" disabled={index === total - 1} aria-label={`Bajar ${stop.locality}`} onClick={() => onMove(index, 1)}><ArrowDown /> Bajar</Button>{onEdit && <Button variant="outline" size="sm" aria-label={`Editar ${stop.locality}`} onClick={onEdit}><Pencil /> Editar</Button>}{onDelete && <Button variant="outline" size="sm" disabled={hasServices} title={hasServices ? 'No se puede eliminar una parada con recogidas o entregas asociadas.' : `Eliminar ${stop.locality}`} aria-label={`Eliminar ${stop.locality}`} onClick={onDelete}><Trash2 /> Eliminar</Button>}</div></div>}{services.length > 0 && <div className="services">{services.map((group) => <ServiceCard key={group.key} group={group} onToggle={() => onAction(group.actions.map((action) => action.id))} />)}</div>}</div></li>
+  return (
+    <li>
+      <div className="journey-node">{index + 1}</div>
+      <div className="journey-stop">
+        <div className="journey-place">
+          <div>
+            <div className="journey-title">
+              <h4>{stop.locality}</h4>
+              <span className={`stop-kind stop-kind-${stop.kind}`}>{kindLabels[stop.kind]}</span>
+            </div>
+            <p>{stop.place}</p>
+            <div className="journey-times">
+              <span className="arrival-time">
+                Llegada aprox.: <strong>{arrival}</strong>
+              </span>
+              <span>Espera: {formatDuration(stop.dwellMinutes)}</span>
+              <span>
+                {index === total - 1
+                  ? 'Fin de ruta'
+                  : `Trayecto sig.: ${formatDuration(stop.minutes)}`}
+              </span>
+            </div>
+          </div>
+          {stop.mapUrl && (
+            <a href={stop.mapUrl} target="_blank" rel="noreferrer">
+              <MapPin size={18} /> Abrir mapa
+            </a>
+          )}
+        </div>
+        {organizing && (
+          <div className="stop-planner">
+            <label>
+              Espera en esta parada{' '}
+              <Input
+                type="number"
+                min="0"
+                step="5"
+                inputMode="numeric"
+                value={stop.dwellMinutes}
+                onChange={(event) => onDwellChange(index, event.target.value)}
+              />
+              <span>min</span>
+            </label>
+            <div className="stop-move-actions">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={index === 0}
+                aria-label={`Subir ${stop.locality}`}
+                onClick={() => onMove(index, -1)}
+              >
+                <ArrowUp /> Subir
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={index === total - 1}
+                aria-label={`Bajar ${stop.locality}`}
+                onClick={() => onMove(index, 1)}
+              >
+                <ArrowDown /> Bajar
+              </Button>
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Editar ${stop.locality}`}
+                  onClick={onEdit}
+                >
+                  <Pencil /> Editar
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={hasServices}
+                  title={
+                    hasServices
+                      ? 'No se puede eliminar una parada con recogidas o entregas asociadas.'
+                      : `Eliminar ${stop.locality}`
+                  }
+                  aria-label={`Eliminar ${stop.locality}`}
+                  onClick={onDelete}
+                >
+                  <Trash2 /> Eliminar
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {services.length > 0 && (
+          <div className="services">
+            {services.map((group) => (
+              <ServiceCard
+                key={group.key}
+                group={group}
+                onToggle={() => onAction(group.actions.map((action) => action.id))}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </li>
+  )
 }
 
 function ServiceCard({ group, onToggle }: { group: ServiceGroup; onToggle: () => void }) {
@@ -117,6 +603,29 @@ function ServiceCard({ group, onToggle }: { group: ServiceGroup; onToggle: () =>
   const done = group.actions.every((item) => item.status === 'completada')
   const label = action.type === 'recogida' ? 'Recogida' : 'Entrega'
   const animalCount = group.actions.length
-  const animalSummary = animalCount === 1 ? group.animalLabels[0] : `${animalCount} animales · ${group.animalLabels.join(' + ')}`
-  return <div className={`service-card ${done ? 'is-done' : ''}`}><div className="service-icon">{action.type === 'recogida' ? <PackageOpen size={18} /> : <PawPrint size={18} />}</div><div><span>{label} · {action.box ? `Box ${action.box}` : 'Sin box'} · {animalCount} {animalCount === 1 ? 'animal' : 'animales'}</span><strong>{animalSummary}</strong><span className="service-customer">{action.customer}</span><a href={`tel:${action.phone.replaceAll(' ', '')}`}><Phone size={13} /> {action.phone}</a></div><Button variant={done ? 'outline' : 'default'} size="sm" onClick={onToggle}>{done ? 'Deshacer' : action.type === 'recogida' ? 'Recogido' : 'Entregado'}</Button></div>
+  const animalSummary =
+    animalCount === 1
+      ? group.animalLabels[0]
+      : `${animalCount} animales · ${group.animalLabels.join(' + ')}`
+  return (
+    <div className={`service-card ${done ? 'is-done' : ''}`}>
+      <div className="service-icon">
+        {action.type === 'recogida' ? <PackageOpen size={18} /> : <PawPrint size={18} />}
+      </div>
+      <div>
+        <span>
+          {label} · {action.box ? `Box ${action.box}` : 'Sin box'} · {animalCount}{' '}
+          {animalCount === 1 ? 'animal' : 'animales'}
+        </span>
+        <strong>{animalSummary}</strong>
+        <span className="service-customer">{action.customer}</span>
+        <a href={`tel:${action.phone.replaceAll(' ', '')}`}>
+          <Phone size={13} /> {action.phone}
+        </a>
+      </div>
+      <Button variant={done ? 'outline' : 'default'} size="sm" onClick={onToggle}>
+        {done ? 'Deshacer' : action.type === 'recogida' ? 'Recogido' : 'Entregado'}
+      </Button>
+    </div>
+  )
 }

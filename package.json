@@ -1,13 +1,19 @@
 {
-  "name": "perros",
-  "private": true,
+  "name": "kache-envios",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "pnpm run typecheck && vite build",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "lint:fix": "oxlint --fix",
+    "lint:strict": "oxlint --deny-warnings",
+    "preview": "vite preview",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -29,6 +35,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
+    "oxfmt": "^0.65.0",
     "oxlint": "^1.75.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
