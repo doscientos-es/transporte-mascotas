@@ -42,8 +42,8 @@ function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Le
   const representative = largestAnimal(letter.animals)
   const requestedBox = letter.animals.find((animal) => animal.box && !usedBoxes.has(animal.box))?.box
   const box = requestedBox ?? boxesBySize[representative.size].find((candidate) => !usedBoxes.has(candidate))
-  const originStop = stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()))
-  const destinationStop = stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()))
+  const originStop = stops.find((stop) => stop.locality.trim().toLocaleLowerCase() === letter.origin.trim().toLocaleLowerCase())
+  const destinationStop = stops.find((stop) => stop.locality.trim().toLocaleLowerCase() === letter.destination.trim().toLocaleLowerCase())
   return letter.animals.flatMap((animal) => [
     ...(originStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'recogida' as const, stop: originStop.locality, stopId: originStop.id, customer: letter.sender, phone: letter.senderPhone, status: 'pendiente' as const, box }] : []),
     ...(destinationStop ? [{ id: crypto.randomUUID(), letterId: letter.id, animalId: animal.id, type: 'entrega' as const, stop: destinationStop.locality, stopId: destinationStop.id, customer: letter.recipient, phone: letter.recipientPhone, status: 'pendiente' as const, box }] : []),
@@ -200,10 +200,18 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const existingIds = new Set(stopsForRoute(route, routeTemplates).map((stop) => stop.id))
     const nextStop = stops.find((stop) => !existingIds.has(stop.id))
     if (!nextStop) throw new Error('No se ha encontrado la nueva parada para guardar.')
+    let timedStops = stops
+    try {
+      // The insertion proposal uses a distance matrix. Recalculate the actual
+      // consecutive route afterwards so every following leg reflects the new stop.
+      timedStops = await calculateDrivingTimes(stops)
+    } catch {
+      toast('No se han podido recalcular los trayectos en coche. Se conservarán los tiempos propuestos.')
+    }
     try {
       if (session) await addDailyRouteStop(routeId, nextStop, stops.length)
-      if (session) await updateDailyRouteStops(routeId, stops)
-      const update = (item: DailyRoute): DailyRoute => item.id === routeId ? { ...item, stops } : item
+      if (session) await updateDailyRouteStops(routeId, timedStops)
+      const update = (item: DailyRoute): DailyRoute => item.id === routeId ? { ...item, stops: timedStops } : item
       setDailyRoutes((current) => current.map(update))
       setSelectedRoute((current) => update(current))
       toast(`${nextStop.locality} se ha añadido a la ruta.`)
@@ -212,6 +220,17 @@ export function useDashboard(session: Session | null, role: AppRole) {
       toast(message)
       throw error
     }
+  }
+
+  async function addLetterRouteStop(routeId: string, stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) {
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const existingStopIds = new Set(stopsForRoute(route, routeTemplates).map((item) => item.id))
+    const plan = await suggestRouteStop(routeId, stop)
+    const routeStop = plan.stops.find((item) => !existingStopIds.has(item.id))
+    if (!routeStop) throw new Error('No se ha podido preparar la nueva parada.')
+    await addRouteStop(routeId, plan.stops)
+    return routeStop
   }
 
   async function removeRouteStop(routeId: string, stopId: string) {
@@ -444,7 +463,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, sendInvoiceNotification,
   }
 }

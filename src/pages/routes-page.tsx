@@ -1,14 +1,12 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { ArrowDown, ArrowUp, CalendarDays, Clock3, MapPin, PackageOpen, PawPrint, Pencil, Phone, Plus, Route, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { PageIntro } from '../components/page-intro'
 import { Pagination } from '../components/pagination'
-import { lookupPostalCode, lookupStreetSuggestions, type AddressSuggestion } from '../lib/address-lookup'
+import { StopFormDialog } from '../components/operation-dialogs'
 import { calculateDrivingTimes } from '../lib/driving-times'
 import { statusLabels } from '../lib/status-labels'
 import type { DailyRoute, DailyRouteStop, DailyStopKind, Letter, RouteDirection, RouteTemplate, ServiceAction } from '../lib/types'
@@ -92,61 +90,10 @@ export function RoutesPage({ route, template, templates, routes, letters, onSele
       {organizing && !plannedStops && <div className="itinerary-toolbar"><span><Clock3 size={15} /> Los trayectos se recalculan en coche al cambiar el orden. Ajusta los minutos de espera.</span></div>}
       <ol>{stops.map((stop, index) => <JourneyStop key={stop.id} stop={stop} index={index} total={stops.length} arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)} organizing={organizing || Boolean(plannedStops)} services={servicesByStop.get(stop.id) ?? []} onMove={plannedStops ? movePlannedStop : moveStop} onDwellChange={setDwellMinutes} onEdit={plannedStops ? undefined : () => setEditingStop(stop)} onDelete={plannedStops ? undefined : () => setDeletingStop(stop)} onAction={onAction} />)}</ol>
     </CardContent></Card>
-    {addingStop && <AddStopDialog onClose={() => setAddingStop(false)} onAdd={async (stop) => { const plan = await onSuggestStop(route.id, stop); setPlannedStops(plan.stops); setAddingStop(false) }} />}
-    {editingStop && <AddStopDialog initialStop={editingStop} onClose={() => setEditingStop(null)} onAdd={saveEditedStop} />}
+    {addingStop && <StopFormDialog onClose={() => setAddingStop(false)} onAdd={async (stop) => { const plan = await onSuggestStop(route.id, stop); setPlannedStops(plan.stops); setAddingStop(false) }} />}
+    {editingStop && <StopFormDialog initialStop={editingStop} onClose={() => setEditingStop(null)} onAdd={saveEditedStop} />}
     <AlertDialog open={deletingStop !== null} onOpenChange={(open) => { if (!open) setDeletingStop(null) }}><AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]"><AlertDialogHeader><AlertDialogTitle>Eliminar parada</AlertDialogTitle><AlertDialogDescription>{deletingStop ? `¿Eliminar la parada de ${deletingStop.locality}? Se recalcularán los trayectos restantes.` : ''}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleting} onClick={() => void removeStop()}><Trash2 /> {deleting ? 'Eliminando…' : 'Eliminar parada'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>
-}
-
-function AddStopDialog({ initialStop, onClose, onAdd }: { initialStop?: DailyRouteStop; onClose: () => void; onAdd: (stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) => Promise<void> }) {
-  const [locality, setLocality] = useState(initialStop?.locality ?? '')
-  const [postalCode, setPostalCode] = useState(initialStop?.postalCode ?? '')
-  const [province, setProvince] = useState(initialStop?.province ?? '')
-  const [country, setCountry] = useState(initialStop?.country ?? 'España')
-  const [street, setStreet] = useState(initialStop?.street ?? '')
-  const [streetNumber, setStreetNumber] = useState(initialStop?.streetNumber ?? '')
-  const [floor, setFloor] = useState(initialStop?.floor ?? '')
-  const [alias, setAlias] = useState(initialStop?.alias ?? '')
-  const [place, setPlace] = useState(initialStop?.place ?? '')
-  const [dwellMinutes, setDwellMinutes] = useState(String(initialStop?.dwellMinutes ?? 15))
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [lookingUpPostcode, setLookingUpPostcode] = useState(false)
-  const [streetSuggestions, setStreetSuggestions] = useState<AddressSuggestion[]>([])
-
-  useEffect(() => {
-    if (!/^\d{5}$/.test(postalCode.trim())) return
-    const controller = new AbortController()
-    setLookingUpPostcode(true)
-    lookupPostalCode(postalCode.trim(), controller.signal).then((address) => {
-      setLocality(address.locality); setProvince(address.province); setCountry(address.country)
-    }).catch((reason: unknown) => {
-      if (reason instanceof DOMException && reason.name === 'AbortError') return
-      setError('No se ha podido identificar el código postal. Puedes completar los datos manualmente.')
-    }).finally(() => setLookingUpPostcode(false))
-    return () => controller.abort()
-  }, [postalCode])
-
-  useEffect(() => {
-    if (street.trim().length < 3 || !locality.trim() || !/^\d{5}$/.test(postalCode.trim())) { setStreetSuggestions([]); return }
-    const controller = new AbortController()
-    const timer = window.setTimeout(() => {
-      lookupStreetSuggestions(street.trim(), locality.trim(), postalCode.trim(), controller.signal).then(setStreetSuggestions).catch(() => setStreetSuggestions([]))
-    }, 400)
-    return () => { window.clearTimeout(timer); controller.abort() }
-  }, [street, locality, postalCode])
-
-  function selectStreet(suggestion: AddressSuggestion) {
-    setStreet(suggestion.street); setStreetNumber(suggestion.streetNumber || streetNumber); setAlias(suggestion.alias || alias)
-    setLocality(suggestion.locality || locality); setPostalCode(suggestion.postalCode || postalCode); setProvince(suggestion.province || province); setCountry(suggestion.country || country)
-    setStreetSuggestions([])
-  }
-  async function submit(event: { preventDefault: () => void }) {
-    event.preventDefault(); setSaving(true); setError('')
-    try { await onAdd({ locality: locality.trim(), postalCode: postalCode.trim(), province: province.trim(), country: country.trim() || 'España', street: street.trim(), streetNumber: streetNumber.trim(), floor: floor.trim(), alias: alias.trim(), place: place.trim(), dwellMinutes: Math.max(0, Number(dwellMinutes) || 0), minutes: 0 }) } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido añadir la parada.') } finally { setSaving(false) }
-  }
-  const editing = Boolean(initialStop)
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>{editing ? 'Editar parada' : 'Añadir parada'}</DialogTitle><DialogDescription>Escribe primero el código postal para completar la ubicación y buscar calles disponibles.</DialogDescription></DialogHeader><form className="client-form" onSubmit={submit}><Label>Código postal<Input value={postalCode} onChange={(event) => setPostalCode(event.target.value.replace(/\D/g, '').slice(0, 5))} inputMode="numeric" required autoFocus />{lookingUpPostcode && <small>Buscando localidad…</small>}</Label><Label>Localidad<Input value={locality} onChange={(event) => setLocality(event.target.value)} required /></Label><Label>Provincia<Input value={province} onChange={(event) => setProvince(event.target.value)} required /></Label><Label>País<Input value={country} onChange={(event) => setCountry(event.target.value)} required /></Label><Label>Alias o negocio<Input value={alias} onChange={(event) => setAlias(event.target.value)} placeholder="Ej. Repsol Norte" /></Label><div className="street-field"><Label>Vía / calle<Input value={street} onChange={(event) => setStreet(event.target.value)} autoComplete="off" required /></Label>{streetSuggestions.length > 0 && <div className="street-suggestions" role="listbox" aria-label="Calles disponibles">{streetSuggestions.map((suggestion) => <button type="button" role="option" key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.alias}`} onClick={() => selectStreet(suggestion)}><strong>{suggestion.street}{suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}</strong><span>{[suggestion.alias, suggestion.locality, suggestion.postalCode].filter(Boolean).join(' · ')}</span></button>)}</div>}</div><Label>Número<Input value={streetNumber} onChange={(event) => setStreetNumber(event.target.value)} required /></Label><Label>Piso, portal o local<Input value={floor} onChange={(event) => setFloor(event.target.value)} placeholder="Opcional" /></Label><Label className="form-span">Indicaciones o punto de encuentro<Input value={place} onChange={(event) => setPlace(event.target.value)} placeholder="Ej. aparcamiento lateral" /></Label><Label>Espera en la parada (min)<Input type="number" min="0" step="5" value={dwellMinutes} onChange={(event) => setDwellMinutes(event.target.value)} /></Label>{error && <p className="form-error form-span" role="alert">{error}</p>}<Button className="dialog-submit form-span" type="submit" disabled={saving}><Pencil /> {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Añadir parada'}</Button></form></DialogContent></Dialog>
 }
 
 function JourneyStop({ stop, index, total, arrival, organizing, services, onMove, onDwellChange, onEdit, onDelete, onAction }: { stop: DailyRouteStop; index: number; total: number; arrival: string; organizing: boolean; services: ServiceGroup[]; onMove: (index: number, direction: -1 | 1) => void; onDwellChange: (index: number, value: string) => void; onEdit?: () => void; onDelete?: () => void; onAction: (ids: string[]) => void }) {

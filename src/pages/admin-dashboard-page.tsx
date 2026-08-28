@@ -62,8 +62,8 @@ export function AdminDashboardPage({ session, profile }: { session: Session | nu
       {!isTransporter && section === 'solicitudes' && <RequestsPage routes={visibleRoutes} onNotify={dashboard.toast} />}
       {section === 'facturas' && <InvoicesPage invoices={visibleInvoices} letters={dashboard.letters} clients={dashboard.clients} transportista={isTransporter} onSend={dashboard.sendInvoiceNotification} />}
     </DashboardLayout>
-    {!isTransporter && dashboard.showImport && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} onClose={() => dashboard.setShowImport(false)} onCreate={dashboard.createLetter} />}
-    {!isTransporter && dashboard.editingLetter && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} letter={dashboard.editingLetter} routeId={editingRouteId} onClose={() => dashboard.setEditingLetter(null)} onCreate={dashboard.editLetter} />}
+    {!isTransporter && dashboard.showImport && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} onClose={() => dashboard.setShowImport(false)} onCreate={dashboard.createLetter} onAddStop={dashboard.addLetterRouteStop} />}
+    {!isTransporter && dashboard.editingLetter && <LetterFormDialog routes={dashboard.dailyRoutes} templates={dashboard.routeTemplates} letter={dashboard.editingLetter} routeId={editingRouteId} onClose={() => dashboard.setEditingLetter(null)} onCreate={dashboard.editLetter} onAddStop={dashboard.addLetterRouteStop} />}
     {!isTransporter && dashboard.showNewRoute && <NewRouteDirectionDialog templates={dashboard.routeTemplates} transporters={dashboard.transporters} onClose={() => dashboard.setShowNewRoute(false)} onCreate={createRouteAndNavigate} />}
     {!isTransporter && dashboard.invoiceLetter && <InvoiceDialog letter={dashboard.invoiceLetter} onClose={() => dashboard.setInvoiceLetter(null)} onGenerate={dashboard.generateInvoice} />}
     {dashboard.notice && <div className="toast" role="status"><CheckCircle2 size={18} /> {dashboard.notice}</div>}
