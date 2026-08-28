@@ -36,30 +36,30 @@ async function createIssuedInvoiceDocument(invoice: IssuedInvoice) {
   const client = snapshot.client
   if (!issuer?.name || !issuer.taxId || !issuer.address || !client?.fullName || !client.nif || !client.address || !client.postalCode || !client.city || !snapshot.concept || !Number.isFinite(snapshot.net_amount) || !Number.isFinite(snapshot.vat_amount) || !Number.isFinite(snapshot.total_amount)) throw new Error('La instantánea fiscal de esta factura está incompleta.')
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-<<<<<<< HEAD
-  const base = total / 1.21
-  const tax = total - base
-  const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
-  const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
-  const clientLines = (payer === 'manual'
-    ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
-    : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
-  const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
-  const date = shortDate(letter.serviceDate)
-  // A raster asset avoids SVG decoding failures in browsers when producing the PDF in memory.
-  const logo = await imageAsDataUrl('/icon-512.png')
-||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
-  const base = total / 1.21
-  const tax = total - base
-  const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
-  const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
-  const clientLines = (payer === 'manual'
-    ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
-    : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
-  const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
-  const date = shortDate(letter.serviceDate)
-  const logo = await imageAsDataUrl('/logo-light.svg')
-=======
+  /* Previous invoice document implementations:
+    const base = total / 1.21
+    const tax = total - base
+    const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
+    const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+    const clientLines = (payer === 'manual'
+      ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
+      : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
+    const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
+    const date = shortDate(letter.serviceDate)
+    // A raster asset avoids SVG decoding failures in browsers when producing the PDF in memory.
+    const logo = await imageAsDataUrl('/icon-512.png')
+   * Parent version:
+    const base = total / 1.21
+    const tax = total - base
+    const customer = payer === 'manual' ? manualClient?.fullName : payer === 'remitente' ? letter.sender : letter.recipient
+    const phone = payer === 'manual' ? manualClient?.phone : payer === 'remitente' ? letter.senderPhone : letter.recipientPhone
+    const clientLines = (payer === 'manual'
+      ? [customer, manualClient?.nif && `NIF/CIF: ${manualClient.nif}`, manualClient?.address, [manualClient?.postalCode, manualClient?.city].filter(Boolean).join(' '), manualClient?.email, phone && `Tel.: ${phone}`].filter(Boolean) as string[]
+      : [customer, phone ? `Tel.: ${phone}` : 'Datos fiscales pendientes', `Origen: ${letter.origin}`, `Destino: ${letter.destination}`]).filter((line): line is string => Boolean(line))
+    const number = letter.id.match(/(\d{4})[-/](\d+)/)?.slice(1).join('/') ?? `${new Date().getFullYear()}/${letter.id.slice(-3)}`
+    const date = shortDate(letter.serviceDate)
+    const logo = await imageAsDataUrl('/logo-light.svg')
+   */
   const clientLines = [client.fullName, `NIF/CIF: ${client.nif}`, client.address, `${client.postalCode} ${client.city}`, client.email, client.phone && `Tel.: ${client.phone}`].filter(Boolean) as string[]
   const number = invoice.number
   const issuedDate = new Date(invoice.issuedAt).toLocaleDateString('es-ES')
@@ -68,7 +68,6 @@ async function createIssuedInvoiceDocument(invoice: IssuedInvoice) {
   const tax = Number(snapshot.vat_amount)
   const total = Number(snapshot.total_amount)
   const logo = await imageAsDataUrl('/logo-light.svg')
->>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
   const left = 18; const right = 192
 
   doc.setFont('helvetica', 'normal'); doc.setTextColor(18, 18, 18)
@@ -104,7 +103,7 @@ async function createIssuedInvoiceDocument(invoice: IssuedInvoice) {
   doc.setDrawColor(230, 231, 232); doc.line(left, 180, right, 180)
   doc.setFontSize(7); doc.text('Factura emitida desde una instantánea fiscal inmutable.', left, 195)
   doc.setFont('helvetica', 'normal'); doc.setTextColor(83, 93, 109); doc.setFontSize(7); doc.text('1 / 1', right, 289, { align: 'right' })
-  return { doc, fileName: `factura_${filePart(customer ?? 'cliente')}_${filePart(letter.serviceDate)}.pdf` }
+  return { doc, fileName: `factura_${filePart(client.fullName)}_${filePart(snapshot.operation_date ?? invoice.issuedAt)}.pdf` }
 }
 
 export async function downloadIssuedInvoice(invoice: IssuedInvoice) {

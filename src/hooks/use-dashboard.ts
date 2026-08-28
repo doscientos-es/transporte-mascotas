@@ -467,15 +467,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-<<<<<<< HEAD
     setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
-    removeClient, generateInvoice, sendInvoiceNotification,
-||||||| parent of 8a0f41f (feat: enhance invoice management and payment processing)
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
-    removeClient, generateInvoice, sendInvoiceNotification,
-=======
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, confirmManualPayment, sendInvoiceNotification,
->>>>>>> 8a0f41f (feat: enhance invoice management and payment processing)
   }
 }
