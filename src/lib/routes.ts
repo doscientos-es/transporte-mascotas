@@ -49,6 +49,18 @@ export async function saveRouteTemplate(template: RouteTemplate) {
   return template
 }
 
+export async function updateRouteTemplate(template: Pick<RouteTemplate, 'id' | 'name' | 'color'>) {
+  if (!supabase) return
+  const { error } = await supabase.from('route_templates').update({ name: template.name, color: template.color }).eq('id', template.id)
+  if (error) throw error
+}
+
+export async function deleteRouteTemplate(templateId: string) {
+  if (!supabase) return
+  const { error } = await supabase.from('route_templates').delete().eq('id', templateId)
+  if (error) throw error
+}
+
 export async function addRouteTemplateStop(templateId: string, stop: RouteTemplate['stops'][number], sequence: number) {
   if (!supabase) return
   const { error } = await supabase.from('route_template_stops').insert({
@@ -68,6 +80,19 @@ export async function addRouteTemplateStop(templateId: string, stop: RouteTempla
     country: stop.country ?? 'España',
   })
   if (error) throw error
+}
+
+export async function updateRouteTemplateStopOrder(templateId: string, stops: RouteTemplate['stops']) {
+  const database = supabase
+  if (!database) return
+  const temporarySequenceStart = 100000
+  const temporaryUpdates = await Promise.all(stops.map((stop, index) => database.from('route_template_stops').update({ sequence: temporarySequenceStart + index }).eq('id', stop.id).eq('route_template_id', templateId)))
+  const temporaryError = temporaryUpdates.find((result) => result.error)?.error
+  if (temporaryError) throw temporaryError
+
+  const finalUpdates = await Promise.all(stops.map((stop, index) => database.from('route_template_stops').update({ sequence: index + 1 }).eq('id', stop.id).eq('route_template_id', templateId)))
+  const finalError = finalUpdates.find((result) => result.error)?.error
+  if (finalError) throw finalError
 }
 
 export async function loadOrSeedRouteTemplates(source: RouteTemplate[]) {

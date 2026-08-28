@@ -126,7 +126,13 @@ export async function persistInvoice(letter: Letter, payer: InvoicePayer, total:
 export async function confirmManualInvoicePayment(invoiceId: string, paymentMethod: ManualPaymentMethod) {
   if (!supabase) throw new Error('Supabase no está configurado.')
   const { data, error } = await supabase.functions.invoke('confirm-manual-invoice-payment', { body: { invoiceId, paymentMethod } })
-  if (error) throw new Error('No se ha podido registrar el cobro manual.')
+  if (error) {
+    const response = 'context' in error && error.context && typeof error.context === 'object' && 'json' in error.context && typeof error.context.json === 'function'
+      ? error.context as Response
+      : null
+    const details = response ? await response.json().catch(() => null) as { error?: string } | null : null
+    throw new Error(details?.error || error.message || 'No se ha podido registrar el cobro manual.')
+  }
   const result = data as { error?: string } | null
   if (result?.error) throw new Error(result.error)
 }

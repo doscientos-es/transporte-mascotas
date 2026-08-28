@@ -4,7 +4,7 @@ import { confirmManualInvoicePayment, createClient, deleteClient, loadClientInvo
 import { initialClientInvoices, initialDailyRoutes, initialLetters, templates } from '../lib/data'
 import { calculateDrivingTimes, findBestStopInsertion } from '../lib/driving-times'
 import { saveManualLetter, updateLetter } from '../lib/letters'
-import { addDailyRouteStop, addRouteTemplateStop, appendLetterToDailyRoute, deleteDailyRouteStop, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, saveRouteTemplate, updateDailyRouteStops } from '../lib/routes'
+import { addDailyRouteStop, addRouteTemplateStop, appendLetterToDailyRoute, deleteDailyRouteStop, deleteRouteTemplate, loadDailyRoutes, loadOrSeedRouteTemplates, loadTransporters, saveDailyRoute, saveRouteTemplate, updateDailyRouteStops, updateRouteTemplate, updateRouteTemplateStopOrder } from '../lib/routes'
 import { supabase } from '../lib/supabase'
 import type { Animal, AppRole, Client, ClientInvoice, DailyRoute, DailyRouteStop, InvoiceClientInput, InvoicePayer, Letter, LetterDraft, ManualPaymentMethod, PaymentDelivery, RouteDirection, RouteTemplate, ServiceAction, Transporter } from '../lib/types'
 import { boxesBySize } from '../lib/van'
@@ -276,7 +276,45 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function addTemplateStop(templateId: string, values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>) {
+  async function editRouteTemplate(templateId: string, name: string, color: string) {
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const trimmedName = name.trim()
+    if (!trimmedName) throw new Error('Indica un nombre para la ruta.')
+    if (routeTemplates.some((item) => item.id !== templateId && item.name.trim().toLocaleLowerCase() === trimmedName.toLocaleLowerCase())) throw new Error('Ya existe una ruta con ese nombre.')
+    const updated = { ...template, name: trimmedName, color }
+    try {
+      if (session) await updateRouteTemplate(updated)
+      setRouteTemplates((current) => current.map((item) => item.id === templateId ? updated : item).sort((left, right) => left.name.localeCompare(right.name)))
+      setSelectedTemplate((current) => current.id === templateId ? updated : current)
+      toast(`Ruta ${updated.name} actualizada.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido actualizar la ruta.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function removeRouteTemplate(templateId: string) {
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (routeTemplates.length <= 1) throw new Error('Debes conservar al menos una ruta preestablecida.')
+    const linkedRoutes = dailyRoutes.filter((route) => route.templateId === templateId)
+    if (linkedRoutes.length) throw new Error(`No se puede eliminar porque se usa en ${linkedRoutes.length} ${linkedRoutes.length === 1 ? 'ruta diaria' : 'rutas diarias'}.`)
+    try {
+      if (session) await deleteRouteTemplate(templateId)
+      const remaining = routeTemplates.filter((item) => item.id !== templateId)
+      setRouteTemplates(remaining)
+      setSelectedTemplate((current) => current.id === templateId ? remaining[0] : current)
+      toast(`Ruta ${template.name} eliminada.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido eliminar la ruta.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function addTemplateStop(templateId: string, values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>, insertionIndex?: number) {
     const template = routeTemplates.find((item) => item.id === templateId)
     if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
     const stop = {
@@ -285,13 +323,35 @@ export function useDashboard(session: Session | null, role: AppRole) {
       mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[values.street, values.streetNumber].filter(Boolean).join(' '), values.postalCode, values.locality, values.province, values.country || 'España'].filter(Boolean).join(', '))}`,
     }
     try {
-      if (session) await addRouteTemplateStop(templateId, stop, template.stops.length + 1)
-      const update = (item: RouteTemplate) => item.id === templateId ? { ...item, stops: [...item.stops, stop] } : item
+      const index = Math.max(0, Math.min(insertionIndex ?? template.stops.length, template.stops.length))
+      const stops = [...template.stops.slice(0, index), stop, ...template.stops.slice(index)]
+      if (session) {
+        await addRouteTemplateStop(templateId, stop, 100000 + stops.length)
+        await updateRouteTemplateStopOrder(templateId, stops)
+      }
+      const update = (item: RouteTemplate) => item.id === templateId ? { ...item, stops } : item
       setRouteTemplates((current) => current.map(update))
       setSelectedTemplate((current) => update(current))
-      toast(`${stop.locality} se ha añadido a ${template.name}.`)
+      toast(`${stop.locality} se ha añadido a ${template.name} en la posición ${index + 1}.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido añadir la parada.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function reorderTemplateStops(templateId: string, stops: RouteTemplate['stops']) {
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (stops.length !== template.stops.length || stops.some((stop, index) => stop.id !== template.stops[index]?.id) === false) return
+    try {
+      if (session) await updateRouteTemplateStopOrder(templateId, stops)
+      const update = (item: RouteTemplate) => item.id === templateId ? { ...item, stops } : item
+      setRouteTemplates((current) => current.map(update))
+      setSelectedTemplate((current) => update(current))
+      toast(`Se ha actualizado el orden de ${template.name}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido actualizar el orden de las paradas.'
       toast(message)
       throw error
     }
@@ -504,7 +564,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     letters, routeTemplates, transporters, dailyRoutes, clients, invoices, selectedTemplate,
     setSelectedTemplate, selectedRoute, setSelectedRoute, activeTemplate, filteredLetters, assignments,
     search, setSearch, showImport, setShowImport, editingLetter, setEditingLetter, showNewRoute, setShowNewRoute, invoiceLetter,
-    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, createRouteTemplate, addTemplateStop, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
+    setInvoiceLetter, notice, toast, signOut, updateActions, updateRouteStops, suggestRouteStop, addRouteStop, addLetterRouteStop, removeRouteStop, createRouteTemplate, editRouteTemplate, removeRouteTemplate, addTemplateStop, reorderTemplateStops, updateRouteService, removeRouteService, createLetter, editLetter, createDailyRoute, saveClient,
     removeClient, generateInvoice, confirmManualPayment, sendInvoiceNotification,
   }
 }

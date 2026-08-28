@@ -21,6 +21,8 @@ export function ClientsPage({ clients, invoices, letters, onSave, onDelete }: {
   const [selectedId, setSelectedId] = useState<string | null>(clients[0]?.id ?? null)
   const [editing, setEditing] = useState<Client | null | undefined>(undefined)
   const [deleting, setDeleting] = useState<Client | null>(null)
+  const [deletingClient, setDeletingClient] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [page, setPage] = useState(1)
   const pageSize = 12
   const pageCount = Math.max(1, Math.ceil(clients.length / pageSize))
@@ -34,9 +36,17 @@ export function ClientsPage({ clients, invoices, letters, onSave, onDelete }: {
   useEffect(() => { setPage((current) => Math.min(current, pageCount)) }, [pageCount])
 
   async function remove(client: Client) {
-    await onDelete(client)
-    if (selectedId === client.id) setSelectedId(null)
-    setDeleting(null)
+    setDeletingClient(true)
+    setDeleteError('')
+    try {
+      await onDelete(client)
+      if (selectedId === client.id) setSelectedId(null)
+      setDeleting(null)
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'No se ha podido eliminar el cliente.')
+    } finally {
+      setDeletingClient(false)
+    }
   }
 
   return <>
@@ -52,17 +62,18 @@ export function ClientsPage({ clients, invoices, letters, onSave, onDelete }: {
       </div> : <Card><CardContent><p className="empty-copy">Selecciona un cliente para consultar su historial.</p></CardContent></Card>}
     </div>
     {editing !== undefined && <ClientDialog client={editing ?? undefined} onClose={() => setEditing(undefined)} onSave={onSave} />}
-    <AlertDialog open={deleting !== null} onOpenChange={(open) => { if (!open) setDeleting(null) }}><AlertDialogContent className="delete-client-dialog !w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]"><AlertDialogHeader><AlertDialogTitle>Eliminar cliente</AlertDialogTitle><AlertDialogDescription>{deleting ? `¿Eliminar a ${deleting.fullName}? Solo se permite si no tiene facturas asociadas.` : ''}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction variant="destructive" onClick={() => deleting && void remove(deleting)}>Eliminar cliente</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+    <AlertDialog open={deleting !== null} onOpenChange={(open) => { if (!open) { setDeleting(null); setDeleteError('') } }}><AlertDialogContent className="delete-client-dialog !w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]"><AlertDialogHeader><AlertDialogTitle>Eliminar cliente</AlertDialogTitle><AlertDialogDescription>{deleting ? `¿Eliminar a ${deleting.fullName}? Solo se permite si no tiene facturas asociadas.` : ''}</AlertDialogDescription></AlertDialogHeader>{deleteError && <p className="form-error" role="alert">{deleteError}</p>}<AlertDialogFooter><AlertDialogCancel disabled={deletingClient}>Cancelar</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deletingClient} onClick={() => deleting && void remove(deleting)}>{deletingClient ? 'Eliminando…' : 'Eliminar cliente'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   </>
 }
 
 function ClientDialog({ client, onClose, onSave }: { client?: Client; onClose: () => void; onSave: (client: Client | ClientInput) => Promise<void> }) {
   const [form, setForm] = useState<Client | ClientInput>(client ?? emptyClient)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const update = (field: keyof ClientInput, value: string) => setForm((current) => ({ ...current, [field]: value }))
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); setSaving(true)
-    try { await onSave(form); onClose() } finally { setSaving(false) }
+    event.preventDefault(); setSaving(true); setError('')
+    try { await onSave(form); onClose() } catch (reason) { setError(reason instanceof Error ? reason.message : 'No se ha podido guardar el cliente.') } finally { setSaving(false) }
   }
-  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card client-dialog !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>{client ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle><DialogDescription>{client ? 'Actualiza los datos de contacto y facturación del cliente.' : 'Añade los datos de contacto y facturación del nuevo cliente.'}</DialogDescription></DialogHeader><form className="client-form" onSubmit={submit}><Label>Nombre completo<Input value={form.fullName} onChange={(event) => update('fullName', event.target.value)} required /></Label><Label>NIF<Input value={form.nif} onChange={(event) => update('nif', event.target.value)} /></Label><Label>Email<Input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></Label><Label>Teléfono<Input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></Label><Label className="form-span">Dirección<Input value={form.address} onChange={(event) => update('address', event.target.value)} /></Label><Label>Código postal<Input value={form.postalCode} onChange={(event) => update('postalCode', event.target.value)} /></Label><Label>Ciudad<Input value={form.city} onChange={(event) => update('city', event.target.value)} /></Label><Button type="submit" className="dialog-submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar cliente'}</Button></form></DialogContent></Dialog>
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}><DialogContent className="dialog-card client-dialog !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]"><DialogHeader className="gap-0"><DialogTitle>{client ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle><DialogDescription>{client ? 'Actualiza los datos de contacto y facturación del cliente.' : 'Añade los datos de contacto y facturación del nuevo cliente.'}</DialogDescription></DialogHeader><form className="client-form" onSubmit={submit}><Label>Nombre completo<Input value={form.fullName} onChange={(event) => update('fullName', event.target.value)} required /></Label><Label>NIF<Input value={form.nif} onChange={(event) => update('nif', event.target.value)} /></Label><Label>Email<Input type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></Label><Label>Teléfono<Input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></Label><Label className="form-span">Dirección<Input value={form.address} onChange={(event) => update('address', event.target.value)} /></Label><Label>Código postal<Input value={form.postalCode} onChange={(event) => update('postalCode', event.target.value)} /></Label><Label>Ciudad<Input value={form.city} onChange={(event) => update('city', event.target.value)} /></Label>{error && <p className="form-error form-span" role="alert">{error}</p>}<Button type="submit" className="dialog-submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar cliente'}</Button></form></DialogContent></Dialog>
 }

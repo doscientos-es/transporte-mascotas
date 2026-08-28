@@ -19,13 +19,19 @@ export function RequestsPage({ routes, onNotify }: Props) {
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [busy, setBusy] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   const refresh = useCallback(async () => {
     const loaded = await loadTransportRequests()
     setRequests(loaded)
   }, [])
 
-  useEffect(() => { refresh().catch(() => onNotify('No se han podido cargar las solicitudes.')) }, [onNotify, refresh])
+  const refreshRequests = useCallback(async () => {
+    setRefreshing(true)
+    try { await refresh() } catch { onNotify('No se han podido cargar las solicitudes.') } finally { setRefreshing(false) }
+  }, [onNotify, refresh])
+
+  useEffect(() => { void refreshRequests() }, [refreshRequests])
 
   const assignmentFor = (requestId: string) => assignments[requestId] ?? emptyAssignment
   const update = (requestId: string, patch: Partial<Assignment>) =>
@@ -63,7 +69,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
   const rest = requests.filter((request) => request.status !== 'por_verificar')
 
   return <>
-    <PageIntro text="Cada solicitud pagada llega aquí. Asigna una ruta y las paradas para crear la carta de porte."><Button variant="outline" onClick={() => refresh()}><RefreshCw size={15} /> Actualizar</Button></PageIntro>
+    <PageIntro text="Cada solicitud pagada llega aquí. Asigna una ruta y las paradas para crear la carta de porte."><Button variant="outline" disabled={refreshing || Boolean(busy)} onClick={() => void refreshRequests()}><RefreshCw className={refreshing ? 'is-spinning' : ''} size={15} /> {refreshing ? 'Actualizando…' : 'Actualizar'}</Button></PageIntro>
     <Card className="table-card"><CardContent>
       <div className="table-heading"><div><h3>Acción necesaria</h3><p>{pending.length} solicitudes pagadas pendientes de asignar</p></div><span className="status status-por_verificar">{pending.length} pendientes</span></div>
       {pending.length === 0 ? <p className="empty-copy">No hay solicitudes pendientes de verificar.</p> : pending.map((request) => {
