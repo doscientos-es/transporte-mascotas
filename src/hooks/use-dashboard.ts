@@ -34,13 +34,21 @@ function largestAnimal(animals: Animal[]) {
   return animals.reduce((largest, animal) => sizeRank[animal.size] > sizeRank[largest.size] ? animal : largest)
 }
 
+function selectFreeBox(animals: Animal[], usedBoxes: Set<number>) {
+  if (!animals.length) return undefined
+  const largestSize = largestAnimal(animals).size
+  const compatibleBoxes = (['pequeno', 'mediano', 'grande'] as const)
+    .filter((size) => sizeRank[size] >= sizeRank[largestSize])
+    .flatMap((size) => boxesBySize[size])
+  const requestedBox = animals.map((animal) => animal.box).find((box): box is number => typeof box === 'number' && compatibleBoxes.includes(box) && !usedBoxes.has(box))
+  return requestedBox ?? compatibleBoxes.find((box) => !usedBoxes.has(box))
+}
+
 function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Letter) {
   if (!letter.animals.length) return []
   const stops = route.stops ?? copyTemplateStops(template)
   const usedBoxes = new Set(route.actions.map((action) => action.box).filter((box): box is number => Boolean(box)))
-  const representative = largestAnimal(letter.animals)
-  const requestedBox = letter.animals.find((animal) => animal.box && !usedBoxes.has(animal.box))?.box
-  const box = requestedBox ?? boxesBySize[representative.size].find((candidate) => !usedBoxes.has(candidate))
+  const box = selectFreeBox(letter.animals, usedBoxes)
   const originStop = stops.find((stop) => stop.locality.trim().toLocaleLowerCase() === letter.origin.trim().toLocaleLowerCase())
   const destinationStop = stops.find((stop) => stop.locality.trim().toLocaleLowerCase() === letter.destination.trim().toLocaleLowerCase())
   return letter.animals.flatMap((animal) => [
@@ -392,9 +400,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function createDailyRoute(template: RouteTemplate, date: string, transporterId?: string, direction: RouteDirection = 'normal') {
     const usedBoxes = new Set<number>()
     const actions = letters.filter((letter) => letter.route === template.name && letter.serviceDate === date).flatMap((letter) => {
-      const representative = largestAnimal(letter.animals)
-      const requestedBox = letter.animals.find((animal) => animal.box && !usedBoxes.has(animal.box))?.box
-      const box = requestedBox ?? boxesBySize[representative.size].find((candidate) => !usedBoxes.has(candidate))
+      const box = selectFreeBox(letter.animals, usedBoxes)
       if (box) usedBoxes.add(box)
       const originStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()))
       const destinationStop = template.stops.find((stop) => stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()))
