@@ -1,6 +1,6 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
 export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
-export type AppRole = 'admin' | 'transportista' | 'user' | 'cliente'
+export type AppRole = 'admin' | 'transportista' | 'user'
 export type AccompanyingDocument =
   | 'cartilla_sanitaria'
   | 'microchip'
@@ -33,8 +33,7 @@ export type DashboardNavigation = {
   replaceWithSection: (section: NavSection) => void
 }
 
-// `cliente` is kept only while installations apply the migration to `user`.
-export const isClientRole = (role: AppRole) => role === 'user' || role === 'cliente'
+export const isClientRole = (role: AppRole) => role === 'user'
 
 export interface UserProfile {
   displayName: string

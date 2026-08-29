@@ -15,6 +15,41 @@ export const dashboardPaths: Record<NavSection, string> = {
   'mis-mascotas': '/mis-mascotas',
 }
 
+export const APP_PATHS = {
+  home: '/',
+  staffAccess: '/admin',
+  clientHome: dashboardPaths['mis-transportes'],
+  staffHome: dashboardPaths.cartas,
+  transporterHome: dashboardPaths.rutas,
+} as const
+
+export const DEFAULT_DASHBOARD_SECTIONS = {
+  client: 'mis-transportes',
+  staff: 'cartas',
+  transporter: 'rutas',
+} as const satisfies Record<string, NavSection>
+
+const routePath = (path: string) => path.slice(1)
+
+export const ROUTER_PATHS = {
+  staffAccess: `${routePath(APP_PATHS.staffAccess)}/*`,
+  clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
+  clientTransports: routePath(dashboardPaths['mis-transportes']),
+  clientPets: routePath(dashboardPaths['mis-mascotas']),
+  staffRoutes: routePath(dashboardPaths.rutas),
+  staffRouteDetail: `${routePath(dashboardPaths.rutas)}/:routeId`,
+  staffVan: routePath(dashboardPaths.furgoneta),
+  staffVanDetail: `${routePath(dashboardPaths.furgoneta)}/:routeId`,
+  staffInvoices: routePath(dashboardPaths.facturas),
+  adminLetters: routePath(dashboardPaths.cartas),
+  adminClients: routePath(dashboardPaths.clientes),
+  adminTemplates: routePath(dashboardPaths.plantillas),
+  adminRequests: routePath(dashboardPaths.solicitudes),
+  adminSettings: routePath(dashboardPaths.ajustes),
+  adminWhatsApp: routePath(dashboardPaths['whatsapp-test']),
+  notFound: '*',
+} as const
+
 export type DashboardLocation = {
   section: NavSection
   routeId?: string
@@ -22,7 +57,7 @@ export type DashboardLocation = {
 
 export function dashboardLocationForPath(
   pathname: string,
-  fallback: NavSection = 'cartas',
+  fallback: NavSection = DEFAULT_DASHBOARD_SECTIONS.staff,
 ): DashboardLocation {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { section: fallback }
@@ -48,15 +83,6 @@ export function dashboardLocationForPath(
   return { section: fallback }
 }
 
-export function isDashboardPath(pathname: string) {
-  const path = pathname.replace(/\/+$/, '') || '/'
-  return (
-    path === '/' ||
-    Object.values(dashboardPaths).includes(path) ||
-    /^\/(?:rutas|furgoneta)\/[^/]+$/.test(path)
-  )
-}
-
 export function dashboardPathFor(section: NavSection) {
   return dashboardPaths[section]
 }
@@ -67,4 +93,8 @@ export function routePathFor(routeId: string) {
 
 export function vanPathFor(routeId: string) {
   return `${dashboardPaths.furgoneta}/${encodeURIComponent(routeId)}`
+}
+
+export function isStaffAccessPath(pathname: string) {
+  return pathname === APP_PATHS.staffAccess || pathname.startsWith(`${APP_PATHS.staffAccess}/`)
 }

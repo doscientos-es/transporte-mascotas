@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
 import type {
   Animal,
@@ -60,7 +61,7 @@ function copyTemplateStops(
   const stops = template.stops.map((stop) => ({
     ...stop,
     kind: 'parada' as const,
-    dwellMinutes: 15,
+    dwellMinutes: DEFAULT_STOP_DWELL_MINUTES,
   }))
   return direction === 'inversa' ? stops.toReversed() : stops
 }

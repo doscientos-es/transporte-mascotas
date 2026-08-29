@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  APP_PATHS,
+  DEFAULT_DASHBOARD_SECTIONS,
   dashboardLocationForPath,
-  isDashboardPath,
   routePathFor,
+  ROUTER_PATHS,
   vanPathFor,
 } from './dashboard-routes'
 
@@ -19,11 +21,12 @@ describe('dashboard routes', () => {
     })
   })
 
-  it('builds safe paths and rejects routes outside the dashboard', () => {
+  it('keeps router paths and navigation defaults in one source of truth', () => {
     expect(routePathFor('ruta norte')).toBe('/rutas/ruta%20norte')
     expect(vanPathFor('van/01')).toBe('/furgoneta/van%2F01')
     expect(dashboardLocationForPath('/ajustes/whatsapp')).toEqual({ section: 'whatsapp-test' })
-    expect(isDashboardPath('/rutas/ruta%20norte')).toBe(true)
-    expect(isDashboardPath('/acceso')).toBe(false)
+    expect(APP_PATHS.clientHome).toBe('/mis-transportes')
+    expect(DEFAULT_DASHBOARD_SECTIONS.transporter).toBe('rutas')
+    expect(ROUTER_PATHS.staffRouteDetail).toBe('rutas/:routeId')
   })
 })

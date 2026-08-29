@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { statusLabels } from '@/shared/lib/status-labels'
 import type {
   DailyRoute,
@@ -77,7 +78,11 @@ const formatDuration = (minutes: number) =>
     : `${minutes} min`
 const routeStops = (route: DailyRoute, template: RouteTemplate) =>
   route.stops ??
-  template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
+  template.stops.map((stop) => ({
+    ...stop,
+    kind: 'parada' as const,
+    dwellMinutes: DEFAULT_STOP_DWELL_MINUTES,
+  }))
 const formatRouteDate = (date: string) => ({
   day: new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric' }),
   month: new Date(`${date}T12:00:00`)

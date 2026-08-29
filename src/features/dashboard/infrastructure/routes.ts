@@ -1,3 +1,4 @@
+import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type {
   DailyRoute,
@@ -287,7 +288,11 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
   if (routeError) throw routeError
   const routeStops =
     route.stops ??
-    template.stops.map((stop) => ({ ...stop, kind: 'parada' as const, dwellMinutes: 15 }))
+    template.stops.map((stop) => ({
+      ...stop,
+      kind: 'parada' as const,
+      dwellMinutes: DEFAULT_STOP_DWELL_MINUTES,
+    }))
   const { data: savedStops, error: stopsError } = await database
     .from('daily_route_stops')
     .insert(
