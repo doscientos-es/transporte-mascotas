@@ -1,0 +1,103 @@
+.pwa-install-prompt {
+  position: fixed;
+  z-index: 100;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  width: min(440px, calc(100vw - 32px));
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid #dedede;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgb(23 23 23 / 18%);
+}
+
+.pwa-install-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #fcebed;
+  color: var(--accent);
+}
+
+.pwa-install-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.pwa-install-content strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.pwa-install-content p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pwa-install-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pwa-install-action,
+.pwa-install-dismiss {
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pwa-install-action {
+  padding: 0 11px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.pwa-install-action:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.pwa-install-dismiss {
+  display: grid;
+  width: 36px;
+  padding: 0;
+  place-items: center;
+  background: transparent;
+  color: var(--muted-foreground);
+}
+
+.pwa-install-action:focus-visible,
+.pwa-install-dismiss:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.pwa-install-dismiss:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
+@media (max-width: 700px) {
+  .pwa-install-prompt {
+    right: 16px;
+    bottom: 82px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-prompt {
+    scroll-behavior: auto;
+  }
+}

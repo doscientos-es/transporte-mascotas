@@ -4,6 +4,7 @@ import { Component, useEffect, useState, type ReactNode } from 'react'
 
 import { useAuthSession } from '@/features/auth'
 import { isSupabaseConfigured } from '@/shared/infrastructure/supabase'
+import { PwaInstallPrompt } from '@/shared/ui/pwa-install-prompt'
 
 import { AppRouter } from './router'
 
@@ -12,6 +13,7 @@ function App() {
     <AppErrorBoundary>
       <RuntimeErrorGuard>
         <AuthenticatedApp />
+        <PwaInstallPrompt />
       </RuntimeErrorGuard>
     </AppErrorBoundary>
   )

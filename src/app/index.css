@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import '@doscientos/ui/styles.css';
+@import './styles/pwa-install.css';
 
 @theme inline {
   --color-primary: var(--primary);

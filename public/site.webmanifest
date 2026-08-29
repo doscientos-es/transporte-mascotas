@@ -1,6 +1,12 @@
 {
   "name": "Transporte de mascotas · Kache Envíos",
   "short_name": "Kache Envíos",
+  "description": "Gestiona tus transportes de mascotas con Kache Envíos.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "es",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -17,5 +23,8 @@
   ],
   "theme_color": "#1d1d1b",
   "background_color": "#1d1d1b",
-  "display": "standalone"
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "any",
+  "categories": ["business", "productivity"]
 }
