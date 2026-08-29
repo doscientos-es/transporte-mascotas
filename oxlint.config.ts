@@ -1,5 +1,5 @@
-import { createFeatureLayersConfig } from '@doscientos/oxc-config/feature-layers'
-import { reactViteConfig } from '@doscientos/oxc-config/react-vite'
+import { createFeatureLayersConfig } from '@doscientos/configs/architecture'
+import { reactViteConfig } from '@doscientos/configs/oxlint/react-vite'
 import { defineConfig } from 'oxlint'
 
 export default defineConfig({

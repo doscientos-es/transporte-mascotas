@@ -1,5 +1,6 @@
 import path from 'node:path'
 
+import { createVitestConfig } from '@doscientos/configs/vitest'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
@@ -43,8 +44,14 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
-  test: {
+  test: createVitestConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
-  },
+    coverage: {
+      include: [
+        'src/app/router/dashboard-routes.ts',
+        'src/features/dashboard/application/route-segment.ts',
+      ],
+    },
+  }),
 })
