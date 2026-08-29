@@ -1,0 +1,58 @@
+/* Product-specific mobile refinements, loaded after the legacy stylesheet. */
+@media (max-width: 600px) {
+  .page-intro {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .page-intro > [data-slot='button'] {
+    width: 100%;
+  }
+
+  .invoice-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .invoice-card-financial,
+  .invoice-card-actions,
+  .letter-card-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .invoice-card-financial,
+  .invoice-card-actions,
+  .letter-card-footer > div {
+    width: 100%;
+  }
+
+  .invoice-card-actions [data-slot='button'],
+  .letter-card-footer button {
+    justify-content: center;
+  }
+
+  .box-details-summary,
+  .box-animal-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .request-review-grid strong {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 390px) {
+  .letter-card-heading,
+  .letter-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .letter-card-heading > div,
+  .letter-card-footer > div {
+    width: 100%;
+  }
+}

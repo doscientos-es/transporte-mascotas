@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1'
+
 import { rest, serviceHeaders } from './supabase.ts'
 
 type FiscalSnapshot = {

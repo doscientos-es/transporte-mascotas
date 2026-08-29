@@ -1,4 +1,5 @@
 import { rest } from './supabase.ts'
+import { sendWhatsAppTemplate } from './whatsapp.ts'
 
 type Payment = { public_token: string }
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
@@ -154,48 +155,13 @@ async function sendEmail(recipient: string, kind: Notification['kind'], link: st
 }
 
 async function sendWhatsApp(recipient: string, kind: Notification['kind'], link: string) {
-  const token = Deno.env.get('META_WHATSAPP_ACCESS_TOKEN')
-  const phoneNumberId = Deno.env.get('META_WHATSAPP_PHONE_NUMBER_ID')
-  const template = Deno.env.get(
-    kind === 'solicitud_pago' ? 'META_WHATSAPP_PAYMENT_TEMPLATE' : 'META_WHATSAPP_INVOICE_TEMPLATE',
-  )
-  if (!token || !phoneNumberId || !template)
-    throw new Error('WhatsApp Business todavía no está configurado.')
-  const version = Deno.env.get('META_WHATSAPP_GRAPH_API_VERSION') ?? 'v23.0'
+  const templateEnvironmentVariable =
+    kind === 'solicitud_pago' ? 'META_WHATSAPP_PAYMENT_TEMPLATE' : 'META_WHATSAPP_INVOICE_TEMPLATE'
   const firstValue = kind === 'solicitud_pago' ? 'Tu solicitud de pago' : 'Tu factura emitida'
-  const response = await fetch(`https://graph.facebook.com/${version}/${phoneNumberId}/messages`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: normalizePhone(recipient),
-      type: 'template',
-      template: {
-        name: template,
-        language: { code: 'es' },
-        components: [
-          {
-            type: 'body',
-            parameters: [
-              { type: 'text', text: firstValue },
-              { type: 'text', text: link },
-            ],
-          },
-        ],
-      },
-    }),
-  })
-  if (!response.ok) throw new Error(`WhatsApp Business ha rechazado el envío (${response.status}).`)
-  const result = (await response.json()) as { messages?: Array<{ id?: string }> }
-  return result.messages?.[0]?.id ?? ''
-}
-
-function normalizePhone(value: string) {
-  let digits = value.replace(/\D/g, '')
-  if (digits.length === 9) digits = `34${digits}`
-  if (!/^[1-9][0-9]{7,14}$/.test(digits))
-    throw new Error('El teléfono de WhatsApp debe estar en formato internacional.')
-  return digits
+  return sendWhatsAppTemplate(recipient, templateEnvironmentVariable, [
+    { type: 'text', text: firstValue },
+    { type: 'text', text: link },
+  ])
 }
 
 async function updateNotification(id: string, body: Record<string, unknown>) {
