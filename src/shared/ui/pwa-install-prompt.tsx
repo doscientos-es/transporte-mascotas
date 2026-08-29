@@ -18,8 +18,10 @@ function isStandalone() {
 }
 
 function isIos() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
 }
 
 function wasDismissed() {
@@ -96,7 +98,12 @@ export function PwaInstallPrompt() {
       </div>
       <div className="pwa-install-actions">
         {!ios && (
-          <button type="button" className="pwa-install-action" disabled={pending} onClick={() => void install()}>
+          <button
+            type="button"
+            className="pwa-install-action"
+            disabled={pending}
+            onClick={() => void install()}
+          >
             {pending ? 'Abriendo…' : 'Instalar'}
           </button>
         )}
