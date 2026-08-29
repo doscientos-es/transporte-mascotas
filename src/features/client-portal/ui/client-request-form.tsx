@@ -196,7 +196,9 @@ export function ClientRequestForm({
       await onSavePets(petsToSave)
       onCancel()
     } catch {
-      setError('Tu solicitud está enviada, pero no hemos podido guardar la mascota. Vuelve a intentarlo.')
+      setError(
+        'Tu solicitud está enviada, pero no hemos podido guardar la mascota. Vuelve a intentarlo.',
+      )
     } finally {
       setSending(false)
     }
@@ -264,13 +266,20 @@ export function ClientRequestForm({
               <div>
                 <h2>Tu solicitud está enviada</h2>
                 <p>
-                  ¿Quieres guardar {names} para la próxima vez? Podrás cambiar peso y medidas siempre que lo necesites.
+                  ¿Quieres guardar {names} para la próxima vez? Podrás cambiar peso y medidas
+                  siempre que lo necesites.
                 </p>
               </div>
             </div>
-            {error && <p className="form-error" role="alert">{error}</p>}
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
             <div className="request-form-actions">
-              <Button type="button" variant="outline" onClick={onCancel} disabled={sending}>Ahora no</Button>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={sending}>
+                Ahora no
+              </Button>
               <Button type="button" onClick={() => void savePets()} disabled={sending}>
                 <PawPrint size={16} /> {sending ? 'Guardando…' : 'Guardar mascota'}
               </Button>
@@ -483,16 +492,30 @@ export function ClientRequestForm({
                     {savedPets.length > 0 && (
                       <label className="form-span">
                         ¿Ya has viajado con nosotros?
-                        <select value={animal.clientPetId ?? ''} onChange={(event) => selectSavedPet(index, event.target.value)}>
+                        <select
+                          value={animal.clientPetId ?? ''}
+                          onChange={(event) => selectSavedPet(index, event.target.value)}
+                        >
                           <option value="">Rellenar los datos a mano</option>
-                          {savedPets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name} · {pet.species}</option>)}
+                          {savedPets.map((pet) => (
+                            <option key={pet.id} value={pet.id}>
+                              {pet.name} · {pet.species}
+                            </option>
+                          ))}
                         </select>
-                        <small>Al elegirla rellenamos sus datos. Puedes cambiarlos antes de continuar.</small>
+                        <small>
+                          Al elegirla rellenamos sus datos. Puedes cambiarlos antes de continuar.
+                        </small>
                       </label>
                     )}
                     <label>
                       Nombre
-                      <input value={animal.name} onChange={(event) => updateAnimal(index, { name: event.target.value })} placeholder="Por ejemplo, Luna" required />
+                      <input
+                        value={animal.name}
+                        onChange={(event) => updateAnimal(index, { name: event.target.value })}
+                        placeholder="Por ejemplo, Luna"
+                        required
+                      />
                     </label>
                     <label>
                       Especie

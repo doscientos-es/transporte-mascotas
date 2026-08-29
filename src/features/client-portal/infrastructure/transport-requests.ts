@@ -1,5 +1,10 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
-import type { ClientPet, TransportRequest, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+import type {
+  ClientPet,
+  TransportRequest,
+  TransportRequestAnimal,
+  UpcomingRoute,
+} from '@/shared/types'
 
 type RequestRow = {
   id: string
