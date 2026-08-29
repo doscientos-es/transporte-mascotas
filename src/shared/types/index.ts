@@ -253,6 +253,7 @@ export type TransportRequestStatus =
 
 export interface TransportRequestAnimal {
   id?: string
+  name: string
   ordinal: number
   species: string
   breed: string
@@ -261,6 +262,18 @@ export interface TransportRequestAnimal {
   heightCm: number
   widthCm: number
   size?: AnimalSize
+  clientPetId?: string
+}
+
+export interface ClientPet {
+  id: string
+  name: string
+  species: string
+  breed: string
+  weightKg: number
+  lengthCm: number
+  heightCm: number
+  widthCm: number
 }
 
 export interface TransportRequest {

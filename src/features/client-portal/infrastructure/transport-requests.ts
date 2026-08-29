@@ -1,5 +1,5 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
-import type { TransportRequest, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+import type { ClientPet, TransportRequest, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
 
 type RequestRow = {
   id: string
@@ -19,6 +19,7 @@ type RequestRow = {
   created_at: string
   transport_request_animals: Array<{
     id: string
+    name: string
     ordinal: number
     species: string
     breed: string
@@ -27,6 +28,7 @@ type RequestRow = {
     height_cm: number
     width_cm: number
     size: TransportRequestAnimal['size']
+    client_pet_id: string | null
   }>
 }
 
@@ -49,6 +51,7 @@ function mapRequest(row: RequestRow): TransportRequest {
     createdAt: row.created_at,
     animals: row.transport_request_animals.map((animal) => ({
       id: animal.id,
+      name: animal.name,
       ordinal: animal.ordinal,
       species: animal.species,
       breed: animal.breed,
@@ -57,8 +60,55 @@ function mapRequest(row: RequestRow): TransportRequest {
       heightCm: animal.height_cm,
       widthCm: animal.width_cm,
       size: animal.size,
+      clientPetId: animal.client_pet_id ?? undefined,
     })),
   }
+}
+
+type ClientPetRow = {
+  id: string
+  name: string
+  species: string
+  breed: string
+  weight_kg: number
+  length_cm: number
+  height_cm: number
+  width_cm: number
+}
+
+const mapClientPet = (pet: ClientPetRow): ClientPet => ({
+  id: pet.id,
+  name: pet.name,
+  species: pet.species,
+  breed: pet.breed,
+  weightKg: pet.weight_kg,
+  lengthCm: pet.length_cm,
+  heightCm: pet.height_cm,
+  widthCm: pet.width_cm,
+})
+
+export async function loadClientPets(): Promise<ClientPet[]> {
+  const { data, error } = await requireSupabase()
+    .from('client_pets')
+    .select('id, name, species, breed, weight_kg, length_cm, height_cm, width_cm')
+    .order('name')
+  if (error) throw error
+  return (data as ClientPetRow[]).map(mapClientPet)
+}
+
+export async function saveClientPets(animals: TransportRequestAnimal[]) {
+  const { error } = await requireSupabase().rpc('save_client_pets', {
+    p_pets: animals.map(({ name, species, breed, weightKg, lengthCm, heightCm, widthCm }) => ({
+      name,
+      species,
+      breed,
+      weight_kg: weightKg,
+      length_cm: lengthCm,
+      height_cm: heightCm,
+      width_cm: widthCm,
+    })),
+  })
+  if (error) throw error
 }
 
 export async function loadTransportRequests(requesterId?: string) {
@@ -113,14 +163,16 @@ export async function createTransportRequest(
     p_desired_date: request.desiredDate,
     p_notes: request.notes,
     p_animals: animals.map(
-      ({ ordinal, species, breed, weightKg, lengthCm, heightCm, widthCm }) => ({
+      ({ ordinal, name, species, breed, weightKg, lengthCm, heightCm, widthCm, clientPetId }) => ({
         ordinal,
+        name,
         species,
         breed,
         weight_kg: weightKg,
         length_cm: lengthCm,
         height_cm: heightCm,
         width_cm: widthCm,
+        client_pet_id: clientPetId ?? null,
       }),
     ),
   })

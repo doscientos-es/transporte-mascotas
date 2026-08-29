@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
-import type { TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
 
 export type RequestFormValues = {
   contactName: string
@@ -28,6 +28,7 @@ export type RequestFormValues = {
 const steps = ['Contacto', 'Trayecto', 'Mascotas', 'Revisar']
 const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   ordinal,
+  name: '',
   species: '',
   breed: '',
   weightKg: 0,
@@ -54,22 +55,26 @@ const initialValues = (
 
 type Props = {
   routes: UpcomingRoute[]
+  savedPets: ClientPet[]
   contactName: string
   contactPhone: string
   contactEmail: string
   onSubmit: (values: RequestFormValues) => Promise<void>
   onCancel: () => void
+  onSavePets: (animals: TransportRequestAnimal[]) => Promise<void>
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
 }
 
 export function ClientRequestForm({
   routes,
+  savedPets,
   contactName,
   contactPhone,
   contactEmail,
   onSubmit,
   onCancel,
+  onSavePets,
   pendingPayment = false,
   onRetryPayment,
 }: Props) {
@@ -77,6 +82,7 @@ export function ClientRequestForm({
   const [step, setStep] = useState(0)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)
 
   async function retryPayment() {
     if (!onRetryPayment) return
@@ -104,6 +110,21 @@ export function ClientRequestForm({
     }))
   }
 
+  function selectSavedPet(index: number, petId: string) {
+    const pet = savedPets.find((item) => item.id === petId)
+    if (!pet) return updateAnimal(index, { clientPetId: undefined })
+    updateAnimal(index, {
+      clientPetId: pet.id,
+      name: pet.name,
+      species: pet.species,
+      breed: pet.breed,
+      weightKg: pet.weightKg,
+      lengthCm: pet.lengthCm,
+      heightCm: pet.heightCm,
+      widthCm: pet.widthCm,
+    })
+  }
+
   function validateCurrentStep() {
     if (step === 0) {
       if (!values.contactName.trim() || !values.contactPhone.trim() || !values.contactEmail.trim())
@@ -124,13 +145,14 @@ export function ClientRequestForm({
     if (step === 2) {
       const incompleteAnimal = values.animals.some(
         (animal) =>
+          !animal.name.trim() ||
           !animal.species.trim() ||
           animal.weightKg <= 0 ||
           animal.lengthCm <= 0 ||
           animal.heightCm <= 0 ||
           animal.widthCm <= 0,
       )
-      if (incompleteAnimal) return 'Completa especie, peso y medidas de cada mascota.'
+      if (incompleteAnimal) return 'Completa el nombre, especie, peso y medidas de cada mascota.'
     }
     return ''
   }
@@ -150,14 +172,31 @@ export function ClientRequestForm({
     setError('')
     try {
       await onSubmit(values)
+      const newPets = values.animals.filter((animal) => !animal.clientPetId)
       setValues(initialValues(contactName, contactPhone, contactEmail))
       setStep(0)
+      if (newPets.length) setPetsToSave(newPets)
+      else onCancel()
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
           : 'No hemos podido registrar la solicitud.',
       )
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function savePets() {
+    if (!petsToSave) return
+    setSending(true)
+    setError('')
+    try {
+      await onSavePets(petsToSave)
+      onCancel()
+    } catch {
+      setError('Tu solicitud está enviada, pero no hemos podido guardar la mascota. Vuelve a intentarlo.')
     } finally {
       setSending(false)
     }
@@ -206,6 +245,34 @@ export function ClientRequestForm({
               </Button>
               <Button type="button" onClick={() => void retryPayment()} disabled={sending}>
                 <CreditCard size={16} /> {sending ? 'Registrando pago…' : 'Reintentar pago'}
+              </Button>
+            </div>
+          </section>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (petsToSave) {
+    const names = petsToSave.map((animal) => animal.name).join(' y ')
+    return (
+      <Card className="table-card client-request-card">
+        <CardContent>
+          <section className="payment-recovery">
+            <div className="letter-form-section-title">
+              <PawPrint size={17} />
+              <div>
+                <h2>Tu solicitud está enviada</h2>
+                <p>
+                  ¿Quieres guardar {names} para la próxima vez? Podrás cambiar peso y medidas siempre que lo necesites.
+                </p>
+              </div>
+            </div>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <div className="request-form-actions">
+              <Button type="button" variant="outline" onClick={onCancel} disabled={sending}>Ahora no</Button>
+              <Button type="button" onClick={() => void savePets()} disabled={sending}>
+                <PawPrint size={16} /> {sending ? 'Guardando…' : 'Guardar mascota'}
               </Button>
             </div>
           </section>
@@ -413,6 +480,20 @@ export function ClientRequestForm({
                     )}
                   </div>
                   <div className="letter-form-grid animal-fields">
+                    {savedPets.length > 0 && (
+                      <label className="form-span">
+                        ¿Ya has viajado con nosotros?
+                        <select value={animal.clientPetId ?? ''} onChange={(event) => selectSavedPet(index, event.target.value)}>
+                          <option value="">Rellenar los datos a mano</option>
+                          {savedPets.map((pet) => <option key={pet.id} value={pet.id}>{pet.name} · {pet.species}</option>)}
+                        </select>
+                        <small>Al elegirla rellenamos sus datos. Puedes cambiarlos antes de continuar.</small>
+                      </label>
+                    )}
+                    <label>
+                      Nombre
+                      <input value={animal.name} onChange={(event) => updateAnimal(index, { name: event.target.value })} placeholder="Por ejemplo, Luna" required />
+                    </label>
                     <label>
                       Especie
                       <input

@@ -15,6 +15,7 @@ import { statusLabels } from '@/shared/lib/status-labels'
 import type {
   TransportRequest,
   TransportRequestAnimal,
+  ClientPet,
   UpcomingRoute,
   UserProfile,
   DashboardNavigation,
@@ -26,8 +27,10 @@ import { signOut as signOutSession } from '../application/session'
 import {
   createTransportRequest,
   loadTransportRequests,
+  loadClientPets,
   loadUpcomingRoutes,
   payTransportRequest,
+  saveClientPets,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
 
@@ -44,6 +47,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, navigateToSection } = navigation
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
+  const [savedPets, setSavedPets] = useState<ClientPet[]>([])
   const [showForm, setShowForm] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -62,12 +66,14 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   const refresh = useCallback(async () => {
     if (!userId) return
-    const [nextRoutes, nextRequests] = await Promise.all([
+    const [nextRoutes, nextRequests, nextPets] = await Promise.all([
       loadUpcomingRoutes(),
       loadTransportRequests(userId),
+      loadClientPets(),
     ])
     setRoutes(nextRoutes)
     setRequests(nextRequests)
+    setSavedPets(nextPets)
     setPendingPaymentRequestId((current) => {
       const currentIsPending = nextRequests.some(
         (request) => request.id === current && request.status === 'pago_pendiente',
@@ -109,7 +115,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   async function completeRequestPayment(requestId: string) {
     await payTransportRequest(requestId)
     setPendingPaymentRequestId(null)
-    setShowForm(false)
     setNotice('Pago registrado. Estamos revisando tu solicitud y te avisaremos al asignar la ruta.')
     try {
       await refresh()
@@ -134,7 +139,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         const request = currentRequests.find((item) => item.id === requestId)
         if (request?.status === 'por_verificar') {
           setPendingPaymentRequestId(null)
-          setShowForm(false)
           setNotice(
             'Pago registrado. Estamos revisando tu solicitud y te avisaremos al asignar la ruta.',
           )
@@ -147,6 +151,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         'Hemos guardado tu solicitud, pero no hemos podido registrar el pago. Reinténtalo: no se creará otra solicitud.',
       )
     }
+  }
+
+  async function saveRecurringPets(animals: TransportRequestAnimal[]) {
+    await saveClientPets(animals)
+    setSavedPets(await loadClientPets())
+    setNotice('Mascota guardada. La próxima vez podrás elegirla y revisar sus datos.')
   }
 
   const awaitingReview = requests.filter(
@@ -291,11 +301,13 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           {showForm && (
             <ClientRequestForm
               routes={routes}
+              savedPets={savedPets}
               contactName={profile.displayName}
               contactPhone={profile.phone}
               contactEmail={session?.user.email ?? ''}
               onSubmit={submitRequest}
               onCancel={() => setShowForm(false)}
+              onSavePets={saveRecurringPets}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
             />
