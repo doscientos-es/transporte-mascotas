@@ -1,5 +1,13 @@
-import { Button, Input, Label } from '@doscientos/ui'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@doscientos/ui'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+} from '@doscientos/ui'
 import {
   ArrowLeft,
   ArrowRight,

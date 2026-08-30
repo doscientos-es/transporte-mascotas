@@ -1,5 +1,13 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@doscientos/ui'
+import {
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@doscientos/ui'
 import { ArrowRightLeft, MapPin, PawPrint, Printer, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 

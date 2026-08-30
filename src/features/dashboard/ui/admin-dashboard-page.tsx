@@ -137,7 +137,7 @@ export function AdminDashboardPage({
       <DashboardLayout
         section={section}
         pendingLetters={pendingLetters}
-        role={profile.role}
+        profileRole={profile.role}
         displayName={profile.displayName}
         title={section === 'whatsapp-test' ? 'Pruebas de WhatsApp' : undefined}
         onNavigate={navigateToSection}

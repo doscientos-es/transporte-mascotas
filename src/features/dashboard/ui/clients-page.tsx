@@ -1,4 +1,3 @@
-import { Button, Card, CardContent, Input, Label, Pagination } from '@doscientos/ui'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,8 +7,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Button,
+  Card,
+  CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  Pagination,
 } from '@doscientos/ui'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@doscientos/ui'
 import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 

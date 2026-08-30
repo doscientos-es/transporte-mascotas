@@ -128,7 +128,13 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   async function submitRequest(values?: RequestFormValues) {
     if (!userId) throw new Error('Inicia sesión para enviar una solicitud.')
     if (!values && !pendingPaymentRequestId) throw new Error('Completa los datos de la solicitud.')
-    const requestId = pendingPaymentRequestId ?? (await createTransportRequest(values!))
+    let requestId: string
+    if (pendingPaymentRequestId) {
+      requestId = pendingPaymentRequestId
+    } else {
+      if (!values) throw new Error('Completa los datos de la solicitud.')
+      requestId = await createTransportRequest(values)
+    }
     setPendingPaymentRequestId(requestId)
     try {
       await completeRequestPayment(requestId)
@@ -178,7 +184,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     <DashboardLayout
       section={section}
       pendingLetters={0}
-      role="user"
+      profileRole="user"
       displayName={profile.displayName}
       onNavigate={navigateToSection}
       hrefForSection={navigation.hrefForSection}

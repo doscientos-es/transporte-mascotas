@@ -38,7 +38,7 @@ const transporterSections = new Set<NavSection>(['rutas', 'facturas'])
 type Props = {
   section: NavSection
   pendingLetters: number
-  role: AppRole
+  profileRole: AppRole
   displayName: string
   onNavigate: (section: NavSection) => void
   hrefForSection: (section: NavSection) => string
@@ -50,7 +50,7 @@ type Props = {
 export function DashboardLayout({
   section,
   pendingLetters,
-  role,
+  profileRole,
   displayName,
   onNavigate,
   hrefForSection,
@@ -59,9 +59,9 @@ export function DashboardLayout({
   children,
 }: Props) {
   const visibleItems =
-    role === 'transportista'
+    profileRole === 'transportista'
       ? navigationItems.filter(([id]) => transporterSections.has(id))
-      : isClientRole(role)
+      : isClientRole(profileRole)
         ? navigationItems.filter(([id]) => clientSections.has(id))
         : navigationItems.filter(([id]) => !clientSections.has(id))
   const pageTitle = title ?? visibleItems.find(([id]) => id === section)?.[1] ?? 'Rutas'
@@ -74,7 +74,11 @@ export function DashboardLayout({
       .join('')
       .toUpperCase() || 'US'
   const roleLabel =
-    role === 'admin' ? 'Administración' : isClientRole(role) ? 'Cliente' : 'Transportista'
+    profileRole === 'admin'
+      ? 'Administración'
+      : isClientRole(profileRole)
+        ? 'Cliente'
+        : 'Transportista'
   const handleNavigation = (event: MouseEvent<HTMLAnchorElement>, target: NavSection) => {
     if (
       event.defaultPrevented ||
@@ -117,7 +121,11 @@ export function DashboardLayout({
           <span>Kache Envíos</span>
         </div>
         <div className="workspace-label">
-          {role === 'admin' ? 'OPERACIONES' : isClientRole(role) ? 'MI ÁREA' : 'MI JORNADA'}
+          {profileRole === 'admin'
+            ? 'OPERACIONES'
+            : isClientRole(profileRole)
+              ? 'MI ÁREA'
+              : 'MI JORNADA'}
         </div>
         <nav>{renderNavigation()}</nav>
         <div className="sidebar-footer">

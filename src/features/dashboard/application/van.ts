@@ -5,7 +5,10 @@ export type VanAssignment = { box: number; label: string; animalCount: number }
 export function assignmentsForRoute(route: Pick<DailyRoute, 'actions'>): VanAssignment[] {
   const byLetterAndBox = new Map<string, VanAssignment>()
   route.actions
-    .filter((action) => action.type === 'recogida' && action.box)
+    .filter(
+      (action): action is typeof action & { box: number } =>
+        action.type === 'recogida' && typeof action.box === 'number',
+    )
     .forEach((action) => {
       const key = `${action.letterId}:${action.box}`
       const current = byLetterAndBox.get(key)
@@ -13,7 +16,7 @@ export function assignmentsForRoute(route: Pick<DailyRoute, 'actions'>): VanAssi
         key,
         current
           ? { ...current, animalCount: current.animalCount + 1 }
-          : { box: action.box!, label: action.letterId, animalCount: 1 },
+          : { box: action.box, label: action.letterId, animalCount: 1 },
       )
     })
   return [...byLetterAndBox.values()]

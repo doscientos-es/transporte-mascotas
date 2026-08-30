@@ -1,4 +1,3 @@
-import { Button, Card, CardContent, Input, Pagination } from '@doscientos/ui'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,6 +7,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Pagination,
 } from '@doscientos/ui'
 import {
   ArrowDown,
