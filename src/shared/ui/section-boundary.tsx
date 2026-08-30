@@ -5,13 +5,13 @@ type State = { hasError: boolean }
 
 /** Preserves the dashboard shell when an independently loaded section fails. */
 export class SectionBoundary extends Component<Props, State> {
-  state: State = { hasError: false }
+  override state: State = { hasError: false }
 
   static getDerivedStateFromError() {
     return { hasError: true }
   }
 
-  render() {
+  override render() {
     if (!this.state.hasError) return this.props.children
     return (
       <section className="page-loading app-state" role="alert">

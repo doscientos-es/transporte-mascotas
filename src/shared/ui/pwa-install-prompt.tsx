@@ -1,85 +1,18 @@
+import { usePwaInstallPrompt } from '@doscientos/pwa/react'
 import { Download, Share2, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-
-import { shouldOfferPwaInstallation } from '@/shared/application/pwa-install'
 
 const DISMISS_KEY = 'kache-envios:pwa-install-dismissed'
 
-type InstallPromptEvent = Event & {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
-
-function isIos() {
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  )
-}
-
-function wasDismissed() {
-  try {
-    return window.localStorage.getItem(DISMISS_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 /** Offers native installation or the required Safari instructions on a first visit. */
 export function PwaInstallPrompt() {
-  const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null)
-  const [dismissed, setDismissed] = useState(true)
-  const [standalone, setStandalone] = useState(true)
-  const [ios, setIos] = useState(false)
-  const [pending, setPending] = useState(false)
-
-  useEffect(() => {
-    setStandalone(isStandalone())
-    setIos(isIos())
-    setDismissed(wasDismissed())
-
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault()
-      setInstallEvent(event as InstallPromptEvent)
-    }
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-  }, [])
-
-  const dismiss = () => {
-    try {
-      window.localStorage.setItem(DISMISS_KEY, '1')
-    } catch {
-      // Keep the notice dismissible when storage is unavailable.
-    }
-    setDismissed(true)
-  }
-
-  const install = async () => {
-    if (!installEvent) return
-    setPending(true)
-    try {
-      await installEvent.prompt()
-      const choice = await installEvent.userChoice
-      if (choice.outcome === 'accepted') setStandalone(true)
-      setInstallEvent(null)
-    } finally {
-      setPending(false)
-    }
-  }
-
-  const visible = shouldOfferPwaInstallation({
-    isDismissed: dismissed,
+  const {
+    dismiss,
+    install,
     isIos: ios,
-    isStandalone: standalone,
-    canPrompt: installEvent !== null,
+    pending,
+    visible,
+  } = usePwaInstallPrompt({
+    storageKey: DISMISS_KEY,
   })
   if (!visible) return null
 

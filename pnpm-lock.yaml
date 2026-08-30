@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@doscientos/pwa':
+        specifier: file:..\..\modules\pwa
+        version: file:../../modules/pwa(react@19.2.8)
       '@doscientos/ui':
         specifier: file:..\..\modules\ui
         version: file:../../modules/ui(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -244,6 +247,15 @@ packages:
       oxlint-tsgolint:
         optional: true
       vitest:
+        optional: true
+
+  '@doscientos/pwa@file:../../modules/pwa':
+    resolution: {directory: ../../modules/pwa, type: directory}
+    engines: {node: '>=22.18.0'}
+    peerDependencies:
+      react: '>=18.0.0 <20'
+    peerDependenciesMeta:
+      react:
         optional: true
 
   '@doscientos/ui@file:../../modules/ui':
@@ -2868,6 +2880,10 @@ snapshots:
       oxlint: 1.77.0(oxlint-tsgolint@7.0.2001)
       oxlint-tsgolint: 7.0.2001
       vitest: 4.1.11(@types/node@24.13.3)(@vitest/coverage-v8@4.1.11)(vite@8.2.0(@types/node@24.13.3)(jiti@2.7.0))
+
+  '@doscientos/pwa@file:../../modules/pwa(react@19.2.8)':
+    optionalDependencies:
+      react: 19.2.8
 
   '@doscientos/ui@file:../../modules/ui(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:

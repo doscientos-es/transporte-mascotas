@@ -20,6 +20,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@doscientos/pwa": "file:..\\..\\modules\\pwa",
     "@doscientos/ui": "file:..\\..\\modules\\ui",
     "@fontsource-variable/geist": "^5.3.0",
     "@supabase/supabase-js": "^2.112.1",
