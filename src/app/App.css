@@ -1375,10 +1375,47 @@ main {
   min-height: 46px;
 }
 
-.form-error {
+.form-feedback {
+  display: grid;
+  gap: 8px;
   margin: 0;
-  color: var(--destructive);
+  padding: 12px;
+  border: 1px solid currentcolor;
+  border-radius: 10px;
   font-size: 14px;
+  line-height: 1.45;
+}
+
+.form-feedback p {
+  margin: 0;
+}
+
+.form-feedback-error {
+  color: var(--destructive);
+  background: #fff3f3;
+}
+
+.form-feedback-info {
+  color: #1d4f91;
+  background: #f0f7ff;
+}
+
+.form-feedback-success {
+  color: #176b37;
+  background: #f1faf4;
+}
+
+.form-feedback-action {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .app-state > div {

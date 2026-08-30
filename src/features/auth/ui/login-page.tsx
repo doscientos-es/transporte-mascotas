@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 
 import { BrandLogo } from '@/shared/ui/brand-logo'
 
+import { getAuthFeedback, type AuthFeedback } from '../application/auth-feedback'
 import { authenticate } from '../application/authenticate'
 
 type Props = { audience: 'client' | 'staff' }
@@ -14,23 +15,34 @@ export function LoginPage({ audience }: Props) {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState<AuthFeedback | null>(null)
   const [sending, setSending] = useState(false)
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSending(true)
-    setError('')
+    setFeedback(null)
     try {
       const response = await authenticate({ audience, displayName, email, mode, password, phone })
-      if (response.unavailable) setError('El acceso no está configurado en este entorno.')
-      else if (response.error) setError(authErrorMessage(response.error.message, mode))
-      else if (mode === 'signup' && !response.hasSession) {
+      if (response.unavailable) {
+        setFeedback({ tone: 'error', message: 'El acceso no está configurado en este entorno.' })
+      } else if (response.error) {
+        setFeedback(getAuthFeedback(response.error, mode))
+      } else if (mode === 'signup' && !response.hasSession) {
         setMode('login')
-        setError('No se ha iniciado la sesión automáticamente. Prueba a entrar con tus datos.')
+        setPassword('')
+        setFeedback({
+          tone: 'success',
+          message:
+            'Te hemos enviado un correo para confirmar tu cuenta. Cuando lo confirmes, inicia sesión.',
+        })
       }
     } catch {
-      setError('No se ha podido conectar con el servicio de acceso. Inténtalo de nuevo.')
+      setFeedback({
+        tone: 'error',
+        message:
+          'No se ha podido conectar con el servicio de acceso. Comprueba tu conexión e inténtalo de nuevo.',
+      })
     } finally {
       setSending(false)
     }
@@ -128,10 +140,29 @@ export function LoginPage({ audience }: Props) {
                 : 'Tu cuenta verá únicamente las rutas que se te asignen.'}
             </p>
           )}
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
+          {feedback && (
+            <div
+              className={`form-feedback form-feedback-${feedback.tone}`}
+              role={feedback.tone === 'error' ? 'alert' : 'status'}
+            >
+              <p>{feedback.message}</p>
+              {feedback.action === 'login' && (
+                <button
+                  type="button"
+                  className="form-feedback-action"
+                  onClick={() => {
+                    setMode('login')
+                    setPassword('')
+                    setFeedback({
+                      tone: 'info',
+                      message: 'Introduce tu contraseña para entrar con este correo.',
+                    })
+                  }}
+                >
+                  Ir a iniciar sesión
+                </button>
+              )}
+            </div>
           )}
           <Button type="submit" disabled={sending}>
             {sending ? 'Procesando…' : mode === 'login' ? 'Entrar' : 'Crear mi cuenta'}
@@ -142,7 +173,7 @@ export function LoginPage({ audience }: Props) {
           className="auth-switch"
           onClick={() => {
             setMode(mode === 'login' ? 'signup' : 'login')
-            setError('')
+            setFeedback(null)
           }}
         >
           {mode === 'login'
@@ -157,15 +188,6 @@ export function LoginPage({ audience }: Props) {
       </section>
     </main>
   )
-}
-
-function authErrorMessage(message: string, mode: 'login' | 'signup') {
-  if (/too many requests|rate limit/i.test(message)) {
-    return 'Se han realizado demasiados intentos. Espera unos minutos antes de volver a intentarlo.'
-  }
-  return mode === 'login'
-    ? 'No hemos podido iniciar sesión. Revisa tus datos.'
-    : 'No hemos podido crear el acceso. Revisa los datos e inténtalo de nuevo.'
 }
 
 function Benefit({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
