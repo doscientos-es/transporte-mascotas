@@ -1,4 +1,6 @@
+import { Button } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
+import { ArrowLeft, CircleAlert, RefreshCw, ShieldCheck } from 'lucide-react'
 import { createContext, Suspense, useContext } from 'react'
 import {
   createBrowserRouter,
@@ -217,17 +219,28 @@ function LoadingRoute() {
 function RouteErrorBoundary({ returnTo }: { returnTo: string }) {
   useRouteError()
   return (
-    <main className="loading-screen app-state" role="alert">
-      <div>
-        <h1>No hemos podido abrir esta página</h1>
-        <p>Vuelve a intentarlo o recarga la aplicación. Tus datos no se han modificado.</p>
-        <button type="button" onClick={() => window.location.assign(returnTo)}>
-          Volver a una página segura
-        </button>
-        <button type="button" onClick={() => window.location.reload()}>
-          Recargar aplicación
-        </button>
-      </div>
+    <main className="loading-screen route-error-state" role="alert">
+      <section className="route-error-card" aria-labelledby="route-error-title">
+        <div className="route-error-icon" aria-hidden="true">
+          <CircleAlert size={28} />
+        </div>
+        <p className="route-error-eyebrow">Problema de navegación</p>
+        <h1 id="route-error-title">Esta página no se ha podido abrir</h1>
+        <p className="route-error-copy">
+          Puede que el enlace ya no esté disponible o que haya ocurrido un problema puntual.
+        </p>
+        <div className="route-error-actions">
+          <Button onClick={() => window.location.assign(returnTo)}>
+            <ArrowLeft /> Volver a una zona segura
+          </Button>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw /> Recargar aplicación
+          </Button>
+        </div>
+        <p className="route-error-reassurance">
+          <ShieldCheck size={17} aria-hidden="true" /> Tus datos no se han modificado.
+        </p>
+      </section>
     </main>
   )
 }

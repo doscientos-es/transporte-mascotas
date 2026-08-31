@@ -113,7 +113,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
 
   const pending = requests.filter((request) => request.status === 'por_verificar')
   const rest = requests.filter((request) => request.status !== 'por_verificar')
-  const availableRoutes = routes.filter((route) => route.status !== 'completada')
+  const availableRoutes = routes.filter((route) => route.status === 'activa')
 
   return (
     <>

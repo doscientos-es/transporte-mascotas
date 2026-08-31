@@ -22,7 +22,9 @@ import {
 import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { readPageParam } from '@/shared/lib/search-params'
 import type { Client, ClientInvoice, InvoicePayer, Letter } from '@/shared/types'
+import { useUrlParams } from '@/shared/ui/use-url-params'
 
 type ClientInput = Omit<Client, 'id' | 'createdAt'>
 const emptyClient: ClientInput = {
@@ -48,25 +50,31 @@ export function ClientsPage({
   letters,
   onSave,
   onDelete,
+  onOpenInvoice,
+  onOpenLetter,
 }: {
   clients: Client[]
   invoices: ClientInvoice[]
   letters: Letter[]
   onSave: (client: Client | ClientInput) => Promise<void>
   onDelete: (client: Client) => Promise<void>
+  onOpenInvoice: (invoiceId: string) => void
+  onOpenLetter: (letterId: string) => void
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(clients[0]?.id ?? null)
   const [editing, setEditing] = useState<Client | null | undefined>(undefined)
   const [deleting, setDeleting] = useState<Client | null>(null)
   const [deletingClient, setDeletingClient] = useState(false)
   const [deleteError, setDeleteError] = useState('')
-  const [page, setPage] = useState(1)
+  const { searchParams, updateParams } = useUrlParams()
+  const requestedClientId = searchParams.get('client')
+  const requestedPage = readPageParam(searchParams.get('pagina'))
   const pageSize = 12
   const pageCount = Math.max(1, Math.ceil(clients.length / pageSize))
+  const page = Math.min(requestedPage, pageCount)
   const visibleClients = clients.slice((page - 1) * pageSize, page * pageSize)
   const firstRecord = clients.length === 0 ? 0 : (page - 1) * pageSize + 1
   const lastRecord = Math.min(page * pageSize, clients.length)
-  const selected = clients.find((client) => client.id === selectedId) ?? clients[0]
+  const selected = clients.find((client) => client.id === requestedClientId) ?? clients[0]
   const orders = useMemo(
     () =>
       selected
@@ -85,15 +93,16 @@ export function ClientsPage({
   )
 
   useEffect(() => {
-    setPage((current) => Math.min(current, pageCount))
-  }, [pageCount])
+    if (selected?.id !== requestedClientId)
+      updateParams({ client: selected?.id, pagina: undefined })
+  }, [requestedClientId, selected?.id, updateParams])
 
   async function remove(client: Client) {
     setDeletingClient(true)
     setDeleteError('')
     try {
       await onDelete(client)
-      if (selectedId === client.id) setSelectedId(null)
+      if (selected?.id === client.id) updateParams({ client: undefined, pagina: undefined })
       setDeleting(null)
     } catch (error) {
       setDeleteError(
@@ -131,7 +140,7 @@ export function ClientsPage({
                       type="button"
                       className={`client-row ${selected?.id === client.id ? 'is-selected' : ''}`}
                       key={client.id}
-                      onClick={() => setSelectedId(client.id)}
+                      onClick={() => updateParams({ client: client.id, pagina: undefined }, false)}
                     >
                       <span className="client-initials">
                         {client.fullName
@@ -152,7 +161,9 @@ export function ClientsPage({
                   page={page}
                   pageCount={pageCount}
                   ariaLabel="Paginación de clientes"
-                  onPageChange={setPage}
+                  onPageChange={(nextPage) =>
+                    updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+                  }
                   summary={`Mostrando ${firstRecord}–${lastRecord} de ${clients.length}`}
                 />
               </>
@@ -215,7 +226,12 @@ export function ClientsPage({
                   {clientInvoices.length ? (
                     <div className="history-list">
                       {clientInvoices.map((invoice) => (
-                        <div key={invoice.id}>
+                        <button
+                          key={invoice.id}
+                          type="button"
+                          className="history-link"
+                          onClick={() => onOpenInvoice(invoice.id)}
+                        >
                           <span className="invoice-mark">F</span>
                           <span>
                             <strong>{invoice.letterId.replace('CARTA DE PORTE Nº ', '')}</strong>
@@ -225,7 +241,7 @@ export function ClientsPage({
                             </small>
                           </span>
                           <b>{currency(invoice.total)}</b>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   ) : (
@@ -247,7 +263,12 @@ export function ClientsPage({
                   {orders.length ? (
                     <div className="history-list">
                       {orders.map((letter) => (
-                        <div key={letter.id}>
+                        <button
+                          key={letter.id}
+                          type="button"
+                          className="history-link"
+                          onClick={() => onOpenLetter(letter.id)}
+                        >
                           <span className="order-mark">O</span>
                           <span>
                             <strong>{letter.id.replace('CARTA DE PORTE Nº ', '')}</strong>
@@ -256,7 +277,7 @@ export function ClientsPage({
                             </small>
                           </span>
                           <span className={`status status-${letter.status}`}>{letter.status}</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   ) : (

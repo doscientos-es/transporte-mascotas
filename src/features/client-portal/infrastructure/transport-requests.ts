@@ -6,6 +6,8 @@ import type {
   UpcomingRoute,
 } from '@/shared/types'
 
+import { throwRequestError } from './request-errors'
+
 type RequestRow = {
   id: string
   requester_id: string
@@ -97,8 +99,8 @@ export async function loadClientPets(): Promise<ClientPet[]> {
     .from('client_pets')
     .select('id, name, species, breed, weight_kg, length_cm, height_cm, width_cm')
     .order('name')
-  if (error) throw error
-  return (data as ClientPetRow[]).map(mapClientPet)
+  if (error) throwRequestError(error, 'No se han podido cargar tus mascotas guardadas.')
+  return ((data ?? []) as ClientPetRow[]).map(mapClientPet)
 }
 
 export async function saveClientPets(animals: TransportRequestAnimal[]) {
@@ -113,7 +115,7 @@ export async function saveClientPets(animals: TransportRequestAnimal[]) {
       width_cm: widthCm,
     })),
   })
-  if (error) throw error
+  if (error) throwRequestError(error, 'No se han podido guardar las mascotas. Vuelve a intentarlo.')
 }
 
 export async function loadTransportRequests(requesterId?: string) {
@@ -124,8 +126,8 @@ export async function loadTransportRequests(requesterId?: string) {
     .order('created_at', { ascending: false })
   if (requesterId) query = query.eq('requester_id', requesterId)
   const { data, error } = await query
-  if (error) throw error
-  return (data as RequestRow[]).map(mapRequest)
+  if (error) throwRequestError(error, 'No se han podido cargar las solicitudes de transporte.')
+  return ((data ?? []) as RequestRow[]).map(mapRequest)
 }
 
 type UpcomingRouteRow = {
@@ -139,7 +141,7 @@ type UpcomingRouteRow = {
 
 export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
   const { data, error } = await requireSupabase().rpc('list_upcoming_routes')
-  if (error) throw error
+  if (error) throwRequestError(error, 'No se han podido cargar las próximas salidas.')
   return ((data ?? []) as UpcomingRouteRow[]).map((row) => ({
     id: row.id,
     serviceDate: row.service_date,
@@ -181,7 +183,11 @@ export async function createTransportRequest(
       }),
     ),
   })
-  if (error) throw error
+  if (error)
+    throwRequestError(
+      error,
+      'No se ha podido enviar la solicitud. Comprueba tu conexión y vuelve a intentarlo.',
+    )
   return data as string
 }
 
@@ -193,7 +199,11 @@ export async function payTransportRequest(requestId: string) {
     p_request_id: requestId,
     p_reference: reference,
   })
-  if (error) throw error
+  if (error)
+    throwRequestError(
+      error,
+      'No se ha podido registrar el pago. Vuelve a intentarlo sin crear otra solicitud.',
+    )
 }
 
 export async function confirmTransportRequest(
@@ -210,7 +220,8 @@ export async function confirmTransportRequest(
     p_delivery_stop_id: deliveryStopId,
     p_admin_note: adminNote,
   })
-  if (error) throw error
+  if (error)
+    throwRequestError(error, 'No se ha podido confirmar la solicitud. Vuelve a intentarlo.')
 }
 
 export async function rejectTransportRequest(requestId: string, adminNote: string) {
@@ -218,5 +229,5 @@ export async function rejectTransportRequest(requestId: string, adminNote: strin
     p_request_id: requestId,
     p_admin_note: adminNote,
   })
-  if (error) throw error
+  if (error) throwRequestError(error, 'No se ha podido rechazar la solicitud. Vuelve a intentarlo.')
 }

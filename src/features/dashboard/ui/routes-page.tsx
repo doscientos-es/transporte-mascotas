@@ -383,16 +383,21 @@ export function RoutesPage({
                 </small>
               </div>
               {(onOpenVan || canManage) && (
-                <div className="journey-action-buttons">
+                <div className="journey-action-buttons" aria-label="Acciones de la ruta">
                   {onOpenVan && (
-                    <Button variant="outline" size="sm" onClick={() => onOpenVan(route)}>
+                    <Button
+                      className="journey-view-van"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenVan(route)}
+                    >
                       <Truck /> Ver furgoneta
                     </Button>
                   )}
                   {canManage && (
                     <>
                       <Button
-                        variant="outline"
+                        className="journey-add-stop"
                         size="sm"
                         onClick={() => setAddingStop(true)}
                         disabled={Boolean(plannedStops)}
@@ -400,6 +405,7 @@ export function RoutesPage({
                         <Plus /> Añadir parada
                       </Button>
                       <Button
+                        className="journey-organize-stops"
                         variant="outline"
                         size="sm"
                         onClick={() => setOrganizing((current) => !current)}

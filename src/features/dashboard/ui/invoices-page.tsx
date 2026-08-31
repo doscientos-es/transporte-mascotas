@@ -20,13 +20,16 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Client, ClientInvoice, ManualPaymentMethod } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
+import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 
 const PAGE_SIZE = 12
+const invoiceStatusFilters = ['todas', 'solicitud_pago', 'emitida'] as const
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
@@ -36,22 +39,27 @@ export function InvoicesPage({
   transportista,
   onSend,
   onConfirmManualPayment,
+  onOpenClient,
+  onOpenLetter,
 }: {
   invoices: ClientInvoice[]
   clients: Client[]
   transportista: boolean
   onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void>
   onConfirmManualPayment?: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
+  onOpenClient?: (clientId: string) => void
+  onOpenLetter?: (letterId: string) => void
 }) {
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null)
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null)
-  const [previewing, setPreviewing] = useState<ClientInvoice | null>(null)
-  const [manualPayment, setManualPayment] = useState<ClientInvoice | null>(null)
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<'todas' | ClientInvoice['status']>('todas')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [page, setPage] = useState(1)
+  const { searchParams, updateParams } = useUrlParams()
+  const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
+  const status = readEnumParam(searchParams.get('estado'), invoiceStatusFilters, 'todas')
+  const from = searchParams.get('desde') ?? ''
+  const to = searchParams.get('hasta') ?? ''
+  const requestedPage = readPageParam(searchParams.get('pagina'))
+  const previewing = invoices.find((item) => item.id === searchParams.get('factura')) ?? null
+  const manualPayment = invoices.find((item) => item.id === searchParams.get('cobro')) ?? null
   const filteredInvoices = useMemo(() => {
     const term = query.trim().toLocaleLowerCase()
     return invoices.filter((invoice) => {
@@ -79,12 +87,12 @@ export function InvoicesPage({
     })
   }, [clients, from, invoices, query, status, to])
   const pageCount = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE))
-  const currentPage = Math.min(page, pageCount)
+  const currentPage = Math.min(requestedPage, pageCount)
   const visibleInvoices = filteredInvoices.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   )
-  const resetPage = () => setPage(1)
+  const resetPage = () => ({ pagina: undefined })
   async function send(invoice: ClientInvoice) {
     setSendingInvoiceId(invoice.id)
     try {
@@ -146,8 +154,7 @@ export function InvoicesPage({
           <input
             value={query}
             onChange={(event) => {
-              setQuery(event.target.value)
-              resetPage()
+              updateParams({ q: event.target.value, ...resetPage() })
             }}
             placeholder="Nº, cliente, carta o concepto"
           />
@@ -157,8 +164,10 @@ export function InvoicesPage({
           <select
             value={status}
             onChange={(event) => {
-              setStatus(event.target.value as typeof status)
-              resetPage()
+              updateParams({
+                estado: event.target.value === 'todas' ? undefined : event.target.value,
+                ...resetPage(),
+              })
             }}
           >
             <option value="todas">Todos</option>
@@ -172,8 +181,7 @@ export function InvoicesPage({
             type="date"
             value={from}
             onChange={(event) => {
-              setFrom(event.target.value)
-              resetPage()
+              updateParams({ desde: event.target.value, ...resetPage() })
             }}
           />
         </label>
@@ -183,8 +191,7 @@ export function InvoicesPage({
             type="date"
             value={to}
             onChange={(event) => {
-              setTo(event.target.value)
-              resetPage()
+              updateParams({ hasta: event.target.value, ...resetPage() })
             }}
           />
         </label>
@@ -218,14 +225,16 @@ export function InvoicesPage({
                 transportista={transportista}
                 sending={sendingInvoiceId === invoice.id}
                 downloading={downloadingInvoiceId === invoice.id}
-                onPreview={() => setPreviewing(invoice)}
+                onPreview={() => updateParams({ factura: invoice.id }, false)}
                 onDownload={() =>
                   invoice.issuedInvoice
                     ? void download(invoice.issuedInvoice)
                     : void downloadPaymentRequest(invoice, clientName)
                 }
                 onSend={() => void send(invoice)}
-                onManualPayment={() => setManualPayment(invoice)}
+                onManualPayment={() => updateParams({ cobro: invoice.id }, false)}
+                onOpenClient={onOpenClient}
+                onOpenLetter={onOpenLetter}
               />
             )
           })
@@ -250,7 +259,9 @@ export function InvoicesPage({
             size="sm"
             variant="outline"
             disabled={currentPage <= 1}
-            onClick={() => setPage((current) => current - 1)}
+            onClick={() =>
+              updateParams({ pagina: currentPage - 1 === 1 ? undefined : currentPage - 1 })
+            }
           >
             <ChevronLeft /> Anterior
           </Button>
@@ -261,7 +272,7 @@ export function InvoicesPage({
             size="sm"
             variant="outline"
             disabled={currentPage >= pageCount}
-            onClick={() => setPage((current) => current + 1)}
+            onClick={() => updateParams({ pagina: currentPage + 1 })}
           >
             Siguiente <ChevronRight />
           </Button>
@@ -271,7 +282,7 @@ export function InvoicesPage({
         (previewing.issuedInvoice ? (
           <InvoicePreviewDialog
             invoice={previewing.issuedInvoice}
-            onClose={() => setPreviewing(null)}
+            onClose={() => updateParams({ factura: undefined })}
           />
         ) : (
           <PaymentRequestPreviewDialog
@@ -281,13 +292,13 @@ export function InvoicesPage({
               clients.find((client) => client.id === previewing.clientId)?.fullName ||
               'Cliente'
             }
-            onClose={() => setPreviewing(null)}
+            onClose={() => updateParams({ factura: undefined })}
           />
         ))}
       {manualPayment && onConfirmManualPayment && (
         <ManualPaymentDialog
           invoice={manualPayment}
-          onClose={() => setManualPayment(null)}
+          onClose={() => updateParams({ cobro: undefined })}
           onConfirm={onConfirmManualPayment}
         />
       )}
@@ -365,6 +376,8 @@ function InvoiceCard({
   onDownload,
   onSend,
   onManualPayment,
+  onOpenClient,
+  onOpenLetter,
 }: {
   invoice: ClientInvoice
   clientName: string
@@ -375,6 +388,8 @@ function InvoiceCard({
   onDownload: () => void
   onSend: () => void
   onManualPayment: () => void
+  onOpenClient?: (clientId: string) => void
+  onOpenLetter?: (letterId: string) => void
 }) {
   const issued = invoice.status === 'emitida' ? invoice.issuedInvoice : undefined
   const isIssued = invoice.status === 'emitida'
@@ -418,6 +433,16 @@ function InvoiceCard({
           </div>
         </div>
         <div className="invoice-card-actions">
+          {onOpenLetter && (
+            <Button size="sm" variant="outline" onClick={() => onOpenLetter(invoice.letterId)}>
+              <FileText size={15} /> Ver carta
+            </Button>
+          )}
+          {onOpenClient && invoice.clientId && (
+            <Button size="sm" variant="outline" onClick={() => onOpenClient(invoice.clientId)}>
+              Cliente
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"

@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
   Pagination,
 } from '@doscientos/ui'
 import {
@@ -16,22 +17,30 @@ import {
   FilePlus2,
   HandCoins,
   PawPrint,
+  ReceiptText,
   Search,
+  UserRound,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
+import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
-import type { Letter } from '@/shared/types'
+import type { Client, ClientInvoice, Letter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
+import { useUrlParams } from '@/shared/ui/use-url-params'
+
+import { findClientForLetter } from '../application/related-records'
 
 type Props = {
   letters: Letter[]
-  search: string
-  onSearchChange: (value: string) => void
   onImport: () => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
+  invoices: ClientInvoice[]
+  clients: Client[]
+  onOpenClient: (clientId: string) => void
+  onOpenInvoices: (letterId: string) => void
 }
 
 const accompanyingDocumentLabels = {
@@ -56,6 +65,8 @@ const animalSizeLabels = {
   grande: 'Grande',
 } as const
 
+const letterStatusFilters = ['todos', 'pendiente', 'revisada', 'en_ruta', 'entregada'] as const
+
 function formatServiceDate(serviceDate: string) {
   return new Date(`${serviceDate}T12:00:00`).toLocaleDateString('es-ES', {
     day: 'numeric',
@@ -65,17 +76,44 @@ function formatServiceDate(serviceDate: string) {
 }
 
 export function LettersPage({
-  letters: searchedLetters,
-  search,
-  onSearchChange,
+  letters: sourceLetters,
   onImport,
   onEdit,
   onInvoice,
+  invoices,
+  clients,
+  onOpenClient,
+  onOpenInvoices,
 }: Props) {
   const pageSize = 8
-  const [page, setPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState<Letter['status'] | 'todos'>('todos')
-  const [viewingLetter, setViewingLetter] = useState<Letter | null>(null)
+  const { searchParams, updateParams } = useUrlParams()
+  const search = searchParams.get('q') ?? ''
+  const statusFilter = readEnumParam(searchParams.get('estado'), letterStatusFilters, 'todos')
+  const requestedPage = readPageParam(searchParams.get('pagina'))
+  const viewingLetter =
+    sourceLetters.find((letter) => letter.id === searchParams.get('carta')) ?? null
+  const searchedLetters = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase()
+    if (!term) return sourceLetters
+    return sourceLetters.filter((letter) =>
+      [
+        letter.id,
+        letter.sender,
+        letter.senderPhone,
+        letter.recipient,
+        letter.recipientPhone,
+        letter.origin,
+        letter.destination,
+        letter.route,
+        letter.serviceDate,
+        letter.status,
+        ...letter.animals.map((animal) => animal.breed),
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(term),
+    )
+  }, [search, sourceLetters])
   const letters = useMemo(
     () =>
       statusFilter === 'todos'
@@ -96,15 +134,10 @@ export function LettersPage({
     [letters],
   )
   const pageCount = Math.max(1, Math.ceil(letters.length / pageSize))
+  const page = Math.min(requestedPage, pageCount)
   const visibleLetters = letters.slice((page - 1) * pageSize, page * pageSize)
   const firstRecord = letters.length === 0 ? 0 : (page - 1) * pageSize + 1
   const lastRecord = Math.min(page * pageSize, letters.length)
-  useEffect(() => {
-    setPage(1)
-  }, [search, statusFilter])
-  useEffect(() => {
-    setPage((current) => Math.min(current, pageCount))
-  }, [pageCount])
 
   return (
     <>
@@ -122,7 +155,7 @@ export function LettersPage({
         <CardContent>
           <div className="table-heading">
             <div>
-              <h3>Últimas cartas</h3>
+              <h3>Cartas de porte</h3>
               <p>{letters.length} registros</p>
             </div>
             <div className="table-controls">
@@ -130,7 +163,7 @@ export function LettersPage({
                 <Search size={17} />
                 <input
                   value={search}
-                  onChange={(event) => onSearchChange(event.target.value)}
+                  onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
                   placeholder="Buscar"
                   aria-label="Buscar cartas"
                 />
@@ -140,7 +173,10 @@ export function LettersPage({
                 <select
                   value={statusFilter}
                   onChange={(event) =>
-                    setStatusFilter(event.target.value as Letter['status'] | 'todos')
+                    updateParams({
+                      estado: event.target.value === 'todos' ? undefined : event.target.value,
+                      pagina: undefined,
+                    })
                   }
                   aria-label="Filtrar cartas por estado"
                 >
@@ -174,9 +210,12 @@ export function LettersPage({
                       <LetterRow
                         key={letter.id}
                         letter={letter}
-                        onView={setViewingLetter}
+                        onView={(letter) => updateParams({ carta: letter.id }, false)}
                         onEdit={onEdit}
                         onInvoice={onInvoice}
+                        client={findClientForLetter(letter, invoices, clients)}
+                        onOpenClient={onOpenClient}
+                        onOpenInvoices={onOpenInvoices}
                       />
                     ))}
                   </tbody>
@@ -187,9 +226,12 @@ export function LettersPage({
                   <LetterCard
                     key={letter.id}
                     letter={letter}
-                    onView={setViewingLetter}
+                    onView={(letter) => updateParams({ carta: letter.id }, false)}
                     onEdit={onEdit}
                     onInvoice={onInvoice}
+                    client={findClientForLetter(letter, invoices, clients)}
+                    onOpenClient={onOpenClient}
+                    onOpenInvoices={onOpenInvoices}
                   />
                 ))}
               </div>
@@ -197,7 +239,9 @@ export function LettersPage({
                 page={page}
                 pageCount={pageCount}
                 ariaLabel="Paginación de cartas"
-                onPageChange={setPage}
+                onPageChange={(nextPage) =>
+                  updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+                }
                 summary={`Mostrando ${firstRecord}–${lastRecord} de ${letters.length}`}
               />
             </>
@@ -205,7 +249,13 @@ export function LettersPage({
         </CardContent>
       </Card>
       {viewingLetter && (
-        <LetterDetailsDialog letter={viewingLetter} onClose={() => setViewingLetter(null)} />
+        <LetterDetailsDialog
+          letter={viewingLetter}
+          client={findClientForLetter(viewingLetter, invoices, clients)}
+          onClose={() => updateParams({ carta: undefined })}
+          onOpenClient={onOpenClient}
+          onOpenInvoices={onOpenInvoices}
+        />
       )}
     </>
   )
@@ -216,11 +266,17 @@ function LetterRow({
   onView,
   onEdit,
   onInvoice,
+  client,
+  onOpenClient,
+  onOpenInvoices,
 }: {
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
+  client?: Client
+  onOpenClient: (clientId: string) => void
+  onOpenInvoices: (letterId: string) => void
 }) {
   return (
     <tr>
@@ -255,30 +311,31 @@ function LetterRow({
       </td>
       <td>
         <div className="row-actions">
-          <button
-            type="button"
-            title="Ver detalles"
-            aria-label={`Ver detalles de ${letter.id}`}
-            onClick={() => onView(letter)}
-          >
+          <IconButton type="button" label="Ver detalles" onClick={() => onView(letter)}>
             <Eye size={17} />
-          </button>
-          <button
-            type="button"
-            title="Editar carta"
-            aria-label={`Editar ${letter.id}`}
-            onClick={() => onEdit(letter)}
-          >
+          </IconButton>
+          <IconButton type="button" label="Editar carta" onClick={() => onEdit(letter)}>
             <FilePenLine size={17} />
-          </button>
-          <button
+          </IconButton>
+          <IconButton
             type="button"
-            title="Crear solicitud de pago"
-            aria-label={`Crear solicitud de pago para ${letter.id}`}
+            label="Crear solicitud de pago"
             onClick={() => onInvoice(letter)}
           >
             <HandCoins size={17} />
-          </button>
+          </IconButton>
+          <IconButton
+            type="button"
+            label="Ver facturas relacionadas"
+            onClick={() => onOpenInvoices(letter.id)}
+          >
+            <ReceiptText size={17} />
+          </IconButton>
+          {client && (
+            <IconButton type="button" label="Ver cliente" onClick={() => onOpenClient(client.id)}>
+              <UserRound size={17} />
+            </IconButton>
+          )}
         </div>
       </td>
     </tr>
@@ -290,11 +347,17 @@ function LetterCard({
   onView,
   onEdit,
   onInvoice,
+  client,
+  onOpenClient,
+  onOpenInvoices,
 }: {
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
+  client?: Client
+  onOpenClient: (clientId: string) => void
+  onOpenInvoices: (letterId: string) => void
 }) {
   return (
     <article className="letter-card">
@@ -333,13 +396,33 @@ function LetterCard({
           <button type="button" onClick={() => onInvoice(letter)}>
             <HandCoins size={16} /> Pago
           </button>
+          <button type="button" onClick={() => onOpenInvoices(letter.id)}>
+            <ReceiptText size={16} /> Facturas
+          </button>
+          {client && (
+            <button type="button" onClick={() => onOpenClient(client.id)}>
+              <UserRound size={16} /> Cliente
+            </button>
+          )}
         </div>
       </div>
     </article>
   )
 }
 
-function LetterDetailsDialog({ letter, onClose }: { letter: Letter; onClose: () => void }) {
+function LetterDetailsDialog({
+  letter,
+  client,
+  onClose,
+  onOpenClient,
+  onOpenInvoices,
+}: {
+  letter: Letter
+  client?: Client
+  onClose: () => void
+  onOpenClient: (clientId: string) => void
+  onOpenInvoices: (letterId: string) => void
+}) {
   const senderAddress = [letter.senderAddress, letter.senderPostalCode, letter.senderCity]
     .filter(Boolean)
     .join(', ')
@@ -444,6 +527,16 @@ function LetterDetailsDialog({ letter, onClose }: { letter: Letter; onClose: () 
             <p>{letter.signedAt ? `Firmada el ${letter.signedAt}` : 'Pendiente de firma'}</p>
           </div>
         </section>
+        <div className="invoice-card-actions">
+          <Button size="sm" variant="outline" onClick={() => onOpenInvoices(letter.id)}>
+            <ReceiptText size={15} /> Ver facturas
+          </Button>
+          {client && (
+            <Button size="sm" variant="outline" onClick={() => onOpenClient(client.id)}>
+              <UserRound size={15} /> Ver cliente
+            </Button>
+          )}
+        </div>
         <Button className="dialog-submit" variant="outline" onClick={onClose}>
           Cerrar detalle
         </Button>

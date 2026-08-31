@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { CheckCircle2 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import type { DashboardNavigation, UserProfile } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
@@ -56,6 +57,7 @@ export function AdminDashboardPage({
 }) {
   const dashboard = useDashboard(session, profile.role)
   const [printingManifest, setPrintingManifest] = useState(false)
+  const navigate = useNavigate()
   const {
     section,
     routeId,
@@ -132,6 +134,24 @@ export function AdminDashboardPage({
     }
   }
 
+  function openInvoicesForLetter(letterId: string) {
+    void navigate(`${navigation.hrefForSection('facturas')}?letter=${encodeURIComponent(letterId)}`)
+  }
+
+  function openInvoice(invoiceId: string) {
+    void navigate(
+      `${navigation.hrefForSection('facturas')}?invoice=${encodeURIComponent(invoiceId)}`,
+    )
+  }
+
+  function openClient(clientId: string) {
+    void navigate(`${navigation.hrefForSection('clientes')}?client=${encodeURIComponent(clientId)}`)
+  }
+
+  function openLetter(letterId: string) {
+    void navigate(`${navigation.hrefForSection('cartas')}?carta=${encodeURIComponent(letterId)}`)
+  }
+
   return (
     <>
       <DashboardLayout
@@ -148,12 +168,14 @@ export function AdminDashboardPage({
           <Suspense fallback={<PageLoading />}>
             {!isTransporter && section === 'cartas' && (
               <LettersPage
-                letters={dashboard.filteredLetters}
-                search={dashboard.search}
-                onSearchChange={dashboard.setSearch}
+                letters={dashboard.letters}
                 onImport={() => dashboard.setShowImport(true)}
                 onEdit={dashboard.setEditingLetter}
                 onInvoice={dashboard.setInvoiceLetter}
+                invoices={dashboard.invoices}
+                clients={dashboard.clients}
+                onOpenClient={openClient}
+                onOpenInvoices={openInvoicesForLetter}
               />
             )}
             {!isTransporter && section === 'clientes' && (
@@ -163,6 +185,8 @@ export function AdminDashboardPage({
                 letters={dashboard.letters}
                 onSave={dashboard.saveClient}
                 onDelete={dashboard.removeClient}
+                onOpenInvoice={openInvoice}
+                onOpenLetter={openLetter}
               />
             )}
             {!isTransporter && section === 'plantillas' && (
@@ -248,6 +272,8 @@ export function AdminDashboardPage({
                 transportista={isTransporter}
                 onSend={dashboard.sendInvoiceNotification}
                 onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}
+                onOpenClient={isTransporter ? undefined : openClient}
+                onOpenLetter={isTransporter ? undefined : openLetter}
               />
             )}
           </Suspense>

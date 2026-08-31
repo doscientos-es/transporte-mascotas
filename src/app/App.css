@@ -1315,6 +1315,123 @@ main {
   color: var(--foreground);
 }
 
+.route-error-state {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 12% 88%, rgb(221 255 191 / 68%), transparent 28%),
+    radial-gradient(circle at 88% 8%, rgb(255 221 223 / 72%), transparent 32%), #f8faf7;
+}
+
+.route-error-state::before,
+.route-error-state::after {
+  position: absolute;
+  z-index: -1;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgb(42 66 39 / 8%);
+  border-radius: 999px;
+  content: '';
+}
+
+.route-error-state::before {
+  top: -170px;
+  left: -110px;
+}
+
+.route-error-state::after {
+  right: -130px;
+  bottom: -200px;
+  width: 390px;
+  height: 390px;
+}
+
+.route-error-card {
+  width: min(100%, 520px);
+  padding: clamp(30px, 6vw, 52px);
+  border: 1px solid rgb(35 56 32 / 12%);
+  border-radius: 24px;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 30px 75px rgb(29 51 27 / 12%);
+  text-align: center;
+  backdrop-filter: blur(12px);
+}
+
+.route-error-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  margin: 0 auto 20px;
+  border: 1px solid #f2c8ca;
+  border-radius: 18px;
+  color: #bf1f2c;
+  background: #fff0f1;
+}
+
+.route-error-eyebrow {
+  margin: 0 0 8px;
+  color: #687866;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.route-error-card h1 {
+  max-width: 400px;
+  margin: 0 auto;
+  color: #1d2d1c;
+  font-size: clamp(26px, 5vw, 36px);
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
+.route-error-copy {
+  max-width: 390px;
+  margin: 14px auto 0;
+  color: #60705e;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.route-error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.route-error-actions [data-slot='button'] {
+  min-height: 42px;
+}
+
+.route-error-reassurance {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 24px 0 0;
+  color: #42623d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .route-error-card {
+    padding: 30px 24px;
+  }
+
+  .route-error-actions {
+    flex-direction: column;
+  }
+
+  .route-error-actions [data-slot='button'] {
+    width: 100%;
+  }
+}
+
 .login-card {
   width: min(100%, 440px);
   padding: 36px;
@@ -2468,10 +2585,33 @@ main {
   border-top: 1px solid #edf0ec;
 }
 
+.history-list > .history-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  border: 0;
+  border-top: 1px solid #edf0ec;
+  background: transparent;
+  text-align: left;
+}
+
+.history-list > .history-link:hover {
+  color: #9f1720;
+}
+
 .history-list > div > span:nth-child(2) {
   display: grid;
   gap: 3px;
   flex: 1;
+  min-width: 0;
+}
+
+.history-list > .history-link > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -5606,6 +5746,66 @@ main {
   padding: 8px 10px;
 }
 
+/* Keep the route estimate and controls as one compact, aligned action group. */
+.route-journey .journey-header.route-journey-header {
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.route-journey .journey-route-title {
+  flex: 1 1 auto;
+}
+
+.route-journey .journey-actions {
+  flex: 0 1 auto;
+  gap: 12px;
+}
+
+.route-journey .route-total {
+  min-height: 36px;
+  max-width: 232px;
+  padding: 6px 9px;
+}
+
+.route-journey .journey-action-buttons {
+  gap: 6px;
+  padding-left: 12px;
+  border-left: 1px solid rgb(255 255 255 / 16%);
+}
+
+.route-journey .journey-action-buttons [data-slot='button'] {
+  min-height: 36px;
+  border-color: rgb(255 255 255 / 22%);
+  box-shadow: none;
+}
+
+.route-journey .journey-action-buttons .journey-view-van {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.route-journey .journey-action-buttons .journey-add-stop {
+  border-color: #f5a9af;
+  background: #f5a9af;
+  color: #2b2223;
+}
+
+.route-journey .journey-action-buttons .journey-add-stop:hover:not(:disabled) {
+  border-color: #ffc0c5;
+  background: #ffc0c5;
+}
+
+.route-journey .journey-action-buttons .journey-organize-stops {
+  background: transparent;
+  color: #f3e9e9;
+}
+
+.route-journey .journey-action-buttons .journey-view-van:hover:not(:disabled),
+.route-journey .journey-action-buttons .journey-organize-stops:hover:not(:disabled) {
+  border-color: rgb(255 255 255 / 42%);
+  background: rgb(255 255 255 / 14%);
+  color: #fff;
+}
+
 /* Separate customer and professional authentication entry points. */
 .login-screen-client {
   grid-template-columns: minmax(280px, 490px) minmax(320px, 440px);
@@ -5742,7 +5942,7 @@ main {
   white-space: nowrap;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 920px) {
   .route-journey .journey-header.route-journey-header {
     align-items: stretch;
     flex-direction: column;
@@ -5769,6 +5969,11 @@ main {
   .route-journey .journey-actions {
     gap: 8px;
     flex-wrap: wrap;
+  }
+
+  .route-journey .journey-action-buttons {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .route-journey .route-total {

@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
@@ -186,36 +186,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [editingLetter, setEditingLetter] = useState<Letter | null>(null)
   const [showNewRoute, setShowNewRoute] = useState(false)
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
-  const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
-  const deferredSearch = useDeferredValue(search)
   const noticeTimer = useRef<number>(0)
 
   const activeTemplate = selectedRoute
     ? routeTemplates.find((template) => template.id === selectedRoute.templateId)
     : undefined
-  const filteredLetters = useMemo(() => {
-    const term = deferredSearch.trim().toLocaleLowerCase()
-    if (!term) return letters
-    return letters.filter((letter) =>
-      [
-        letter.id,
-        letter.sender,
-        letter.senderPhone,
-        letter.recipient,
-        letter.recipientPhone,
-        letter.origin,
-        letter.destination,
-        letter.route,
-        letter.serviceDate,
-        letter.status,
-        ...letter.animals.map((animal) => animal.breed),
-      ]
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(term),
-    )
-  }, [letters, deferredSearch])
   const assignments = useMemo(
     () => (selectedRoute ? assignmentsForRoute(selectedRoute) : []),
     [selectedRoute],
@@ -972,10 +948,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     selectedRoute,
     setSelectedRoute,
     activeTemplate,
-    filteredLetters,
     assignments,
-    search,
-    setSearch,
     showImport,
     setShowImport,
     editingLetter,
