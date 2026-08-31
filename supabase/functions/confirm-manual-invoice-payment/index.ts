@@ -1,6 +1,6 @@
 import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
-import { json, requireAdmin, rest } from '../_shared/supabase.ts'
+import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 const paymentMethods = new Set(['Transferencia', 'Efectivo', 'Bizum', 'Tarjeta', 'Otro'])
 type Invoice = {
@@ -12,7 +12,7 @@ type Invoice = {
 type Payment = { id: string }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok')
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     const userId = await requireAdmin(request)

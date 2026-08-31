@@ -5,7 +5,7 @@
 1. Administración crea una **solicitud de pago** desde la carta de porte e incluye los datos fiscales del destinatario.
 2. Se envía un enlace de pago, o administración registra un cobro manual con el método real.
 3. Solo al confirmarse el cobro se emite la factura: se asigna un número correlativo por serie y año y se congela el emisor, destinatario, importes, operación y cobro.
-4. Un proceso servidor genera y guarda el PDF canónico exclusivamente desde esa instantánea emitida. La factura emitida se puede buscar, filtrar, previsualizar y descargar; la solicitud de pago no se presenta ni se descarga como factura.
+4. Un proceso servidor genera y guarda el PDF canónico exclusivamente desde esa instantánea emitida. La factura emitida se puede buscar, filtrar, previsualizar y descargar; la solicitud de pago se puede previsualizar y descargar solo como documento informativo, nunca como factura.
 
 ## Controles aplicados
 
@@ -13,6 +13,7 @@
 - Una factura emitida no se puede modificar ni eliminar desde la base de datos; debe regularizarse mediante rectificativa o anulación.
 - La creación de la solicitud y la emisión quedan anotadas en `invoice_events` y `audit_logs`.
 - La interfaz administrativa recupera el PDF privado almacenado; no construye una segunda factura en el navegador.
+- La solicitud de pago se genera en el navegador como un PDF informativo, identificado expresamente como documento no fiscal.
 - Cada PDF se vincula explícitamente a `issued_invoices.id`; los documentos previos sin ese vínculo se regeneran de forma segura al siguiente acceso.
 - Mientras siga pendiente de cobro, la misma carta permite corregir su solicitud fiscal; al emitirse, cualquier intento de modificación queda bloqueado.
 - El enlace público caduca por seguridad; administración conserva acceso a la factura emitida y puede reenviarla.

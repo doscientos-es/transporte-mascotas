@@ -51,6 +51,10 @@ export interface Animal {
   species: string
   breed: string
   birthDate: string
+  weightKg: number
+  lengthCm: number
+  heightCm: number
+  widthCm: number
   size: AnimalSize
   box?: number
 }

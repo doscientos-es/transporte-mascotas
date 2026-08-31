@@ -44,6 +44,7 @@ import type {
 } from '@/shared/types'
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
+import { animalSizeLabel, sizeForMeasurements } from '../application/animal-size'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -96,6 +97,10 @@ const emptyAnimal = () => ({
   species: 'Canina',
   breed: '',
   birthDate: '',
+  weightKg: 0,
+  lengthCm: 0,
+  heightCm: 0,
+  widthCm: 0,
   size: 'pequeno' as const,
 })
 const emptyLetter: LetterDraft = {
@@ -181,12 +186,18 @@ export function LetterFormDialog({
           otherPayer:
             letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
           signatureConfirmed: false,
-          animals: letter.animals.map(({ species, breed, birthDate, size }) => ({
-            species,
-            breed,
-            birthDate,
-            size,
-          })),
+          animals: letter.animals.map(
+            ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
+              species,
+              breed,
+              birthDate,
+              weightKg,
+              lengthCm,
+              heightCm,
+              widthCm,
+              size,
+            }),
+          ),
         }
       : emptyLetter,
   )
@@ -211,10 +222,10 @@ export function LetterFormDialog({
     field: K,
     value: LetterDraft[K],
   ) => setDraft((current) => ({ ...current, [field]: value }))
-  const updateAnimal = (
+  const updateAnimal = <K extends keyof LetterDraft['animals'][number]>(
     index: number,
-    field: keyof LetterDraft['animals'][number],
-    value: string,
+    field: K,
+    value: LetterDraft['animals'][number][K],
   ) =>
     setDraft((current) => ({
       ...current,
@@ -304,7 +315,6 @@ export function LetterFormDialog({
                 onAddStop={setAddingStopFor}
                 lockReference={isEditing}
               />
-              <TripPointsSection draft={draft} update={update} />
             </>
           )}
           {step === 1 && (
@@ -533,42 +543,6 @@ function FormProgress({ step }: { step: number }) {
         </li>
       ))}
     </ol>
-  )
-}
-
-function TripPointsSection({ draft, update }: { draft: LetterDraft; update: LetterUpdate }) {
-  return (
-    <section className="letter-form-section trip-points-section">
-      <div className="letter-form-section-title">
-        <MapPin size={17} />
-        <div>
-          <h3>Puntos exactos de recogida y entrega</h3>
-          <p>Indica la dirección o referencia concreta, aparte de las paradas de la ruta.</p>
-        </div>
-      </div>
-      <div className="letter-form-grid">
-        <Label>
-          Recogida: dirección o punto
-          <Input
-            value={draft.originPoint}
-            onChange={(event) => update('originPoint', event.target.value)}
-            placeholder="Ej. Calle Mayor 15, portal B"
-            autoComplete="street-address"
-            required
-          />
-        </Label>
-        <Label>
-          Entrega: dirección o punto
-          <Input
-            value={draft.destinationPoint}
-            onChange={(event) => update('destinationPoint', event.target.value)}
-            placeholder="Ej. Clínica Veterinaria Norte"
-            autoComplete="street-address"
-            required
-          />
-        </Label>
-      </div>
-    </section>
   )
 }
 
@@ -1041,7 +1015,7 @@ function ContactDetailsSection({ draft, update }: { draft: LetterDraft; update: 
         <UserRound size={17} />
         <div>
           <h3>Datos completos de las personas</h3>
-          <p>Los necesitamos para identificar el servicio y preparar la factura.</p>
+          <p>Puedes completarlos para identificar el servicio y preparar la factura.</p>
         </div>
       </div>
       <div className="people-grid">
@@ -1079,6 +1053,60 @@ function ContactDetails({
 }) {
   const value = (field: 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province') =>
     draft[`${person}${field}` as keyof LetterDraft] as string
+  const address = value('Address')
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
+  const [addressLookupState, setAddressLookupState] = useState<
+    'idle' | 'searching' | 'empty' | 'failed'
+  >('idle')
+  const selectedAddress = useRef(address)
+  const lookingUpAddress = addressLookupState === 'searching'
+
+  useEffect(() => {
+    const query = address.trim()
+    if (query.length < 5 || query === selectedAddress.current) {
+      setAddressSuggestions([])
+      setAddressLookupState('idle')
+      return
+    }
+    const controller = new AbortController()
+    let cancelled = false
+    setAddressLookupState('searching')
+    setAddressSuggestions([])
+    const timer = window.setTimeout(() => {
+      lookupAddressSuggestions(query, controller.signal)
+        .then((suggestions) => {
+          if (cancelled) return
+          setAddressSuggestions(suggestions)
+          setAddressLookupState(suggestions.length ? 'idle' : 'empty')
+        })
+        .catch((reason: unknown) => {
+          if (cancelled || (reason instanceof DOMException && reason.name === 'AbortError')) return
+          setAddressLookupState('failed')
+        })
+    }, 400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [address])
+
+  function updateAddress(nextAddress: string) {
+    selectedAddress.current = ''
+    onChange(person, 'Address', nextAddress)
+  }
+
+  function selectAddress(suggestion: AddressSuggestion) {
+    const nextAddress = [suggestion.street, suggestion.streetNumber].filter(Boolean).join(' ')
+    selectedAddress.current = nextAddress
+    onChange(person, 'Address', nextAddress)
+    onChange(person, 'PostalCode', suggestion.postalCode)
+    onChange(person, 'City', suggestion.locality)
+    onChange(person, 'Province', suggestion.province)
+    setAddressSuggestions([])
+    setAddressLookupState('idle')
+  }
+
   return (
     <fieldset className="contact-details">
       <legend>{title}</legend>
@@ -1087,7 +1115,6 @@ function ContactDetails({
         <Input
           value={value('Nif')}
           onChange={(event) => onChange(person, 'Nif', event.target.value)}
-          required
         />
       </Label>
       <Label>
@@ -1097,18 +1124,53 @@ function ContactDetails({
           value={value('Email')}
           onChange={(event) => onChange(person, 'Email', event.target.value)}
           autoComplete="email"
-          required
         />
       </Label>
-      <Label className="form-span">
-        Dirección
-        <Input
-          value={value('Address')}
-          onChange={(event) => onChange(person, 'Address', event.target.value)}
-          autoComplete="street-address"
-          required
-        />
-      </Label>
+      <div className="street-field form-span" aria-busy={lookingUpAddress}>
+        <Label>
+          Dirección
+          <Input
+            value={address}
+            onChange={(event) => updateAddress(event.target.value)}
+            placeholder="Ej. Calle Mayor 12, Madrid"
+            autoComplete="street-address"
+          />
+        </Label>
+        {lookingUpAddress && (
+          <output className="address-lookup-status">Buscando la dirección…</output>
+        )}
+        {addressLookupState === 'empty' && (
+          <output className="address-lookup-status">
+            No hemos encontrado esa dirección. Puedes completar los campos manualmente.
+          </output>
+        )}
+        {addressLookupState === 'failed' && (
+          <output className="address-lookup-status">
+            No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
+          </output>
+        )}
+        {addressSuggestions.length > 0 && (
+          <div className="street-suggestions">
+            {addressSuggestions.map((suggestion) => (
+              <button
+                type="button"
+                key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.postalCode}`}
+                onClick={() => selectAddress(suggestion)}
+              >
+                <strong>
+                  {suggestion.street}
+                  {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
+                </strong>
+                <span>
+                  {[suggestion.locality, suggestion.postalCode, suggestion.province]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <Label>
         Código postal
         <Input
@@ -1116,7 +1178,6 @@ function ContactDetails({
           onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
           autoComplete="postal-code"
           inputMode="numeric"
-          required
         />
       </Label>
       <Label>
@@ -1125,11 +1186,10 @@ function ContactDetails({
           value={value('City')}
           onChange={(event) => onChange(person, 'City', event.target.value)}
           autoComplete="address-level2"
-          required
         />
       </Label>
       <Label className="form-span">
-        Provincia <small>Opcional</small>
+        Provincia
         <Input
           value={value('Province')}
           onChange={(event) => onChange(person, 'Province', event.target.value)}
@@ -1147,7 +1207,11 @@ function AnimalsSection({
   onRemove,
 }: {
   animals: LetterDraft['animals']
-  updateAnimal: (index: number, field: keyof LetterDraft['animals'][number], value: string) => void
+  updateAnimal: <K extends keyof LetterDraft['animals'][number]>(
+    index: number,
+    field: K,
+    value: LetterDraft['animals'][number][K],
+  ) => void
   onAdd: () => void
   onRemove: (index: number) => void
 }) {
@@ -1157,77 +1221,112 @@ function AnimalsSection({
         <PawPrint size={17} />
         <div>
           <h3>Mascotas que viajan</h3>
-          <p>Completa una ficha por animal. El tamaño ayuda a asignar el box.</p>
+          <p>El peso y las medidas calculan automáticamente el tamaño para asignar el box.</p>
         </div>
       </div>
       <div className="animal-list">
-        {animals.map((animal, index) => (
-          <article className="animal-form-card" key={index}>
-            <div>
-              <strong>Animal {index + 1}</strong>
-              {animals.length > 1 && (
-                <Button variant="ghost" size="sm" type="button" onClick={() => onRemove(index)}>
-                  <Trash2 size={16} /> Quitar
-                </Button>
-              )}
-            </div>
-            <div className="letter-form-grid animal-fields">
-              <Label>
-                Especie
-                <select
-                  value={animal.species}
-                  onChange={(event) => updateAnimal(index, 'species', event.target.value)}
-                  required
-                >
-                  <option>Canina</option>
-                  <option>Felina</option>
-                  <option>Ave</option>
-                  <option>Otro</option>
-                </select>
-              </Label>
-              <Label>
-                Raza
-                <Input
-                  value={animal.breed}
-                  onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
-                  placeholder="Ej. Labrador"
-                  required
-                />
-              </Label>
-              <Label>
-                Fecha de nacimiento
-                <Input
-                  type="date"
-                  value={animal.birthDate}
-                  onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
-                  required
-                />
-              </Label>
-            </div>
-            <fieldset className="size-selector">
-              <legend>Tamaño aproximado</legend>
+        {animals.map((animal, index) => {
+          const calculatedSize = sizeForMeasurements(animal)
+          return (
+            <article className="animal-form-card" key={index}>
               <div>
-                {(
-                  [
-                    ['pequeno', 'Pequeño'],
-                    ['mediano', 'Mediano'],
-                    ['grande', 'Grande'],
-                  ] as const
-                ).map(([size, label]) => (
-                  <label className={animal.size === size ? 'is-selected' : ''} key={size}>
-                    <input
-                      type="radio"
-                      name={`animal-size-${index}`}
-                      checked={animal.size === size}
-                      onChange={() => updateAnimal(index, 'size', size)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
+                <strong>Animal {index + 1}</strong>
+                {animals.length > 1 && (
+                  <Button variant="ghost" size="sm" type="button" onClick={() => onRemove(index)}>
+                    <Trash2 size={16} /> Quitar
+                  </Button>
+                )}
               </div>
-            </fieldset>
-          </article>
-        ))}
+              <div className="letter-form-grid animal-fields">
+                <Label>
+                  Especie
+                  <select
+                    value={animal.species}
+                    onChange={(event) => updateAnimal(index, 'species', event.target.value)}
+                    required
+                  >
+                    <option>Canina</option>
+                    <option>Felina</option>
+                    <option>Ave</option>
+                    <option>Otro</option>
+                  </select>
+                </Label>
+                <Label>
+                  Raza
+                  <Input
+                    value={animal.breed}
+                    onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </Label>
+                <Label>
+                  Fecha de nacimiento
+                  <Input
+                    type="date"
+                    value={animal.birthDate}
+                    onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
+                  />
+                </Label>
+                <Label>
+                  Peso (kg)
+                  <Input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={animal.weightKg || ''}
+                    onChange={(event) =>
+                      updateAnimal(index, 'weightKg', Number(event.target.value))
+                    }
+                    required
+                  />
+                </Label>
+                <Label>
+                  Largo (cm)
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={animal.lengthCm || ''}
+                    onChange={(event) =>
+                      updateAnimal(index, 'lengthCm', Number(event.target.value))
+                    }
+                    required
+                  />
+                </Label>
+                <Label>
+                  Alto (cm)
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={animal.heightCm || ''}
+                    onChange={(event) =>
+                      updateAnimal(index, 'heightCm', Number(event.target.value))
+                    }
+                    required
+                  />
+                </Label>
+                <Label>
+                  Ancho (cm)
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={animal.widthCm || ''}
+                    onChange={(event) => updateAnimal(index, 'widthCm', Number(event.target.value))}
+                    required
+                  />
+                </Label>
+              </div>
+              <fieldset className="size-selector">
+                <legend>Tamaño calculado</legend>
+                <div>
+                  <span>{animalSizeLabel(calculatedSize)}</span>
+                </div>
+              </fieldset>
+            </article>
+          )
+        })}
       </div>
       <Button
         variant="outline"

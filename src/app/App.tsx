@@ -20,7 +20,8 @@ function App() {
 }
 
 function AuthenticatedApp() {
-  const { session, ready, profile, profileReady, authError, profileError, retry } = useAuthSession()
+  const { session, ready, profile, profileReady, authError, profileError, retry, signOut } =
+    useAuthSession()
   if (!ready || (session && !profileReady))
     return (
       <output className="loading-screen" aria-live="polite">
@@ -36,7 +37,11 @@ function AuthenticatedApp() {
   if (authError) return <AppState message={authError} onRetry={retry} />
   if (!profile)
     return session ? (
-      <AppState message={profileError || 'No se ha podido cargar tu perfil.'} onRetry={retry} />
+      <AppState
+        message={profileError || 'No se ha podido cargar tu perfil.'}
+        onRetry={retry}
+        onSignOut={signOut}
+      />
     ) : (
       <AppRouter session={session} profile={profile} />
     )
@@ -47,11 +52,13 @@ function AppState({
   title = 'Necesitamos volver a intentarlo',
   message,
   onRetry,
+  onSignOut,
   actionLabel = 'Reintentar',
 }: {
   title?: string
   message: string
   onRetry: () => void
+  onSignOut?: () => Promise<void>
   actionLabel?: string
 }) {
   return (
@@ -59,9 +66,16 @@ function AppState({
       <div>
         <h1>{title}</h1>
         <p>{message}</p>
-        <button type="button" onClick={onRetry}>
-          {actionLabel}
-        </button>
+        <div className="app-state-actions">
+          <button type="button" onClick={onRetry}>
+            {actionLabel}
+          </button>
+          {onSignOut && (
+            <button className="app-state-sign-out" type="button" onClick={() => void onSignOut()}>
+              Cerrar sesión
+            </button>
+          )}
+        </div>
       </div>
     </main>
   )

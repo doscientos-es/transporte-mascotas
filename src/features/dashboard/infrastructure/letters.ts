@@ -36,6 +36,10 @@ type LetterRow = {
     species: string
     breed: string
     birth_date: string | null
+    weight_kg: number | null
+    length_cm: number | null
+    height_cm: number | null
+    width_cm: number | null
     size: Letter['animals'][number]['size']
   }>
 }
@@ -64,7 +68,7 @@ export async function loadLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name),animals(id,species,breed,birth_date,size)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error
@@ -98,7 +102,14 @@ export async function loadLetters(): Promise<Letter[]> {
     serviceDate: letter.service_date,
     status: letter.status,
     importedAt: new Date(letter.imported_at).toLocaleString('es-ES'),
-    animals: letter.animals.map((animal) => ({ ...animal, birthDate: animal.birth_date ?? '' })),
+    animals: letter.animals.map((animal) => ({
+      ...animal,
+      birthDate: animal.birth_date ?? '',
+      weightKg: animal.weight_kg ?? 0,
+      lengthCm: animal.length_cm ?? 0,
+      heightCm: animal.height_cm ?? 0,
+      widthCm: animal.width_cm ?? 0,
+    })),
   }))
 }
 
@@ -140,13 +151,18 @@ export async function saveManualLetter(
     p_billing_payer: letter.billingPayer,
     p_billing_client: letter.billingClient,
     p_signature_confirmed: signatureConfirmed,
-    p_animals: letter.animals.map(({ id, species, breed, birthDate, size }) => ({
-      id,
-      species,
-      breed,
-      birth_date: birthDate,
-      size,
-    })),
+    p_animals: letter.animals.map(
+      ({ id, species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm }) => ({
+        id,
+        species,
+        breed,
+        birth_date: birthDate,
+        weight_kg: weightKg,
+        length_cm: lengthCm,
+        height_cm: heightCm,
+        width_cm: widthCm,
+      }),
+    ),
     p_actions: actions.map((action) => ({
       id: action.id,
       animal_id: action.animalId,
@@ -224,8 +240,10 @@ export async function updateLetter(
       species: animal.species,
       breed: animal.breed,
       birth_date: animal.birthDate || null,
-      size: animal.size,
-      size_source: animal.breed === 'Sin clasificar' ? 'manual' : 'regla',
+      weight_kg: animal.weightKg,
+      length_cm: animal.lengthCm,
+      height_cm: animal.heightCm,
+      width_cm: animal.widthCm,
     })),
   )
   if (animalsError) throw animalsError

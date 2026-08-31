@@ -1439,6 +1439,13 @@ main {
   line-height: 1.5;
 }
 
+.app-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 .app-state button {
   min-height: 42px;
   padding: 0 16px;
@@ -1448,6 +1455,12 @@ main {
   color: #fff;
   font: inherit;
   font-weight: 700;
+}
+
+.app-state button.app-state-sign-out {
+  border: 1px solid currentcolor;
+  background: transparent;
+  color: #686868;
 }
 
 .auth-switch {
@@ -4277,6 +4290,12 @@ main {
   padding: 26px !important;
 }
 
+.invoice-preview-dialog {
+  width: calc(100% - 2.5rem) !important;
+  max-width: 900px !important;
+  padding: 26px !important;
+}
+
 .box-details-summary,
 .box-animal-details {
   display: grid;
@@ -4385,14 +4404,14 @@ main {
 
 .box-reassignment {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 155px auto;
-  align-items: end;
-  gap: 10px;
-  padding-top: 11px;
-  border-top: 1px solid #e5e5e5;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #e5e5e5;
+  border-radius: 9px;
+  background: #fafafa;
 }
 
-.box-reassignment > div {
+.box-reassignment-copy {
   display: grid;
   gap: 3px;
 }
@@ -4412,7 +4431,15 @@ main {
   line-height: 1.35;
 }
 
-.box-reassignment label {
+.box-reassignment-controls {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.box-reassignment-controls label {
+  min-width: 0;
+  flex: 1;
   display: grid;
   gap: 4px;
   color: #555;
@@ -4420,7 +4447,8 @@ main {
   font-weight: 700;
 }
 
-.box-reassignment select {
+.box-reassignment-controls select {
+  width: 100%;
   min-height: 32px;
   padding: 0 8px;
   border: 1px solid #d7d7d7;
@@ -4431,18 +4459,13 @@ main {
 }
 
 .box-reassignment .form-error {
-  grid-column: 1 / -1;
-  margin: -2px 0 0;
+  margin: 0;
 }
 
-@media (max-width: 600px) {
-  .box-reassignment {
-    grid-template-columns: 1fr;
+@media (max-width: 390px) {
+  .box-reassignment-controls {
     align-items: stretch;
-  }
-
-  .box-reassignment [data-slot='button'] {
-    width: 100%;
+    flex-direction: column;
   }
 }
 

@@ -90,5 +90,9 @@ export function useAuthSession() {
     authError,
     profileError,
     retry: () => setReloadAttempt((attempt) => attempt + 1),
+    signOut: async () => {
+      if (!supabase) return
+      await supabase.auth.signOut({ scope: 'local' })
+    },
   }
 }

@@ -16,7 +16,7 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
   const { routeId } = useParams()
   const location = dashboardLocationForPath(pathname, fallback)
   const navigateTo = useCallback(
-    (path: string, replace = false) => navigate(path, { replace, viewTransition: true }),
+    (path: string, replace = false) => navigate(path, { replace }),
     [navigate],
   )
 

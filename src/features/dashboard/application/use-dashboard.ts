@@ -50,6 +50,7 @@ import {
   updateRouteTemplate,
   updateRouteTemplateStopOrder,
 } from '../infrastructure/routes'
+import { sizeForMeasurements } from './animal-size'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize } from './van'
@@ -627,6 +628,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         ...animal,
         id: crypto.randomUUID(),
         breed: animal.breed.trim() || 'Sin clasificar',
+        size: sizeForMeasurements(animal),
       }))
       const reference = draft.reference.trim()
       const id = reference || 'PENDIENTE'
@@ -706,6 +708,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         id: currentLetter.animals[index]?.id ?? crypto.randomUUID(),
         box: currentLetter.animals[index]?.box,
         breed: animal.breed.trim() || 'Sin clasificar',
+        size: sizeForMeasurements(animal),
       }))
       const letter: Letter = {
         ...currentLetter,

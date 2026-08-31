@@ -432,42 +432,44 @@ function ReassignBoxControl({
   }
   return (
     <section className="box-reassignment">
-      <div>
+      <div className="box-reassignment-copy">
         <strong>
           <ArrowRightLeft size={15} /> Reasignar box
         </strong>
         <p>El cambio se aplica a todos los animales de esta carta.</p>
       </div>
-      <label>
-        Nuevo box
-        <select
-          value={targetBox}
-          onChange={(event) => {
-            setTargetBox(event.target.value)
-            setError('')
-          }}
-          disabled={saving}
+      <div className="box-reassignment-controls">
+        <label>
+          Nuevo box
+          <select
+            value={targetBox}
+            onChange={(event) => {
+              setTargetBox(event.target.value)
+              setError('')
+            }}
+            disabled={saving}
+          >
+            {compatibleBoxes.map((candidate) => (
+              <option key={candidate} value={candidate}>
+                Box {candidate} · {boxSizeLabel[boxSize(candidate)]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          disabled={saving || Number(targetBox) === currentBox}
+          onClick={() => void submit()}
         >
-          {compatibleBoxes.map((candidate) => (
-            <option key={candidate} value={candidate}>
-              Box {candidate} · {boxSizeLabel[boxSize(candidate)]}
-            </option>
-          ))}
-        </select>
-      </label>
+          <ArrowRightLeft size={15} /> {saving ? 'Cambiando…' : 'Confirmar cambio'}
+        </Button>
+      </div>
       {error && (
         <p className="form-error" role="alert">
           {error}
         </p>
       )}
-      <Button
-        type="button"
-        size="sm"
-        disabled={saving || Number(targetBox) === currentBox}
-        onClick={() => void submit()}
-      >
-        <ArrowRightLeft size={15} /> {saving ? 'Cambiando…' : 'Confirmar cambio'}
-      </Button>
     </section>
   )
 }

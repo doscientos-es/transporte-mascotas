@@ -24,6 +24,7 @@ import type { Client, ClientInvoice, ManualPaymentMethod } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
+import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 
 const PAGE_SIZE = 12
 const currency = (amount: number) =>
@@ -111,13 +112,32 @@ export function InvoicesPage({
       setDownloadingInvoiceId(null)
     }
   }
+  async function downloadPaymentRequest(invoice: ClientInvoice, clientName: string) {
+    setDownloadingInvoiceId(invoice.id)
+    try {
+      const document = await createPaymentRequestDocument({
+        letterId: invoice.letterId,
+        clientName,
+        concept: invoice.concept,
+        total: invoice.total,
+        createdAt: invoice.createdAt,
+      })
+      downloadBlob(document.blob, document.fileName)
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : 'No se ha podido descargar la solicitud de pago.',
+      )
+    } finally {
+      setDownloadingInvoiceId(null)
+    }
+  }
   return (
     <>
       <PageIntro
         text={
           transportista
-            ? 'Consulta las solicitudes y facturas vinculadas a tus servicios asignados.'
-            : 'Gestiona solicitudes de pago y facturas emitidas. Solo las facturas emitidas se pueden descargar.'
+            ? 'Consulta, previsualiza y descarga las solicitudes y facturas vinculadas a tus servicios asignados.'
+            : 'Gestiona solicitudes de pago y facturas emitidas. Las solicitudes se descargan como documentos informativos.'
         }
       />
       <div className="invoice-filters" aria-label="Filtros de facturas">
@@ -185,24 +205,30 @@ export function InvoicesPage({
       </div>
       <div className="invoices-list">
         {visibleInvoices.length ? (
-          visibleInvoices.map((invoice) => (
-            <InvoiceCard
-              key={invoice.id}
-              invoice={invoice}
-              clientName={
-                invoice.clientName ||
-                clients.find((client) => client.id === invoice.clientId)?.fullName ||
-                'Cliente'
-              }
-              transportista={transportista}
-              sending={sendingInvoiceId === invoice.id}
-              downloading={downloadingInvoiceId === invoice.id}
-              onPreview={() => setPreviewing(invoice)}
-              onDownload={() => invoice.issuedInvoice && void download(invoice.issuedInvoice)}
-              onSend={() => void send(invoice)}
-              onManualPayment={() => setManualPayment(invoice)}
-            />
-          ))
+          visibleInvoices.map((invoice) => {
+            const clientName =
+              invoice.clientName ||
+              clients.find((client) => client.id === invoice.clientId)?.fullName ||
+              'Cliente'
+            return (
+              <InvoiceCard
+                key={invoice.id}
+                invoice={invoice}
+                clientName={clientName}
+                transportista={transportista}
+                sending={sendingInvoiceId === invoice.id}
+                downloading={downloadingInvoiceId === invoice.id}
+                onPreview={() => setPreviewing(invoice)}
+                onDownload={() =>
+                  invoice.issuedInvoice
+                    ? void download(invoice.issuedInvoice)
+                    : void downloadPaymentRequest(invoice, clientName)
+                }
+                onSend={() => void send(invoice)}
+                onManualPayment={() => setManualPayment(invoice)}
+              />
+            )
+          })
         ) : (
           <Card className="invoice-empty">
             <CardContent>
@@ -241,12 +267,23 @@ export function InvoicesPage({
           </Button>
         </nav>
       )}
-      {previewing?.issuedInvoice && (
-        <InvoicePreviewDialog
-          invoice={previewing.issuedInvoice}
-          onClose={() => setPreviewing(null)}
-        />
-      )}
+      {previewing &&
+        (previewing.issuedInvoice ? (
+          <InvoicePreviewDialog
+            invoice={previewing.issuedInvoice}
+            onClose={() => setPreviewing(null)}
+          />
+        ) : (
+          <PaymentRequestPreviewDialog
+            invoice={previewing}
+            clientName={
+              previewing.clientName ||
+              clients.find((client) => client.id === previewing.clientId)?.fullName ||
+              'Cliente'
+            }
+            onClose={() => setPreviewing(null)}
+          />
+        ))}
       {manualPayment && onConfirmManualPayment && (
         <ManualPaymentDialog
           invoice={manualPayment}
@@ -307,6 +344,15 @@ function downloadInvoiceRegister(invoices: ClientInvoice[], clients: Client[]) {
   link.download = `registro-facturacion-${new Date().toISOString().slice(0, 10)}.csv`
   link.click()
   URL.revokeObjectURL(url)
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 function InvoiceCard({
@@ -371,43 +417,37 @@ function InvoiceCard({
             )}
           </div>
         </div>
-        {(issued || !transportista) && (
-          <div className="invoice-card-actions">
-            {issued && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="invoice-preview-button"
-                  onClick={onPreview}
-                >
-                  <Eye size={15} /> Ver factura
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="invoice-download-button"
-                  disabled={downloading}
-                  onClick={onDownload}
-                  aria-label="Descargar factura"
-                >
-                  <Download size={15} />
-                </Button>
-              </>
-            )}
-            {!transportista && !isIssued && (
-              <Button size="sm" variant="outline" disabled={sending} onClick={onManualPayment}>
-                <CheckCircle2 size={15} /> Registrar cobro
-              </Button>
-            )}
-            {!transportista && (
-              <Button size="sm" className="invoice-pay-button" disabled={sending} onClick={onSend}>
-                <CreditCard size={15} />{' '}
-                {sending ? 'Enviando…' : isIssued ? 'Reenviar factura' : 'Reenviar solicitud'}
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="invoice-card-actions">
+          <Button
+            size="sm"
+            variant="outline"
+            className="invoice-preview-button"
+            onClick={onPreview}
+          >
+            <Eye size={15} /> {isIssued ? 'Ver factura' : 'Ver solicitud'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="invoice-download-button"
+            disabled={downloading}
+            onClick={onDownload}
+          >
+            <Download size={15} />{' '}
+            {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+          </Button>
+          {!transportista && !isIssued && (
+            <Button size="sm" variant="outline" disabled={sending} onClick={onManualPayment}>
+              <CheckCircle2 size={15} /> Registrar cobro
+            </Button>
+          )}
+          {!transportista && (
+            <Button size="sm" className="invoice-pay-button" disabled={sending} onClick={onSend}>
+              <CreditCard size={15} />{' '}
+              {sending ? 'Enviando…' : isIssued ? 'Reenviar factura' : 'Reenviar solicitud'}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
@@ -446,7 +486,7 @@ function InvoicePreviewDialog({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[900px] !p-[26px]">
+      <DialogContent className="dialog-card invoice-preview-dialog">
         <DialogHeader className="gap-0">
           <DialogTitle>Factura {invoice.number}</DialogTitle>
           <DialogDescription>
@@ -472,6 +512,82 @@ function InvoicePreviewDialog({
             onClick={() => window.open(`${previewUrl}&download=1`, '_blank', 'noopener,noreferrer')}
           >
             <Download /> Descargar factura
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PaymentRequestPreviewDialog({
+  invoice,
+  clientName,
+  onClose,
+}: {
+  invoice: ClientInvoice
+  clientName: string
+  onClose: () => void
+}) {
+  const [document, setDocument] = useState<{ blob: Blob; fileName: string; url: string } | null>(
+    null,
+  )
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let active = true
+    let url = ''
+    createPaymentRequestDocument({
+      letterId: invoice.letterId,
+      clientName,
+      concept: invoice.concept,
+      total: invoice.total,
+      createdAt: invoice.createdAt,
+    })
+      .then((paymentRequest) => {
+        if (!active) return
+        url = URL.createObjectURL(paymentRequest.blob)
+        setDocument({ ...paymentRequest, url })
+      })
+      .catch(() => {
+        if (active) setError('No se ha podido preparar la vista previa de la solicitud.')
+      })
+    return () => {
+      active = false
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [clientName, invoice.concept, invoice.createdAt, invoice.letterId, invoice.total])
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent className="dialog-card invoice-preview-dialog">
+        <DialogHeader className="gap-0">
+          <DialogTitle>Solicitud de pago {invoice.letterId}</DialogTitle>
+          <DialogDescription>
+            Documento informativo pendiente de cobro. No es una factura.
+          </DialogDescription>
+        </DialogHeader>
+        {!document && !error && <p className="page-loading">Preparando solicitud…</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {document && (
+          <iframe
+            className="invoice-preview"
+            src={document.url}
+            title={`Vista previa de la solicitud de pago ${invoice.letterId}`}
+          />
+        )}
+        {document && (
+          <Button
+            className="dialog-submit"
+            onClick={() => downloadBlob(document.blob, document.fileName)}
+          >
+            <Download /> Descargar solicitud
           </Button>
         )}
       </DialogContent>
