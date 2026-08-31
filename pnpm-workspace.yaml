@@ -7,3 +7,6 @@ minimumReleaseAgeExclude:
   - '@supabase/realtime-js@2.112.1'
   - '@supabase/storage-js@2.112.1'
   - '@supabase/supabase-js@2.112.1'
+  - '@doscientos/configs@0.1.8'
+  - '@doscientos/pwa@0.1.4'
+  - '@doscientos/ui@0.1.28'
