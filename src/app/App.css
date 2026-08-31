@@ -2077,6 +2077,128 @@ main {
   gap: 6px;
 }
 
+.letter-details-dialog {
+  width: calc(100% - 2.5rem) !important;
+  max-width: 760px !important;
+  padding: 26px !important;
+}
+
+.letter-detail-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f7f9f6;
+  color: #263326;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.letter-detail-route svg {
+  flex: 0 0 auto;
+  color: #879082;
+}
+
+.letter-detail-summary,
+.letter-detail-contacts,
+.letter-detail-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.letter-detail-summary > div,
+.letter-detail-contacts article,
+.letter-detail-meta > div,
+.letter-detail-animals article {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid #e5e9e3;
+  border-radius: 10px;
+  background: #fafcf9;
+}
+
+.letter-detail-summary dt,
+.letter-detail-section h3,
+.letter-detail-contacts h4,
+.letter-detail-meta h3 {
+  margin: 0;
+  color: #758173;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.letter-detail-summary dd {
+  margin: 0;
+  color: #263326;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.letter-detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.letter-detail-section > h3 {
+  color: #263326;
+  font-size: 13px;
+}
+
+.letter-detail-contacts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.letter-detail-contacts article > strong,
+.letter-detail-animals strong {
+  color: #263326;
+  font-size: 12px;
+}
+
+.letter-detail-contacts article > span,
+.letter-detail-animals span,
+.letter-detail-meta p {
+  color: #667260;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.letter-detail-animals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.letter-detail-animals article {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.letter-detail-animals article > svg {
+  color: #315a2d;
+}
+
+.letter-detail-animals article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.letter-detail-meta p {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .letter-detail-summary,
+  .letter-detail-contacts,
+  .letter-detail-animals,
+  .letter-detail-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
 .invoice-preview {
   width: 100%;
   height: min(66vh, 680px);
