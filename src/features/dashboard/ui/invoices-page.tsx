@@ -18,32 +18,35 @@ import {
   FileText,
   ReceiptText,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
-import type { Client, ClientInvoice, ManualPaymentMethod } from '@/shared/types'
+import type { ClientInvoice, ManualPaymentMethod, PaginatedResult } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
+import {
+  INVOICE_LIST_PAGE_SIZE,
+  invoiceSortOptions,
+  loadInvoicePage,
+  type InvoiceSort,
+  type SortDirection,
+} from '../application/paginated-lists'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 
-const PAGE_SIZE = 12
 const invoiceStatusFilters = ['todas', 'solicitud_pago', 'emitida'] as const
+const sortDirections = ['asc', 'desc'] as const
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
 export function InvoicesPage({
-  invoices,
-  clients,
   transportista,
   onSend,
   onConfirmManualPayment,
   onOpenClient,
   onOpenLetter,
 }: {
-  invoices: ClientInvoice[]
-  clients: Client[]
   transportista: boolean
   onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void>
   onConfirmManualPayment?: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
@@ -52,47 +55,80 @@ export function InvoicesPage({
 }) {
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null)
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [result, setResult] = useState<PaginatedResult<ClientInvoice>>({ items: [], total: 0 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
   const status = readEnumParam(searchParams.get('estado'), invoiceStatusFilters, 'todas')
   const from = searchParams.get('desde') ?? ''
   const to = searchParams.get('hasta') ?? ''
+  const sort = readEnumParam(searchParams.get('orden'), invoiceSortOptions, 'date')
+  const direction = readEnumParam(searchParams.get('direccion'), sortDirections, 'desc')
   const requestedPage = readPageParam(searchParams.get('pagina'))
-  const previewing = invoices.find((item) => item.id === searchParams.get('factura')) ?? null
-  const manualPayment = invoices.find((item) => item.id === searchParams.get('cobro')) ?? null
-  const filteredInvoices = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase()
-    return invoices.filter((invoice) => {
-      const clientName =
-        invoice.clientName ||
-        clients.find((client) => client.id === invoice.clientId)?.fullName ||
-        ''
-      const date = invoice.issuedInvoice?.issuedAt ?? invoice.createdAt
-      return (
-        (status === 'todas' || invoice.status === status) &&
-        (!from || date.slice(0, 10) >= from) &&
-        (!to || date.slice(0, 10) <= to) &&
-        (!term ||
-          [
-            invoice.issuedInvoice?.number,
-            invoice.letterId,
-            invoice.concept,
-            clientName,
-            invoice.status,
-          ]
-            .join(' ')
-            .toLocaleLowerCase()
-            .includes(term))
-      )
-    })
-  }, [clients, from, invoices, query, status, to])
-  const pageCount = Math.max(1, Math.ceil(filteredInvoices.length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(result.total / INVOICE_LIST_PAGE_SIZE))
   const currentPage = Math.min(requestedPage, pageCount)
-  const visibleInvoices = filteredInvoices.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  )
+  const invoices = result.items
+  const previewing =
+    invoices.find(
+      (item) => item.id === (searchParams.get('factura') ?? searchParams.get('invoice')),
+    ) ?? null
+  const manualPayment = invoices.find((item) => item.id === searchParams.get('cobro')) ?? null
   const resetPage = () => ({ pagina: undefined })
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError('')
+    loadInvoicePage({
+      query: query.trim(),
+      status: status === 'todas' ? undefined : status,
+      from,
+      to,
+      sort,
+      direction,
+      page: requestedPage,
+    })
+      .then((page) => {
+        if (active) setResult(page)
+      })
+      .catch(() => {
+        if (active) setError('No se han podido cargar las facturas.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [direction, from, query, refreshKey, requestedPage, sort, status, to])
+
+  useEffect(() => {
+    if (requestedPage > pageCount) updateParams({ pagina: pageCount === 1 ? undefined : pageCount })
+  }, [pageCount, requestedPage, updateParams])
+
+  async function exportRegister() {
+    setExporting(true)
+    try {
+      const exportResult = await loadInvoicePage({
+        query: query.trim(),
+        status: status === 'todas' ? undefined : status,
+        from,
+        to,
+        sort,
+        direction,
+        page: 1,
+        pageSize: 100000,
+      })
+      downloadInvoiceRegister(exportResult.items)
+    } catch {
+      window.alert('No se ha podido exportar el registro de facturas.')
+    } finally {
+      setExporting(false)
+    }
+  }
   async function send(invoice: ClientInvoice) {
     setSendingInvoiceId(invoice.id)
     try {
@@ -195,28 +231,54 @@ export function InvoicesPage({
             }}
           />
         </label>
+        <label>
+          Ordenar por
+          <select
+            value={sort}
+            onChange={(event) =>
+              updateParams({ orden: event.target.value as InvoiceSort, ...resetPage() })
+            }
+          >
+            <option value="date">Fecha</option>
+            <option value="total">Importe</option>
+            <option value="client">Cliente</option>
+            <option value="status">Estado</option>
+          </select>
+        </label>
+        <label>
+          Dirección
+          <select
+            value={direction}
+            onChange={(event) =>
+              updateParams({ direccion: event.target.value as SortDirection, ...resetPage() })
+            }
+          >
+            <option value="desc">Descendente</option>
+            <option value="asc">Ascendente</option>
+          </select>
+        </label>
       </div>
       <div className="invoice-results" aria-live="polite">
         <span>
-          {filteredInvoices.length} {filteredInvoices.length === 1 ? 'resultado' : 'resultados'}
+          {loading
+            ? 'Actualizando resultados…'
+            : `${result.total} ${result.total === 1 ? 'resultado' : 'resultados'}`}
         </span>
         {!transportista && (
           <Button
             size="sm"
             variant="outline"
-            onClick={() => downloadInvoiceRegister(filteredInvoices, clients)}
+            disabled={exporting || result.total === 0}
+            onClick={() => void exportRegister()}
           >
-            <Download size={15} /> Exportar CSV
+            <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
           </Button>
         )}
       </div>
       <div className="invoices-list">
-        {visibleInvoices.length ? (
-          visibleInvoices.map((invoice) => {
-            const clientName =
-              invoice.clientName ||
-              clients.find((client) => client.id === invoice.clientId)?.fullName ||
-              'Cliente'
+        {invoices.length ? (
+          invoices.map((invoice) => {
+            const clientName = invoice.clientName || 'Cliente'
             return (
               <InvoiceCard
                 key={invoice.id}
@@ -245,15 +307,15 @@ export function InvoicesPage({
               <div>
                 <h3>No hay facturas disponibles</h3>
                 <p>
-                  Prueba a cambiar los filtros o crea una solicitud de pago desde una carta de
-                  porte.
+                  {error ||
+                    'Prueba a cambiar los filtros o crea una solicitud de pago desde una carta de porte.'}
                 </p>
               </div>
             </CardContent>
           </Card>
         )}
       </div>
-      {filteredInvoices.length > PAGE_SIZE && (
+      {result.total > INVOICE_LIST_PAGE_SIZE && (
         <nav className="invoice-pagination" aria-label="Paginación de facturas">
           <Button
             size="sm"
@@ -287,11 +349,7 @@ export function InvoicesPage({
         ) : (
           <PaymentRequestPreviewDialog
             invoice={previewing}
-            clientName={
-              previewing.clientName ||
-              clients.find((client) => client.id === previewing.clientId)?.fullName ||
-              'Cliente'
-            }
+            clientName={previewing.clientName || 'Cliente'}
             onClose={() => updateParams({ factura: undefined })}
           />
         ))}
@@ -299,14 +357,17 @@ export function InvoicesPage({
         <ManualPaymentDialog
           invoice={manualPayment}
           onClose={() => updateParams({ cobro: undefined })}
-          onConfirm={onConfirmManualPayment}
+          onConfirm={async (invoice, method) => {
+            await onConfirmManualPayment(invoice, method)
+            setRefreshKey((current) => current + 1)
+          }}
         />
       )}
     </>
   )
 }
 
-function downloadInvoiceRegister(invoices: ClientInvoice[], clients: Client[]) {
+function downloadInvoiceRegister(invoices: ClientInvoice[]) {
   const cell = (value: unknown) => {
     const text =
       typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
@@ -333,11 +394,8 @@ function downloadInvoiceRegister(invoices: ClientInvoice[], clients: Client[]) {
       invoice.issuedInvoice?.number ?? '',
       invoice.status,
       invoice.issuedInvoice?.issuedAt ?? invoice.createdAt,
-      client?.fullName ??
-        invoice.clientName ??
-        clients.find((item) => item.id === invoice.clientId)?.fullName ??
-        '',
-      client?.nif ?? '',
+      client?.fullName ?? invoice.clientName ?? '',
+      client?.nif ?? invoice.clientNif ?? '',
       invoice.letterId,
       fiscal?.concept ?? invoice.concept,
       fiscal?.net_amount ?? '',

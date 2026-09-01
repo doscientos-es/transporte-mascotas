@@ -22,9 +22,19 @@ import {
 import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { readPageParam } from '@/shared/lib/search-params'
-import type { Client, ClientInvoice, InvoicePayer, Letter } from '@/shared/types'
+import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
+import type { Client, ClientInvoice, InvoicePayer, Letter, PaginatedResult } from '@/shared/types'
 import { useUrlParams } from '@/shared/ui/use-url-params'
+
+import {
+  CLIENT_LIST_PAGE_SIZE,
+  clientSortOptions,
+  loadClientById,
+  loadClientPage,
+  loadInvoicePage,
+  type ClientSort,
+  type SortDirection,
+} from '../application/paginated-lists'
 
 type ClientInput = Omit<Client, 'id' | 'createdAt'>
 const emptyClient: ClientInput = {
@@ -43,18 +53,15 @@ const payerLabels: Record<InvoicePayer, string> = {
   destinatario: 'Destinatario',
   manual: 'Empresa u otro',
 }
+const sortDirections = ['asc', 'desc'] as const
 
 export function ClientsPage({
-  clients,
-  invoices,
   letters,
   onSave,
   onDelete,
   onOpenInvoice,
   onOpenLetter,
 }: {
-  clients: Client[]
-  invoices: ClientInvoice[]
   letters: Letter[]
   onSave: (client: Client | ClientInput) => Promise<void>
   onDelete: (client: Client) => Promise<void>
@@ -65,16 +72,26 @@ export function ClientsPage({
   const [deleting, setDeleting] = useState<Client | null>(null)
   const [deletingClient, setDeletingClient] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [result, setResult] = useState<PaginatedResult<Client>>({ items: [], total: 0 })
+  const [selected, setSelected] = useState<Client | null>(null)
+  const [clientInvoices, setClientInvoices] = useState<PaginatedResult<ClientInvoice>>({
+    items: [],
+    total: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
   const { searchParams, updateParams } = useUrlParams()
   const requestedClientId = searchParams.get('client')
+  const query = searchParams.get('q') ?? ''
+  const sort = readEnumParam(searchParams.get('orden'), clientSortOptions, 'name')
+  const direction = readEnumParam(searchParams.get('direccion'), sortDirections, 'asc')
   const requestedPage = readPageParam(searchParams.get('pagina'))
-  const pageSize = 12
-  const pageCount = Math.max(1, Math.ceil(clients.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(result.total / CLIENT_LIST_PAGE_SIZE))
   const page = Math.min(requestedPage, pageCount)
-  const visibleClients = clients.slice((page - 1) * pageSize, page * pageSize)
-  const firstRecord = clients.length === 0 ? 0 : (page - 1) * pageSize + 1
-  const lastRecord = Math.min(page * pageSize, clients.length)
-  const selected = clients.find((client) => client.id === requestedClientId) ?? clients[0]
+  const firstRecord = result.total === 0 ? 0 : (page - 1) * CLIENT_LIST_PAGE_SIZE + 1
+  const lastRecord = Math.min(page * CLIENT_LIST_PAGE_SIZE, result.total)
   const orders = useMemo(
     () =>
       selected
@@ -87,15 +104,86 @@ export function ClientsPage({
         : [],
     [letters, selected],
   )
-  const clientInvoices = useMemo(
-    () => (selected ? invoices.filter((invoice) => invoice.clientId === selected.id) : []),
-    [invoices, selected],
-  )
 
   useEffect(() => {
-    if (selected?.id !== requestedClientId)
-      updateParams({ client: selected?.id, pagina: undefined })
-  }, [requestedClientId, selected?.id, updateParams])
+    let active = true
+    setLoading(true)
+    setLoadError('')
+    loadClientPage({ query: query.trim(), sort, direction, page: requestedPage })
+      .then((nextResult) => {
+        if (active) setResult(nextResult)
+      })
+      .catch(() => {
+        if (active) setLoadError('No se ha podido cargar el directorio de clientes.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [direction, query, refreshKey, requestedPage, sort])
+
+  useEffect(() => {
+    if (requestedPage > pageCount) updateParams({ pagina: pageCount === 1 ? undefined : pageCount })
+  }, [pageCount, requestedPage, updateParams])
+
+  useEffect(() => {
+    let active = true
+    const fromPage = result.items.find((client) => client.id === requestedClientId)
+    if (fromPage) {
+      setSelected(fromPage)
+      return () => {
+        active = false
+      }
+    }
+    if (!requestedClientId) {
+      setSelected(result.items[0] ?? null)
+      return () => {
+        active = false
+      }
+    }
+    loadClientById(requestedClientId)
+      .then((client) => {
+        if (active) setSelected(client)
+      })
+      .catch(() => {
+        if (active) setSelected(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [requestedClientId, result.items])
+
+  useEffect(() => {
+    let active = true
+    if (!selected) {
+      setClientInvoices({ items: [], total: 0 })
+      return () => {
+        active = false
+      }
+    }
+    setLoadingHistory(true)
+    loadInvoicePage({
+      query: '',
+      clientId: selected.id,
+      sort: 'date',
+      direction: 'desc',
+      page: 1,
+    })
+      .then((invoices) => {
+        if (active) setClientInvoices(invoices)
+      })
+      .catch(() => {
+        if (active) setClientInvoices({ items: [], total: 0 })
+      })
+      .finally(() => {
+        if (active) setLoadingHistory(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [selected])
 
   async function remove(client: Client) {
     setDeletingClient(true)
@@ -104,6 +192,7 @@ export function ClientsPage({
       await onDelete(client)
       if (selected?.id === client.id) updateParams({ client: undefined, pagina: undefined })
       setDeleting(null)
+      setRefreshKey((current) => current + 1)
     } catch (error) {
       setDeleteError(
         error instanceof Error ? error.message : 'No se ha podido eliminar el cliente.',
@@ -111,6 +200,11 @@ export function ClientsPage({
     } finally {
       setDeletingClient(false)
     }
+  }
+
+  async function save(client: Client | ClientInput) {
+    await onSave(client)
+    setRefreshKey((current) => current + 1)
   }
 
   return (
@@ -126,16 +220,57 @@ export function ClientsPage({
           <CardContent>
             <div className="clients-list-heading">
               <h3>Directorio</h3>
-              <span>{clients.length} clientes</span>
+              <span>{loading ? 'Cargando…' : `${result.total} clientes`}</span>
             </div>
-            {clients.length === 0 ? (
+            <div className="client-list-controls">
+              <label>
+                Buscar
+                <input
+                  value={query}
+                  onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
+                  placeholder="Nombre, NIF, email o ciudad"
+                />
+              </label>
+              <label>
+                Ordenar
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    updateParams({ orden: event.target.value as ClientSort, pagina: undefined })
+                  }
+                >
+                  <option value="name">Nombre</option>
+                  <option value="city">Ciudad</option>
+                  <option value="created_at">Alta</option>
+                </select>
+              </label>
+              <label>
+                Dirección
+                <select
+                  value={direction}
+                  onChange={(event) =>
+                    updateParams({
+                      direccion: event.target.value as SortDirection,
+                      pagina: undefined,
+                    })
+                  }
+                >
+                  <option value="asc">Ascendente</option>
+                  <option value="desc">Descendente</option>
+                </select>
+              </label>
+            </div>
+            {result.items.length === 0 ? (
               <p className="empty-copy">
-                Aún no hay clientes. Crea uno o genera la primera factura.
+                {loadError ||
+                  (query
+                    ? 'No hay clientes que coincidan con la búsqueda.'
+                    : 'Aún no hay clientes. Crea uno o genera la primera factura.')}
               </p>
             ) : (
               <>
                 <div className="client-rows">
-                  {visibleClients.map((client) => (
+                  {result.items.map((client) => (
                     <button
                       type="button"
                       className={`client-row ${selected?.id === client.id ? 'is-selected' : ''}`}
@@ -164,7 +299,7 @@ export function ClientsPage({
                   onPageChange={(nextPage) =>
                     updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
                   }
-                  summary={`Mostrando ${firstRecord}–${lastRecord} de ${clients.length}`}
+                  summary={`Mostrando ${firstRecord}–${lastRecord} de ${result.total}`}
                 />
               </>
             )}
@@ -221,16 +356,16 @@ export function ClientsPage({
                       <ReceiptText size={18} />
                       <h3>Facturas</h3>
                     </div>
-                    <b>{clientInvoices.length}</b>
+                    <b>{loadingHistory ? '…' : clientInvoices.total}</b>
                   </div>
-                  {clientInvoices.length ? (
+                  {clientInvoices.items.length ? (
                     <div className="history-list">
-                      {clientInvoices.map((invoice) => (
+                      {clientInvoices.items.map((invoice) => (
                         <button
                           key={invoice.id}
                           type="button"
                           className="history-link"
-                          onClick={() => onOpenInvoice(invoice.id)}
+                          onClick={() => onOpenInvoice(invoice.letterId)}
                         >
                           <span className="invoice-mark">F</span>
                           <span>
@@ -246,8 +381,13 @@ export function ClientsPage({
                     </div>
                   ) : (
                     <p className="empty-copy">
-                      Las facturas generadas desde cartas de porte aparecerán aquí.
+                      {loadingHistory
+                        ? 'Cargando facturas…'
+                        : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
                     </p>
+                  )}
+                  {clientInvoices.total > clientInvoices.items.length && (
+                    <p className="empty-copy">Se muestran las 12 facturas más recientes.</p>
                   )}
                 </CardContent>
               </Card>
@@ -299,7 +439,7 @@ export function ClientsPage({
         <ClientDialog
           client={editing ?? undefined}
           onClose={() => setEditing(undefined)}
-          onSave={onSave}
+          onSave={save}
         />
       )}
       <AlertDialog

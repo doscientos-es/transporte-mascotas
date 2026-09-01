@@ -1,13 +1,13 @@
-import { supabase } from '@/shared/infrastructure/supabase'
+import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
 import type {
   Client,
   ClientInvoice,
   InvoiceClientInput,
   InvoiceFiscalSnapshot,
   InvoicePayer,
-  IssuedInvoice,
   Letter,
   ManualPaymentMethod,
+  PaginatedResult,
   PaymentDelivery,
 } from '@/shared/types'
 
@@ -35,96 +35,126 @@ const toClient = (row: ClientRow): Client => ({
   createdAt: row.created_at,
 })
 
-export async function loadClients() {
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('clients')
-    .select('id, full_name, nif, email, phone, address, city, postal_code, created_at')
-    .order('full_name')
-  if (error) throw error
-  return (data as ClientRow[]).map(toClient)
+export const CLIENT_LIST_PAGE_SIZE = 12
+export const INVOICE_LIST_PAGE_SIZE = 12
+export const clientSortOptions = ['name', 'city', 'created_at'] as const
+export const invoiceSortOptions = ['date', 'total', 'client', 'status'] as const
+
+export type ClientSort = (typeof clientSortOptions)[number]
+export type InvoiceSort = (typeof invoiceSortOptions)[number]
+export type SortDirection = 'asc' | 'desc'
+
+type ClientPageOptions = {
+  query: string
+  sort: ClientSort
+  direction: SortDirection
+  page: number
 }
 
-export async function loadClientInvoices() {
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('invoice_drafts')
-    .select(
-      'id, letter_id, client_id, payer, client_snapshot, concept, total_amount, status, created_at, issued_invoices(id, series, fiscal_year, sequence_number, issued_at, fiscal_snapshot)',
-    )
-    .in('status', ['solicitud_pago', 'emitida'])
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map((row): ClientInvoice => ({
-    id: row.id,
-    letterId: row.letter_id,
-    clientId: row.client_id,
-    payer: row.payer,
-    concept: row.concept,
-    total: Number(row.total_amount),
-    status: row.status === 'solicitud_pago' ? 'solicitud_pago' : 'emitida',
-    createdAt: row.created_at,
-    clientName: snapshotClientName(row.client_snapshot),
-    issuedInvoice: toIssuedInvoice(row.issued_invoices, row.id),
-  }))
+type InvoicePageOptions = {
+  query: string
+  status?: 'solicitud_pago' | 'emitida'
+  clientId?: string
+  from?: string
+  to?: string
+  sort: InvoiceSort
+  direction: SortDirection
+  page: number
+  pageSize?: number
 }
 
-export async function loadTransporterInvoices() {
-  if (!supabase) return []
-  const { data, error } = await supabase
-    .from('transporter_invoices')
-    .select('id, letter_id, payer, concept, total_amount, status, created_at')
-    .in('status', ['solicitud_pago', 'emitida', 'generado', 'pagada'])
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map((row): ClientInvoice => ({
-    id: row.id,
-    letterId: row.letter_id,
-    clientId: '',
-    payer: row.payer,
-    concept: row.concept,
-    total: Number(row.total_amount),
-    status: row.status === 'solicitud_pago' ? 'solicitud_pago' : 'emitida',
-    createdAt: row.created_at,
-    clientName: '',
-  }))
+type InvoiceRow = {
+  id: string
+  letter_id: string
+  client_id: string | null
+  payer: InvoicePayer
+  concept: string
+  total_amount: number | string
+  status: string
+  created_at: string
+  client_name: string | null
+  client_nif: string | null
+  issued_invoice_id: string | null
+  issued_number: string | null
+  issued_at: string | null
+  fiscal_snapshot: InvoiceFiscalSnapshot | null
 }
 
-function snapshotClientName(snapshot: unknown) {
-  if (!snapshot || typeof snapshot !== 'object') return ''
-  const fullName = (snapshot as Record<string, unknown>).fullName
-  return typeof fullName === 'string' ? fullName : ''
-}
+type PagePayload = { items?: unknown; total?: unknown }
 
-function toIssuedInvoice(value: unknown, invoiceDraftId: string): IssuedInvoice | undefined {
-  const row = Array.isArray(value) ? value[0] : value
-  if (!row || typeof row !== 'object') return undefined
-  const invoice = row as Record<string, unknown>
-  if (typeof invoice.id !== 'string' || typeof invoice.issued_at !== 'string') return undefined
-  const number =
-    typeof (invoice.fiscal_snapshot as Record<string, unknown> | null)?.number === 'string'
-      ? ((invoice.fiscal_snapshot as Record<string, unknown>).number as string)
-      : invoiceNumberFromFields(invoice)
+function pageFrom<Row, Item>(value: unknown, mapper: (row: Row) => Item): PaginatedResult<Item> {
+  const page = value as PagePayload | null
+  const items = Array.isArray(page?.items) ? page.items : []
   return {
-    id: invoice.id,
-    invoiceDraftId,
-    number,
-    issuedAt: invoice.issued_at,
-    fiscalSnapshot: (invoice.fiscal_snapshot ?? {}) as InvoiceFiscalSnapshot,
+    items: items.map((item) => mapper(item as Row)),
+    total: typeof page?.total === 'number' ? page.total : 0,
   }
 }
 
-function invoiceNumberFromFields(invoice: Record<string, unknown>) {
-  const series = typeof invoice.series === 'string' ? invoice.series : ''
-  const fiscalYear =
-    typeof invoice.fiscal_year === 'string' || typeof invoice.fiscal_year === 'number'
-      ? String(invoice.fiscal_year)
-      : ''
-  const sequence =
-    typeof invoice.sequence_number === 'number' || typeof invoice.sequence_number === 'string'
-      ? String(invoice.sequence_number).padStart(6, '0')
-      : '000000'
-  return `${series}-${fiscalYear}-${sequence}`
+function toInvoice(row: InvoiceRow): ClientInvoice {
+  const issuedInvoice =
+    row.issued_invoice_id && row.issued_number && row.issued_at
+      ? {
+          id: row.issued_invoice_id,
+          invoiceDraftId: row.id,
+          number: row.issued_number,
+          issuedAt: row.issued_at,
+          fiscalSnapshot: row.fiscal_snapshot ?? {},
+        }
+      : undefined
+  return {
+    id: row.id,
+    letterId: row.letter_id,
+    clientId: row.client_id ?? '',
+    payer: row.payer,
+    concept: row.concept,
+    total: Number(row.total_amount),
+    status: row.status === 'solicitud_pago' ? 'solicitud_pago' : 'emitida',
+    createdAt: row.created_at,
+    clientName: row.client_name ?? '',
+    clientNif: row.client_nif ?? '',
+    issuedInvoice,
+  }
+}
+
+export async function loadClientPage(options: ClientPageOptions): Promise<PaginatedResult<Client>> {
+  const { data, error } = await requireSupabase().rpc('list_client_page', {
+    p_query: options.query || null,
+    p_sort: options.sort,
+    p_direction: options.direction,
+    p_page: options.page,
+    p_page_size: CLIENT_LIST_PAGE_SIZE,
+  })
+  if (error) throw error
+  return pageFrom<ClientRow, Client>(data, toClient)
+}
+
+export async function loadClientById(clientId: string): Promise<Client | null> {
+  const { data, error } = await requireSupabase()
+    .from('clients')
+    .select('id, full_name, nif, email, phone, address, city, postal_code, created_at')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? toClient(data as ClientRow) : null
+}
+
+export async function loadInvoicePage(
+  options: InvoicePageOptions,
+): Promise<PaginatedResult<ClientInvoice>> {
+  const { data, error } = await requireSupabase().rpc('list_invoice_page', {
+    p_query: options.query || null,
+    p_status: options.status ?? null,
+    p_client_id: options.clientId ?? null,
+    p_from: options.from || null,
+    p_to: options.to || null,
+    p_sort: options.sort,
+    p_direction: options.direction,
+    p_page: options.page,
+    p_page_size: options.pageSize ?? INVOICE_LIST_PAGE_SIZE,
+  })
+  if (error) throw error
+  return pageFrom<InvoiceRow, ClientInvoice>(data, toInvoice)
 }
 
 export async function createClient(client: Omit<Client, 'id' | 'createdAt'>) {

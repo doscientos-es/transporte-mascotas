@@ -94,12 +94,6 @@ export function AdminDashboardPage({
   const pendingLetters = isTransporter
     ? 0
     : dashboard.letters.filter((letter) => letter.status === 'pendiente').length
-  const routeLetterIds = new Set(
-    visibleRoutes.flatMap((route) => route.actions.map((action) => action.letterId)),
-  )
-  const visibleInvoices = isTransporter
-    ? dashboard.invoices.filter((invoice) => routeLetterIds.has(invoice.letterId))
-    : dashboard.invoices
 
   useEffect(() => {
     if ((section !== 'rutas' && section !== 'furgoneta') || !routeId) return
@@ -138,14 +132,12 @@ export function AdminDashboardPage({
     void navigate(`${navigation.hrefForSection('facturas')}?letter=${encodeURIComponent(letterId)}`)
   }
 
-  function openInvoice(invoiceId: string) {
-    void navigate(
-      `${navigation.hrefForSection('facturas')}?invoice=${encodeURIComponent(invoiceId)}`,
-    )
-  }
-
   function openClient(clientId: string) {
     void navigate(`${navigation.hrefForSection('clientes')}?client=${encodeURIComponent(clientId)}`)
+  }
+
+  function searchClient(clientName: string) {
+    void navigate(`${navigation.hrefForSection('clientes')}?q=${encodeURIComponent(clientName)}`)
   }
 
   function openLetter(letterId: string) {
@@ -172,20 +164,16 @@ export function AdminDashboardPage({
                 onImport={() => dashboard.setShowImport(true)}
                 onEdit={dashboard.setEditingLetter}
                 onInvoice={dashboard.setInvoiceLetter}
-                invoices={dashboard.invoices}
-                clients={dashboard.clients}
-                onOpenClient={openClient}
+                onOpenClient={searchClient}
                 onOpenInvoices={openInvoicesForLetter}
               />
             )}
             {!isTransporter && section === 'clientes' && (
               <ClientsPage
-                clients={dashboard.clients}
-                invoices={dashboard.invoices}
                 letters={dashboard.letters}
                 onSave={dashboard.saveClient}
                 onDelete={dashboard.removeClient}
-                onOpenInvoice={openInvoice}
+                onOpenInvoice={openInvoicesForLetter}
                 onOpenLetter={openLetter}
               />
             )}
@@ -267,8 +255,6 @@ export function AdminDashboardPage({
             )}
             {section === 'facturas' && (
               <InvoicesPage
-                invoices={visibleInvoices}
-                clients={dashboard.clients}
                 transportista={isTransporter}
                 onSend={dashboard.sendInvoiceNotification}
                 onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}

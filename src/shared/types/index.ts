@@ -135,6 +135,11 @@ export interface Client {
   createdAt: string
 }
 
+export interface PaginatedResult<Item> {
+  items: Item[]
+  total: number
+}
+
 export type InvoicePayer = 'remitente' | 'destinatario' | 'manual'
 export type InvoiceClientInput = Omit<Client, 'id' | 'createdAt'>
 export type PaymentDeliveryChannel = 'manual' | 'email' | 'whatsapp' | 'both'
@@ -187,6 +192,7 @@ export interface ClientInvoice {
   status: 'solicitud_pago' | 'emitida'
   createdAt: string
   clientName: string
+  clientNif?: string
   issuedInvoice?: IssuedInvoice
 }
 

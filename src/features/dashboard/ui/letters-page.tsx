@@ -25,21 +25,17 @@ import { useMemo } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
-import type { Client, ClientInvoice, Letter } from '@/shared/types'
+import type { Letter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
 import { useUrlParams } from '@/shared/ui/use-url-params'
-
-import { findClientForLetter } from '../application/related-records'
 
 type Props = {
   letters: Letter[]
   onImport: () => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
-  invoices: ClientInvoice[]
-  clients: Client[]
-  onOpenClient: (clientId: string) => void
+  onOpenClient: (clientName: string) => void
   onOpenInvoices: (letterId: string) => void
 }
 
@@ -80,8 +76,6 @@ export function LettersPage({
   onImport,
   onEdit,
   onInvoice,
-  invoices,
-  clients,
   onOpenClient,
   onOpenInvoices,
 }: Props) {
@@ -213,7 +207,7 @@ export function LettersPage({
                         onView={(letter) => updateParams({ carta: letter.id }, false)}
                         onEdit={onEdit}
                         onInvoice={onInvoice}
-                        client={findClientForLetter(letter, invoices, clients)}
+                        clientName={letter.billingClient.fullName}
                         onOpenClient={onOpenClient}
                         onOpenInvoices={onOpenInvoices}
                       />
@@ -229,7 +223,7 @@ export function LettersPage({
                     onView={(letter) => updateParams({ carta: letter.id }, false)}
                     onEdit={onEdit}
                     onInvoice={onInvoice}
-                    client={findClientForLetter(letter, invoices, clients)}
+                    clientName={letter.billingClient.fullName}
                     onOpenClient={onOpenClient}
                     onOpenInvoices={onOpenInvoices}
                   />
@@ -251,7 +245,7 @@ export function LettersPage({
       {viewingLetter && (
         <LetterDetailsDialog
           letter={viewingLetter}
-          client={findClientForLetter(viewingLetter, invoices, clients)}
+          clientName={viewingLetter.billingClient.fullName}
           onClose={() => updateParams({ carta: undefined })}
           onOpenClient={onOpenClient}
           onOpenInvoices={onOpenInvoices}
@@ -266,7 +260,7 @@ function LetterRow({
   onView,
   onEdit,
   onInvoice,
-  client,
+  clientName,
   onOpenClient,
   onOpenInvoices,
 }: {
@@ -274,8 +268,8 @@ function LetterRow({
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
-  client?: Client
-  onOpenClient: (clientId: string) => void
+  clientName: string
+  onOpenClient: (clientName: string) => void
   onOpenInvoices: (letterId: string) => void
 }) {
   return (
@@ -331,8 +325,12 @@ function LetterRow({
           >
             <ReceiptText size={17} />
           </IconButton>
-          {client && (
-            <IconButton type="button" label="Ver cliente" onClick={() => onOpenClient(client.id)}>
+          {clientName && (
+            <IconButton
+              type="button"
+              label="Buscar cliente"
+              onClick={() => onOpenClient(clientName)}
+            >
               <UserRound size={17} />
             </IconButton>
           )}
@@ -347,7 +345,7 @@ function LetterCard({
   onView,
   onEdit,
   onInvoice,
-  client,
+  clientName,
   onOpenClient,
   onOpenInvoices,
 }: {
@@ -355,8 +353,8 @@ function LetterCard({
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
-  client?: Client
-  onOpenClient: (clientId: string) => void
+  clientName: string
+  onOpenClient: (clientName: string) => void
   onOpenInvoices: (letterId: string) => void
 }) {
   return (
@@ -399,8 +397,8 @@ function LetterCard({
           <button type="button" onClick={() => onOpenInvoices(letter.id)}>
             <ReceiptText size={16} /> Facturas
           </button>
-          {client && (
-            <button type="button" onClick={() => onOpenClient(client.id)}>
+          {clientName && (
+            <button type="button" onClick={() => onOpenClient(clientName)}>
               <UserRound size={16} /> Cliente
             </button>
           )}
@@ -412,15 +410,15 @@ function LetterCard({
 
 function LetterDetailsDialog({
   letter,
-  client,
+  clientName,
   onClose,
   onOpenClient,
   onOpenInvoices,
 }: {
   letter: Letter
-  client?: Client
+  clientName: string
   onClose: () => void
-  onOpenClient: (clientId: string) => void
+  onOpenClient: (clientName: string) => void
   onOpenInvoices: (letterId: string) => void
 }) {
   const senderAddress = [letter.senderAddress, letter.senderPostalCode, letter.senderCity]
@@ -531,8 +529,8 @@ function LetterDetailsDialog({
           <Button size="sm" variant="outline" onClick={() => onOpenInvoices(letter.id)}>
             <ReceiptText size={15} /> Ver facturas
           </Button>
-          {client && (
-            <Button size="sm" variant="outline" onClick={() => onOpenClient(client.id)}>
+          {clientName && (
+            <Button size="sm" variant="outline" onClick={() => onOpenClient(clientName)}>
               <UserRound size={15} /> Ver cliente
             </Button>
           )}

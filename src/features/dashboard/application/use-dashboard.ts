@@ -26,9 +26,6 @@ import {
   confirmManualInvoicePayment,
   createClient,
   deleteClient,
-  loadClientInvoices,
-  loadClients,
-  loadTransporterInvoices,
   persistInvoice,
   updateClient,
 } from '../infrastructure/clients'
@@ -178,8 +175,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
-  const [clients, setClients] = useState<Client[]>([])
-  const [invoices, setInvoices] = useState<ClientInvoice[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -227,17 +222,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
       loadTransporters()
         .then(setTransporters)
         .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
-      Promise.all([loadLetters(), loadClients(), loadClientInvoices()])
-        .then(([storedLetters, storedClients, storedInvoices]) => {
-          setLetters(storedLetters)
-          setClients(storedClients)
-          setInvoices(storedInvoices)
-        })
+      loadLetters()
+        .then(setLetters)
         .catch(() => toast('No se han podido cargar los datos de operaciones.'))
-    } else {
-      loadTransporterInvoices()
-        .then(setInvoices)
-        .catch(() => toast('No se han podido cargar las facturas asignadas.'))
     }
   }, [role, session])
 
@@ -840,14 +827,10 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) throw new Error('Inicia sesión para guardar un cliente.')
     try {
       if ('id' in client) {
-        const saved = await updateClient(client)
-        setClients((current) => current.map((item) => (item.id === saved.id ? saved : item)))
+        await updateClient(client)
         toast('Cliente actualizado.')
       } else {
-        const saved = await createClient(client)
-        setClients((current) =>
-          [...current, saved].sort((a, b) => a.fullName.localeCompare(b.fullName)),
-        )
+        await createClient(client)
         toast('Cliente creado.')
       }
     } catch (error) {
@@ -860,7 +843,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) throw new Error('Inicia sesión para eliminar un cliente.')
     try {
       await deleteClient(client.id)
-      setClients((current) => current.filter((item) => item.id !== client.id))
       toast('Cliente eliminado.')
     } catch (error) {
       toast(error instanceof Error ? error.message : 'No se ha podido eliminar el cliente.')
@@ -886,17 +868,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
       delivery,
     )
     if (!stored) throw new Error('No se ha podido guardar la solicitud de pago.')
-    setClients((current) =>
-      [...current.filter((item) => item.id !== stored.client.id), stored.client].sort((a, b) =>
-        a.fullName.localeCompare(b.fullName),
-      ),
-    )
     const storedInvoice = stored.invoice
     if (storedInvoice) {
-      setInvoices((current) => [
-        storedInvoice,
-        ...current.filter((item) => item.letterId !== letter.id),
-      ])
       if (delivery?.channel !== 'manual')
         await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
       toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
@@ -908,8 +881,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function confirmManualPayment(invoice: ClientInvoice, paymentMethod: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para registrar un cobro.')
     await confirmManualInvoicePayment(invoice.id, paymentMethod)
-    const storedInvoices = await loadClientInvoices()
-    setInvoices(storedInvoices)
     toast('Cobro registrado y factura emitida.')
   }
 
@@ -941,8 +912,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     routeTemplates,
     transporters,
     dailyRoutes,
-    clients,
-    invoices,
     selectedTemplate,
     setSelectedTemplate,
     selectedRoute,

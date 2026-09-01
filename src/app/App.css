@@ -1646,7 +1646,7 @@ main {
 
 .invoice-filters {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) repeat(3, minmax(120px, max-content));
+  grid-template-columns: minmax(190px, 1fr) repeat(5, minmax(120px, max-content));
   gap: 10px;
   max-width: 920px;
   margin-bottom: 8px;
@@ -2484,6 +2484,40 @@ main {
   margin: 0;
   color: #788375;
   font-size: 12px;
+}
+
+.client-list-controls {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.client-list-controls label {
+  display: grid;
+  gap: 5px;
+  color: #4b4b4b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.client-list-controls input,
+.client-list-controls select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #dedede;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: #171717;
+  font: inherit;
+  font-size: 13px;
+}
+
+.client-list-controls input:focus,
+.client-list-controls select:focus {
+  border-color: #cf1f2a;
+  outline: 2px solid rgb(207 31 42 / 14%);
+  outline-offset: 1px;
 }
 
 .client-row {
