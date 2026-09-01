@@ -1,7 +1,7 @@
 import { Button } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
 import { ArrowLeft, CircleAlert, RefreshCw, ShieldCheck } from 'lucide-react'
-import { createContext, Suspense, useContext } from 'react'
+import { createContext, useContext } from 'react'
 import {
   createBrowserRouter,
   Navigate,
@@ -149,10 +149,8 @@ function RootLayout() {
   const navigation = useNavigation()
   return (
     <>
-      {navigation.state !== 'idle' && <LoadingRoute />}
-      <Suspense fallback={<LoadingRoute />}>
-        <Outlet />
-      </Suspense>
+      {navigation.state !== 'idle' && <NavigationLoadingIndicator />}
+      <Outlet />
       <ScrollRestoration />
     </>
   )
@@ -211,6 +209,14 @@ function useAuth() {
 function LoadingRoute() {
   return (
     <output className="loading-screen" aria-live="polite">
+      Cargando página…
+    </output>
+  )
+}
+
+function NavigationLoadingIndicator() {
+  return (
+    <output className="route-loading-indicator" aria-live="polite">
       Cargando página…
     </output>
   )

@@ -1305,6 +1305,25 @@ main {
   font-size: 13px;
 }
 
+.route-loading-indicator {
+  position: fixed;
+  z-index: 30;
+  top: 16px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #e1e1e1;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 8px 20px rgb(30 25 25 / 12%);
+  color: #4c4041;
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .loading-screen,
 .login-screen {
   min-height: 100vh;
@@ -1742,6 +1761,35 @@ main {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.invoice-card-link {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-card-link:hover {
+  color: #9f1720;
+  text-decoration-color: currentColor;
+}
+
+.invoice-card-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #cf1f2a;
+  outline-offset: 2px;
+  text-decoration-color: currentColor;
 }
 
 .invoice-card strong {

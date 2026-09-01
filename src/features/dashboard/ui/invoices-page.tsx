@@ -410,9 +410,29 @@ function InvoiceCard({
               </strong>
               <small>
                 <FileText size={13} />
-                <span>{clientName}</span>
+                {onOpenClient && invoice.clientId ? (
+                  <button
+                    type="button"
+                    className="invoice-card-link"
+                    onClick={() => onOpenClient(invoice.clientId)}
+                  >
+                    {clientName}
+                  </button>
+                ) : (
+                  <span>{clientName}</span>
+                )}
                 <span aria-hidden="true">·</span>
-                <span className="invoice-reference">{invoice.letterId}</span>
+                {onOpenLetter ? (
+                  <button
+                    type="button"
+                    className="invoice-card-link invoice-reference"
+                    onClick={() => onOpenLetter(invoice.letterId)}
+                  >
+                    {invoice.letterId}
+                  </button>
+                ) : (
+                  <span className="invoice-reference">{invoice.letterId}</span>
+                )}
               </small>
             </div>
           </div>
@@ -433,16 +453,6 @@ function InvoiceCard({
           </div>
         </div>
         <div className="invoice-card-actions">
-          {onOpenLetter && (
-            <Button size="sm" variant="outline" onClick={() => onOpenLetter(invoice.letterId)}>
-              <FileText size={15} /> Ver carta
-            </Button>
-          )}
-          {onOpenClient && invoice.clientId && (
-            <Button size="sm" variant="outline" onClick={() => onOpenClient(invoice.clientId)}>
-              Cliente
-            </Button>
-          )}
           <Button
             size="sm"
             variant="outline"
