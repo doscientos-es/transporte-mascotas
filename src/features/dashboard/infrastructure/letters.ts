@@ -64,7 +64,18 @@ const invoiceClientFrom = (value: unknown): InvoiceClientInput => {
   ) as InvoiceClientInput
 }
 
-export async function loadLetters(): Promise<Letter[]> {
+const cachedLetters = new Map<string, Letter[]>()
+const pendingLetterLoads = new Map<string, Promise<Letter[]>>()
+
+export function getCachedLetters(sessionId: string) {
+  return cachedLetters.get(sessionId)
+}
+
+export function invalidateLettersCache(sessionId: string) {
+  cachedLetters.delete(sessionId)
+}
+
+async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
@@ -111,6 +122,33 @@ export async function loadLetters(): Promise<Letter[]> {
       widthCm: animal.width_cm ?? 0,
     })),
   }))
+}
+
+export async function loadLetters(sessionId: string, force = false): Promise<Letter[]> {
+  const cached = cachedLetters.get(sessionId)
+  if (cached && !force) return cached
+  const pending = pendingLetterLoads.get(sessionId)
+  if (pending && !force) return pending
+
+  const request = fetchLetters()
+    .then((letters) => {
+      cachedLetters.set(sessionId, letters)
+      return letters
+    })
+    .finally(() => pendingLetterLoads.delete(sessionId))
+  pendingLetterLoads.set(sessionId, request)
+  return request
+}
+
+export async function loadPaymentRequestLetterName(letterId: string) {
+  const { data, error } = await requireSupabase()
+    .from('carriage_letters')
+    .select('original_filename')
+    .eq('id', letterId)
+    .maybeSingle()
+  if (error) throw error
+  const originalName = data?.original_filename?.split('\n').join('').trim()
+  return originalName?.replace(/\.[^.]+$/, '') || letterId
 }
 
 export async function saveManualLetter(

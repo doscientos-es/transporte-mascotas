@@ -33,6 +33,7 @@ import {
   type InvoiceSort,
   type SortDirection,
 } from '../application/paginated-lists'
+import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 
 const invoiceStatusFilters = ['todas', 'solicitud_pago', 'emitida'] as const
@@ -159,8 +160,10 @@ export function InvoicesPage({
   async function downloadPaymentRequest(invoice: ClientInvoice, clientName: string) {
     setDownloadingInvoiceId(invoice.id)
     try {
+      const letterName = await paymentRequestLetterName(invoice.letterId)
       const document = await createPaymentRequestDocument({
         letterId: invoice.letterId,
+        letterName,
         clientName,
         concept: invoice.concept,
         total: invoice.total,
@@ -628,13 +631,17 @@ function PaymentRequestPreviewDialog({
   useEffect(() => {
     let active = true
     let url = ''
-    createPaymentRequestDocument({
-      letterId: invoice.letterId,
-      clientName,
-      concept: invoice.concept,
-      total: invoice.total,
-      createdAt: invoice.createdAt,
-    })
+    paymentRequestLetterName(invoice.letterId)
+      .then((letterName) =>
+        createPaymentRequestDocument({
+          letterId: invoice.letterId,
+          letterName,
+          clientName,
+          concept: invoice.concept,
+          total: invoice.total,
+          createdAt: invoice.createdAt,
+        }),
+      )
       .then((paymentRequest) => {
         if (!active) return
         url = URL.createObjectURL(paymentRequest.blob)

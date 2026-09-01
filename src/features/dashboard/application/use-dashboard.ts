@@ -1,5 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
@@ -29,7 +29,13 @@ import {
   persistInvoice,
   updateClient,
 } from '../infrastructure/clients'
-import { loadLetters, saveManualLetter, updateLetter } from '../infrastructure/letters'
+import {
+  getCachedLetters,
+  invalidateLettersCache,
+  loadLetters,
+  saveManualLetter,
+  updateLetter,
+} from '../infrastructure/letters'
 import {
   addDailyRouteStop,
   addRouteTemplateStop,
@@ -171,7 +177,13 @@ function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Le
 }
 
 export function useDashboard(session: Session | null, role: AppRole) {
-  const [letters, setLetters] = useState<Letter[]>([])
+  const [letters, setLetters] = useState<Letter[]>(() =>
+    session ? (getCachedLetters(session.user.id) ?? []) : [],
+  )
+  const [lettersLoading, setLettersLoading] = useState(() =>
+    session ? !getCachedLetters(session.user.id) : false,
+  )
+  const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
@@ -183,6 +195,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
   const [notice, setNotice] = useState('')
   const noticeTimer = useRef<number>(0)
+  const lettersLoaded = useRef(Boolean(session && getCachedLetters(session.user.id)))
+  const lettersRequest = useRef<Promise<void> | null>(null)
 
   const activeTemplate = selectedRoute
     ? routeTemplates.find((template) => template.id === selectedRoute.templateId)
@@ -192,11 +206,34 @@ export function useDashboard(session: Session | null, role: AppRole) {
     [selectedRoute],
   )
 
-  function toast(message: string) {
+  const toast = useCallback((message: string) => {
     setNotice(message)
     window.clearTimeout(noticeTimer.current)
     noticeTimer.current = window.setTimeout(() => setNotice(''), 3200)
-  }
+  }, [])
+
+  const ensureLetters = useCallback(
+    async (force = false) => {
+      if (!session || role !== 'admin') return
+      if (!force && lettersLoaded.current) return
+      if (!force && lettersRequest.current) return lettersRequest.current
+      setLettersLoading(true)
+      setLettersError('')
+      const request = loadLetters(session.user.id, force)
+        .then((loadedLetters) => {
+          lettersLoaded.current = true
+          setLetters(loadedLetters)
+        })
+        .catch(() => setLettersError('No se han podido cargar las cartas de porte.'))
+        .finally(() => {
+          lettersRequest.current = null
+          setLettersLoading(false)
+        })
+      lettersRequest.current = request
+      return request
+    },
+    [role, session],
+  )
 
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
@@ -222,9 +259,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
       loadTransporters()
         .then(setTransporters)
         .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
-      loadLetters()
-        .then(setLetters)
-        .catch(() => toast('No se han podido cargar los datos de operaciones.'))
     }
   }, [role, session])
 
@@ -640,6 +674,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       )
       const savedLetter = { ...letter, id: savedId ?? letter.id }
       const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
+      invalidateLettersCache(session.user.id)
       setLetters((current) => [savedLetter, ...current])
       const updateRoute = (route: DailyRoute) =>
         route.id === dailyRoute.id
@@ -720,6 +755,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       )
       await updateLetter(letter, routeTemplate.id, affectedRoutes, draft.signatureConfirmed)
       await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
+      invalidateLettersCache(session.user.id)
       setLetters((current) => current.map((item) => (item.id === letter.id ? letter : item)))
       const updateRoute = (route: DailyRoute): DailyRoute => {
         const withoutLetter = route.actions.filter((action) => action.letterId !== letter.id)
@@ -909,6 +945,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
 
   return {
     letters,
+    lettersLoading,
+    lettersError,
+    ensureLetters,
     routeTemplates,
     transporters,
     dailyRoutes,

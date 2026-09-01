@@ -32,6 +32,9 @@ import { useUrlParams } from '@/shared/ui/use-url-params'
 
 type Props = {
   letters: Letter[]
+  loading: boolean
+  error: string
+  onRetry: () => void
   onImport: () => void
   onEdit: (letter: Letter) => void
   onInvoice: (letter: Letter) => void
@@ -73,6 +76,9 @@ function formatServiceDate(serviceDate: string) {
 
 export function LettersPage({
   letters: sourceLetters,
+  loading,
+  error,
+  onRetry,
   onImport,
   onEdit,
   onInvoice,
@@ -141,16 +147,16 @@ export function LettersPage({
         </Button>
       </PageIntro>
       <section className="stats-grid">
-        <Stat label="Necesita revisión" value={summary.pending} accent="lime" />
-        <Stat label="Programadas (semana)" value={summary.scheduled} />
-        <Stat label="En transporte" value={summary.animals} />
+        <Stat label="Necesita revisión" value={summary.pending} accent="lime" loading={loading} />
+        <Stat label="Programadas (semana)" value={summary.scheduled} loading={loading} />
+        <Stat label="En transporte" value={summary.animals} loading={loading} />
       </section>
       <Card className="table-card">
         <CardContent>
           <div className="table-heading">
             <div>
               <h3>Cartas de porte</h3>
-              <p>{letters.length} registros</p>
+              <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
             </div>
             <div className="table-controls">
               <label className="search">
@@ -160,6 +166,7 @@ export function LettersPage({
                   onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
                   placeholder="Buscar"
                   aria-label="Buscar cartas"
+                  disabled={loading}
                 />
               </label>
               <label className="status-filter">
@@ -173,6 +180,7 @@ export function LettersPage({
                     })
                   }
                   aria-label="Filtrar cartas por estado"
+                  disabled={loading}
                 >
                   <option value="todos">Todos</option>
                   <option value="pendiente">Pendientes</option>
@@ -183,7 +191,16 @@ export function LettersPage({
               </label>
             </div>
           </div>
-          {letters.length === 0 ? (
+          {loading ? (
+            <LettersListSkeleton />
+          ) : error ? (
+            <div className="letter-load-error" role="alert">
+              <p>{error}</p>
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                Reintentar
+              </Button>
+            </div>
+          ) : letters.length === 0 ? (
             <p className="empty-copy">No hay cartas que coincidan con los filtros.</p>
           ) : (
             <>
@@ -252,6 +269,21 @@ export function LettersPage({
         />
       )}
     </>
+  )
+}
+
+function LettersListSkeleton() {
+  return (
+    <div className="letters-list-skeleton" aria-busy="true" aria-label="Cargando cartas de porte">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div className="letters-list-skeleton-row" key={index}>
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      ))}
+    </div>
   )
 }
 

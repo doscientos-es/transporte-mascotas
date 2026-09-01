@@ -6,6 +6,7 @@ describe('createPaymentRequestDocument', () => {
   it('creates a downloadable PDF clearly identified as a payment request', async () => {
     const document = await createPaymentRequestDocument({
       letterId: 'CARTA DE PORTE N° 2026-443',
+      letterName: 'Ruta Madrid - Barcelona.pdf',
       clientName: 'Marcos Leal Ortega',
       concept: 'Servicio de transporte de mascota',
       total: 200,
@@ -15,6 +16,6 @@ describe('createPaymentRequestDocument', () => {
     const header = new TextDecoder().decode((await document.blob.arrayBuffer()).slice(0, 5))
 
     expect(header).toBe('%PDF-')
-    expect(document.fileName).toBe('solicitud-pago-CARTA-DE-PORTE-N-2026-443.pdf')
+    expect(document.fileName).toBe('solicitud-pago-Ruta-Madrid-Barcelona.pdf')
   })
 })

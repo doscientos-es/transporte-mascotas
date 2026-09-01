@@ -1,5 +1,6 @@
 export type PaymentRequestDocumentInput = {
   letterId: string
+  letterName?: string
   clientName: string
   concept: string
   total: number
@@ -19,6 +20,7 @@ const filePart = (value: string) => value.replaceAll(/[^a-zA-Z0-9_-]/g, '-').rep
 /** Creates an informative payment request document; it is not a fiscal invoice. */
 export async function createPaymentRequestDocument({
   letterId,
+  letterName,
   clientName,
   concept,
   total,
@@ -63,6 +65,6 @@ export async function createPaymentRequestDocument({
 
   return {
     blob: doc.output('blob'),
-    fileName: `solicitud-pago-${filePart(letterId) || 'transporte'}.pdf`,
+    fileName: `solicitud-pago-${filePart((letterName || letterId).replace(/\.[^.]+$/, '')) || 'transporte'}.pdf`,
   }
 }

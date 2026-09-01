@@ -94,12 +94,18 @@ export function AdminDashboardPage({
   const pendingLetters = isTransporter
     ? 0
     : dashboard.letters.filter((letter) => letter.status === 'pendiente').length
+  const sectionNeedsLetters =
+    !isTransporter && ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
 
   useEffect(() => {
     if ((section !== 'rutas' && section !== 'furgoneta') || !routeId) return
     if (routeFromUrl) dashboard.setSelectedRoute(routeFromUrl)
     else replaceWithSection(section)
   }, [dashboard, replaceWithSection, routeFromUrl, routeId, section])
+
+  useEffect(() => {
+    if (sectionNeedsLetters) void dashboard.ensureLetters()
+  }, [dashboard.ensureLetters, sectionNeedsLetters])
 
   async function createRouteAndNavigate(
     template: Parameters<typeof dashboard.createDailyRoute>[0],
@@ -161,6 +167,9 @@ export function AdminDashboardPage({
             {!isTransporter && section === 'cartas' && (
               <LettersPage
                 letters={dashboard.letters}
+                loading={dashboard.lettersLoading}
+                error={dashboard.lettersError}
+                onRetry={() => void dashboard.ensureLetters(true)}
                 onImport={() => dashboard.setShowImport(true)}
                 onEdit={dashboard.setEditingLetter}
                 onInvoice={dashboard.setInvoiceLetter}
