@@ -147,9 +147,9 @@ export function LettersPage({
         </Button>
       </PageIntro>
       <section className="stats-grid">
-        <Stat label="Pendientes de revisión" value={summary.pending} accent="lime" />
-        <Stat label="Programadas esta semana" value={summary.scheduled} />
-        <Stat label="Animales en transporte" value={summary.animals} />
+        <Stat label="Necesita revisión" value={summary.pending} accent="lime" />
+        <Stat label="Programadas (semana)" value={summary.scheduled} />
+        <Stat label="En transporte" value={summary.animals} />
       </section>
       <Card className="table-card">
         <CardContent>
