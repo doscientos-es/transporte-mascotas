@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@doscientos/pwa": "^0.1.4",
-    "@doscientos/ui": "^0.1.28",
+    "@doscientos/ui": "^0.1.29",
     "@fontsource-variable/geist": "^5.3.0",
     "@supabase/supabase-js": "^2.112.1",
     "class-variance-authority": "^0.7.1",
