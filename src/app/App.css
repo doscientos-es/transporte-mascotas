@@ -215,6 +215,9 @@ main {
 }
 
 .topbar {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
   padding: 24px clamp(20px, 4vw, 52px) 0;
   display: flex;
   align-items: center;
@@ -1674,6 +1677,7 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  max-width: 920px;
   margin: 8px 0 12px;
   color: #686868;
   font-size: 12px;
