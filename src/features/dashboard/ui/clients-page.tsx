@@ -11,8 +11,10 @@ import {
   Card,
   CardContent,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -451,8 +453,8 @@ export function ClientsPage({
           }
         }}
       >
-        <AlertDialogContent className="delete-client-dialog !w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]">
-          <AlertDialogHeader>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="gap-1">
             <AlertDialogTitle>Eliminar cliente</AlertDialogTitle>
             <AlertDialogDescription>
               {deleting
@@ -515,8 +517,8 @@ function ClientDialog({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="dialog-card client-dialog !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]">
-        <DialogHeader className="gap-0">
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
           <DialogTitle>{client ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
           <DialogDescription>
             {client
@@ -572,9 +574,16 @@ function ClientDialog({
               {error}
             </p>
           )}
-          <Button type="submit" className="dialog-submit" disabled={saving}>
-            {saving ? 'Guardando…' : 'Guardar cliente'}
-          </Button>
+          <DialogFooter className="form-span mt-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={saving}>
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Guardando…' : 'Guardar cliente'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

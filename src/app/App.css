@@ -2747,11 +2747,6 @@ main {
   line-height: 1.5;
 }
 
-.client-dialog {
-  max-height: calc(100dvh - 2.5rem);
-  overflow-y: auto;
-}
-
 .client-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2777,8 +2772,7 @@ main {
   font-weight: 400;
 }
 
-.client-form .form-span,
-.client-form .dialog-submit {
+.client-form .form-span {
   grid-column: 1/-1;
 }
 
