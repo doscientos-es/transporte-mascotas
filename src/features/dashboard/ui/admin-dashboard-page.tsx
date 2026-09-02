@@ -67,6 +67,7 @@ export function AdminDashboardPage({
     replaceWithSection,
   } = navigation
   const isTransporter = profile.role === 'transportista'
+  const ensureLetters = dashboard.ensureLetters
   const visibleRoutes =
     isTransporter && session
       ? dashboard.dailyRoutes.filter((route) => route.transporterId === session.user.id)
@@ -105,8 +106,8 @@ export function AdminDashboardPage({
   }, [dashboard, replaceWithSection, routeFromUrl, routeId, section])
 
   useEffect(() => {
-    if (sectionNeedsLetters) void dashboard.ensureLetters()
-  }, [dashboard.ensureLetters, sectionNeedsLetters])
+    if (sectionNeedsLetters) void ensureLetters()
+  }, [ensureLetters, sectionNeedsLetters])
 
   async function createRouteAndNavigate(
     template: Parameters<typeof dashboard.createDailyRoute>[0],

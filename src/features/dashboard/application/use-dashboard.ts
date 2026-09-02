@@ -262,7 +262,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         .then(setTransporters)
         .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
     }
-  }, [role, session])
+  }, [role, session, toast])
 
   async function signOut() {
     if (!supabase || !session) return toast('No hay una sesión autenticada que cerrar.')
