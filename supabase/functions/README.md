@@ -21,7 +21,7 @@ Para WhatsApp Cloud API configurad `META_WHATSAPP_ACCESS_TOKEN`, `META_WHATSAPP_
 
 ### Confirmaciones y recordatorios de transporte
 
-Al confirmar una solicitud pagada, se encola una confirmación inmediata y un recordatorio para las 10:00 (Europe/Madrid) del día anterior a la ruta. Configurad dos plantillas de utilidad aprobadas en Meta, idioma `es`, con **cuatro** variables de cuerpo, en este orden: nombre, fecha de ruta, origen y destino:
+Al confirmar una solicitud pagada, se encola una confirmación inmediata y un recordatorio para las 10:00 (Europe/Madrid) del día anterior a la ruta. Configurad dos plantillas de utilidad aprobadas en Meta, idioma `es`, con **seis** variables de cuerpo, en este orden: nombre, fecha de ruta, origen, destino, enlace de Google Maps para la recogida y enlace de Google Maps para la entrega:
 
 - `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE`: debe comunicar que el pago y la ruta están confirmados.
 - `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`: debe recordar la salida prevista para el día siguiente.

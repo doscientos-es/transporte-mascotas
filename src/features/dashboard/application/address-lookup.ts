@@ -1,4 +1,5 @@
 type PhotonFeature = {
+  geometry?: { coordinates?: [number, number] }
   properties?: {
     name?: string
     street?: string
@@ -19,6 +20,8 @@ export type AddressSuggestion = {
   postalCode: string
   province: string
   country: string
+  latitude?: number
+  longitude?: number
 }
 
 export async function lookupAddressSuggestions(address: string, signal?: AbortSignal) {
@@ -30,7 +33,7 @@ export async function lookupAddressSuggestions(address: string, signal?: AbortSi
   if (!response.ok) throw new Error('No se ha podido buscar la dirección.')
   const result = (await response.json()) as { features?: PhotonFeature[] }
   return (result.features ?? [])
-    .map(({ properties }) => {
+    .map(({ properties, geometry }) => {
       const item = properties ?? {}
       const streetName = item.street ?? item.name ?? ''
       return {
@@ -41,6 +44,8 @@ export async function lookupAddressSuggestions(address: string, signal?: AbortSi
         postalCode: item.postcode ?? '',
         province: item.state ?? '',
         country: item.country ?? 'España',
+        latitude: geometry?.coordinates?.[1],
+        longitude: geometry?.coordinates?.[0],
       }
     })
     .filter(

@@ -224,7 +224,10 @@ export function ClientRequestForm({
       origin: '',
       destination: '',
     }))
-    if (!route || route.localities.length < 2) {
+    if (
+      !route ||
+      !route.stops.some((stop) => stop.latitude !== undefined && stop.longitude !== undefined)
+    ) {
       setOriginSuggestion('')
       return
     }
@@ -234,7 +237,7 @@ export function ClientRequestForm({
   async function suggestNearestPickup(route: UpcomingRoute, requestId: number) {
     setOriginSuggestion('Buscando la parada de recogida más cercana…')
     try {
-      const origin = await findNearestPickupStop(await getCurrentLocation(), route.localities)
+      const origin = findNearestPickupStop(await getCurrentLocation(), route.stops)
       if (requestId !== originSuggestionRequest.current) return
       if (!origin) {
         setOriginSuggestion(

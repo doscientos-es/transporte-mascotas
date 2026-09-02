@@ -24,6 +24,8 @@ type StoredStop = {
   postal_code: string
   province: string
   country: string
+  latitude: number | null
+  longitude: number | null
 }
 type TemplateRow = { id: string; name: string; color: string; route_template_stops: StoredStop[] }
 type DailyRouteRow = {
@@ -64,8 +66,12 @@ function mapUrlFor(
     | 'locality'
     | 'province'
     | 'country'
+    | 'latitude'
+    | 'longitude'
   >,
 ) {
+  if (typeof stop.latitude === 'number' && typeof stop.longitude === 'number')
+    return `https://www.google.com/maps/search/?api=1&query=${stop.latitude},${stop.longitude}`
   const address = [
     [stop.street, stop.street_number].filter(Boolean).join(' '),
     stop.postal_code,
@@ -90,6 +96,8 @@ function mapStop(stop: StoredStop) {
     postalCode: stop.postal_code,
     province: stop.province,
     country: stop.country,
+    latitude: stop.latitude ?? undefined,
+    longitude: stop.longitude ?? undefined,
   }
 }
 
@@ -145,6 +153,8 @@ export async function addRouteTemplateStop(
       postal_code: stop.postalCode ?? '',
       province: stop.province ?? '',
       country: stop.country ?? 'España',
+      latitude: stop.latitude ?? null,
+      longitude: stop.longitude ?? null,
     })
   if (error) throw error
 }
@@ -184,7 +194,7 @@ export async function loadRouteTemplates() {
   const { data, error } = await requireSupabase()
     .from('route_templates')
     .select(
-      'id,name,color,route_template_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country)',
+      'id,name,color,route_template_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude)',
     )
     .order('name')
   if (error) throw error
@@ -224,7 +234,7 @@ export async function loadDailyRoutes() {
       database
         .from('daily_routes')
         .select(
-          'id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,stop_kind,dwell_minutes)',
+          'id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
         )
         .order('service_date'),
       database
@@ -312,6 +322,8 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
         postal_code: stop.postalCode ?? '',
         province: stop.province ?? '',
         country: stop.country ?? 'España',
+        latitude: stop.latitude ?? null,
+        longitude: stop.longitude ?? null,
         stop_kind: stop.kind,
         dwell_minutes: stop.dwellMinutes,
       })),
@@ -387,6 +399,19 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
 
 export async function updateDailyRouteStops(routeId: string, stops: DailyRouteStop[]) {
   const database = requireSupabase()
+  const temporarySequenceStart = 100000
+  const temporaryUpdates = await Promise.all(
+    stops.map((stop, index) =>
+      database
+        .from('daily_route_stops')
+        .update({ sequence: temporarySequenceStart + index })
+        .eq('id', stop.id)
+        .eq('daily_route_id', routeId),
+    ),
+  )
+  const temporaryError = temporaryUpdates.find((result) => result.error)?.error
+  if (temporaryError) throw temporaryError
+
   const updates = await Promise.all(
     stops.map((stop, index) =>
       database
@@ -405,6 +430,8 @@ export async function updateDailyRouteStops(routeId: string, stops: DailyRouteSt
           postal_code: stop.postalCode ?? '',
           province: stop.province ?? '',
           country: stop.country ?? 'España',
+          latitude: stop.latitude ?? null,
+          longitude: stop.longitude ?? null,
         })
         .eq('id', stop.id)
         .eq('daily_route_id', routeId)
@@ -434,6 +461,8 @@ export async function addDailyRouteStop(routeId: string, stop: DailyRouteStop, s
       postal_code: stop.postalCode ?? '',
       province: stop.province ?? '',
       country: stop.country ?? 'España',
+      latitude: stop.latitude ?? null,
+      longitude: stop.longitude ?? null,
       stop_kind: stop.kind,
       dwell_minutes: stop.dwellMinutes,
     })

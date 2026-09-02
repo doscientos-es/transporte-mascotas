@@ -25,6 +25,10 @@ type LetterRow = {
   destination_text: string
   origin_point: string
   destination_point: string
+  origin_latitude: number | null
+  origin_longitude: number | null
+  destination_latitude: number | null
+  destination_longitude: number | null
   accompanying_documents: Letter['accompanyingDocuments']
   billing_payer: Letter['billingPayer']
   billing_client: unknown
@@ -79,7 +83,7 @@ async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error
@@ -105,6 +109,10 @@ async function fetchLetters(): Promise<Letter[]> {
     destination: letter.destination_text,
     originPoint: letter.origin_point ?? '',
     destinationPoint: letter.destination_point ?? '',
+    originLatitude: letter.origin_latitude ?? undefined,
+    originLongitude: letter.origin_longitude ?? undefined,
+    destinationLatitude: letter.destination_latitude ?? undefined,
+    destinationLongitude: letter.destination_longitude ?? undefined,
     accompanyingDocuments: letter.accompanying_documents ?? [],
     billingPayer: letter.billing_payer ?? 'remitente',
     billingClient: invoiceClientFrom(letter.billing_client),

@@ -2,7 +2,7 @@ import { dispatchBillingNotifications } from '../_shared/billing-notifications.t
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
-const paymentMethods = new Set(['Transferencia', 'Efectivo', 'Bizum', 'Tarjeta', 'Otro'])
+const paymentMethods = new Set(['Transferencia', 'Bizum', 'Tarjeta'])
 type Invoice = {
   id: string
   status: string

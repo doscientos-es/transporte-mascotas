@@ -1,5 +1,6 @@
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -518,6 +519,8 @@ export function StopFormDialog({
       .join(', '),
   )
   const [floor, setFloor] = useState(initialStop?.floor ?? '')
+  const [latitude, setLatitude] = useState(initialStop?.latitude?.toString() ?? '')
+  const [longitude, setLongitude] = useState(initialStop?.longitude?.toString() ?? '')
   const [alias, setAlias] = useState(initialStop?.alias ?? '')
   const [place, setPlace] = useState(initialStop?.place ?? '')
   const [dwellMinutes, setDwellMinutes] = useState(String(initialStop?.dwellMinutes ?? 15))
@@ -580,6 +583,8 @@ export function StopFormDialog({
     setPostalCode(suggestion.postalCode)
     setProvince(suggestion.province)
     setCountry(suggestion.country)
+    setLatitude(suggestion.latitude?.toString() ?? '')
+    setLongitude(suggestion.longitude?.toString() ?? '')
     setAddressSuggestions([])
     setAddressLookupState('idle')
   }
@@ -600,6 +605,8 @@ export function StopFormDialog({
         place: place.trim(),
         dwellMinutes: Math.max(0, Number(dwellMinutes) || 0),
         minutes: 0,
+        latitude: Number(latitude) || undefined,
+        longitude: Number(longitude) || undefined,
       })
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido añadir la parada.')
@@ -727,6 +734,28 @@ export function StopFormDialog({
             <Input
               value={country}
               onChange={(event) => setCountry(event.target.value)}
+              disabled={lookingUpAddress}
+              required
+            />
+          </Label>
+          <Label>
+            Latitud
+            <Input
+              type="number"
+              step="any"
+              value={latitude}
+              onChange={(event) => setLatitude(event.target.value)}
+              disabled={lookingUpAddress}
+              required
+            />
+          </Label>
+          <Label>
+            Longitud
+            <Input
+              type="number"
+              step="any"
+              value={longitude}
+              onChange={(event) => setLongitude(event.target.value)}
               disabled={lookingUpAddress}
               required
             />
@@ -1426,22 +1455,45 @@ export function NewRouteDirectionDialog({
     date: string,
     transporterId?: string,
     direction?: RouteDirection,
+    selectedStopIds?: string[],
   ) => Promise<void>
 }) {
   const [date, setDate] = useState('')
   const [transporterId, setTransporterId] = useState('')
   const [direction, setDirection] = useState<RouteDirection>('normal')
+  const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
+  const [selectedStopIds, setSelectedStopIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const directionLabel = direction === 'normal' ? 'sentido habitual' : 'sentido inverso'
-  async function create(template: RouteTemplate) {
+  const orderedStops = selectedTemplate
+    ? direction === 'inversa'
+      ? selectedTemplate.stops.toReversed()
+      : selectedTemplate.stops
+    : []
+
+  function selectTemplate(template: RouteTemplate) {
+    setSelectedTemplate(template)
+    setSelectedStopIds(template.stops.map((stop) => stop.id))
+    setError('')
+  }
+
+  function toggleStop(stopId: string) {
+    setSelectedStopIds((current) =>
+      current.includes(stopId) ? current.filter((id) => id !== stopId) : [...current, stopId],
+    )
+  }
+
+  async function create() {
     const minimumDate = todayIso()
     if (!date) return setError('Selecciona la fecha de servicio.')
     if (date < minimumDate) return setError('La fecha de servicio no puede ser anterior a hoy.')
+    if (!selectedTemplate) return setError('Selecciona una ruta preestablecida.')
+    if (!selectedStopIds.length) return setError('Marca al menos una parada para crear la ruta.')
     setSaving(true)
     setError('')
     try {
-      await onCreate(template, date, transporterId || undefined, direction)
+      await onCreate(selectedTemplate, date, transporterId || undefined, direction, selectedStopIds)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido crear la ruta.')
     } finally {
@@ -1451,7 +1503,11 @@ export function NewRouteDirectionDialog({
   return (
     <OperationDialog
       title="Crear ruta diaria"
-      description="Elige primero la fecha y hacia dónde recorrerás la ruta. Las paradas se crearán ya en ese orden."
+      description={
+        selectedTemplate
+          ? 'Revisa las paradas que realizará esta salida. Puedes desmarcar las que no correspondan.'
+          : 'Elige primero la fecha, el sentido y una ruta preestablecida.'
+      }
       icon={<Route size={24} />}
       onClose={onClose}
     >
@@ -1494,7 +1550,7 @@ export function NewRouteDirectionDialog({
         </p>
       </div>
       <Label className="date-field">
-        Asignar a transportista
+        Asignar a transportista (opcional)
         <select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}>
           <option value="">Sin asignar</option>
           {transporters.map((transporter) => (
@@ -1509,25 +1565,75 @@ export function NewRouteDirectionDialog({
           {error}
         </p>
       )}
-      <div className="dialog-options">
-        {templates.map((template) => (
-          <button
-            type="button"
-            key={template.id}
-            disabled={saving}
-            onClick={() => void create(template)}
-          >
-            <span className="template-dot" style={{ background: template.color }} />
-            <span>
-              <strong>{template.name}</strong>
+      {selectedTemplate ? (
+        <section className="route-stop-selection" aria-labelledby="route-stop-selection-title">
+          <div className="route-stop-selection-heading">
+            <div>
+              <strong id="route-stop-selection-title">Paradas de {selectedTemplate.name}</strong>
               <small>
-                {template.stops.length} paradas · {directionLabel}
+                {selectedStopIds.length} de {selectedTemplate.stops.length} seleccionadas ·{' '}
+                {directionLabel}
               </small>
-            </span>
-            <ChevronRight size={17} />
-          </button>
-        ))}
-      </div>
+            </div>
+            <button type="button" onClick={() => setSelectedTemplate(null)} disabled={saving}>
+              Cambiar ruta
+            </button>
+          </div>
+          <div className="route-stop-selection-actions">
+            <button
+              type="button"
+              onClick={() => setSelectedStopIds(selectedTemplate.stops.map((stop) => stop.id))}
+              disabled={saving || selectedStopIds.length === selectedTemplate.stops.length}
+            >
+              Marcar todas
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedStopIds([])}
+              disabled={saving || !selectedStopIds.length}
+            >
+              Desmarcar todas
+            </button>
+          </div>
+          <div className="route-stop-selection-list">
+            {orderedStops.map((stop, index) => (
+              <Checkbox
+                key={stop.id}
+                isSelected={selectedStopIds.includes(stop.id)}
+                onChange={() => toggleStop(stop.id)}
+                isDisabled={saving}
+              >
+                <span>{index + 1}</span>
+                <strong>{stop.locality}</strong>
+                {stop.place && <small>{stop.place}</small>}
+              </Checkbox>
+            ))}
+          </div>
+          <Button className="dialog-submit" disabled={saving} onClick={() => void create()}>
+            {saving ? 'Creando…' : 'Crear ruta diaria'}
+          </Button>
+        </section>
+      ) : (
+        <div className="dialog-options">
+          {templates.map((template) => (
+            <button
+              type="button"
+              key={template.id}
+              disabled={saving}
+              onClick={() => selectTemplate(template)}
+            >
+              <span className="template-dot" style={{ background: template.color }} />
+              <span>
+                <strong>{template.name}</strong>
+                <small>
+                  {template.stops.length} paradas · {directionLabel}
+                </small>
+              </span>
+              <ChevronRight size={17} />
+            </button>
+          ))}
+        </div>
+      )}
     </OperationDialog>
   )
 }
@@ -1804,7 +1910,7 @@ export function NewRouteDialog({
         />
       </Label>
       <Label className="date-field">
-        Asignar a transportista
+        Asignar a transportista (opcional)
         <select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}>
           <option value="">Sin asignar</option>
           {transporters.map((transporter) => (

@@ -81,6 +81,10 @@ export interface Letter {
   destination: string
   originPoint: string
   destinationPoint: string
+  originLatitude?: number
+  originLongitude?: number
+  destinationLatitude?: number
+  destinationLongitude?: number
   accompanyingDocuments: AccompanyingDocument[]
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
@@ -150,7 +154,7 @@ export interface PaymentDelivery {
   phone: string
 }
 
-export type ManualPaymentMethod = 'Transferencia' | 'Efectivo' | 'Bizum' | 'Tarjeta' | 'Otro'
+export type ManualPaymentMethod = 'Transferencia' | 'Bizum' | 'Tarjeta'
 
 export interface InvoiceFiscalSnapshot {
   number?: string
@@ -209,6 +213,8 @@ export interface RouteStop {
   postalCode?: string
   province?: string
   country?: string
+  latitude?: number
+  longitude?: number
 }
 
 export type DailyStopKind = 'parada' | 'recogida' | 'entrega'
@@ -296,6 +302,10 @@ export interface TransportRequest {
   destination: string
   desiredDate: string
   dailyRouteId: string
+  originLatitude?: number
+  originLongitude?: number
+  destinationLatitude?: number
+  destinationLongitude?: number
   notes: string
   status: TransportRequestStatus
   paymentReference: string
@@ -312,4 +322,5 @@ export interface UpcomingRoute {
   templateName: string
   templateColor: string
   localities: string[]
+  stops: Array<Pick<RouteStop, 'id' | 'locality' | 'latitude' | 'longitude'>>
 }

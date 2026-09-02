@@ -96,9 +96,19 @@ const formatRouteDate = (date: string) => ({
 const mapUrlFor = (
   stop: Pick<
     DailyRouteStop,
-    'alias' | 'street' | 'streetNumber' | 'postalCode' | 'locality' | 'province' | 'country'
+    | 'alias'
+    | 'street'
+    | 'streetNumber'
+    | 'postalCode'
+    | 'locality'
+    | 'province'
+    | 'country'
+    | 'latitude'
+    | 'longitude'
   >,
 ) => {
+  if (typeof stop.latitude === 'number' && typeof stop.longitude === 'number')
+    return `https://www.google.com/maps/search/?api=1&query=${stop.latitude},${stop.longitude}`
   const address = [
     [stop.street, stop.streetNumber].filter(Boolean).join(' '),
     stop.postalCode,
@@ -164,6 +174,7 @@ export function RoutesPage({
   const [addingStop, setAddingStop] = useState(false)
   const [plannedStops, setPlannedStops] = useState<DailyRouteStop[] | null>(null)
   const [savingPlan, setSavingPlan] = useState(false)
+  const [movingStop, setMovingStop] = useState(false)
   const [deletingStop, setDeletingStop] = useState<DailyRouteStop | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
@@ -201,15 +212,19 @@ export function RoutesPage({
     setOperationError(error instanceof Error ? error.message : fallback)
   }
   async function moveStop(index: number, direction: -1 | 1) {
+    if (movingStop) return
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
     ;[next[index], next[target]] = [next[target], next[index]]
+    setMovingStop(true)
     try {
       setOperationError('')
       await onUpdateStops(route.id, next)
     } catch (error) {
       reportOperationError(error, 'No se ha podido actualizar el orden de las paradas.')
+    } finally {
+      setMovingStop(false)
     }
   }
   async function movePlannedStop(index: number, direction: -1 | 1) {
@@ -459,6 +474,7 @@ export function RoutesPage({
                 total={stops.length}
                 arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)}
                 organizing={organizing || Boolean(plannedStops)}
+                moving={movingStop}
                 services={servicesByStop.get(stop.id) ?? []}
                 onMove={plannedStops ? movePlannedStop : moveStop}
                 onDwellChange={setDwellMinutes}
@@ -524,6 +540,7 @@ function JourneyStop({
   total,
   arrival,
   organizing,
+  moving,
   services,
   onMove,
   onDwellChange,
@@ -536,6 +553,7 @@ function JourneyStop({
   total: number
   arrival: string
   organizing: boolean
+  moving: boolean
   services: ServiceGroup[]
   onMove: (index: number, direction: -1 | 1) => Promise<void>
   onDwellChange: (index: number, value: string) => Promise<void>
@@ -591,7 +609,7 @@ function JourneyStop({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={index === 0}
+                disabled={moving || index === 0}
                 aria-label={`Subir ${stop.locality}`}
                 onClick={() => void onMove(index, -1)}
               >
@@ -600,7 +618,7 @@ function JourneyStop({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={index === total - 1}
+                disabled={moving || index === total - 1}
                 aria-label={`Bajar ${stop.locality}`}
                 onClick={() => void onMove(index, 1)}
               >

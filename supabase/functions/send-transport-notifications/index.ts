@@ -8,6 +8,10 @@ type TransportRequest = {
   contact_name: string
   origin_text: string
   destination_text: string
+  origin_latitude: number | null
+  origin_longitude: number | null
+  destination_latitude: number | null
+  destination_longitude: number | null
   desired_date: string
 }
 
@@ -43,6 +47,10 @@ async function sendTest(phone?: string, kind?: NotificationKind) {
     contact_name: 'Cliente de prueba',
     origin_text: 'Madrid',
     destination_text: 'Valencia',
+    origin_latitude: 40.4168,
+    origin_longitude: -3.7038,
+    destination_latitude: 39.4699,
+    destination_longitude: -0.3763,
     desired_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   })
   return json({ sent: 1, messageId })
@@ -82,7 +90,7 @@ async function dispatch(requestId?: string) {
 
 async function loadRequest(requestId: string) {
   const response = await rest(
-    `transport_requests?id=eq.${encodeURIComponent(requestId)}&select=id,contact_name,origin_text,destination_text,desired_date`,
+    `transport_requests?id=eq.${encodeURIComponent(requestId)}&select=id,contact_name,origin_text,destination_text,desired_date,origin_latitude,origin_longitude,destination_latitude,destination_longitude`,
   )
   const [transportRequest] = (await response.json()) as TransportRequest[]
   if (!transportRequest) throw new Error('No se ha encontrado la solicitud de transporte.')
@@ -103,7 +111,25 @@ function messageParameters(request: TransportRequest): WhatsAppTemplateParameter
     { type: 'text', text: formatDate(request.desired_date) },
     { type: 'text', text: request.origin_text },
     { type: 'text', text: request.destination_text },
+    {
+      type: 'text',
+      text: mapsLink(request.origin_latitude, request.origin_longitude, request.origin_text),
+    },
+    {
+      type: 'text',
+      text: mapsLink(
+        request.destination_latitude,
+        request.destination_longitude,
+        request.destination_text,
+      ),
+    },
   ]
+}
+
+function mapsLink(latitude: number | null, longitude: number | null, fallback: string) {
+  return typeof latitude === 'number' && typeof longitude === 'number'
+    ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallback)}`
 }
 
 function formatDate(value: string) {

@@ -113,8 +113,15 @@ export function AdminDashboardPage({
     date: string,
     transporterId?: string,
     direction: Parameters<typeof dashboard.createDailyRoute>[3] = 'normal',
+    selectedStopIds: Parameters<typeof dashboard.createDailyRoute>[4] = [],
   ) {
-    const route = await dashboard.createDailyRoute(template, date, transporterId, direction)
+    const route = await dashboard.createDailyRoute(
+      template,
+      date,
+      transporterId,
+      direction,
+      selectedStopIds,
+    )
     if (route) navigateToRoute(route.id)
   }
 

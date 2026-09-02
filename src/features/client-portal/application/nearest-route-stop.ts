@@ -1,9 +1,5 @@
 export type Coordinates = { latitude: number; longitude: number }
 
-type PhotonFeature = { geometry?: { coordinates?: [number, number] } }
-
-const coordinatesByLocality = new Map<string, Promise<Coordinates | null>>()
-
 function radians(value: number) {
   return (value * Math.PI) / 180
 }
@@ -33,38 +29,20 @@ export function closestStop<T extends { coordinates: Coordinates }>(
   }, null)
 }
 
-function coordinatesForLocality(locality: string) {
-  const key = locality.trim().toLocaleLowerCase()
-  const cached = coordinatesByLocality.get(key)
-  if (cached) return cached
-
-  const request = fetch(
-    `https://photon.komoot.io/api/?${new URLSearchParams({ q: `${locality}, España`, limit: '1' })}`,
+export function findNearestPickupStop(
+  clientLocation: Coordinates,
+  stops: Array<{ locality: string; latitude?: number; longitude?: number }>,
+) {
+  const candidates = stops.slice(0, -1).flatMap((stop) =>
+    typeof stop.latitude === 'number' && typeof stop.longitude === 'number'
+      ? [
+          {
+            locality: stop.locality,
+            coordinates: { latitude: stop.latitude, longitude: stop.longitude },
+          },
+        ]
+      : [],
   )
-    .then(async (response) => {
-      if (!response.ok) return null
-      const result = (await response.json()) as { features?: PhotonFeature[] }
-      const [longitude, latitude] = result.features?.[0]?.geometry?.coordinates ?? []
-      if (
-        typeof latitude !== 'number' ||
-        typeof longitude !== 'number' ||
-        !Number.isFinite(latitude) ||
-        !Number.isFinite(longitude)
-      )
-        return null
-      return { latitude, longitude }
-    })
-    .catch(() => null)
-  coordinatesByLocality.set(key, request)
-  return request
-}
-
-export async function findNearestPickupStop(clientLocation: Coordinates, localities: string[]) {
-  const candidates: Array<{ locality: string; coordinates: Coordinates }> = []
-  for (const locality of localities.slice(0, -1)) {
-    const coordinates = await coordinatesForLocality(locality)
-    if (coordinates) candidates.push({ locality, coordinates })
-  }
   return closestStop(clientLocation, candidates)?.locality ?? null
 }
 

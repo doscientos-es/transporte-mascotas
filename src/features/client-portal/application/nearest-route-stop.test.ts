@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { closestStop, distanceInKm } from './nearest-route-stop'
+import { closestStop, distanceInKm, findNearestPickupStop } from './nearest-route-stop'
 
 describe('closestStop', () => {
   it('selects the stop with the shortest geodesic distance', () => {
@@ -12,5 +12,15 @@ describe('closestStop', () => {
 
     expect(closestStop(clientLocation, stops)?.locality).toBe('Getafe')
     expect(distanceInKm(clientLocation, stops[1].coordinates)).toBeLessThan(20)
+  })
+
+  it('ignores stops without exact coordinates and excludes the final stop from pickup', () => {
+    const nearest = findNearestPickupStop({ latitude: 40.4168, longitude: -3.7038 }, [
+      { locality: 'Sin coordenadas' },
+      { locality: 'Getafe', latitude: 40.3083, longitude: -3.7327 },
+      { locality: 'Madrid', latitude: 40.4168, longitude: -3.7038 },
+    ])
+
+    expect(nearest).toBe('Getafe')
   })
 })

@@ -740,10 +740,8 @@ function ManualPaymentDialog({
             onChange={(event) => setMethod(event.target.value as ManualPaymentMethod)}
           >
             <option>Transferencia</option>
-            <option>Efectivo</option>
             <option>Bizum</option>
             <option>Tarjeta</option>
-            <option>Otro</option>
           </select>
         </label>
         {error && (

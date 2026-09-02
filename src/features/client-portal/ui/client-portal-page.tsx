@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   FilePlus2,
+  Navigation,
   PawPrint,
   RefreshCw,
 } from 'lucide-react'
@@ -13,12 +14,12 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { statusLabels } from '@/shared/lib/status-labels'
 import type {
+  ClientPet,
+  DashboardNavigation,
   TransportRequest,
   TransportRequestAnimal,
-  ClientPet,
   UpcomingRoute,
   UserProfile,
-  DashboardNavigation,
 } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
@@ -26,8 +27,8 @@ import { PageIntro } from '@/shared/ui/page-intro'
 import { signOut as signOutSession } from '../application/session'
 import {
   createTransportRequest,
-  loadTransportRequests,
   loadClientPets,
+  loadTransportRequests,
   loadUpcomingRoutes,
   payTransportRequest,
   saveClientPets,
@@ -42,6 +43,19 @@ const formatDate = (value: string) =>
     month: 'short',
     year: 'numeric',
   })
+
+function mapsEmbedUrl(latitude: number, longitude: number) {
+  const delta = 0.012
+  return `https://www.openstreetmap.org/export/embed.html?${new URLSearchParams({
+    bbox: `${longitude - delta},${latitude - delta},${longitude + delta},${latitude + delta}`,
+    layer: 'mapnik',
+    marker: `${latitude},${longitude}`,
+  })}`
+}
+
+function googleMapsDirectionsUrl(latitude: number, longitude: number) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
+}
 
 export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, navigateToSection } = navigation
@@ -353,6 +367,25 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           {request.origin} → {request.destination}
                         </strong>
                         <small>{request.adminNote || clientStatusHint(request.status)}</small>
+                        {typeof request.originLatitude === 'number' &&
+                          typeof request.originLongitude === 'number' &&
+                          typeof request.destinationLatitude === 'number' &&
+                          typeof request.destinationLongitude === 'number' && (
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <TransportLocationMap
+                                label="Recogida"
+                                location={request.origin}
+                                latitude={request.originLatitude}
+                                longitude={request.originLongitude}
+                              />
+                              <TransportLocationMap
+                                label="Entrega"
+                                location={request.destination}
+                                latitude={request.destinationLatitude}
+                                longitude={request.destinationLongitude}
+                              />
+                            </div>
+                          )}
                       </div>
                       <div className="invoice-amount">
                         <span className={`status status-${request.status}`}>
@@ -429,6 +462,38 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         </output>
       )}
     </DashboardLayout>
+  )
+}
+
+function TransportLocationMap({
+  label,
+  location,
+  latitude,
+  longitude,
+}: {
+  label: string
+  location: string
+  latitude: number
+  longitude: number
+}) {
+  return (
+    <section className="border-border bg-card overflow-hidden rounded-lg border">
+      <iframe
+        className="h-36 w-full border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        src={mapsEmbedUrl(latitude, longitude)}
+        title={`Mapa de ${label.toLocaleLowerCase()} en ${location}`}
+      />
+      <a
+        className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
+        href={googleMapsDirectionsUrl(latitude, longitude)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Navigation size={14} /> Cómo llegar a {label.toLocaleLowerCase()} · {location}
+      </a>
+    </section>
   )
 }
 

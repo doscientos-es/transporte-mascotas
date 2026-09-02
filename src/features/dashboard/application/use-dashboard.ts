@@ -1,7 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
 import type {
   Animal,
@@ -54,6 +53,7 @@ import {
   updateRouteTemplateStopOrder,
 } from '../infrastructure/routes'
 import { sizeForMeasurements } from './animal-size'
+import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize } from './van'
@@ -61,13 +61,9 @@ import { assignmentsForRoute, boxesBySize } from './van'
 function copyTemplateStops(
   template: RouteTemplate,
   direction: RouteDirection = 'normal',
+  selectedStopIds?: string[],
 ): DailyRouteStop[] {
-  const stops = template.stops.map((stop) => ({
-    ...stop,
-    kind: 'parada' as const,
-    dwellMinutes: DEFAULT_STOP_DWELL_MINUTES,
-  }))
-  return direction === 'inversa' ? stops.toReversed() : stops
+  return dailyRouteStopsForTemplate(template, direction, selectedStopIds)
 }
 
 function stopsForRoute(route: DailyRoute, templates: RouteTemplate[]) {
@@ -786,18 +782,21 @@ export function useDashboard(session: Session | null, role: AppRole) {
     date: string,
     transporterId?: string,
     direction: RouteDirection = 'normal',
+    selectedStopIds?: string[],
   ) {
     if (!session) throw new Error('Inicia sesión para crear una ruta.')
+    let stops = copyTemplateStops(template, direction, selectedStopIds)
+    if (!stops.length) throw new Error('Selecciona al menos una parada para crear la ruta.')
     const usedBoxes = new Set<number>()
     const actions = letters
       .filter((letter) => letter.route === template.name && letter.serviceDate === date)
       .flatMap((letter) => {
         const box = selectFreeBox(letter.animals, usedBoxes)
         if (box) usedBoxes.add(box)
-        const originStop = template.stops.find((stop) =>
+        const originStop = stops.find((stop) =>
           stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()),
         )
-        const destinationStop = template.stops.find((stop) =>
+        const destinationStop = stops.find((stop) =>
           stop.locality.toLocaleLowerCase().includes(letter.destination.toLocaleLowerCase()),
         )
         return letter.animals.flatMap((animal) => [
@@ -809,6 +808,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
                   animalId: animal.id,
                   type: 'recogida' as const,
                   stop: originStop.locality,
+                  stopId: originStop.id,
                   customer: letter.sender,
                   phone: letter.senderPhone,
                   status: 'pendiente' as const,
@@ -824,6 +824,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
                   animalId: animal.id,
                   type: 'entrega' as const,
                   stop: destinationStop.locality,
+                  stopId: destinationStop.id,
                   customer: letter.recipient,
                   phone: letter.recipientPhone,
                   status: 'pendiente' as const,
@@ -833,7 +834,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
             : []),
         ])
       })
-    let stops = copyTemplateStops(template, direction)
     try {
       stops = await calculateDrivingTimes(stops)
     } catch {

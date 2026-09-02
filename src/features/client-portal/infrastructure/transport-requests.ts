@@ -18,6 +18,10 @@ type RequestRow = {
   destination_text: string
   desired_date: string
   daily_route_id: string | null
+  origin_latitude: number | null
+  origin_longitude: number | null
+  destination_latitude: number | null
+  destination_longitude: number | null
   notes: string
   status: TransportRequest['status']
   payment_reference: string
@@ -50,6 +54,10 @@ function mapRequest(row: RequestRow): TransportRequest {
     destination: row.destination_text,
     desiredDate: row.desired_date,
     dailyRouteId: row.daily_route_id ?? '',
+    originLatitude: row.origin_latitude ?? undefined,
+    originLongitude: row.origin_longitude ?? undefined,
+    destinationLatitude: row.destination_latitude ?? undefined,
+    destinationLongitude: row.destination_longitude ?? undefined,
     notes: row.notes,
     status: row.status,
     paymentReference: row.payment_reference,
@@ -137,6 +145,7 @@ type UpcomingRouteRow = {
   template_name: string
   template_color: string
   localities: string[] | null
+  stops: UpcomingRoute['stops'] | null
 }
 
 export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
@@ -149,6 +158,7 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
     templateName: row.template_name,
     templateColor: row.template_color,
     localities: row.localities ?? [],
+    stops: row.stops ?? [],
   }))
 }
 
