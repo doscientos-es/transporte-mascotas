@@ -144,8 +144,11 @@ export function RequestsPage({ routes, onNotify }: Props) {
               const route = routes.find((item) => item.id === assignment.routeId)
               const stops = route?.stops ?? []
               return (
-                <div className="animal-form-card" key={request.id}>
-                  <div>
+                <div
+                  className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+                  key={request.id}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222]">
                     <span>
                       {request.contactName} · {request.contactPhone}
                     </span>
@@ -179,7 +182,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       </span>
                     )}
                   </div>
-                  <div className="letter-form-grid animal-fields">
+                  <div className="mb-3 grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
                     <label>
                       Ruta diaria
                       <select

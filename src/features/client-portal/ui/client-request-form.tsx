@@ -226,7 +226,7 @@ export function ClientRequestForm({
       <Card className="table-card client-request-card">
         <CardContent>
           <section className="payment-recovery">
-            <div className="letter-form-section-title">
+            <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
               <CreditCard size={17} />
               <div>
                 <h2>Tu solicitud está guardada</h2>
@@ -261,7 +261,7 @@ export function ClientRequestForm({
       <Card className="table-card client-request-card">
         <CardContent>
           <section className="payment-recovery">
-            <div className="letter-form-section-title">
+            <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
               <PawPrint size={17} />
               <div>
                 <h2>Tu solicitud está enviada</h2>
@@ -294,7 +294,7 @@ export function ClientRequestForm({
     <Card className="table-card client-request-card">
       <CardContent>
         <form
-          className="letter-form request-form"
+          className="request-form [&_input]:min-h-10 [&_select]:min-h-10"
           onSubmit={(event) => void submit(event)}
           noValidate
         >
@@ -321,15 +321,15 @@ export function ClientRequestForm({
           </ol>
 
           {step === 0 && (
-            <section className="letter-form-section">
-              <div className="letter-form-section-title">
+            <section className="border-border bg-card rounded-xl border p-[18px]">
+              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
                 <ShieldCheck size={17} />
                 <div>
                   <h3>Cómo te contactamos</h3>
                   <p>Te avisaremos cuando revisemos la solicitud y asignemos la ruta.</p>
                 </div>
               </div>
-              <div className="letter-form-grid">
+              <div className="grid gap-3 sm:grid-cols-2 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
                 <label>
                   Nombre y apellidos
                   <input
@@ -349,7 +349,7 @@ export function ClientRequestForm({
                     required
                   />
                 </label>
-                <label className="form-span">
+                <label className="sm:col-span-2">
                   Correo electrónico
                   <input
                     type="email"
@@ -364,16 +364,16 @@ export function ClientRequestForm({
           )}
 
           {step === 1 && (
-            <section className="letter-form-section">
-              <div className="letter-form-section-title">
+            <section className="border-border bg-card rounded-xl border p-[18px]">
+              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
                 <ArrowRight size={17} />
                 <div>
                   <h3>Elige una salida publicada</h3>
                   <p>La fecha y las paradas disponibles dependen de la ruta seleccionada.</p>
                 </div>
               </div>
-              <div className="letter-form-grid">
-                <label className="form-span">
+              <div className="grid gap-3 sm:grid-cols-2 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+                <label className="sm:col-span-2">
                   Ruta y fecha
                   <select
                     value={values.dailyRouteId}
@@ -447,7 +447,7 @@ export function ClientRequestForm({
                     required
                   />
                 </label>
-                <label className="form-span">
+                <label className="sm:col-span-2">
                   Algo que debamos tener en cuenta
                   <input
                     value={values.notes}
@@ -460,8 +460,8 @@ export function ClientRequestForm({
           )}
 
           {step === 2 && (
-            <section className="letter-form-section">
-              <div className="letter-form-section-title">
+            <section className="border-border bg-card rounded-xl border p-[18px]">
+              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
                 <PawPrint size={17} />
                 <div>
                   <h3>Tu mascota</h3>
@@ -469,8 +469,11 @@ export function ClientRequestForm({
                 </div>
               </div>
               {values.animals.map((animal, index) => (
-                <div className="animal-form-card" key={animal.ordinal}>
-                  <div>
+                <div
+                  className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+                  key={animal.ordinal}
+                >
+                  <div className="[&_button]:text-accent mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222] [&_button]:min-h-7 [&_button]:px-[7px] [&_button]:text-[11px]">
                     <span>Mascota {index + 1}</span>
                     {values.animals.length > 1 && (
                       <button
@@ -488,9 +491,9 @@ export function ClientRequestForm({
                       </button>
                     )}
                   </div>
-                  <div className="letter-form-grid animal-fields">
+                  <div className="[&_small]:text-muted-foreground mb-3 grid gap-3 sm:grid-cols-2 [&_small]:font-normal [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
                     {savedPets.length > 0 && (
-                      <label className="form-span">
+                      <label className="sm:col-span-2">
                         ¿Ya has viajado con nosotros?
                         <select
                           value={animal.clientPetId ?? ''}
@@ -592,7 +595,7 @@ export function ClientRequestForm({
               <Button
                 type="button"
                 variant="outline"
-                className="add-animal"
+                className="mt-[11px] min-h-[38px] w-full border-dashed text-[#9d1921]"
                 onClick={() =>
                   setValues({
                     ...values,
@@ -606,8 +609,8 @@ export function ClientRequestForm({
           )}
 
           {step === 3 && (
-            <section className="letter-form-section request-review">
-              <div className="letter-form-section-title">
+            <section className="request-review border-border bg-card rounded-xl border p-[18px]">
+              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
                 <CreditCard size={17} />
                 <div>
                   <h3>Revisa y confirma</h3>

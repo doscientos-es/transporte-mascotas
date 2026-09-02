@@ -288,7 +288,10 @@ export function LetterFormDialog({
         onClose={onClose}
         wide
       >
-        <form className="letter-form" onSubmit={(event) => void submit(event)}>
+        <form
+          className="max-h-[min(69vh,620px)] space-y-3 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]"
+          onSubmit={(event) => void submit(event)}
+        >
           <TripSection
             draft={draft}
             routes={routes}
@@ -301,7 +304,10 @@ export function LetterFormDialog({
             lockReference={isEditing}
           />
           <ContactsSection draft={draft} update={update} />
-          <Label className="animal-count" htmlFor="animal-count">
+          <Label
+            className="mb-3 grid max-w-[185px] gap-1.5 text-xs font-bold text-[#454545]"
+            htmlFor="animal-count"
+          >
             Número de animales
             <Input
               id="animal-count"
@@ -345,7 +351,7 @@ export function LetterFormDialog({
               {error}
             </p>
           )}
-          <div className="letter-form-actions">
+          <div className="bg-card sticky bottom-0 flex justify-end gap-[9px] pt-[9px] shadow-[0_-8px_14px_#fff] max-sm:[&_button]:flex-1">
             <Button type="submit" disabled={saving}>
               <ShieldCheck />{' '}
               {saving
@@ -387,16 +393,16 @@ function TripSection({
   const selectStop = (field: 'origin' | 'destination', value: string) =>
     value === '__new-stop__' ? onAddStop(field) : update(field, value)
   return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
+    <section className="border-border bg-card rounded-xl border p-[18px]">
+      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
         <MapPin size={17} />
         <div>
           <h3>¿Dónde se realiza el servicio?</h3>
           <p>Selecciona la ruta y los dos puntos del trayecto.</p>
         </div>
       </div>
-      <div className="letter-form-grid">
-        <Label className="form-span">
+      <div className="grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+        <Label className="sm:col-span-2">
           Ruta diaria
           <select
             value={draft.routeId}
@@ -426,19 +432,19 @@ function TripSection({
             disabled={lockReference}
           />
         </Label>
-        <p className="field-help">
+        <p className="text-muted-foreground mb-0 self-end text-[11px] max-sm:-mt-[5px]">
           {lockReference
             ? 'La referencia no se puede cambiar una vez creada.'
             : 'Puedes dejarlo vacío si no tienes una referencia.'}
         </p>
       </div>
       {selectedRoute && (
-        <output className="route-guidance">
+        <output className="[&_strong]:text-accent my-[13px] grid gap-[3px] rounded-[9px] border border-[#f0cdd0] bg-[#fffafa] p-3 text-xs text-[#4d4d4d] [&_span]:text-[11px] [&_span]:leading-[1.45]">
           <strong>{template?.name}</strong>
           <span>Paradas de esta ruta: {stops.join(' · ')}</span>
         </output>
       )}
-      <div className="letter-form-grid">
+      <div className="grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
         <Label>
           Origen
           <select
@@ -618,7 +624,7 @@ export function StopFormDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="client-form" onSubmit={(event) => void submit(event)}>
-          <div className="street-field form-span" aria-busy={lookingUpAddress}>
+          <div className="form-span relative" aria-busy={lookingUpAddress}>
             <Label>
               Buscar dirección
               <Input
@@ -629,22 +635,22 @@ export function StopFormDialog({
               />
             </Label>
             {lookingUpAddress && (
-              <output className="address-lookup-status">
+              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
                 Buscando la dirección… espera antes de completar los demás campos.
               </output>
             )}
             {addressLookupState === 'empty' && (
-              <output className="address-lookup-status">
+              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
                 No hemos encontrado esa dirección. Puedes completar los campos manualmente.
               </output>
             )}
             {addressLookupState === 'failed' && (
-              <output className="address-lookup-status">
+              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
                 No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
               </output>
             )}
             {addressSuggestions.length > 0 && (
-              <div className="street-suggestions">
+              <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
                 {addressSuggestions.map((suggestion) => (
                   <button
                     type="button"
@@ -889,15 +895,15 @@ function ContactsSection({ draft, update }: { draft: LetterDraft; update: Letter
       value,
     )
   return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
+    <section className="border-border bg-card rounded-xl border p-[18px]">
+      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
         <UserRound size={17} />
         <div>
           <h3>Remitente y destinatario</h3>
           <p>Completa los datos de las dos personas para la recogida, la entrega y la factura.</p>
         </div>
       </div>
-      <div className="people-grid">
+      <div className="grid gap-[18px] sm:grid-cols-2">
         <ContactDetails title="Remitente" person="sender" draft={draft} onChange={updatePerson} />
         <ContactDetails
           title="Destinatario"
@@ -983,8 +989,10 @@ function ContactDetails({
   }
 
   return (
-    <fieldset className="contact-details">
-      <legend>{title}</legend>
+    <fieldset className="grid min-w-0 content-start gap-2.5 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+      <legend className="text-foreground mb-[11px] text-[13px] font-bold sm:col-span-2">
+        {title}
+      </legend>
       <Label>
         Nombre y apellidos
         <Input
@@ -1022,7 +1030,7 @@ function ContactDetails({
           autoComplete="email"
         />
       </Label>
-      <div className="street-field form-span" aria-busy={lookingUpAddress}>
+      <div className="relative sm:col-span-2" aria-busy={lookingUpAddress}>
         <Label>
           Dirección
           <Input
@@ -1034,20 +1042,22 @@ function ContactDetails({
           />
         </Label>
         {lookingUpAddress && (
-          <output className="address-lookup-status">Buscando la dirección…</output>
+          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+            Buscando la dirección…
+          </output>
         )}
         {addressLookupState === 'empty' && (
-          <output className="address-lookup-status">
+          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
             No hemos encontrado esa dirección. Puedes completar los campos manualmente.
           </output>
         )}
         {addressLookupState === 'failed' && (
-          <output className="address-lookup-status">
+          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
             No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
           </output>
         )}
         {addressSuggestions.length > 0 && (
-          <div className="street-suggestions">
+          <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
             {addressSuggestions.map((suggestion) => (
               <button
                 type="button"
@@ -1087,7 +1097,7 @@ function ContactDetails({
           required
         />
       </Label>
-      <Label className="form-span">
+      <Label className="sm:col-span-2">
         Provincia
         <Input
           value={value('Province')}
@@ -1116,20 +1126,23 @@ function AnimalsSection({
   onRemove: (index: number) => void
 }) {
   return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
+    <section className="border-border bg-card rounded-xl border p-[18px]">
+      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
         <PawPrint size={17} />
         <div>
           <h3>Mascotas que viajan</h3>
           <p>El peso y las medidas calculan automáticamente el tamaño para asignar el box.</p>
         </div>
       </div>
-      <div className="animal-list">
+      <div className="grid gap-2.5">
         {animals.map((animal, index) => {
           const calculatedSize = sizeForMeasurements(animal)
           return (
-            <article className="animal-form-card" key={index}>
-              <div>
+            <article
+              className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+              key={index}
+            >
+              <div className="[&_button]:text-accent mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222] [&_button]:min-h-7 [&_button]:px-[7px] [&_button]:text-[11px]">
                 <strong>Animal {index + 1}</strong>
                 {animals.length > 1 && (
                   <Button variant="ghost" size="sm" type="button" onClick={() => onRemove(index)}>
@@ -1137,7 +1150,7 @@ function AnimalsSection({
                   </Button>
                 )}
               </div>
-              <div className="letter-form-grid animal-fields">
+              <div className="mb-3 grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
                 <Label>
                   Especie
                   <select
@@ -1218,10 +1231,14 @@ function AnimalsSection({
                   />
                 </Label>
               </div>
-              <fieldset className="size-selector">
-                <legend>Tamaño calculado</legend>
-                <div>
-                  <span>{animalSizeLabel(calculatedSize)}</span>
+              <fieldset className="min-w-0 border-0 p-0">
+                <legend className="grid gap-1.5 text-xs font-bold text-[#454545]">
+                  Tamaño calculado
+                </legend>
+                <div className="mt-[7px] flex gap-[7px]">
+                  <span className="border-border bg-card grid min-h-9 flex-1 place-items-center rounded-[7px] border text-[11px] font-bold text-[#555]">
+                    {animalSizeLabel(calculatedSize)}
+                  </span>
                 </div>
               </fieldset>
             </article>
@@ -1231,7 +1248,7 @@ function AnimalsSection({
       <Button
         variant="outline"
         type="button"
-        className="add-animal"
+        className="mt-[11px] min-h-[38px] w-full border-dashed text-[#9d1921]"
         onClick={onAdd}
         disabled={animals.length >= 12}
       >
@@ -1265,23 +1282,26 @@ function DocumentsSection({
         : [...documents, document],
     )
   return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
+    <section className="border-border bg-card rounded-xl border p-[18px]">
+      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
         <FilePenLine size={17} />
         <div>
           <h3>Documentación que acompaña</h3>
           <p>Marca todo lo que viaja con los animales.</p>
         </div>
       </div>
-      <div className="document-checks">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {accompanyingDocumentOptions.map(([value, label]) => (
-          <label className={documents.includes(value) ? 'is-selected' : ''} key={value}>
+          <label className="relative block cursor-pointer" key={value}>
             <input
+              className="peer sr-only"
               type="checkbox"
               checked={documents.includes(value)}
               onChange={() => toggle(value)}
             />
-            <span>{label}</span>
+            <span className="border-border bg-card peer-checked:border-accent grid min-h-[38px] place-items-center rounded-lg border p-1.5 text-center text-[11px] font-bold text-[#555] peer-checked:bg-[#fff0f1] peer-checked:text-[#9d1921]">
+              {label}
+            </span>
           </label>
         ))}
       </div>
@@ -1304,15 +1324,15 @@ function BillingAndSignatureSection({
     manual: ['Empresa u otro', 'Indicar datos fiscales'],
   }
   return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
+    <section className="border-border bg-card rounded-xl border p-[18px]">
+      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
         <CreditCard size={17} />
         <div>
           <h3>¿Quién paga el servicio?</h3>
           <p>Estos datos se usarán al preparar la factura.</p>
         </div>
       </div>
-      <div className="payer-options letter-payer-options">
+      <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-[70px] [&_button]:gap-1 [&_button]:rounded-[9px] [&_button]:border [&_button]:p-2.5 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:text-xs">
         {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (
           <button
             type="button"
