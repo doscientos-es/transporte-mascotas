@@ -245,10 +245,11 @@ export async function persistInvoice(
 ) {
   if (!supabase) return null
   const fiscalData = fiscalClient(clientInput)
+  const deliveryPhone = delivery?.phone.trim() || fiscalData.phone.trim()
+  if (!deliveryPhone) throw new Error('Indica el móvil al que se enviará la factura por WhatsApp.')
   const deliveredClient = {
     ...fiscalData,
-    email: delivery?.email.trim() || fiscalData.email,
-    phone: delivery?.phone.trim() || fiscalData.phone,
+    phone: deliveryPhone,
   }
   const amounts = invoiceAmounts(total)
   const { data: clientRow, error: clientError } = await supabase
@@ -283,9 +284,9 @@ export async function persistInvoice(
         total_amount: amounts.totalAmount,
         vat_rate: 21,
         status: 'solicitud_pago',
-        delivery_channel: delivery?.channel ?? 'email',
-        delivery_email: delivery?.email.trim() ?? '',
-        delivery_phone: delivery?.phone.trim() ?? '',
+        delivery_channel: 'whatsapp',
+        delivery_email: '',
+        delivery_phone: deliveryPhone,
         created_by: userId,
       },
       { onConflict: 'letter_id' },

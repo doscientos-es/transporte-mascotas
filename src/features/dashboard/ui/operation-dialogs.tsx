@@ -37,7 +37,6 @@ import type {
   Letter,
   LetterDraft,
   PaymentDelivery,
-  PaymentDeliveryChannel,
   RouteDirection,
   RouteTemplate,
   Transporter,
@@ -1684,10 +1683,6 @@ export function InvoiceDialog({
   const [total, setTotal] = useState('200')
   const [generating, setGenerating] = useState(false)
   const [client, setClient] = useState<InvoiceClientInput>(() => payerClient(letter.billingPayer))
-  const [deliveryChannel, setDeliveryChannel] = useState<PaymentDeliveryChannel>('manual')
-  const [deliveryEmail, setDeliveryEmail] = useState(
-    letter.billingClient.email || letter.extractionEmail || '',
-  )
   const [deliveryPhone, setDeliveryPhone] = useState(
     letter.billingClient.phone || letter.senderPhone,
   )
@@ -1698,20 +1693,15 @@ export function InvoiceDialog({
     const nextClient = payerClient(nextPayer)
     setPayer(nextPayer)
     setClient(nextClient)
-    setDeliveryEmail(nextClient.email)
     setDeliveryPhone(nextClient.phone)
     setError('')
   }
   const generate = async () => {
-    if ((deliveryChannel === 'email' || deliveryChannel === 'both') && !deliveryEmail.trim())
-      return setError('Indica el email de entrega.')
-    if ((deliveryChannel === 'whatsapp' || deliveryChannel === 'both') && !deliveryPhone.trim())
+    if (!deliveryPhone.trim())
       return setError('Indica el móvil al que se enviará la factura por WhatsApp.')
     setGenerating(true)
     try {
       await onGenerate(letter, payer, Number(total), client, {
-        channel: deliveryChannel,
-        email: deliveryEmail,
         phone: deliveryPhone,
       })
       onClose()
@@ -1836,37 +1826,14 @@ export function InvoiceDialog({
         />
       </Label>
       <Label className="date-field">
-        Enviar solicitud por
-        <select
-          value={deliveryChannel}
-          onChange={(event) => setDeliveryChannel(event.target.value as PaymentDeliveryChannel)}
-        >
-          <option value="manual">Gestión manual</option>
-          <option value="email">Email</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="both">Email y WhatsApp</option>
-        </select>
+        Móvil con WhatsApp
+        <Input
+          type="tel"
+          value={deliveryPhone}
+          onChange={(event) => setDeliveryPhone(event.target.value)}
+          required
+        />
       </Label>
-      {(deliveryChannel === 'email' || deliveryChannel === 'both') && (
-        <Label className="date-field">
-          Email de entrega
-          <Input
-            type="email"
-            value={deliveryEmail}
-            onChange={(event) => setDeliveryEmail(event.target.value)}
-          />
-        </Label>
-      )}
-      {(deliveryChannel === 'whatsapp' || deliveryChannel === 'both') && (
-        <Label className="date-field">
-          Móvil con WhatsApp
-          <Input
-            type="tel"
-            value={deliveryPhone}
-            onChange={(event) => setDeliveryPhone(event.target.value)}
-          />
-        </Label>
-      )}
       {error && (
         <p className="form-error" role="alert">
           {error}

@@ -146,11 +146,8 @@ export interface PaginatedResult<Item> {
 
 export type InvoicePayer = 'remitente' | 'destinatario' | 'manual'
 export type InvoiceClientInput = Omit<Client, 'id' | 'createdAt'>
-export type PaymentDeliveryChannel = 'manual' | 'email' | 'whatsapp' | 'both'
 
 export interface PaymentDelivery {
-  channel: PaymentDeliveryChannel
-  email: string
   phone: string
 }
 

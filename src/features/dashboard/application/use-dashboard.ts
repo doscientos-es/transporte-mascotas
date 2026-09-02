@@ -912,8 +912,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!stored) throw new Error('No se ha podido guardar la solicitud de pago.')
     const storedInvoice = stored.invoice
     if (storedInvoice) {
-      if (delivery?.channel !== 'manual')
-        await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
+      await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
       toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
       return
     }
@@ -944,9 +943,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const result = data as { error?: string; sent?: number } | null
     if (result?.error) throw new Error(result.error)
     if (notify)
-      toast(
-        `${kind === 'solicitud_pago' ? 'Solicitud' : 'Factura'} enviada por ${result?.sent === 2 ? 'email y WhatsApp' : 'el canal seleccionado'}.`,
-      )
+      toast(`${kind === 'solicitud_pago' ? 'Solicitud' : 'Factura'} enviada por WhatsApp.`)
   }
 
   return {

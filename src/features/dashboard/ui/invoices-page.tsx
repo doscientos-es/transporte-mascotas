@@ -540,7 +540,11 @@ function InvoiceCard({
           {!transportista && (
             <Button size="sm" className="invoice-pay-button" disabled={sending} onClick={onSend}>
               <CreditCard size={15} />{' '}
-              {sending ? 'Enviando…' : isIssued ? 'Reenviar factura' : 'Reenviar solicitud'}
+              {sending
+                ? 'Enviando…'
+                : isIssued
+                  ? 'Reenviar factura por WhatsApp'
+                  : 'Reenviar solicitud por WhatsApp'}
             </Button>
           )}
         </div>

@@ -3,6 +3,7 @@ import { sendWhatsAppTemplate } from './whatsapp.ts'
 
 type Payment = { public_token: string }
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
+type DeliveryInvoice = { delivery_phone: string; client_snapshot: Record<string, unknown> }
 type Notification = {
   id: string
   channel: 'email' | 'whatsapp'
@@ -40,34 +41,40 @@ export async function dispatchBillingNotifications(
     body: JSON.stringify({ p_invoice_draft_id: invoiceId, p_kind: kind }),
   })
   const notifications = (await claimResponse.json()) as Notification[]
-  let sent = 0
-  let failed = 0
-  for (const notification of notifications) {
-    try {
-      const link =
-        kind === 'solicitud_pago' ? paymentLink : await invoiceUrl(notification.issued_invoice_id)
-      if (!link) throw new Error('No se ha encontrado la factura emitida.')
-      const messageId =
-        notification.channel === 'email'
-          ? await sendEmail(notification.recipient, kind, link)
-          : await sendWhatsApp(notification.recipient, kind, link)
-      await updateNotification(notification.id, {
-        status: 'enviada',
-        provider_message_id: messageId,
-        sent_at: new Date().toISOString(),
-        processing_started_at: null,
-      })
-      sent++
-    } catch (error) {
-      await updateNotification(notification.id, {
-        status: 'fallida',
-        error_message: safeMessage(error),
-        processing_started_at: null,
-      })
-      failed++
-    }
+  if (!notifications.length) return { sent: 0, failed: 0 }
+
+  try {
+    const link =
+      kind === 'solicitud_pago' ? paymentLink : await invoiceUrl(notifications[0].issued_invoice_id)
+    if (!link) throw new Error('No se ha encontrado la factura emitida.')
+    const messageId = await sendWhatsApp(
+      await whatsappRecipient(invoiceId, notifications),
+      kind,
+      link,
+    )
+    await Promise.all(
+      notifications.map((notification) =>
+        updateNotification(notification.id, {
+          status: 'enviada',
+          provider_message_id: messageId,
+          sent_at: new Date().toISOString(),
+          processing_started_at: null,
+        }),
+      ),
+    )
+    return { sent: 1, failed: 0 }
+  } catch (error) {
+    await Promise.all(
+      notifications.map((notification) =>
+        updateNotification(notification.id, {
+          status: 'fallida',
+          error_message: safeMessage(error),
+          processing_started_at: null,
+        }),
+      ),
+    )
+    return { sent: 0, failed: 1 }
   }
-  return { sent, failed }
 }
 
 async function createPayment(invoiceId: string) {
@@ -131,29 +138,6 @@ async function invoiceUrl(issuedInvoiceId: string | null) {
   return `${url}/functions/v1/issued-invoice?token=${encodeURIComponent(invoice.public_token)}`
 }
 
-async function sendEmail(recipient: string, kind: Notification['kind'], link: string) {
-  const key = Deno.env.get('RESEND_API_KEY')
-  const from = Deno.env.get('RESEND_FROM')
-  if (!key || !from) throw new Error('Resend todavía no está configurado.')
-  const subject =
-    kind === 'solicitud_pago' ? 'Solicitud de pago por Bizum' : 'Tu factura ya está disponible'
-  const label = kind === 'solicitud_pago' ? 'Pagar de forma segura con Bizum' : 'Ver factura'
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: [recipient],
-      subject,
-      html: `<p>${kind === 'solicitud_pago' ? 'Puedes abonar el servicio de forma segura.' : 'El pago se ha confirmado y tu factura está disponible.'}</p><p><a href="${link}">${label}</a></p>`,
-      text: `${label}: ${link}`,
-    }),
-  })
-  if (!response.ok) throw new Error(`Resend ha rechazado el envío (${response.status}).`)
-  const result = (await response.json()) as { id?: string }
-  return result.id ?? ''
-}
-
 async function sendWhatsApp(recipient: string, kind: Notification['kind'], link: string) {
   const templateEnvironmentVariable =
     kind === 'solicitud_pago' ? 'META_WHATSAPP_PAYMENT_TEMPLATE' : 'META_WHATSAPP_INVOICE_TEMPLATE'
@@ -162,6 +146,23 @@ async function sendWhatsApp(recipient: string, kind: Notification['kind'], link:
     { type: 'text', text: firstValue },
     { type: 'text', text: link },
   ])
+}
+
+async function whatsappRecipient(invoiceId: string, notifications: Notification[]) {
+  const queuedPhone = notifications.find(
+    (notification) => notification.channel === 'whatsapp',
+  )?.recipient
+  if (queuedPhone?.trim()) return queuedPhone
+
+  const response = await rest(
+    `invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=delivery_phone,client_snapshot`,
+  )
+  const [invoice] = (await response.json()) as DeliveryInvoice[]
+  const snapshotPhone = invoice?.client_snapshot.phone
+  const recipient =
+    invoice?.delivery_phone.trim() || (typeof snapshotPhone === 'string' && snapshotPhone.trim())
+  if (!recipient) throw new Error('No hay un móvil de WhatsApp para entregar el documento.')
+  return recipient
 }
 
 async function updateNotification(id: string, body: Record<string, unknown>) {
