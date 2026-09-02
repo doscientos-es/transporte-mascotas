@@ -242,22 +242,32 @@ export function useDashboard(session: Session | null, role: AppRole) {
       return
     }
     setRoutesLoading(true)
-    Promise.all([loadRouteTemplates(), loadDailyRoutes()])
-      .then(([loadedTemplates, loadedRoutes]) => {
-        setRouteTemplates(loadedTemplates)
-        setDailyRoutes(loadedRoutes)
-        setSelectedTemplate(
-          (current) =>
-            loadedTemplates.find((template) => template.id === current?.id) ??
-            loadedTemplates[0] ??
-            null,
-        )
-        setSelectedRoute(
-          (current) =>
-            loadedRoutes.find((route) => route.id === current?.id) ?? loadedRoutes[0] ?? null,
-        )
+    void Promise.allSettled([loadRouteTemplates(), loadDailyRoutes()])
+      .then(([templatesResult, routesResult]) => {
+        if (templatesResult.status === 'fulfilled') {
+          const loadedTemplates = templatesResult.value
+          setRouteTemplates(loadedTemplates)
+          setSelectedTemplate(
+            (current) =>
+              loadedTemplates.find((template) => template.id === current?.id) ??
+              loadedTemplates[0] ??
+              null,
+          )
+        } else {
+          toast('No se han podido cargar las rutas preestablecidas.')
+        }
+
+        if (routesResult.status === 'fulfilled') {
+          const loadedRoutes = routesResult.value
+          setDailyRoutes(loadedRoutes)
+          setSelectedRoute(
+            (current) =>
+              loadedRoutes.find((route) => route.id === current?.id) ?? loadedRoutes[0] ?? null,
+          )
+        } else {
+          toast('No se han podido cargar las rutas programadas.')
+        }
       })
-      .catch(() => toast('No se han podido cargar las rutas.'))
       .finally(() => setRoutesLoading(false))
     if (role === 'admin') {
       loadTransporters()
