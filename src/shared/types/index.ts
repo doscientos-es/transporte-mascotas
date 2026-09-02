@@ -249,6 +249,7 @@ export interface DailyRoute {
   templateId: string
   date: string
   status: 'borrador' | 'activa' | 'completada' | 'cancelada'
+  closedAt?: string
   transporterId?: string
   direction?: RouteDirection
   actions: ServiceAction[]

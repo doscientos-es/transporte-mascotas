@@ -5267,6 +5267,8 @@ main {
   border-radius: 17px;
   background: #fff;
   box-shadow: 0 14px 34px rgb(46 21 23 / 5%);
+  container-name: route-journey;
+  container-type: inline-size;
 }
 
 .route-journey .journey-header.route-journey-header {
@@ -5766,5 +5768,45 @@ main {
   .journey-action-buttons [data-slot='button'] {
     min-width: 0;
     padding-inline: 8px;
+  }
+}
+
+/* The sidebar can narrow this card before the viewport reaches its mobile breakpoint. */
+@container route-journey (max-width: 980px) {
+  .route-journey .journey-header.route-journey-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .route-journey .journey-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .route-journey .journey-action-buttons {
+    margin-left: auto;
+  }
+}
+
+@container route-journey (max-width: 700px) {
+  .route-journey .journey-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .route-journey .route-total,
+  .route-journey .journey-action-buttons {
+    width: 100%;
+  }
+
+  .route-journey .journey-action-buttons {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .route-journey .journey-action-buttons [data-slot='button'] {
+    flex: 1;
   }
 }

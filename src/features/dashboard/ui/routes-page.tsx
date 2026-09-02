@@ -168,7 +168,7 @@ export function RoutesPage({
   onCreate,
   canManage = true,
 }: Props) {
-  const pageSize = 12
+  const pageSize = 6
   const [page, setPage] = useState(1)
   const [organizing, setOrganizing] = useState(false)
   const [addingStop, setAddingStop] = useState(false)

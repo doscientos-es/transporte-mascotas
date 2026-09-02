@@ -64,6 +64,9 @@ create trigger transport_requests_snapshot_stop_coordinates
 before update of letter_id on public.transport_requests
 for each row execute function public.snapshot_request_stop_coordinates();
 
+-- La firma añade la columna stops; PostgreSQL exige recrear la función.
+drop function if exists public.list_upcoming_routes();
+
 create or replace function public.list_upcoming_routes()
 returns table (
   id uuid, service_date date, route_direction text, template_name text, template_color text,
