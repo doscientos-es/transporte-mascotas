@@ -18,6 +18,7 @@ import {
   ArrowUp,
   CalendarDays,
   Clock3,
+  Lock,
   MapPin,
   PackageOpen,
   PawPrint,
@@ -44,6 +45,7 @@ import type {
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { calculateDrivingTimes } from '../application/driving-times'
+import { canCloseRouteOn } from '../application/route-closure'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
@@ -64,6 +66,7 @@ type Props = {
   onRemoveStop: (routeId: string, stopId: string) => Promise<void>
   onUpdateService: (routeId: string, service: ServiceAction) => void
   onRemoveService: (routeId: string, serviceId: string) => void
+  onCloseRoute: (routeId: string) => Promise<void>
   onCreate: () => void
   canManage?: boolean
 }
@@ -165,6 +168,7 @@ export function RoutesPage({
   onSuggestStop,
   onAddStop,
   onRemoveStop,
+  onCloseRoute,
   onCreate,
   canManage = true,
 }: Props) {
@@ -178,12 +182,16 @@ export function RoutesPage({
   const [deletingStop, setDeletingStop] = useState<DailyRouteStop | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
+  const [closingRoute, setClosingRoute] = useState(false)
+  const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [operationError, setOperationError] = useState('')
   const selectedIndex = routes.findIndex((item) => item.id === route.id)
   const pageCount = Math.max(1, Math.ceil(routes.length / pageSize))
   const visibleRoutes = routes.slice((page - 1) * pageSize, page * pageSize)
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
+  const itineraryClosed = Boolean(route.closedAt)
+  const canClose = canManage && !itineraryClosed && canCloseRouteOn(route.date)
   const servicesByStop = useMemo(
     () => groupedServices(route, stops, letters),
     [route, stops, letters],
@@ -295,6 +303,18 @@ export function RoutesPage({
       throw error
     }
   }
+  async function closeRoute() {
+    setClosingRoute(true)
+    try {
+      setOperationError('')
+      await onCloseRoute(route.id)
+      setCloseConfirmationOpen(false)
+    } catch (error) {
+      reportOperationError(error, 'No se ha podido cerrar el itinerario.')
+    } finally {
+      setClosingRoute(false)
+    }
+  }
   async function updateServices(actionIds: string[]) {
     try {
       setOperationError('')
@@ -385,6 +405,9 @@ export function RoutesPage({
                   <span className={`status status-${route.status}`}>
                     {statusLabels[route.status]}
                   </span>
+                  {itineraryClosed && (
+                    <span className="status status-completada">Itinerario cerrado</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -411,22 +434,35 @@ export function RoutesPage({
                   )}
                   {canManage && (
                     <>
-                      <Button
-                        className="journey-add-stop"
-                        size="sm"
-                        onClick={() => setAddingStop(true)}
-                        disabled={Boolean(plannedStops)}
-                      >
-                        <Plus /> Añadir parada
-                      </Button>
-                      <Button
-                        className="journey-organize-stops"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setOrganizing((current) => !current)}
-                      >
-                        {organizing ? 'Terminar' : 'Organizar paradas'}
-                      </Button>
+                      {!itineraryClosed && (
+                        <>
+                          <Button
+                            className="journey-add-stop"
+                            size="sm"
+                            onClick={() => setAddingStop(true)}
+                            disabled={Boolean(plannedStops)}
+                          >
+                            <Plus /> Añadir parada
+                          </Button>
+                          <Button
+                            className="journey-organize-stops"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setOrganizing((current) => !current)}
+                          >
+                            {organizing ? 'Terminar' : 'Organizar paradas'}
+                          </Button>
+                        </>
+                      )}
+                      {canClose && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCloseConfirmationOpen(true)}
+                        >
+                          <Lock /> Cerrar itinerario
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -436,6 +472,12 @@ export function RoutesPage({
           {operationError && (
             <p className="form-error route-operation-error" role="alert">
               {operationError}
+            </p>
+          )}
+          {itineraryClosed && (
+            <p className="itinerary-toolbar">
+              <Lock size={15} /> Itinerario cerrado: se conservan las paradas y los tiempos. Aún
+              puedes añadir animales en las paradas existentes.
             </p>
           )}
           {plannedStops && (
@@ -473,13 +515,13 @@ export function RoutesPage({
                 index={index}
                 total={stops.length}
                 arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)}
-                organizing={organizing || Boolean(plannedStops)}
+                organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
                 moving={movingStop}
                 services={servicesByStop.get(stop.id) ?? []}
                 onMove={plannedStops ? movePlannedStop : moveStop}
                 onDwellChange={setDwellMinutes}
-                onEdit={plannedStops ? undefined : () => setEditingStop(stop)}
-                onDelete={plannedStops ? undefined : () => setDeletingStop(stop)}
+                onEdit={itineraryClosed || plannedStops ? undefined : () => setEditingStop(stop)}
+                onDelete={itineraryClosed || plannedStops ? undefined : () => setDeletingStop(stop)}
                 onAction={updateServices}
               />
             ))}
@@ -526,6 +568,23 @@ export function RoutesPage({
               onClick={() => void removeStop()}
             >
               <Trash2 /> {deleting ? 'Eliminando…' : 'Eliminar parada'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={closeConfirmationOpen} onOpenChange={setCloseConfirmationOpen}>
+        <AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cerrar itinerario</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se fijarán las paradas y los tiempos de esta ruta. Los clientes implicados quedarán
+              preparados para recibir el aviso por WhatsApp cuando se configure la API.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingRoute}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={closingRoute} onClick={() => void closeRoute()}>
+              <Lock /> {closingRoute ? 'Cerrando…' : 'Cerrar itinerario'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

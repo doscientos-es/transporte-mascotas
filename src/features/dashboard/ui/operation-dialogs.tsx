@@ -390,6 +390,7 @@ function TripSection({
   lockReference: boolean
 }) {
   const template = templates.find((item) => item.id === selectedRoute?.templateId)
+  const itineraryClosed = Boolean(selectedRoute?.closedAt)
   const selectStop = (field: 'origin' | 'destination', value: string) =>
     value === '__new-stop__' ? onAddStop(field) : update(field, value)
   return (
@@ -459,7 +460,7 @@ function TripSection({
                 {stop}
               </option>
             ))}
-            <option value="__new-stop__">+ Añadir nueva parada…</option>
+            {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
           </select>
         </Label>
         <Label>
@@ -476,7 +477,7 @@ function TripSection({
                 {stop}
               </option>
             ))}
-            <option value="__new-stop__">+ Añadir nueva parada…</option>
+            {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
           </select>
         </Label>
       </div>

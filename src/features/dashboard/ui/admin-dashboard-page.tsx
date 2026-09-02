@@ -236,6 +236,7 @@ export function AdminDashboardPage({
                   onRemoveStop={dashboard.removeRouteStop}
                   onUpdateService={dashboard.updateRouteService}
                   onRemoveService={dashboard.removeRouteService}
+                  onCloseRoute={dashboard.closeRoute}
                   onCreate={() => dashboard.setShowNewRoute(true)}
                   canManage={!isTransporter}
                 />

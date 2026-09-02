@@ -39,6 +39,7 @@ import {
   addDailyRouteStop,
   addRouteTemplateStop,
   appendLetterToDailyRoute,
+  closeDailyRoute,
   deleteDailyRouteStop,
   deleteRouteTemplate,
   loadDailyRoutes,
@@ -55,6 +56,7 @@ import {
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
+import { canCloseRouteOn } from './route-closure'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize } from './van'
 
@@ -255,7 +257,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
             loadedRoutes.find((route) => route.id === current?.id) ?? loadedRoutes[0] ?? null,
         )
       })
-      .catch(() => toast('No se han podido cargar las rutas asignadas.'))
+      .catch(() => toast('No se han podido cargar las rutas.'))
       .finally(() => setRoutesLoading(false))
     if (role === 'admin') {
       loadTransporters()

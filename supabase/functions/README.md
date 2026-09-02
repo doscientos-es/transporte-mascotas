@@ -24,6 +24,10 @@ Al confirmar una solicitud pagada, se encola una confirmación inmediata y un re
 - `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE`: debe comunicar que el pago y la ruta están confirmados.
 - `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`: debe recordar la salida prevista para el día siguiente.
 
+### Cierre de itinerario diario
+
+Cerrar una ruta el día anterior deja una notificación durable por cada teléfono de cliente implicado. Cuando se configure la API, desplegad e invocad `send-daily-route-closure-notifications` para procesarla. Configurad `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE` como plantilla de utilidad, idioma `es`, con tres variables de cuerpo: nombre del cliente, fecha de servicio e itinerario.
+
 La página **Ajustes → Pruebas de WhatsApp** comprueba ambos mensajes sin crear datos de clientes. Para despachar la cola automáticamente, configurad el secreto `TRANSPORT_NOTIFICATIONS_CRON_SECRET` y un cron que invoque `send-transport-notifications` con `POST`, el cuerpo `{ "action": "dispatch" }` y la cabecera `x-transport-notifications-cron-secret`. Ejecutadlo al menos cada hora. El procesador reclama cada aviso de forma atómica y permite reintentos seguros; sin ese secreto, el endpoint sólo acepta sesiones de administrador.
 
 Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. Cada envío queda registrado y los reintentos se reclaman de forma atómica para evitar duplicados.

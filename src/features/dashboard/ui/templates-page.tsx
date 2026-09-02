@@ -70,7 +70,7 @@ export function TemplatesPage({
         </PageIntro>
         <Card className="stops-card">
           <CardContent>
-            <p>Aún no hay rutas preestablecidas guardadas.</p>
+            <p>Aún no hay rutas preestablecidas.</p>
           </CardContent>
         </Card>
         {creating && <NewTemplateDialog onClose={() => setCreating(false)} onCreate={onCreate} />}
