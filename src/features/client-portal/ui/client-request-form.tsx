@@ -9,9 +9,11 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 
 import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+
+import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 
 export type RequestFormValues = {
   contactName: string
@@ -83,6 +85,8 @@ export function ClientRequestForm({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)
+  const [originSuggestion, setOriginSuggestion] = useState('')
+  const originSuggestionRequest = useRef(0)
 
   async function retryPayment() {
     if (!onRetryPayment) return
@@ -212,6 +216,7 @@ export function ClientRequestForm({
 
   function selectRoute(routeId: string) {
     const route = routes.find((item) => item.id === routeId)
+    const requestId = ++originSuggestionRequest.current
     setValues((current) => ({
       ...current,
       dailyRouteId: routeId,
@@ -219,6 +224,36 @@ export function ClientRequestForm({
       origin: '',
       destination: '',
     }))
+    if (!route || route.localities.length < 2) {
+      setOriginSuggestion('')
+      return
+    }
+    void suggestNearestPickup(route, requestId)
+  }
+
+  async function suggestNearestPickup(route: UpcomingRoute, requestId: number) {
+    setOriginSuggestion('Buscando la parada de recogida más cercana…')
+    try {
+      const origin = await findNearestPickupStop(await getCurrentLocation(), route.localities)
+      if (requestId !== originSuggestionRequest.current) return
+      if (!origin) {
+        setOriginSuggestion(
+          'No hemos podido sugerir una recogida. Puedes seleccionarla manualmente.',
+        )
+        return
+      }
+      setValues((current) =>
+        current.dailyRouteId === route.id && !current.origin
+          ? { ...current, origin, destination: '' }
+          : current,
+      )
+      setOriginSuggestion(`Hemos seleccionado ${origin} como recogida más cercana.`)
+    } catch {
+      if (requestId === originSuggestionRequest.current)
+        setOriginSuggestion(
+          'No hemos podido acceder a tu ubicación. Puedes seleccionar la recogida.',
+        )
+    }
   }
 
   if (pendingPayment) {
@@ -396,6 +431,14 @@ export function ClientRequestForm({
                       </option>
                     ))}
                   </select>
+                  {originSuggestion && (
+                    <output
+                      className="text-muted-foreground text-[11px] font-normal"
+                      aria-live="polite"
+                    >
+                      {originSuggestion}
+                    </output>
+                  )}
                 </label>
                 <label>
                   Recogida

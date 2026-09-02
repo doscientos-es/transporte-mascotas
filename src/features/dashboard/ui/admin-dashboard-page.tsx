@@ -99,6 +99,7 @@ export function AdminDashboardPage({
 
   useEffect(() => {
     if ((section !== 'rutas' && section !== 'furgoneta') || !routeId) return
+    if (dashboard.routesLoading) return
     if (routeFromUrl) dashboard.setSelectedRoute(routeFromUrl)
     else replaceWithSection(section)
   }, [dashboard, replaceWithSection, routeFromUrl, routeId, section])
@@ -199,7 +200,9 @@ export function AdminDashboardPage({
               />
             )}
             {section === 'rutas' &&
-              (activeRoute && activeTemplate ? (
+              (dashboard.routesLoading ? (
+                <PageLoading />
+              ) : activeRoute && activeTemplate ? (
                 <RoutesPage
                   route={activeRoute}
                   template={activeTemplate}

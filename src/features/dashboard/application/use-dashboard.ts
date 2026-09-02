@@ -187,6 +187,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
+  const [routesLoading, setRoutesLoading] = useState(Boolean(session))
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -238,7 +239,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
   useEffect(() => {
-    if (!session) return
+    if (!session) {
+      setRoutesLoading(false)
+      return
+    }
+    setRoutesLoading(true)
     Promise.all([loadRouteTemplates(), loadDailyRoutes()])
       .then(([loadedTemplates, loadedRoutes]) => {
         setRouteTemplates(loadedTemplates)
@@ -255,6 +260,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         )
       })
       .catch(() => toast('No se han podido cargar las rutas asignadas.'))
+      .finally(() => setRoutesLoading(false))
     if (role === 'admin') {
       loadTransporters()
         .then(setTransporters)
@@ -951,6 +957,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     routeTemplates,
     transporters,
     dailyRoutes,
+    routesLoading,
     selectedTemplate,
     setSelectedTemplate,
     selectedRoute,
