@@ -33,6 +33,7 @@ type DailyRouteRow = {
   route_template_id: string | null
   service_date: string
   status: DailyRoute['status']
+  closed_at: string | null
   transporter_id: string | null
   route_direction: RouteDirection
   daily_route_stops: Array<
@@ -234,7 +235,7 @@ export async function loadDailyRoutes() {
       database
         .from('daily_routes')
         .select(
-          'id,route_template_id,service_date,status,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
+          'id,route_template_id,service_date,status,closed_at,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
         )
         .order('service_date'),
       database
@@ -262,6 +263,7 @@ export async function loadDailyRoutes() {
       templateId: route.route_template_id ?? '',
       date: route.service_date,
       status: route.status,
+      closedAt: route.closed_at ?? undefined,
       transporterId: route.transporter_id ?? undefined,
       direction: route.route_direction,
       stops,
@@ -282,6 +284,14 @@ export async function loadDailyRoutes() {
       })),
     }
   })
+}
+
+export async function closeDailyRoute(routeId: string) {
+  const { data, error } = await requireSupabase().rpc('close_daily_route', {
+    p_daily_route_id: routeId,
+  })
+  if (error) throw error
+  return data as { closedAt?: string; notificationsQueued?: number } | null
 }
 
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {

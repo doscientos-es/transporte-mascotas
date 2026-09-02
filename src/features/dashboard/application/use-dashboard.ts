@@ -322,6 +322,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
 
   async function updateRouteStops(routeId: string, stops: DailyRouteStop[], recalculate = true) {
     if (!session) throw new Error('Inicia sesión para guardar las paradas.')
+    if (dailyRoutes.find((route) => route.id === routeId)?.closedAt)
+      throw new Error('El itinerario está cerrado y ya no se puede modificar.')
     let updatedStops = stops
     if (recalculate) {
       try {
@@ -351,6 +353,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   ) {
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (route.closedAt) throw new Error('El itinerario está cerrado y no admite nuevas paradas.')
     const nextStop: DailyRouteStop = {
       ...stop,
       id: crypto.randomUUID(),
@@ -364,6 +367,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) throw new Error('Inicia sesión para guardar una parada.')
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (route.closedAt) throw new Error('El itinerario está cerrado y no admite nuevas paradas.')
     const existingIds = new Set(stopsForRoute(route, routeTemplates).map((stop) => stop.id))
     const nextStop = stops.find((stop) => !existingIds.has(stop.id))
     if (!nextStop) throw new Error('No se ha encontrado la nueva parada para guardar.')
@@ -391,6 +395,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   ) {
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (route.closedAt) throw new Error('El itinerario está cerrado y no admite nuevas paradas.')
     const existingStopIds = new Set(stopsForRoute(route, routeTemplates).map((item) => item.id))
     const plan = await suggestRouteStop(routeId, stop)
     const routeStop = plan.stops.find((item) => !existingStopIds.has(item.id))
@@ -403,6 +408,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) throw new Error('Inicia sesión para guardar los cambios de la ruta.')
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (route.closedAt) throw new Error('El itinerario está cerrado y ya no se puede modificar.')
     const currentStops = stopsForRoute(route, routeTemplates)
     const actions = linkActionsToStops(route.actions, currentStops)
     if (actions.some((action) => action.stopId === stopId))
@@ -865,6 +871,25 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
+  async function closeRoute(routeId: string) {
+    if (!session) throw new Error('Inicia sesión para cerrar la ruta.')
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
+    if (route.closedAt) return
+    if (!canCloseRouteOn(route.date))
+      throw new Error('La ruta solo se puede cerrar el día anterior a su realización.')
+    const result = await closeDailyRoute(routeId)
+    const update = (item: DailyRoute): DailyRoute =>
+      item.id === routeId
+        ? { ...item, closedAt: result?.closedAt ?? new Date().toISOString() }
+        : item
+    setDailyRoutes((current) => current.map(update))
+    setSelectedRoute((current) => (current ? update(current) : null))
+    toast(
+      `Itinerario cerrado. ${result?.notificationsQueued ?? 0} avisos de WhatsApp preparados para su envío.`,
+    )
+  }
+
   async function saveClient(client: Client | Omit<Client, 'id' | 'createdAt'>) {
     if (!session) throw new Error('Inicia sesión para guardar un cliente.')
     try {
@@ -990,6 +1015,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     createLetter,
     editLetter,
     createDailyRoute,
+    closeRoute,
     saveClient,
     removeClient,
     generateInvoice,
