@@ -9,7 +9,7 @@ type Props = { session: Session; profile: UserProfile; navigation: DashboardNavi
 const labels: Record<NavSection, string> = {
   cartas: 'Cartas de porte',
   clientes: 'Clientes',
-  plantillas: 'Rutas preestablecidas',
+  plantillas: 'Plantillas',
   rutas: 'Rutas',
   furgoneta: 'Furgoneta',
   facturas: 'Facturas',

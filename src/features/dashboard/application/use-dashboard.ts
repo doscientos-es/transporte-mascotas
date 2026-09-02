@@ -254,7 +254,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
               null,
           )
         } else {
-          toast('No se han podido cargar las rutas preestablecidas.')
+          toast('No se han podido cargar las plantillas de ruta.')
         }
 
         if (routesResult.status === 'fulfilled') {
@@ -449,7 +449,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   }
 
   async function createRouteTemplate(name: string, color: string) {
-    if (!session) throw new Error('Inicia sesión para crear una ruta preestablecida.')
+    if (!session) throw new Error('Inicia sesión para crear una plantilla de ruta.')
     const trimmedName = name.trim()
     if (!trimmedName) throw new Error('Indica un nombre para la ruta.')
     if (
@@ -474,7 +474,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   }
 
   async function editRouteTemplate(templateId: string, name: string, color: string) {
-    if (!session) throw new Error('Inicia sesión para actualizar la ruta preestablecida.')
+    if (!session) throw new Error('Inicia sesión para actualizar la plantilla de ruta.')
     const template = routeTemplates.find((item) => item.id === templateId)
     if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
     const trimmedName = name.trim()
@@ -505,11 +505,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
   }
 
   async function removeRouteTemplate(templateId: string) {
-    if (!session) throw new Error('Inicia sesión para eliminar la ruta preestablecida.')
+    if (!session) throw new Error('Inicia sesión para eliminar la plantilla de ruta.')
     const template = routeTemplates.find((item) => item.id === templateId)
     if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
     if (routeTemplates.length <= 1)
-      throw new Error('Debes conservar al menos una ruta preestablecida.')
+      throw new Error('Debes conservar al menos una plantilla de ruta.')
     const linkedRoutes = dailyRoutes.filter((route) => route.templateId === templateId)
     if (linkedRoutes.length)
       throw new Error(

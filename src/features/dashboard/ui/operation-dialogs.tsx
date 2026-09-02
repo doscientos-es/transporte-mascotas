@@ -870,7 +870,7 @@ export function NewTemplateDialog({
   }
   return (
     <OperationDialog
-      title={editing ? 'Editar ruta preestablecida' : 'Nueva ruta preestablecida'}
+      title={editing ? 'Editar plantilla de ruta' : 'Nueva plantilla de ruta'}
       description={
         editing
           ? 'Actualiza el nombre o color sin modificar sus paradas.'
@@ -1488,7 +1488,7 @@ export function NewRouteDirectionDialog({
     const minimumDate = todayIso()
     if (!date) return setError('Selecciona la fecha de servicio.')
     if (date < minimumDate) return setError('La fecha de servicio no puede ser anterior a hoy.')
-    if (!selectedTemplate) return setError('Selecciona una ruta preestablecida.')
+    if (!selectedTemplate) return setError('Selecciona una plantilla de ruta.')
     if (!selectedStopIds.length) return setError('Marca al menos una parada para crear la ruta.')
     setSaving(true)
     setError('')
@@ -1506,7 +1506,7 @@ export function NewRouteDirectionDialog({
       description={
         selectedTemplate
           ? 'Revisa las paradas que realizará esta salida. Puedes desmarcar las que no correspondan.'
-          : 'Elige primero la fecha, el sentido y una ruta preestablecida.'
+          : 'Elige primero la fecha, el sentido y una plantilla de ruta.'
       }
       icon={<Route size={24} />}
       onClose={onClose}

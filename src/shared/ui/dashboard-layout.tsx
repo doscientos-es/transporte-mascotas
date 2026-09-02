@@ -21,7 +21,7 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 
 const navigationItems = [
   ['cartas', 'Cartas de porte', FileText],
-  ['plantillas', 'Rutas preestablecidas', GitFork],
+  ['plantillas', 'Plantillas', GitFork],
   ['rutas', 'Rutas', Route],
   ['furgoneta', 'Furgoneta', Truck],
   ['clientes', 'Clientes', UsersRound],

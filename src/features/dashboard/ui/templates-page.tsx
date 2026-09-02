@@ -63,14 +63,14 @@ export function TemplatesPage({
   if (!selected)
     return (
       <>
-        <PageIntro text="Crea una ruta preestablecida para empezar a organizar los transportes.">
+        <PageIntro text="Crea una plantilla de ruta para empezar a organizar los transportes.">
           <Button onClick={() => setCreating(true)}>
             <Plus /> Nueva ruta
           </Button>
         </PageIntro>
         <Card className="stops-card">
           <CardContent>
-            <p>Aún no hay rutas preestablecidas.</p>
+            <p>Aún no hay plantillas de ruta.</p>
           </CardContent>
         </Card>
         {creating && <NewTemplateDialog onClose={() => setCreating(false)} onCreate={onCreate} />}
@@ -280,7 +280,7 @@ export function TemplatesPage({
                   disabled={templates.length <= 1}
                   aria-description={
                     templates.length <= 1
-                      ? 'Debe existir al menos una ruta preestablecida.'
+                      ? 'Debe existir al menos una plantilla de ruta.'
                       : 'Eliminar esta ruta'
                   }
                   onClick={() => {
@@ -346,7 +346,7 @@ export function TemplatesPage({
       >
         <AlertDialogContent className="delete-template-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar ruta preestablecida</AlertDialogTitle>
+            <AlertDialogTitle>Eliminar plantilla de ruta</AlertDialogTitle>
             <AlertDialogDescription>
               Vas a eliminar <strong>{selected.name}</strong> y sus {selected.stops.length}{' '}
               {selected.stops.length === 1 ? 'parada' : 'paradas'}. Esta acción no se puede
