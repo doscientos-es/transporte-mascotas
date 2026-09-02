@@ -11,7 +11,6 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
   ChevronRight,
   CreditCard,
   FilePenLine,
@@ -26,7 +25,7 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react'
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import type {
   AccompanyingDocument,
@@ -129,7 +128,7 @@ const emptyLetter: LetterDraft = {
   accompanyingDocuments: [],
   billingPayer: 'remitente',
   otherPayer: emptyInvoiceClient(),
-  signatureConfirmed: false,
+  signatureConfirmed: true,
   animals: [emptyAnimal()],
 }
 const todayIso = () => {
@@ -203,9 +202,7 @@ export function LetterFormDialog({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [step, setStep] = useState(0)
   const [addingStopFor, setAddingStopFor] = useState<'origin' | 'destination' | null>(null)
-  const formRef = useRef<HTMLFormElement>(null)
   const selectedRoute = routes.find((route) => route.id === draft.routeId)
   const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
   const stops = useMemo(
@@ -235,8 +232,8 @@ export function LetterFormDialog({
     }))
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault()
-    if (!draft.signatureConfirmed) {
-      setError('Confirma que firmas la carta de porte antes de continuar.')
+    if (!draft.accompanyingDocuments.length) {
+      setError('Selecciona al menos un documento que acompañe al animal.')
       return
     }
     setError('')
@@ -274,15 +271,6 @@ export function LetterFormDialog({
     update(addingStopFor, stop.locality)
     setAddingStopFor(null)
   }
-  function nextStep() {
-    if (!formRef.current?.reportValidity()) return
-    if (step === 2 && !draft.accompanyingDocuments.length) {
-      setError('Selecciona al menos un documento que acompañe al animal.')
-      return
-    }
-    setError('')
-    setStep((current) => Math.min(current + 1, 3))
-  }
   const updateAnimalCount = (count: number) =>
     setDraft((current) => ({
       ...current,
@@ -295,111 +283,77 @@ export function LetterFormDialog({
     <>
       <OperationDialog
         title={isEditing ? 'Editar carta de porte' : 'Nueva carta de porte'}
-        description="Te guiaremos paso a paso. Los datos se revisan antes de firmar y guardar."
+        description="Completa los datos, revísalos y firma la carta antes de guardarla."
         icon={isEditing ? <FilePenLine size={24} /> : <FilePlus2 size={24} />}
         onClose={onClose}
         wide
       >
-        <form ref={formRef} className="letter-form" onSubmit={(event) => void submit(event)}>
-          <FormProgress step={step} />
-          {step === 0 && (
-            <>
-              <TripSection
-                draft={draft}
-                routes={routes}
-                templates={templates}
-                selectedRoute={selectedRoute}
-                stops={stops}
-                update={update}
-                onRouteChange={selectRoute}
-                onAddStop={setAddingStopFor}
-                lockReference={isEditing}
-              />
-            </>
-          )}
-          {step === 1 && (
-            <>
-              <ContactsSection draft={draft} update={update} />
-              <ContactDetailsSection draft={draft} update={update} />
-            </>
-          )}
-          {step === 2 && (
-            <>
-              <Label className="animal-count" htmlFor="animal-count">
-                Número de animales
-                <Input
-                  id="animal-count"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={draft.animals.length}
-                  onChange={(event) => updateAnimalCount(Number(event.target.value))}
-                  required
-                />
-              </Label>
-              <AnimalsSection
-                animals={draft.animals}
-                updateAnimal={updateAnimal}
-                onAdd={() => updateAnimalCount(draft.animals.length + 1)}
-                onRemove={(index) =>
-                  setDraft((current) => ({
-                    ...current,
-                    animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
-                  }))
-                }
-              />
-              <DocumentsSection
-                documents={draft.accompanyingDocuments}
-                onChange={(documents) =>
-                  setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
-                }
-              />
-            </>
-          )}
-          {step === 3 && (
-            <BillingAndSignatureSection
-              draft={draft}
-              update={update}
-              onOtherPayerChange={(field, value) =>
-                setDraft((current) => ({
-                  ...current,
-                  otherPayer: { ...current.otherPayer, [field]: value },
-                }))
-              }
+        <form className="letter-form" onSubmit={(event) => void submit(event)}>
+          <TripSection
+            draft={draft}
+            routes={routes}
+            templates={templates}
+            selectedRoute={selectedRoute}
+            stops={stops}
+            update={update}
+            onRouteChange={selectRoute}
+            onAddStop={setAddingStopFor}
+            lockReference={isEditing}
+          />
+          <ContactsSection draft={draft} update={update} />
+          <Label className="animal-count" htmlFor="animal-count">
+            Número de animales
+            <Input
+              id="animal-count"
+              type="number"
+              min="1"
+              max="12"
+              value={draft.animals.length}
+              onChange={(event) => updateAnimalCount(Number(event.target.value))}
+              required
             />
-          )}
+          </Label>
+          <AnimalsSection
+            animals={draft.animals}
+            updateAnimal={updateAnimal}
+            onAdd={() => updateAnimalCount(draft.animals.length + 1)}
+            onRemove={(index) =>
+              setDraft((current) => ({
+                ...current,
+                animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
+              }))
+            }
+          />
+          <DocumentsSection
+            documents={draft.accompanyingDocuments}
+            onChange={(documents) =>
+              setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
+            }
+          />
+          <BillingAndSignatureSection
+            draft={draft}
+            update={update}
+            onOtherPayerChange={(field, value) =>
+              setDraft((current) => ({
+                ...current,
+                otherPayer: { ...current.otherPayer, [field]: value },
+              }))
+            }
+          />
           {error && (
             <p className="form-error" role="alert">
               {error}
             </p>
           )}
           <div className="letter-form-actions">
-            {step > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setError('')
-                  setStep((current) => current - 1)
-                }}
-              >
-                <ArrowLeft /> Atrás
-              </Button>
-            )}
-            {step < 3 ? (
-              <Button type="button" onClick={nextStep}>
-                Continuar <ArrowRight />
-              </Button>
-            ) : (
-              <Button type="submit" disabled={saving}>
-                <ShieldCheck />{' '}
-                {saving
-                  ? 'Guardando carta…'
-                  : isEditing
-                    ? 'Firmar y guardar cambios'
-                    : 'Firmar y crear carta'}
-              </Button>
-            )}
+            <Button type="submit" disabled={saving}>
+              <ShieldCheck />{' '}
+              {saving
+                ? 'Guardando carta…'
+                : isEditing
+                  ? 'Firmar y guardar cambios'
+                  : 'Firmar y crear carta'}
+            </Button>
           </div>
         </form>
       </OperationDialog>
@@ -528,23 +482,6 @@ type LetterUpdate = <K extends Exclude<keyof LetterDraft, 'animals'>>(
   field: K,
   value: LetterDraft[K],
 ) => void
-
-function FormProgress({ step }: { step: number }) {
-  const steps = ['Ruta y puntos', 'Personas', 'Animales', 'Pago y firma']
-  return (
-    <ol className="form-progress" aria-label="Progreso de la carta de porte">
-      {steps.map((label, index) => (
-        <li
-          className={index === step ? 'is-active' : index < step ? 'is-complete' : ''}
-          key={label}
-        >
-          <span>{index < step ? <Check size={13} /> : index + 1}</span>
-          <strong>{label}</strong>
-        </li>
-      ))}
-    </ol>
-  )
-}
 
 export type StopFormValues = Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>
 
@@ -942,91 +879,28 @@ export function NewTemplateDialog({
 }
 
 function ContactsSection({ draft, update }: { draft: LetterDraft; update: LetterUpdate }) {
-  return (
-    <section className="letter-form-section">
-      <div className="letter-form-section-title">
-        <UserRound size={17} />
-        <div>
-          <h3>Personas de contacto</h3>
-          <p>Usaremos estos teléfonos para la recogida y la entrega.</p>
-        </div>
-      </div>
-      <div className="people-grid">
-        <fieldset>
-          <legend>Quien entrega</legend>
-          <Label>
-            Nombre y apellidos
-            <Input
-              value={draft.sender}
-              onChange={(event) => update('sender', event.target.value)}
-              autoComplete="name"
-              required
-            />
-          </Label>
-          <Label>
-            Teléfono
-            <Input
-              type="tel"
-              value={draft.senderPhone}
-              onChange={(event) => update('senderPhone', event.target.value)}
-              autoComplete="tel"
-              inputMode="tel"
-              required
-            />
-          </Label>
-        </fieldset>
-        <fieldset>
-          <legend>Quien recibe</legend>
-          <Label>
-            Nombre y apellidos
-            <Input
-              value={draft.recipient}
-              onChange={(event) => update('recipient', event.target.value)}
-              autoComplete="name"
-              required
-            />
-          </Label>
-          <Label>
-            Teléfono
-            <Input
-              type="tel"
-              value={draft.recipientPhone}
-              onChange={(event) => update('recipientPhone', event.target.value)}
-              autoComplete="tel"
-              inputMode="tel"
-              required
-            />
-          </Label>
-        </fieldset>
-      </div>
-    </section>
-  )
-}
-
-function ContactDetailsSection({ draft, update }: { draft: LetterDraft; update: LetterUpdate }) {
   const updatePerson = (
     person: 'sender' | 'recipient',
-    field: 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
+    field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
     value: string,
-  ) => update(`${person}${field}` as Exclude<keyof LetterDraft, 'animals'>, value)
+  ) =>
+    update(
+      `${person}${field === 'Name' ? '' : field}` as Exclude<keyof LetterDraft, 'animals'>,
+      value,
+    )
   return (
     <section className="letter-form-section">
       <div className="letter-form-section-title">
         <UserRound size={17} />
         <div>
-          <h3>Datos completos de las personas</h3>
-          <p>Puedes completarlos para identificar el servicio y preparar la factura.</p>
+          <h3>Remitente y destinatario</h3>
+          <p>Completa los datos de las dos personas para la recogida, la entrega y la factura.</p>
         </div>
       </div>
       <div className="people-grid">
+        <ContactDetails title="Remitente" person="sender" draft={draft} onChange={updatePerson} />
         <ContactDetails
-          title="Datos del remitente"
-          person="sender"
-          draft={draft}
-          onChange={updatePerson}
-        />
-        <ContactDetails
-          title="Datos del destinatario"
+          title="Destinatario"
           person="recipient"
           draft={draft}
           onChange={updatePerson}
@@ -1047,12 +921,13 @@ function ContactDetails({
   draft: LetterDraft
   onChange: (
     person: 'sender' | 'recipient',
-    field: 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
+    field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
     value: string,
   ) => void
 }) {
-  const value = (field: 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province') =>
-    draft[`${person}${field}` as keyof LetterDraft] as string
+  const value = (
+    field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
+  ) => draft[`${person}${field === 'Name' ? '' : field}` as keyof LetterDraft] as string
   const address = value('Address')
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([])
   const [addressLookupState, setAddressLookupState] = useState<
@@ -1111,14 +986,35 @@ function ContactDetails({
     <fieldset className="contact-details">
       <legend>{title}</legend>
       <Label>
+        Nombre y apellidos
+        <Input
+          value={value('Name')}
+          onChange={(event) => onChange(person, 'Name', event.target.value)}
+          autoComplete="name"
+          required
+        />
+      </Label>
+      <Label>
+        Teléfono
+        <Input
+          type="tel"
+          value={value('Phone')}
+          onChange={(event) => onChange(person, 'Phone', event.target.value)}
+          autoComplete="tel"
+          inputMode="tel"
+          required
+        />
+      </Label>
+      <Label>
         DNI / NIF
         <Input
           value={value('Nif')}
           onChange={(event) => onChange(person, 'Nif', event.target.value)}
+          required
         />
       </Label>
       <Label>
-        Email
+        Email (opcional)
         <Input
           type="email"
           value={value('Email')}
@@ -1134,6 +1030,7 @@ function ContactDetails({
             onChange={(event) => updateAddress(event.target.value)}
             placeholder="Ej. Calle Mayor 12, Madrid"
             autoComplete="street-address"
+            required
           />
         </Label>
         {lookingUpAddress && (
@@ -1178,6 +1075,7 @@ function ContactDetails({
           onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
           autoComplete="postal-code"
           inputMode="numeric"
+          required
         />
       </Label>
       <Label>
@@ -1186,6 +1084,7 @@ function ContactDetails({
           value={value('City')}
           onChange={(event) => onChange(person, 'City', event.target.value)}
           autoComplete="address-level2"
+          required
         />
       </Label>
       <Label className="form-span">
@@ -1194,6 +1093,7 @@ function ContactDetails({
           value={value('Province')}
           onChange={(event) => onChange(person, 'Province', event.target.value)}
           autoComplete="address-level1"
+          required
         />
       </Label>
     </fieldset>
@@ -1256,7 +1156,7 @@ function AnimalsSection({
                   <Input
                     value={animal.breed}
                     onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
-                    placeholder="Opcional"
+                    required
                   />
                 </Label>
                 <Label>
@@ -1404,110 +1304,91 @@ function BillingAndSignatureSection({
     manual: ['Empresa u otro', 'Indicar datos fiscales'],
   }
   return (
-    <>
-      <section className="letter-form-section">
-        <div className="letter-form-section-title">
-          <CreditCard size={17} />
-          <div>
-            <h3>¿Quién paga el servicio?</h3>
-            <p>Estos datos se usarán al preparar la factura.</p>
-          </div>
+    <section className="letter-form-section">
+      <div className="letter-form-section-title">
+        <CreditCard size={17} />
+        <div>
+          <h3>¿Quién paga el servicio?</h3>
+          <p>Estos datos se usarán al preparar la factura.</p>
         </div>
-        <div className="payer-options letter-payer-options">
-          {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (
-            <button
-              type="button"
-              aria-pressed={draft.billingPayer === payer}
-              className={draft.billingPayer === payer ? 'is-selected' : ''}
-              key={payer}
-              onClick={() => update('billingPayer', payer)}
-            >
-              <span>{payerLabels[payer][0]}</span>
-              <strong>{payerLabels[payer][1]}</strong>
-            </button>
-          ))}
+      </div>
+      <div className="payer-options letter-payer-options">
+        {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (
+          <button
+            type="button"
+            aria-pressed={draft.billingPayer === payer}
+            className={draft.billingPayer === payer ? 'is-selected' : ''}
+            key={payer}
+            onClick={() => update('billingPayer', payer)}
+          >
+            <span>{payerLabels[payer][0]}</span>
+            <strong>{payerLabels[payer][1]}</strong>
+          </button>
+        ))}
+      </div>
+      {draft.billingPayer === 'manual' && (
+        <div className="client-form invoice-client-form">
+          <Label className="form-span">
+            Nombre o razón social
+            <Input
+              value={draft.otherPayer.fullName}
+              onChange={(event) => onOtherPayerChange('fullName', event.target.value)}
+              required
+            />
+          </Label>
+          <Label>
+            NIF / CIF
+            <Input
+              value={draft.otherPayer.nif}
+              onChange={(event) => onOtherPayerChange('nif', event.target.value)}
+              required
+            />
+          </Label>
+          <Label>
+            Email
+            <Input
+              type="email"
+              value={draft.otherPayer.email}
+              onChange={(event) => onOtherPayerChange('email', event.target.value)}
+              required
+            />
+          </Label>
+          <Label>
+            Teléfono
+            <Input
+              type="tel"
+              value={draft.otherPayer.phone}
+              onChange={(event) => onOtherPayerChange('phone', event.target.value)}
+              required
+            />
+          </Label>
+          <Label className="form-span">
+            Dirección fiscal
+            <Input
+              value={draft.otherPayer.address}
+              onChange={(event) => onOtherPayerChange('address', event.target.value)}
+              required
+            />
+          </Label>
+          <Label>
+            Código postal
+            <Input
+              value={draft.otherPayer.postalCode}
+              onChange={(event) => onOtherPayerChange('postalCode', event.target.value)}
+              required
+            />
+          </Label>
+          <Label>
+            Municipio
+            <Input
+              value={draft.otherPayer.city}
+              onChange={(event) => onOtherPayerChange('city', event.target.value)}
+              required
+            />
+          </Label>
         </div>
-        {draft.billingPayer === 'manual' && (
-          <div className="client-form invoice-client-form">
-            <Label className="form-span">
-              Nombre o razón social
-              <Input
-                value={draft.otherPayer.fullName}
-                onChange={(event) => onOtherPayerChange('fullName', event.target.value)}
-                required
-              />
-            </Label>
-            <Label>
-              NIF / CIF
-              <Input
-                value={draft.otherPayer.nif}
-                onChange={(event) => onOtherPayerChange('nif', event.target.value)}
-                required
-              />
-            </Label>
-            <Label>
-              Email
-              <Input
-                type="email"
-                value={draft.otherPayer.email}
-                onChange={(event) => onOtherPayerChange('email', event.target.value)}
-                required
-              />
-            </Label>
-            <Label>
-              Teléfono
-              <Input
-                type="tel"
-                value={draft.otherPayer.phone}
-                onChange={(event) => onOtherPayerChange('phone', event.target.value)}
-                required
-              />
-            </Label>
-            <Label className="form-span">
-              Dirección fiscal
-              <Input
-                value={draft.otherPayer.address}
-                onChange={(event) => onOtherPayerChange('address', event.target.value)}
-                required
-              />
-            </Label>
-            <Label>
-              Código postal
-              <Input
-                value={draft.otherPayer.postalCode}
-                onChange={(event) => onOtherPayerChange('postalCode', event.target.value)}
-                required
-              />
-            </Label>
-            <Label>
-              Municipio
-              <Input
-                value={draft.otherPayer.city}
-                onChange={(event) => onOtherPayerChange('city', event.target.value)}
-                required
-              />
-            </Label>
-          </div>
-        )}
-      </section>
-      <section className="letter-form-section signature-section">
-        <div className="letter-form-section-title">
-          <ShieldCheck size={17} />
-          <div>
-            <h3>Firma y confirmación</h3>
-            <p>Revisa los datos antes de finalizar.</p>
-          </div>
-        </div>
-        <label className="signature-confirmation">
-          <input
-            type="checkbox"
-            checked={draft.signatureConfirmed}
-            onChange={(event) => update('signatureConfirmed', event.target.checked)}
-          />
-          <span>Confirmo que la información es correcta y firmo esta carta de porte.</span>
-        </label>
-      </section>
-    </>
+      )}
+    </section>
   )
 }
 

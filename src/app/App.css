@@ -3500,31 +3500,6 @@ main {
   margin-top: 0;
 }
 
-.signature-section {
-  margin-top: 12px;
-}
-
-.signature-confirmation {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid #f0cdd0;
-  border-radius: 9px;
-  background: #fffafa;
-  color: #3f3f3f;
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.45;
-}
-
-.signature-confirmation input {
-  width: 16px;
-  height: 16px;
-  margin: 1px 0 0;
-  accent-color: #b51e27;
-}
-
 .letter-form-actions {
   position: sticky;
   bottom: 0;
