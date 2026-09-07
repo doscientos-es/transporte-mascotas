@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { ClientInvoice, ManualPaymentMethod, PaginatedResult } from '@/shared/types'
-import { PageIntro } from '@/shared/ui/page-intro'
+import { BrandLogo } from '@/shared/ui/brand-logo'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
@@ -76,6 +76,7 @@ export function InvoicesPage({
   const pageCount = Math.max(1, Math.ceil(result.total / INVOICE_LIST_PAGE_SIZE))
   const currentPage = Math.min(requestedPage, pageCount)
   const invoices = result.items
+  const visibleTotal = invoices.reduce((total, invoice) => total + invoice.total, 0)
   const previewing =
     invoices.find(
       (item) => item.id === (searchParams.get('factura') ?? searchParams.get('invoice')),
@@ -184,89 +185,121 @@ export function InvoicesPage({
   }
   return (
     <>
-      <PageIntro
-        text={
-          isPaymentRequests
-            ? 'Gestiona las solicitudes de pago creadas al dar de alta una carta de porte.'
-            : transportista
-              ? 'Consulta, previsualiza y descarga las solicitudes y facturas vinculadas a tus servicios asignados.'
-              : 'Consulta, descarga y reenvía las facturas emitidas tras confirmar cada cobro.'
-        }
-      />
-      <div className="invoice-filters" aria-label="Filtros de facturas">
-        <label>
-          Buscar
-          <input
-            value={query}
-            onChange={(event) => {
-              updateParams({ q: event.target.value, ...resetPage() })
-            }}
-            placeholder="Nº, cliente, carta o concepto"
-          />
-        </label>
-        <label>
-          Desde
-          <input
-            type="date"
-            value={from}
-            onChange={(event) => {
-              updateParams({ desde: event.target.value, ...resetPage() })
-            }}
-          />
-        </label>
-        <label>
-          Hasta
-          <input
-            type="date"
-            value={to}
-            onChange={(event) => {
-              updateParams({ hasta: event.target.value, ...resetPage() })
-            }}
-          />
-        </label>
-        <label>
-          Ordenar por
-          <select
-            value={sort}
-            onChange={(event) =>
-              updateParams({ orden: event.target.value as InvoiceSort, ...resetPage() })
-            }
-          >
-            <option value="date">Fecha</option>
-            <option value="total">Importe</option>
-            <option value="client">Cliente</option>
-            <option value="status">Estado</option>
-          </select>
-        </label>
-        <label>
-          Dirección
-          <select
-            value={direction}
-            onChange={(event) =>
-              updateParams({ direccion: event.target.value as SortDirection, ...resetPage() })
-            }
-          >
-            <option value="desc">Descendente</option>
-            <option value="asc">Ascendente</option>
-          </select>
-        </label>
-      </div>
+      <section className="invoice-brand-hero" aria-label="Área de facturación Kache Envíos">
+        <div className="invoice-brand-lockup">
+          <div className="invoice-brand-logo-wrap">
+            <BrandLogo variant="dark" className="invoice-brand-logo" />
+          </div>
+          <span>Kache Envíos</span>
+        </div>
+        <div className="invoice-brand-copy">
+          <span className="invoice-brand-eyebrow">Centro de facturación</span>
+          <h2>{isPaymentRequests ? 'Solicitudes de pago' : 'Facturas de transporte'}</h2>
+          <p>
+            {isPaymentRequests
+              ? 'Gestiona las solicitudes de pago creadas al dar de alta una carta de porte.'
+              : transportista
+                ? 'Consulta y descarga los documentos vinculados a tus servicios asignados.'
+                : 'Consulta, descarga y reenvía las facturas emitidas tras confirmar cada cobro.'}
+          </p>
+        </div>
+        <dl className="invoice-brand-summary" aria-label="Resumen de facturación">
+          <div>
+            <dt>Documentos</dt>
+            <dd>{loading ? '—' : result.total}</dd>
+          </div>
+          <div>
+            <dt>En esta página</dt>
+            <dd>{loading ? '—' : invoices.length}</dd>
+          </div>
+          <div>
+            <dt>Importe mostrado</dt>
+            <dd>{loading ? '—' : currency(visibleTotal)}</dd>
+          </div>
+        </dl>
+      </section>
+      <section className="invoice-filter-surface" aria-label="Consulta de facturas">
+        <div className="invoice-filter-heading">
+          <div>
+            <span>Consulta de documentos</span>
+            <strong>Encuentra lo que necesitas</strong>
+          </div>
+          {!transportista && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={exporting || result.total === 0}
+              onClick={() => void exportRegister()}
+            >
+              <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
+            </Button>
+          )}
+        </div>
+        <div className="invoice-filters">
+          <label>
+            Buscar
+            <input
+              value={query}
+              onChange={(event) => {
+                updateParams({ q: event.target.value, ...resetPage() })
+              }}
+              placeholder="Nº, cliente, carta o concepto"
+            />
+          </label>
+          <label>
+            Desde
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => {
+                updateParams({ desde: event.target.value, ...resetPage() })
+              }}
+            />
+          </label>
+          <label>
+            Hasta
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => {
+                updateParams({ hasta: event.target.value, ...resetPage() })
+              }}
+            />
+          </label>
+          <label>
+            Ordenar por
+            <select
+              value={sort}
+              onChange={(event) =>
+                updateParams({ orden: event.target.value as InvoiceSort, ...resetPage() })
+              }
+            >
+              <option value="date">Fecha</option>
+              <option value="total">Importe</option>
+              <option value="client">Cliente</option>
+              <option value="status">Estado</option>
+            </select>
+          </label>
+          <label>
+            Dirección
+            <select
+              value={direction}
+              onChange={(event) =>
+                updateParams({ direccion: event.target.value as SortDirection, ...resetPage() })
+              }
+            >
+              <option value="desc">Descendente</option>
+              <option value="asc">Ascendente</option>
+            </select>
+          </label>
+        </div>
+      </section>
       <div className="invoice-results" aria-live="polite">
         <span>
           {loading
             ? 'Actualizando resultados…'
             : `${result.total} ${result.total === 1 ? 'resultado' : 'resultados'}`}
         </span>
-        {!transportista && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={exporting || result.total === 0}
-            onClick={() => void exportRegister()}
-          >
-            <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
-          </Button>
-        )}
       </div>
       <div className="invoices-list">
         {invoices.length ? (

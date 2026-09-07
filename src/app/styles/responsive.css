@@ -12,9 +12,47 @@
   .kache-dashboard-mobile-navigation {
     display: block;
   }
+
+  .invoice-brand-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .invoice-brand-summary {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 600px) {
+  .invoice-brand-hero {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px;
+  }
+
+  .invoice-brand-lockup {
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+  }
+
+  .invoice-brand-summary {
+    grid-column: auto;
+    min-width: 0;
+  }
+
+  .invoice-filter-surface {
+    padding: 13px;
+  }
+
+  .invoice-filter-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .invoice-filter-heading [data-slot='button'] {
+    width: 100%;
+    justify-content: center;
+  }
+
   .invoice-filters {
     grid-template-columns: minmax(0, 1fr);
   }
