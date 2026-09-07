@@ -137,9 +137,9 @@ export function DashboardLayout({
     ))
 
   return (
-    <div className="grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7] max-[850px]:block max-[850px]:pb-[calc(4rem+env(safe-area-inset-bottom))]">
+    <div className="kache-dashboard-layout grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7]">
       <aside
-        className="sticky top-0 flex h-dvh min-h-dvh flex-col bg-[#171717] px-[14px] py-[22px] text-[#f5f5f5] max-[850px]:hidden"
+        className="kache-dashboard-sidebar sticky top-0 flex h-dvh min-h-dvh flex-col bg-[#171717] px-[14px] py-[22px] text-[#f5f5f5]"
         aria-label="Navegación principal"
       >
         <div className="flex items-center gap-[11px] px-2.5 pt-0.5 pb-7 text-sm leading-[1.05] font-[650] text-white">
@@ -211,7 +211,7 @@ export function DashboardLayout({
       <MobileNavigation
         sticky={false}
         aria-label="Navegación móvil"
-        className="fixed right-0 bottom-0 left-0 hidden border-[#dedede] bg-white text-[#171717] max-[850px]:block"
+        className="kache-dashboard-mobile-navigation fixed right-0 bottom-0 left-0 hidden border-[#dedede] bg-white text-[#171717]"
       >
         {renderMobileNavigation()}
       </MobileNavigation>

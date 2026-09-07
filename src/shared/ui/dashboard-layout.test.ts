@@ -29,5 +29,7 @@ describe('DashboardLayout', () => {
     expect(markup.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(2)
     expect(markup).toContain('data-active="true"')
     expect(markup).toContain('flex-1')
+    expect(markup).toContain('kache-dashboard-sidebar')
+    expect(markup).toContain('kache-dashboard-mobile-navigation')
   })
 })

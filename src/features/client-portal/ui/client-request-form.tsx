@@ -59,14 +59,15 @@ const initialValues = (
   contactName: string,
   contactPhone: string,
   contactEmail: string,
+  preselectedRoute?: UpcomingRoute,
 ): RequestFormValues => ({
   contactName,
   contactPhone,
   contactEmail,
   origin: '',
   destination: '',
-  desiredDate: '',
-  dailyRouteId: '',
+  desiredDate: preselectedRoute?.serviceDate ?? '',
+  dailyRouteId: preselectedRoute?.id ?? '',
   notes: '',
   animals: [emptyAnimal(1)],
 })
@@ -122,6 +123,7 @@ type Props = {
   onSavePets: (animals: TransportRequestAnimal[]) => Promise<void>
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
+  initialRouteId?: string
 }
 
 export function ClientRequestForm({
@@ -135,9 +137,17 @@ export function ClientRequestForm({
   onSavePets,
   pendingPayment = false,
   onRetryPayment,
+  initialRouteId,
 }: Props) {
-  const [values, setValues] = useState(() => initialValues(contactName, contactPhone, contactEmail))
-  const [step, setStep] = useState(0)
+  const [values, setValues] = useState(() =>
+    initialValues(
+      contactName,
+      contactPhone,
+      contactEmail,
+      routes.find((route) => route.id === initialRouteId),
+    ),
+  )
+  const [step, setStep] = useState(() => (initialRouteId ? 1 : 0))
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)

@@ -1,4 +1,19 @@
 /* Product-specific mobile refinements, loaded after the legacy stylesheet. */
+@media (max-width: 850px) {
+  .kache-dashboard-layout {
+    display: block;
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  .kache-dashboard-sidebar {
+    display: none;
+  }
+
+  .kache-dashboard-mobile-navigation {
+    display: block;
+  }
+}
+
 @media (max-width: 600px) {
   .invoice-filters {
     grid-template-columns: minmax(0, 1fr);

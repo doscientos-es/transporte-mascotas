@@ -34,7 +34,6 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
     navigateToUpcomingRoute: (id) => void navigateTo(upcomingRoutePathFor(id)),
     navigateToRequestForm: (id) =>
       void navigateTo(dashboardPathFor('mis-transportes'), { state: { preselectRouteId: id } }),
-    replaceWithSection: (section) =>
-      void navigateTo(dashboardPathFor(section), { replace: true }),
+    replaceWithSection: (section) => void navigateTo(dashboardPathFor(section), { replace: true }),
   }
 }

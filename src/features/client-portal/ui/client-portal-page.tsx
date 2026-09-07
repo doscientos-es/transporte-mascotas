@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
 import type {
   ClientPet,
@@ -24,6 +25,7 @@ import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
+import { formatDate, googleMapsDirectionsUrl, mapsEmbedUrl } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
 import {
   createTransportRequest,
@@ -34,31 +36,16 @@ import {
   saveClientPets,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
+import { UpcomingRouteDetail } from './upcoming-route-detail'
 
 type Props = { session: Session | null; profile: UserProfile; navigation: DashboardNavigation }
 
-const formatDate = (value: string) =>
-  new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-
-function mapsEmbedUrl(latitude: number, longitude: number) {
-  const delta = 0.012
-  return `https://www.openstreetmap.org/export/embed.html?${new URLSearchParams({
-    bbox: `${longitude - delta},${latitude - delta},${longitude + delta},${latitude + delta}`,
-    layer: 'mapnik',
-    marker: `${latitude},${longitude}`,
-  })}`
-}
-
-function googleMapsDirectionsUrl(latitude: number, longitude: number) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
-}
-
 export function ClientPortalPage({ session, profile, navigation }: Props) {
-  const { section, navigateToSection } = navigation
+  const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
+    navigation
+  const routerLocation = useLocation()
+  const preselectRouteId = (routerLocation.state as { preselectRouteId?: string } | null)
+    ?.preselectRouteId
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
@@ -114,6 +101,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     const timeout = window.setTimeout(() => setNotice(''), 4000)
     return () => window.clearTimeout(timeout)
   }, [notice])
+  useEffect(() => {
+    if (preselectRouteId) setShowForm(true)
+  }, [preselectRouteId])
   async function refreshData() {
     setLoading(true)
     setError('')
@@ -219,46 +209,84 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         </div>
       )}
 
-      {section === 'proximas-rutas' && (
-        <>
-          <PageIntro text="Consulta las próximas salidas antes de solicitar tu transporte." />
-          <div className="invoices-list">
-            {routes.length ? (
-              routes.map((route) => (
-                <Card key={route.id} className="invoice-card">
-                  <CardContent>
-                    <div className="invoice-icon">
-                      <CalendarDays size={19} />
-                    </div>
-                    <div>
-                      <span>
-                        {route.routeDirection === 'inversa'
-                          ? 'Sentido inverso'
-                          : 'Sentido habitual'}
-                      </span>
-                      <strong>{route.templateName || 'Ruta programada'}</strong>
-                      <small>{route.localities.join(' · ') || 'Paradas por definir'}</small>
-                    </div>
-                    <div className="invoice-amount">
-                      <strong>{formatDate(route.serviceDate)}</strong>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+      {section === 'proximas-rutas' &&
+        (routeId ? (
+          (() => {
+            const route = routes.find((item) => item.id === routeId)
+            return route ? (
+              <UpcomingRouteDetail
+                route={route}
+                onBack={() => navigateToSection('proximas-rutas')}
+                onSelect={() => navigateToRequestForm(route.id)}
+              />
             ) : (
               <Card className="invoice-empty">
                 <CardContent>
                   <CalendarDays size={22} />
                   <div>
-                    <h3>No hay rutas publicadas</h3>
-                    <p>En cuanto programemos nuevas salidas las verás aquí.</p>
+                    <h3>Ruta no encontrada</h3>
+                    <p>Puede que ya no esté disponible. Vuelve a la lista de próximas rutas.</p>
+                    <Button onClick={() => navigateToSection('proximas-rutas')}>
+                      Volver a próximas rutas
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </>
-      )}
+            )
+          })()
+        ) : (
+          <>
+            <PageIntro text="Consulta las próximas salidas antes de solicitar tu transporte." />
+            <div className="invoices-list">
+              {routes.length ? (
+                routes.map((route) => (
+                  <Card
+                    key={route.id}
+                    className="invoice-card cursor-pointer"
+                    onClick={() => navigateToUpcomingRoute(route.id)}
+                  >
+                    <CardContent>
+                      <div className="invoice-icon">
+                        <CalendarDays size={19} />
+                      </div>
+                      <div>
+                        <span>
+                          {route.routeDirection === 'inversa'
+                            ? 'Sentido inverso'
+                            : 'Sentido habitual'}
+                        </span>
+                        <strong>{route.templateName || 'Ruta programada'}</strong>
+                        <small>{route.localities.join(' · ') || 'Paradas por definir'}</small>
+                      </div>
+                      <div className="invoice-amount flex flex-col items-end gap-2">
+                        <strong>{formatDate(route.serviceDate)}</strong>
+                        <Button
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            navigateToRequestForm(route.id)
+                          }}
+                        >
+                          <FilePlus2 size={14} /> Seleccionar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="invoice-empty">
+                  <CardContent>
+                    <CalendarDays size={22} />
+                    <div>
+                      <h3>No hay rutas publicadas</h3>
+                      <p>En cuanto programemos nuevas salidas las verás aquí.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </>
+        ))}
 
       {section === 'mis-transportes' && (
         <>
@@ -330,6 +358,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               onSavePets={saveRecurringPets}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
+              initialRouteId={preselectRouteId}
             />
           )}
           {!showForm && (
