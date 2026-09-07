@@ -1,4 +1,11 @@
-import { Avatar, AvatarFallback, PopoverContent, PopoverTrigger } from '@doscientos/ui'
+import {
+  Avatar,
+  AvatarFallback,
+  MobileNavigation,
+  MobileNavigationItem,
+  PopoverContent,
+  PopoverTrigger,
+} from '@doscientos/ui'
 import {
   CalendarDays,
   ClipboardList,
@@ -81,7 +88,7 @@ export function DashboardLayout({
       : isClientRole(profileRole)
         ? 'Cliente'
         : 'Transportista'
-  const handleNavigation = (event: MouseEvent<HTMLAnchorElement>, target: NavSection) => {
+  const handleNavigation = (event: MouseEvent<Element>, target: NavSection) => {
     if (
       event.defaultPrevented ||
       event.button !== 0 ||
@@ -94,26 +101,22 @@ export function DashboardLayout({
     event.preventDefault()
     onNavigate(target)
   }
-  const renderNavigation = (mobile = false) =>
+  const renderDesktopNavigation = () =>
     visibleItems.map(([id, label, Icon]) => (
       <a
         href={hrefForSection(id)}
         className={
-          mobile
-            ? section === id
-              ? 'grid justify-items-center gap-[3px] rounded-lg bg-[#fff0f1] text-[10px] text-[#9f1720] no-underline'
-              : 'grid justify-items-center gap-[3px] rounded-lg text-[10px] text-[#686868] no-underline'
-            : section === id
-              ? 'flex min-h-11 items-center gap-[11px] rounded-[9px] bg-[var(--accent)] px-[11px] text-sm font-bold text-white no-underline'
-              : 'flex min-h-11 items-center gap-[11px] rounded-[9px] px-[11px] text-sm text-[#bdbdbd] no-underline hover:bg-[#303030] hover:text-white'
+          section === id
+            ? 'flex min-h-11 items-center gap-[11px] rounded-[9px] bg-[var(--accent)] px-[11px] text-sm font-bold text-white no-underline'
+            : 'flex min-h-11 items-center gap-[11px] rounded-[9px] px-[11px] text-sm text-[#bdbdbd] no-underline hover:bg-[#303030] hover:text-white'
         }
         aria-current={section === id ? 'page' : undefined}
         key={id}
         onClick={(event) => handleNavigation(event, id)}
       >
-        <Icon size={mobile ? 19 : 18} />
-        <span>{mobile ? label.split(' ')[0] : label}</span>
-        {!mobile && id === 'cartas' && (
+        <Icon size={18} />
+        <span>{label}</span>
+        {id === 'cartas' && (
           <b className="ml-auto grid size-5 place-items-center rounded-full bg-white/20 text-[11px]">
             {pendingLetters}
           </b>
@@ -121,8 +124,20 @@ export function DashboardLayout({
       </a>
     ))
 
+  const renderMobileNavigation = () =>
+    visibleItems.map(([id, label, Icon]) => (
+      <MobileNavigationItem
+        key={id}
+        href={hrefForSection(id)}
+        icon={<Icon />}
+        label={label.split(' ')[0]}
+        active={section === id}
+        onClick={(event) => handleNavigation(event, id)}
+      />
+    ))
+
   return (
-    <div className="grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7] max-[850px]:block max-[850px]:pb-[69px]">
+    <div className="grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7] max-[850px]:block max-[850px]:pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <aside
         className="sticky top-0 flex h-dvh min-h-dvh flex-col bg-[#171717] px-[14px] py-[22px] text-[#f5f5f5] max-[850px]:hidden"
         aria-label="Navegación principal"
@@ -138,7 +153,7 @@ export function DashboardLayout({
               ? 'MI ÁREA'
               : 'MI JORNADA'}
         </div>
-        <nav className="grid gap-1">{renderNavigation()}</nav>
+        <nav className="grid gap-1">{renderDesktopNavigation()}</nav>
         <div className="mt-auto grid gap-3 border-t border-[#3b3b3b] px-2.5 pt-4 pb-1 text-xs">
           <div className="relative">
             <PopoverTrigger>
@@ -193,12 +208,13 @@ export function DashboardLayout({
           {children}
         </div>
       </main>
-      <nav
-        className="fixed right-0 bottom-0 left-0 z-[6] hidden h-[69px] grid-cols-5 border-t border-[#dedede] bg-white px-1.5 pt-1.5 pb-[env(safe-area-inset-bottom)] max-[850px]:grid"
+      <MobileNavigation
+        sticky={false}
         aria-label="Navegación móvil"
+        className="fixed right-0 bottom-0 left-0 hidden border-[#dedede] bg-white text-[#171717] max-[850px]:block"
       >
-        {renderNavigation(true)}
-      </nav>
+        {renderMobileNavigation()}
+      </MobileNavigation>
     </div>
   )
 }

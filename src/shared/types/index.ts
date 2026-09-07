@@ -38,6 +38,8 @@ export type DashboardNavigation = {
   navigateToLetterCreate: () => void
   navigateToRoute: (routeId: string) => void
   navigateToVan: (routeId: string) => void
+  navigateToUpcomingRoute: (routeId: string) => void
+  navigateToRequestForm: (routeId: string) => void
   replaceWithSection: (section: NavSection) => void
 }
 
@@ -329,5 +331,5 @@ export interface UpcomingRoute {
   templateName: string
   templateColor: string
   localities: string[]
-  stops: Array<Pick<RouteStop, 'id' | 'locality' | 'latitude' | 'longitude'>>
+  stops: RouteStop[]
 }

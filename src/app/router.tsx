@@ -58,6 +58,11 @@ const router = createBrowserRouter([
             HydrateFallback: LoadingRoute,
           },
           {
+            path: ROUTER_PATHS.clientUpcomingDetail,
+            lazy: clientPortalRoute,
+            HydrateFallback: LoadingRoute,
+          },
+          {
             path: ROUTER_PATHS.clientTransports,
             lazy: clientPortalRoute,
             HydrateFallback: LoadingRoute,

@@ -8,6 +8,7 @@ import {
   dashboardPathFor,
   letterCreatePath,
   routePathFor,
+  upcomingRoutePathFor,
   vanPathFor,
 } from './dashboard-routes'
 
@@ -17,7 +18,7 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
   const { routeId } = useParams()
   const location = dashboardLocationForPath(pathname, fallback)
   const navigateTo = useCallback(
-    (path: string, replace = false) => navigate(path, { replace }),
+    (path: string, options?: { replace?: boolean; state?: unknown }) => navigate(path, options),
     [navigate],
   )
 
@@ -30,6 +31,10 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
     navigateToLetterCreate: () => void navigateTo(letterCreatePath),
     navigateToRoute: (id) => void navigateTo(routePathFor(id)),
     navigateToVan: (id) => void navigateTo(vanPathFor(id)),
-    replaceWithSection: (section) => void navigateTo(dashboardPathFor(section), true),
+    navigateToUpcomingRoute: (id) => void navigateTo(upcomingRoutePathFor(id)),
+    navigateToRequestForm: (id) =>
+      void navigateTo(dashboardPathFor('mis-transportes'), { state: { preselectRouteId: id } }),
+    replaceWithSection: (section) =>
+      void navigateTo(dashboardPathFor(section), { replace: true }),
   }
 }

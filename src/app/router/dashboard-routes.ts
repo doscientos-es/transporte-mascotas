@@ -36,6 +36,7 @@ const routePath = (path: string) => path.slice(1)
 export const ROUTER_PATHS = {
   staffAccess: `${routePath(APP_PATHS.staffAccess)}/*`,
   clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
+  clientUpcomingDetail: `${routePath(dashboardPaths['proximas-rutas'])}/:routeId`,
   clientTransports: routePath(dashboardPaths['mis-transportes']),
   clientPets: routePath(dashboardPaths['mis-mascotas']),
   staffRoutes: routePath(dashboardPaths.rutas),
@@ -84,6 +85,10 @@ export function dashboardLocationForPath(
   const routeMatch = path.match(/^\/rutas\/([^/]+)$/)
   if (routeMatch) return { section: 'rutas', routeId: decodeURIComponent(routeMatch[1]) }
 
+  const upcomingMatch = path.match(/^\/proximas-rutas\/([^/]+)$/)
+  if (upcomingMatch)
+    return { section: 'proximas-rutas', routeId: decodeURIComponent(upcomingMatch[1]) }
+
   return { section: fallback }
 }
 
@@ -93,6 +98,10 @@ export function dashboardPathFor(section: NavSection) {
 
 export function routePathFor(routeId: string) {
   return `${dashboardPaths.rutas}/${encodeURIComponent(routeId)}`
+}
+
+export function upcomingRoutePathFor(routeId: string) {
+  return `${dashboardPaths['proximas-rutas']}/${encodeURIComponent(routeId)}`
 }
 
 export function vanPathFor(routeId: string) {
