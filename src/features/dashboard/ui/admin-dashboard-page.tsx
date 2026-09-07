@@ -1,9 +1,10 @@
+import { Button } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
-import { CheckCircle2 } from 'lucide-react'
+import { CalendarDays, CheckCircle2, FilePlus2, Plus, Printer } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import type { DashboardNavigation, UserProfile } from '@/shared/types'
+import type { ClientInvoice, DashboardNavigation, UserProfile } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { SectionBoundary } from '@/shared/ui/section-boundary'
 
@@ -34,9 +35,6 @@ const TemplatesPage = lazy(() =>
   import('./templates-page').then(({ TemplatesPage: page }) => ({ default: page })),
 )
 const VanPage = lazy(() => import('./van-page').then(({ VanPage: page }) => ({ default: page })))
-const InvoiceDialog = lazy(() =>
-  import('./operation-dialogs').then(({ InvoiceDialog: dialog }) => ({ default: dialog })),
-)
 const LetterFormDialog = lazy(() =>
   import('./operation-dialogs').then(({ LetterFormDialog: dialog }) => ({ default: dialog })),
 )
@@ -60,6 +58,8 @@ export function AdminDashboardPage({
 }) {
   const dashboard = useDashboard(session, profile.role)
   const [printingManifest, setPrintingManifest] = useState(false)
+  const [clientCreateRequestId, setClientCreateRequestId] = useState(0)
+  const [templateCreateRequestId, setTemplateCreateRequestId] = useState(0)
   const navigate = useNavigate()
   const {
     section,
@@ -148,8 +148,15 @@ export function AdminDashboardPage({
     }
   }
 
-  function openInvoicesForLetter(letterId: string) {
-    void navigate(`${navigation.hrefForSection('facturas')}?letter=${encodeURIComponent(letterId)}`)
+  function openPaymentRequestForLetter(letterId: string) {
+    void navigate(
+      `${navigation.hrefForSection('solicitudes')}?letter=${encodeURIComponent(letterId)}`,
+    )
+  }
+
+  function openBillingDocument(invoice: ClientInvoice) {
+    const section = invoice.status === 'solicitud_pago' ? 'solicitudes' : 'facturas'
+    void navigate(`${navigation.hrefForSection(section)}?invoice=${encodeURIComponent(invoice.id)}`)
   }
 
   function openClient(clientId: string) {
@@ -178,6 +185,29 @@ export function AdminDashboardPage({
               ? 'Pruebas de WhatsApp'
               : undefined
         }
+        headerAction={
+          !isTransporter && section === 'rutas' ? (
+            <Button onClick={() => dashboard.setShowNewRoute(true)}>
+              <CalendarDays /> Crear ruta
+            </Button>
+          ) : !isTransporter && section === 'furgoneta' && activeRoute ? (
+            <Button disabled={printingManifest} onClick={() => void printVanManifest()}>
+              <Printer /> {printingManifest ? 'Preparando PDF…' : 'Imprimir tramo'}
+            </Button>
+          ) : !isTransporter && !isCreatingLetter && section === 'cartas' ? (
+            <Button onClick={navigateToLetterCreate}>
+              <FilePlus2 /> Nueva carta
+            </Button>
+          ) : !isTransporter && section === 'clientes' ? (
+            <Button onClick={() => setClientCreateRequestId((current) => current + 1)}>
+              <Plus /> Nuevo cliente
+            </Button>
+          ) : !isTransporter && section === 'plantillas' ? (
+            <Button onClick={() => setTemplateCreateRequestId((current) => current + 1)}>
+              <Plus /> Nueva plantilla
+            </Button>
+          ) : undefined
+        }
         onNavigate={navigateToSection}
         hrefForSection={navigation.hrefForSection}
         onSignOut={() => void dashboard.signOut()}
@@ -191,7 +221,7 @@ export function AdminDashboardPage({
                 onClose={() => navigateToSection('cartas')}
                 onCreate={async (draft) => {
                   await dashboard.createLetter(draft)
-                  navigateToSection('cartas')
+                  void navigate(navigation.hrefForSection('solicitudes'))
                 }}
                 onAddStop={dashboard.addLetterRouteStop}
               />
@@ -203,20 +233,19 @@ export function AdminDashboardPage({
                   loading={dashboard.lettersLoading}
                   error={dashboard.lettersError}
                   onRetry={() => void dashboard.ensureLetters(true)}
-                  onImport={navigateToLetterCreate}
                   onEdit={dashboard.setEditingLetter}
-                  onInvoice={dashboard.setInvoiceLetter}
                   onOpenClient={searchClient}
-                  onOpenInvoices={openInvoicesForLetter}
+                  onOpenPaymentRequests={openPaymentRequestForLetter}
                 />
               )
             )}
             {!isTransporter && section === 'clientes' && (
               <ClientsPage
                 letters={dashboard.letters}
+                createRequestId={clientCreateRequestId}
                 onSave={dashboard.saveClient}
                 onDelete={dashboard.removeClient}
-                onOpenInvoice={openInvoicesForLetter}
+                onOpenDocument={openBillingDocument}
                 onOpenLetter={openLetter}
               />
             )}
@@ -224,6 +253,7 @@ export function AdminDashboardPage({
               <TemplatesPage
                 templates={dashboard.routeTemplates}
                 selected={dashboard.selectedTemplate}
+                createRequestId={templateCreateRequestId}
                 onSelect={dashboard.setSelectedTemplate}
                 onCreate={dashboard.createRouteTemplate}
                 onUpdate={dashboard.editRouteTemplate}
@@ -262,7 +292,6 @@ export function AdminDashboardPage({
                   onUpdateService={dashboard.updateRouteService}
                   onRemoveService={dashboard.removeRouteService}
                   onCloseRoute={dashboard.closeRoute}
-                  onCreate={() => dashboard.setShowNewRoute(true)}
                   canManage={!isTransporter}
                 />
               ) : (
@@ -283,12 +312,21 @@ export function AdminDashboardPage({
                 onReassignBox={(letterId, box) =>
                   dashboard.reassignRouteBox(activeRoute.id, letterId, box)
                 }
-                onPrint={() => void printVanManifest()}
-                printing={printingManifest}
               />
             )}
             {!isTransporter && section === 'solicitudes' && (
-              <RequestsPage routes={visibleRoutes} onNotify={dashboard.toast} />
+              <>
+                <InvoicesPage
+                  transportista={false}
+                  documentType="payment-requests"
+                  onSend={dashboard.sendInvoiceNotification}
+                  onConfirmManualPayment={dashboard.confirmManualPayment}
+                  onPaymentConfirmed={openBillingDocument}
+                  onOpenClient={openClient}
+                  onOpenLetter={openLetter}
+                />
+                <RequestsPage routes={visibleRoutes} onNotify={dashboard.toast} />
+              </>
             )}
             {profile.role === 'admin' && section === 'ajustes' && (
               <SettingsPage
@@ -302,6 +340,7 @@ export function AdminDashboardPage({
             {section === 'facturas' && (
               <InvoicesPage
                 transportista={isTransporter}
+                documentType="invoices"
                 onSend={dashboard.sendInvoiceNotification}
                 onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}
                 onOpenClient={isTransporter ? undefined : openClient}
@@ -330,13 +369,6 @@ export function AdminDashboardPage({
               transporters={dashboard.transporters}
               onClose={() => dashboard.setShowNewRoute(false)}
               onCreate={createRouteAndNavigate}
-            />
-          )}
-          {!isTransporter && dashboard.invoiceLetter && (
-            <InvoiceDialog
-              letter={dashboard.invoiceLetter}
-              onClose={() => dashboard.setInvoiceLetter(null)}
-              onGenerate={dashboard.generateInvoice}
             />
           )}
         </Suspense>

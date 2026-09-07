@@ -1,5 +1,11 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
-export type LetterStatus = 'pendiente' | 'revisada' | 'en_ruta' | 'entregada'
+export type LetterStatus =
+  | 'pendiente'
+  | 'revisada'
+  | 'programada'
+  | 'en_ruta'
+  | 'entregada'
+  | 'cancelada'
 export type AppRole = 'admin' | 'transportista' | 'user'
 export type AccompanyingDocument =
   | 'cartilla_sanitaria'
@@ -124,6 +130,7 @@ export interface LetterDraft {
   destinationPoint: string
   accompanyingDocuments: AccompanyingDocument[]
   billingPayer: InvoicePayer
+  billingTotal: number
   otherPayer: InvoiceClientInput
   signatureConfirmed: boolean
   animals: Array<Omit<Animal, 'id'>>

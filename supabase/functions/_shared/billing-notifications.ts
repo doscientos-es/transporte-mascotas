@@ -1,15 +1,16 @@
 import { rest } from './supabase.ts'
-import { sendWhatsAppTemplate } from './whatsapp.ts'
+import { isRetryableWhatsAppError, sendWhatsAppTemplate } from './whatsapp.ts'
 
 type Payment = { public_token: string }
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
-type DeliveryInvoice = { delivery_phone: string; client_snapshot: Record<string, unknown> }
 type Notification = {
   id: string
+  invoice_draft_id: string
   channel: 'email' | 'whatsapp'
   recipient: string
   kind: 'solicitud_pago' | 'factura_emitida'
   issued_invoice_id: string | null
+  attempts: number
 }
 type IssuedInvoice = {
   series: string
@@ -31,53 +32,43 @@ export async function paymentUrl(invoiceId: string) {
 }
 
 export async function dispatchBillingNotifications(
-  invoiceId: string,
-  kind: Notification['kind'],
-  paymentLink?: string,
+  invoiceId?: string,
+  kind?: Notification['kind'],
 ) {
   const claimResponse = await rest('rpc/claim_billing_notifications', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ p_invoice_draft_id: invoiceId, p_kind: kind }),
+    body: JSON.stringify({ p_invoice_draft_id: invoiceId ?? null, p_kind: kind ?? null }),
   })
   const notifications = (await claimResponse.json()) as Notification[]
   if (!notifications.length) return { sent: 0, failed: 0 }
-
-  try {
-    const link =
-      kind === 'solicitud_pago' ? paymentLink : await invoiceUrl(notifications[0].issued_invoice_id)
-    if (!link) throw new Error('No se ha encontrado la factura emitida.')
-    const messageId = await sendWhatsApp(
-      await whatsappRecipient(invoiceId, notifications),
-      kind,
-      link,
-    )
-    await Promise.all(
-      notifications.map((notification) =>
-        updateNotification(notification.id, {
-          status: 'enviada',
-          provider_message_id: messageId,
-          sent_at: new Date().toISOString(),
-          processing_started_at: null,
-        }),
-      ),
-    )
-    return { sent: 1, failed: 0 }
-  } catch (error) {
-    await Promise.all(
-      notifications.map((notification) =>
-        updateNotification(notification.id, {
-          status: 'fallida',
-          error_message: safeMessage(error),
-          processing_started_at: null,
-        }),
-      ),
-    )
-    return { sent: 0, failed: 1 }
+  let sent = 0
+  let failed = 0
+  for (const notification of notifications) {
+    try {
+      const link =
+        notification.kind === 'solicitud_pago'
+          ? await paymentUrl(notification.invoice_draft_id)
+          : await invoiceUrl(notification.issued_invoice_id)
+      if (!link) throw new Error('No se ha encontrado la factura emitida.')
+      const messageId = await sendWhatsApp(notification.recipient, notification.kind, link)
+      await updateNotification(notification.id, {
+        status: 'enviada',
+        provider_message_id: messageId,
+        sent_at: new Date().toISOString(),
+        processing_started_at: null,
+      })
+      sent++
+    } catch (error) {
+      await updateNotification(notification.id, failure(notification, error))
+      failed++
+    }
   }
+  return { sent, failed }
 }
 
 async function createPayment(invoiceId: string) {
+  requirePaymentConfiguration()
   const invoiceResponse = await rest(
     `invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&status=eq.solicitud_pago&select=id,total_amount,client_snapshot`,
   )
@@ -148,28 +139,40 @@ async function sendWhatsApp(recipient: string, kind: Notification['kind'], link:
   ])
 }
 
-async function whatsappRecipient(invoiceId: string, notifications: Notification[]) {
-  const queuedPhone = notifications.find(
-    (notification) => notification.channel === 'whatsapp',
-  )?.recipient
-  if (queuedPhone?.trim()) return queuedPhone
-
-  const response = await rest(
-    `invoice_drafts?id=eq.${encodeURIComponent(invoiceId)}&select=delivery_phone,client_snapshot`,
-  )
-  const [invoice] = (await response.json()) as DeliveryInvoice[]
-  const snapshotPhone = invoice?.client_snapshot.phone
-  const recipient =
-    invoice?.delivery_phone.trim() || (typeof snapshotPhone === 'string' && snapshotPhone.trim())
-  if (!recipient) throw new Error('No hay un móvil de WhatsApp para entregar el documento.')
-  return recipient
-}
-
 async function updateNotification(id: string, body: Record<string, unknown>) {
-  await rest(`billing_notifications?id=eq.${encodeURIComponent(id)}`, {
+  await rest(`billing_notifications?id=eq.${encodeURIComponent(id)}&status=eq.procesando`, {
     method: 'PATCH',
     body: JSON.stringify(body),
   })
+}
+
+function failure(notification: Notification, error: unknown) {
+  const retry = isRetryableWhatsAppError(error) && notification.attempts < 5
+  return {
+    status: retry ? 'fallida' : 'fallida_final',
+    error_message: safeMessage(error),
+    processing_started_at: null,
+    ...(retry ? { scheduled_for: nextAttempt(notification.attempts).toISOString() } : {}),
+  }
+}
+
+function nextAttempt(attempt: number) {
+  return new Date(Date.now() + Math.min(6 * 60, 2 ** attempt) * 60_000)
+}
+
+function requirePaymentConfiguration() {
+  const required = [
+    'CAIXABANK_CYBERPAC_MERCHANT_CODE',
+    'CAIXABANK_CYBERPAC_TERMINAL',
+    'CAIXABANK_CYBERPAC_SECRET',
+    'CAIXABANK_CYBERPAC_ENDPOINT',
+    'PUBLIC_APP_URL',
+    'INVOICE_ISSUER_NAME',
+    'INVOICE_ISSUER_TAX_ID',
+    'INVOICE_ISSUER_ADDRESS',
+  ]
+  if (required.some((name) => !Deno.env.get(name)))
+    throw new Error('Falta configurar CaixaBank o los datos fiscales del emisor.')
 }
 
 function safeMessage(error: unknown) {

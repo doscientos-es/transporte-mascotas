@@ -1,4 +1,19 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+import {
+  Button,
+  Card,
+  CardContent,
+  Field,
+  FieldDescription,
+  FieldLabel,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectList,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from '@doscientos/ui'
 import {
   ArrowLeft,
   ArrowRight,
@@ -11,6 +26,7 @@ import {
 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
+import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
 import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
@@ -54,6 +70,46 @@ const initialValues = (
   notes: '',
   animals: [emptyAnimal(1)],
 })
+
+type SelectOption = { id: string; label: string }
+
+function FormSelect({
+  ariaLabel,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+}: {
+  ariaLabel: string
+  value: string
+  onChange: (value: string) => void
+  options: SelectOption[]
+  placeholder: string
+  disabled?: boolean
+}) {
+  return (
+    <Select
+      aria-label={ariaLabel}
+      selectedKey={value}
+      isDisabled={disabled}
+      onSelectionChange={(key) => onChange(String(key ?? ''))}
+    >
+      <SelectTrigger className="bg-background min-h-11">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectList items={[{ id: '', label: placeholder }, ...options]}>
+          {(option) => (
+            <SelectItem id={option.id} textValue={option.label}>
+              {option.label}
+            </SelectItem>
+          )}
+        </SelectList>
+      </SelectContent>
+    </Select>
+  )
+}
 
 type Props = {
   routes: UpcomingRoute[]
@@ -133,6 +189,8 @@ export function ClientRequestForm({
     if (step === 0) {
       if (!values.contactName.trim() || !values.contactPhone.trim() || !values.contactEmail.trim())
         return 'Completa los datos de contacto para poder avisarte.'
+      if (!isWhatsAppPhone(values.contactPhone))
+        return 'Escribe un teléfono válido para los avisos de WhatsApp.'
       if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
         return 'Escribe un correo electrónico válido.'
     }
@@ -264,7 +322,7 @@ export function ClientRequestForm({
       <Card className="table-card client-request-card">
         <CardContent>
           <section className="payment-recovery">
-            <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
+            <div className="text-accent [&_p]:text-muted-foreground mb-3.75 flex items-start gap-2.25 [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
               <CreditCard size={17} />
               <div>
                 <h2>Tu solicitud está guardada</h2>
@@ -299,7 +357,7 @@ export function ClientRequestForm({
       <Card className="table-card client-request-card">
         <CardContent>
           <section className="payment-recovery">
-            <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
+            <div className="text-accent [&_p]:text-muted-foreground mb-3.75 flex items-start gap-2.25 [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
               <PawPrint size={17} />
               <div>
                 <h2>Tu solicitud está enviada</h2>
@@ -331,11 +389,7 @@ export function ClientRequestForm({
   return (
     <Card className="table-card client-request-card">
       <CardContent>
-        <form
-          className="request-form [&_input]:min-h-10 [&_select]:min-h-10"
-          onSubmit={(event) => void submit(event)}
-          noValidate
-        >
+        <form className="request-form" onSubmit={(event) => void submit(event)} noValidate>
           <div className="request-form-heading">
             <div>
               <span className="eyebrow">Nueva solicitud</span>
@@ -359,171 +413,177 @@ export function ClientRequestForm({
           </ol>
 
           {step === 0 && (
-            <section className="border-border bg-card rounded-xl border p-[18px]">
-              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-                <ShieldCheck size={17} />
+            <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
+              <div className="mb-5 flex items-start gap-3">
+                <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
+                  <ShieldCheck size={17} />
+                </span>
                 <div>
-                  <h3>Cómo te contactamos</h3>
-                  <p>Te avisaremos cuando revisemos la solicitud y asignemos la ruta.</p>
+                  <h3 className="text-foreground text-base font-semibold">Cómo te contactamos</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Te avisaremos cuando revisemos la solicitud y asignemos la ruta.
+                  </p>
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
-                <label>
-                  Nombre y apellidos
-                  <input
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="request-contact-name">Nombre y apellidos</FieldLabel>
+                  <Input
+                    id="request-contact-name"
                     value={values.contactName}
                     onChange={(event) => setValues({ ...values, contactName: event.target.value })}
                     autoComplete="name"
+                    placeholder="Tu nombre completo"
+                    className="min-h-11"
                     required
                   />
-                </label>
-                <label>
-                  Teléfono
-                  <input
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="request-contact-phone">Teléfono de WhatsApp</FieldLabel>
+                  <Input
+                    id="request-contact-phone"
+                    type="tel"
                     value={values.contactPhone}
                     onChange={(event) => setValues({ ...values, contactPhone: event.target.value })}
                     autoComplete="tel"
                     inputMode="tel"
+                    placeholder="600 000 000"
+                    className="min-h-11"
                     required
                   />
-                </label>
-                <label className="sm:col-span-2">
-                  Correo electrónico
-                  <input
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="request-contact-email">Correo electrónico</FieldLabel>
+                  <Input
+                    id="request-contact-email"
                     type="email"
                     value={values.contactEmail}
                     onChange={(event) => setValues({ ...values, contactEmail: event.target.value })}
                     autoComplete="email"
+                    placeholder="nombre@correo.com"
+                    className="min-h-11"
                     required
                   />
-                </label>
+                  <FieldDescription>
+                    Te enviaremos aquí la confirmación de la solicitud.
+                  </FieldDescription>
+                </Field>
               </div>
             </section>
           )}
 
           {step === 1 && (
-            <section className="border-border bg-card rounded-xl border p-[18px]">
-              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-                <ArrowRight size={17} />
+            <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
+              <div className="mb-5 flex items-start gap-3">
+                <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
+                  <ArrowRight size={17} />
+                </span>
                 <div>
-                  <h3>Elige una salida publicada</h3>
-                  <p>La fecha y las paradas disponibles dependen de la ruta seleccionada.</p>
+                  <h3 className="text-foreground text-base font-semibold">
+                    Elige una salida publicada
+                  </h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    La fecha y las paradas disponibles dependen de la ruta seleccionada.
+                  </p>
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
-                <label className="sm:col-span-2">
-                  Ruta y fecha
-                  <select
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field className="sm:col-span-2">
+                  <FieldLabel>Ruta y fecha</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Ruta y fecha"
                     value={values.dailyRouteId}
-                    onChange={(event) => selectRoute(event.target.value)}
-                    required
-                  >
-                    <option value="">Selecciona una salida</option>
-                    {routes.map((route) => (
-                      <option key={route.id} value={route.id}>
-                        {route.templateName || 'Ruta programada'} ·{' '}
-                        {new Date(`${route.serviceDate}T12:00:00`).toLocaleDateString('es-ES', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric',
-                        })}{' '}
-                        ·{' '}
-                        {route.routeDirection === 'inversa'
-                          ? 'sentido inverso'
-                          : 'sentido habitual'}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={selectRoute}
+                    placeholder="Selecciona una salida"
+                    options={routes.map((route) => ({
+                      id: route.id,
+                      label: `${route.templateName || 'Ruta programada'} · ${new Date(`${route.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} · ${route.routeDirection === 'inversa' ? 'sentido inverso' : 'sentido habitual'}`,
+                    }))}
+                  />
                   {originSuggestion && (
-                    <output
-                      className="text-muted-foreground text-[11px] font-normal"
-                      aria-live="polite"
-                    >
+                    <output className="text-muted-foreground mt-2 block text-xs" aria-live="polite">
                       {originSuggestion}
                     </output>
                   )}
-                </label>
-                <label>
-                  Recogida
-                  <select
+                </Field>
+                <Field>
+                  <FieldLabel>Recogida</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Recogida"
                     value={values.origin}
-                    onChange={(event) =>
-                      setValues((current) => ({
-                        ...current,
-                        origin: event.target.value,
-                        destination: '',
-                      }))
+                    onChange={(origin) =>
+                      setValues((current) => ({ ...current, origin, destination: '' }))
                     }
+                    placeholder="Selecciona una parada"
+                    options={routeStops.slice(0, -1).map((stop) => ({ id: stop, label: stop }))}
                     disabled={!selectedRoute}
-                    required
-                  >
-                    <option value="">Selecciona una parada</option>
-                    {routeStops.slice(0, -1).map((stop, index) => (
-                      <option key={`${stop}-${index}`} value={stop}>
-                        {stop}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Entrega
-                  <select
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Entrega</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Entrega"
                     value={values.destination}
-                    onChange={(event) =>
-                      setValues((current) => ({ ...current, destination: event.target.value }))
+                    onChange={(destination) =>
+                      setValues((current) => ({ ...current, destination }))
                     }
+                    placeholder="Selecciona una parada"
+                    options={destinationStops.map((stop) => ({ id: stop, label: stop }))}
                     disabled={!values.origin}
-                    required
-                  >
-                    <option value="">Selecciona una parada</option>
-                    {destinationStops.map((stop, index) => (
-                      <option key={`${stop}-${index}`} value={stop}>
-                        {stop}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Fecha de salida
-                  <input
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="request-desired-date">Fecha de salida</FieldLabel>
+                  <Input
+                    id="request-desired-date"
                     type="date"
                     value={values.desiredDate}
                     readOnly
                     aria-readonly="true"
+                    className="min-h-11"
                     required
                   />
-                </label>
-                <label className="sm:col-span-2">
-                  Algo que debamos tener en cuenta
-                  <input
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel htmlFor="request-notes">Algo que debamos tener en cuenta</FieldLabel>
+                  <Textarea
+                    id="request-notes"
                     value={values.notes}
                     onChange={(event) => setValues({ ...values, notes: event.target.value })}
                     placeholder="Opcional: horario, punto de encuentro, necesidades especiales…"
+                    rows={3}
                   />
-                </label>
+                </Field>
               </div>
             </section>
           )}
 
           {step === 2 && (
-            <section className="border-border bg-card rounded-xl border p-[18px]">
-              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-                <PawPrint size={17} />
+            <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
+              <div className="mb-5 flex items-start gap-3">
+                <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
+                  <PawPrint size={17} />
+                </span>
                 <div>
-                  <h3>Tu mascota</h3>
-                  <p>Con estas medidas reservamos un espacio adecuado en la furgoneta.</p>
+                  <h3 className="text-foreground text-base font-semibold">Tu mascota</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Con estas medidas reservamos un espacio adecuado en la furgoneta.
+                  </p>
                 </div>
               </div>
               {values.animals.map((animal, index) => (
                 <div
-                  className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+                  className="border-border bg-background rounded-xl border p-4"
                   key={animal.ordinal}
                 >
-                  <div className="[&_button]:text-accent mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222] [&_button]:min-h-7 [&_button]:px-[7px] [&_button]:text-[11px]">
+                  <div className="text-foreground mb-4 flex items-center justify-between gap-2.5 text-sm font-semibold">
                     <span>Mascota {index + 1}</span>
                     {values.animals.length > 1 && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-accent hover:text-accent"
                         onClick={() =>
                           setValues({
                             ...values,
@@ -534,58 +594,64 @@ export function ClientRequestForm({
                         }
                       >
                         <Trash2 size={14} /> Quitar
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  <div className="[&_small]:text-muted-foreground mb-3 grid gap-3 sm:grid-cols-2 [&_small]:font-normal [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     {savedPets.length > 0 && (
-                      <label className="sm:col-span-2">
-                        ¿Ya has viajado con nosotros?
-                        <select
+                      <Field className="sm:col-span-2">
+                        <FieldLabel>¿Ya has viajado con nosotros?</FieldLabel>
+                        <FormSelect
+                          ariaLabel="¿Ya has viajado con nosotros?"
                           value={animal.clientPetId ?? ''}
-                          onChange={(event) => selectSavedPet(index, event.target.value)}
-                        >
-                          <option value="">Rellenar los datos a mano</option>
-                          {savedPets.map((pet) => (
-                            <option key={pet.id} value={pet.id}>
-                              {pet.name} · {pet.species}
-                            </option>
-                          ))}
-                        </select>
-                        <small>
+                          onChange={(petId) => selectSavedPet(index, petId)}
+                          placeholder="Rellenar los datos a mano"
+                          options={savedPets.map((pet) => ({
+                            id: pet.id,
+                            label: `${pet.name} · ${pet.species}`,
+                          }))}
+                        />
+                        <FieldDescription>
                           Al elegirla rellenamos sus datos. Puedes cambiarlos antes de continuar.
-                        </small>
-                      </label>
+                        </FieldDescription>
+                      </Field>
                     )}
-                    <label>
-                      Nombre
-                      <input
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-name`}>Nombre</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-name`}
                         value={animal.name}
                         onChange={(event) => updateAnimal(index, { name: event.target.value })}
                         placeholder="Por ejemplo, Luna"
+                        className="min-h-11"
                         required
                       />
-                    </label>
-                    <label>
-                      Especie
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-species`}>Especie</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-species`}
                         value={animal.species}
                         onChange={(event) => updateAnimal(index, { species: event.target.value })}
                         placeholder="Perro, gato…"
+                        className="min-h-11"
                         required
                       />
-                    </label>
-                    <label>
-                      Raza
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-breed`}>Raza</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-breed`}
                         value={animal.breed}
                         onChange={(event) => updateAnimal(index, { breed: event.target.value })}
                         placeholder="Opcional"
+                        className="min-h-11"
                       />
-                    </label>
-                    <label>
-                      Peso (kg)
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-weight`}>Peso (kg)</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-weight`}
                         type="number"
                         min="0.1"
                         step="0.1"
@@ -593,12 +659,16 @@ export function ClientRequestForm({
                         onChange={(event) =>
                           updateAnimal(index, { weightKg: Number(event.target.value) })
                         }
+                        className="min-h-11"
                         required
                       />
-                    </label>
-                    <label>
-                      Largo (cm)
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-length`}>
+                        Largo (cm)
+                      </FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-length`}
                         type="number"
                         min="1"
                         step="1"
@@ -606,12 +676,14 @@ export function ClientRequestForm({
                         onChange={(event) =>
                           updateAnimal(index, { lengthCm: Number(event.target.value) })
                         }
+                        className="min-h-11"
                         required
                       />
-                    </label>
-                    <label>
-                      Alto (cm)
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-height`}>Alto (cm)</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-height`}
                         type="number"
                         min="1"
                         step="1"
@@ -619,12 +691,14 @@ export function ClientRequestForm({
                         onChange={(event) =>
                           updateAnimal(index, { heightCm: Number(event.target.value) })
                         }
+                        className="min-h-11"
                         required
                       />
-                    </label>
-                    <label>
-                      Ancho (cm)
-                      <input
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-width`}>Ancho (cm)</FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-width`}
                         type="number"
                         min="1"
                         step="1"
@@ -632,16 +706,17 @@ export function ClientRequestForm({
                         onChange={(event) =>
                           updateAnimal(index, { widthCm: Number(event.target.value) })
                         }
+                        className="min-h-11"
                         required
                       />
-                    </label>
+                    </Field>
                   </div>
                 </div>
               ))}
               <Button
                 type="button"
                 variant="outline"
-                className="mt-[11px] min-h-[38px] w-full border-dashed text-[#9d1921]"
+                className="text-accent mt-4 min-h-11 w-full border-dashed"
                 onClick={() =>
                   setValues({
                     ...values,
@@ -655,12 +730,16 @@ export function ClientRequestForm({
           )}
 
           {step === 3 && (
-            <section className="request-review border-border bg-card rounded-xl border p-[18px]">
-              <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-                <CreditCard size={17} />
+            <section className="request-review border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
+              <div className="mb-5 flex items-start gap-3">
+                <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
+                  <CreditCard size={17} />
+                </span>
                 <div>
-                  <h3>Revisa y confirma</h3>
-                  <p>Tu solicitud se enviará a operaciones después de registrar el pago.</p>
+                  <h3 className="text-foreground text-base font-semibold">Revisa y confirma</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Tu solicitud se enviará a operaciones después de registrar el pago.
+                  </p>
                 </div>
               </div>
               <div className="request-review-grid">
@@ -704,7 +783,7 @@ export function ClientRequestForm({
               {error}
             </p>
           )}
-          <div className="request-form-actions">
+          <div className="request-form-actions border-border bg-card/95 sticky bottom-0 -mx-4 border-t px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
             {step > 0 ? (
               <Button
                 type="button"

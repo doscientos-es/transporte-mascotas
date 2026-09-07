@@ -1,12 +1,17 @@
-import { dispatchBillingNotifications, paymentUrl } from '../_shared/billing-notifications.ts'
+import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import { json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok')
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
-    await requireAdmin(request)
-    const { invoiceId, kind } = (await request.json()) as { invoiceId?: string; kind?: string }
+    const { action, invoiceId, kind } = (await request.json()) as {
+      action?: 'dispatch'
+      invoiceId?: string
+      kind?: string
+    }
+    if (!(action === 'dispatch' && isCronRequest(request))) await requireAdmin(request)
+    if (action === 'dispatch') return json(await dispatchBillingNotifications())
     if (
       !invoiceId ||
       !/^[0-9a-f-]{36}$/i.test(invoiceId) ||
@@ -23,7 +28,6 @@ Deno.serve(async (request) => {
       (kind === 'factura_emitida' && invoice.status !== 'emitida')
     )
       return json({ error: 'El documento ya no admite este envío.' }, 409)
-    if (kind === 'solicitud_pago') requirePaymentConfiguration()
     await rest(
       `billing_notifications?invoice_draft_id=eq.${encodeURIComponent(invoiceId)}&kind=eq.${kind}&status=eq.enviada`,
       {
@@ -31,8 +35,8 @@ Deno.serve(async (request) => {
         body: JSON.stringify({ status: 'pendiente', sent_at: null, provider_message_id: null }),
       },
     )
-    const link = kind === 'solicitud_pago' ? await paymentUrl(invoiceId) : undefined
-    const result = await dispatchBillingNotifications(invoiceId, kind, link)
+    if (kind === 'solicitud_pago') requirePaymentConfiguration()
+    const result = await dispatchBillingNotifications(invoiceId, kind)
     if (!result.sent && result.failed)
       return json(
         {
@@ -63,4 +67,9 @@ function requirePaymentConfiguration() {
   ]
   if (required.some((name) => !Deno.env.get(name)))
     throw new Error('Falta configurar CaixaBank o los datos fiscales del emisor.')
+}
+
+function isCronRequest(request: Request) {
+  const secret = Deno.env.get('BILLING_NOTIFICATIONS_CRON_SECRET')
+  return Boolean(secret && request.headers.get('x-billing-notifications-cron-secret') === secret)
 }

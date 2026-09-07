@@ -10,11 +10,9 @@ import type {
   DailyRoute,
   DailyRouteStop,
   InvoiceClientInput,
-  InvoicePayer,
   Letter,
   LetterDraft,
   ManualPaymentMethod,
-  PaymentDelivery,
   RouteDirection,
   RouteTemplate,
   ServiceAction,
@@ -25,7 +23,6 @@ import {
   confirmManualInvoicePayment,
   createClient,
   deleteClient,
-  persistInvoice,
   updateClient,
 } from '../infrastructure/clients'
 import {
@@ -53,6 +50,10 @@ import {
   updateRouteTemplate,
   updateRouteTemplateStopOrder,
 } from '../infrastructure/routes'
+import {
+  dispatchCarriageLetterNotifications,
+  dispatchPendingBillingNotifications,
+} from '../infrastructure/whatsapp'
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
@@ -675,7 +676,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         billingClient: billingClientForDraft(draft),
         route: routeTemplate.name,
         serviceDate: dailyRoute.date,
-        status: 'pendiente',
+        status: 'programada',
         importedAt: new Date().toLocaleString('es-ES'),
         animals,
       }
@@ -690,6 +691,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         routeActions,
         reference,
         draft.signatureConfirmed,
+        draft.billingTotal,
       )
       const savedLetter = { ...letter, id: savedId ?? letter.id }
       const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
@@ -701,7 +703,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
-      toast(`Carta creada y vinculada a ${routeTemplate.name}.`)
+      await Promise.allSettled([
+        dispatchCarriageLetterNotifications(savedLetter.id),
+        dispatchPendingBillingNotifications(),
+      ])
+      toast(`Carta creada y solicitud de pago vinculada a ${routeTemplate.name}.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
       toast(message)
@@ -927,33 +933,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function generateInvoice(
-    letter: Letter,
-    payer: InvoicePayer,
-    total: number,
-    clientInput: InvoiceClientInput,
-    delivery?: PaymentDelivery,
-  ) {
-    if (!session) throw new Error('Inicia sesión para crear una solicitud de pago.')
-    if (!clientInput.fullName.trim()) throw new Error('Falta el titular de la factura.')
-    const stored = await persistInvoice(
-      letter,
-      payer,
-      total,
-      session.user.id,
-      clientInput,
-      delivery,
-    )
-    if (!stored) throw new Error('No se ha podido guardar la solicitud de pago.')
-    const storedInvoice = stored.invoice
-    if (storedInvoice) {
-      await sendInvoiceNotification(storedInvoice, 'solicitud_pago', false)
-      toast('Solicitud de pago creada. La factura se emitirá al confirmar el cobro.')
-      return
-    }
-    toast('La solicitud ya estaba guardada para esta carta de porte.')
-  }
-
   async function confirmManualPayment(invoice: ClientInvoice, paymentMethod: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para registrar un cobro.')
     await confirmManualInvoicePayment(invoice.id, paymentMethod)
@@ -1026,7 +1005,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     closeRoute,
     saveClient,
     removeClient,
-    generateInvoice,
     confirmManualPayment,
     sendInvoiceNotification,
   }

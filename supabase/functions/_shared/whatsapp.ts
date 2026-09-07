@@ -1,5 +1,14 @@
 export type WhatsAppTemplateParameter = { type: 'text'; text: string }
 
+export class WhatsAppError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message)
+  }
+}
+
 export async function sendWhatsAppTemplate(
   recipient: string,
   templateEnvironmentVariable: string,
@@ -9,7 +18,7 @@ export async function sendWhatsAppTemplate(
   const phoneNumberId = Deno.env.get('META_WHATSAPP_PHONE_NUMBER_ID')
   const template = Deno.env.get(templateEnvironmentVariable)
   if (!token || !phoneNumberId || !template)
-    throw new Error('WhatsApp Business todavía no está configurado.')
+    throw new WhatsAppError('WhatsApp Business todavía no está configurado.', true)
   const version = Deno.env.get('META_WHATSAPP_GRAPH_API_VERSION') ?? 'v23.0'
   const response = await fetch(`https://graph.facebook.com/${version}/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -25,9 +34,21 @@ export async function sendWhatsAppTemplate(
       },
     }),
   })
-  if (!response.ok) throw new Error(`WhatsApp Business ha rechazado el envío (${response.status}).`)
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string; code?: number }
+    } | null
+    const reason = body?.error?.message?.slice(0, 300)
+    throw new WhatsAppError(
+      reason || `WhatsApp Business ha rechazado el envío (${response.status}).`,
+      response.status === 429 || response.status >= 500,
+    )
+  }
   const result = (await response.json()) as { messages?: Array<{ id?: string }> }
-  return result.messages?.[0]?.id ?? ''
+  const messageId = result.messages?.[0]?.id
+  if (!messageId)
+    throw new WhatsAppError('WhatsApp Business no devolvió un identificador de mensaje.', true)
+  return messageId
 }
 
 export function normalizeWhatsAppPhone(value: string) {
@@ -36,4 +57,8 @@ export function normalizeWhatsAppPhone(value: string) {
   if (!/^[1-9][0-9]{7,14}$/.test(digits))
     throw new Error('El teléfono de WhatsApp debe estar en formato internacional.')
   return digits
+}
+
+export function isRetryableWhatsAppError(error: unknown) {
+  return !(error instanceof WhatsAppError) || error.retryable
 }

@@ -11,12 +11,15 @@ import {
   Card,
   CardContent,
   Input,
-  Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectList,
+  SelectTrigger,
 } from '@doscientos/ui'
 import {
   ArrowDown,
   ArrowUp,
-  CalendarDays,
   Clock3,
   Lock,
   MapPin,
@@ -42,10 +45,11 @@ import type {
   RouteTemplate,
   ServiceAction,
 } from '@/shared/types'
-import { PageIntro } from '@/shared/ui/page-intro'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn } from '../application/route-closure'
+import { groupRoutesForSelector } from '../application/route-selector'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
@@ -67,7 +71,6 @@ type Props = {
   onUpdateService: (routeId: string, service: ServiceAction) => void
   onRemoveService: (routeId: string, serviceId: string) => void
   onCloseRoute: (routeId: string) => Promise<void>
-  onCreate: () => void
   canManage?: boolean
 }
 type ServiceGroup = { key: string; actions: ServiceAction[]; animalLabels: string[] }
@@ -96,6 +99,12 @@ const formatRouteDate = (date: string) => ({
     .toLocaleDateString('es-ES', { month: 'short' })
     .replace('.', ''),
 })
+const formatRouteDay = (date: string) =>
+  new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
 const mapUrlFor = (
   stop: Pick<
     DailyRouteStop,
@@ -169,11 +178,8 @@ export function RoutesPage({
   onAddStop,
   onRemoveStop,
   onCloseRoute,
-  onCreate,
   canManage = true,
 }: Props) {
-  const pageSize = 6
-  const [page, setPage] = useState(1)
   const [organizing, setOrganizing] = useState(false)
   const [addingStop, setAddingStop] = useState(false)
   const [plannedStops, setPlannedStops] = useState<DailyRouteStop[] | null>(null)
@@ -185,9 +191,9 @@ export function RoutesPage({
   const [closingRoute, setClosingRoute] = useState(false)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [operationError, setOperationError] = useState('')
-  const selectedIndex = routes.findIndex((item) => item.id === route.id)
-  const pageCount = Math.max(1, Math.ceil(routes.length / pageSize))
-  const visibleRoutes = routes.slice((page - 1) * pageSize, page * pageSize)
+  const routeGroups = useMemo(() => groupRoutesForSelector(routes, templates), [routes, templates])
+  const selectedTemplateName =
+    templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
   const itineraryClosed = route.status === 'cerrada'
@@ -205,12 +211,6 @@ export function RoutesPage({
     elapsedMinutes += stop.dwellMinutes + (index < stops.length - 1 ? stop.minutes : 0)
   })
 
-  useEffect(() => {
-    setPage((current) => Math.min(current, pageCount))
-  }, [pageCount])
-  useEffect(() => {
-    if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / pageSize) + 1)
-  }, [selectedIndex])
   useEffect(() => {
     setOrganizing(false)
     setPlannedStops(null)
@@ -326,19 +326,6 @@ export function RoutesPage({
 
   return (
     <>
-      <PageIntro
-        text={
-          canManage
-            ? `Organiza las paradas y sus tiempos · ${directionLabel(direction)}.`
-            : `Consulta el itinerario asignado · ${directionLabel(direction)}.`
-        }
-      >
-        {canManage && (
-          <Button onClick={onCreate}>
-            <CalendarDays /> Crear ruta
-          </Button>
-        )}
-      </PageIntro>
       <section className="route-catalog" aria-label="Rutas programadas">
         <div className="route-catalog-heading">
           <div>
@@ -349,44 +336,76 @@ export function RoutesPage({
             {routes.length} {routes.length === 1 ? 'ruta' : 'rutas'}
           </span>
         </div>
-        <div className="route-selector">
-          {visibleRoutes.map((item) => {
-            const itemDate = formatRouteDate(item.date)
-            const isSelected = route.id === item.id
-            return (
-              <button
-                type="button"
-                onClick={() => onSelect(item)}
-                aria-current={isSelected ? 'page' : undefined}
-                className={isSelected ? 'is-selected' : ''}
-                key={item.id}
-              >
-                <span className="route-selector-icon">
-                  <Route size={17} />
-                </span>
-                <span className="route-selector-details">
-                  <strong>
-                    {templates.find((current) => current.id === item.templateId)?.name}
-                  </strong>
-                  <small>{directionLabel(item.direction ?? 'normal')}</small>
-                </span>
-                <time dateTime={item.date}>
-                  <b>{itemDate.day}</b>
-                  <small>{itemDate.month}</small>
-                </time>
-                <span className={`status status-${item.status}`}>{statusLabels[item.status]}</span>
-              </button>
-            )
-          })}
-        </div>
+        <Select
+          aria-label="Ruta programada"
+          className="route-picker"
+          selectedKey={route.id}
+          onSelectionChange={(key) => {
+            const selected = routes.find((item) => item.id === String(key))
+            if (selected) onSelect(selected)
+          }}
+        >
+          <SelectTrigger className="route-picker-trigger">
+            <span className="route-selector-icon">
+              <Route size={17} />
+            </span>
+            <span className="route-selector-details">
+              <strong>{selectedTemplateName}</strong>
+              <small>{directionLabel(route.direction ?? 'normal')}</small>
+            </span>
+            <time dateTime={route.date}>
+              <b>{formatRouteDate(route.date).day}</b>
+              <small>{formatRouteDate(route.date).month}</small>
+            </time>
+            <StatusBadge
+              status={route.status}
+              className="!w-fit !px-1.5 !py-0.5 !text-[9px] [grid-area:status]"
+            />
+          </SelectTrigger>
+          <SelectContent className="route-picker-content">
+            <SelectList aria-label="Rutas programadas">
+              {routeGroups.flatMap((group) =>
+                group.routes.map(({ route: item, templateName }, index) => {
+                  const itemDate = formatRouteDate(item.date)
+                  return (
+                    <SelectItem
+                      className={
+                        index === 0
+                          ? 'route-picker-option route-picker-option-first'
+                          : 'route-picker-option'
+                      }
+                      id={item.id}
+                      key={item.id}
+                      textValue={`${templateName}, ${formatRouteDay(item.date)}, ${directionLabel(item.direction ?? 'normal')}, ${statusLabels[item.status]}`}
+                    >
+                      {index === 0 && (
+                        <span aria-hidden="true" className="route-picker-day">
+                          <time dateTime={group.date}>{formatRouteDay(group.date)}</time>
+                        </span>
+                      )}
+                      <span className="route-selector-icon">
+                        <Route size={17} />
+                      </span>
+                      <span className="route-selector-details">
+                        <strong>{templateName}</strong>
+                        <small>{directionLabel(item.direction ?? 'normal')}</small>
+                      </span>
+                      <time dateTime={item.date}>
+                        <b>{itemDate.day}</b>
+                        <small>{itemDate.month}</small>
+                      </time>
+                      <StatusBadge
+                        status={item.status}
+                        className="!w-fit !px-1.5 !py-0.5 !text-[9px] [grid-area:status]"
+                      />
+                    </SelectItem>
+                  )
+                }),
+              )}
+            </SelectList>
+          </SelectContent>
+        </Select>
       </section>
-      <Pagination
-        page={page}
-        pageCount={pageCount}
-        ariaLabel="Paginación de rutas"
-        onPageChange={setPage}
-        summary={`Mostrando ${routes.length === 0 ? 0 : (page - 1) * pageSize + 1}–${Math.min(page * pageSize, routes.length)} de ${routes.length}`}
-      />
       <Card className="route-journey">
         <CardContent>
           <div className="journey-header route-journey-header">
@@ -402,9 +421,7 @@ export function RoutesPage({
                   <span className={`route-direction-badge direction-${direction}`}>
                     {directionLabel(direction)}
                   </span>
-                  <span className={`status status-${route.status}`}>
-                    {statusLabels[route.status]}
-                  </span>
+                  <StatusBadge status={route.status} className="self-center" />
                 </div>
               </div>
             </div>

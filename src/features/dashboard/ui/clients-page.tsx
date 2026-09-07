@@ -20,12 +20,15 @@ import {
   Input,
   Label,
   Pagination,
+  PopoverContent,
+  PopoverTrigger,
 } from '@doscientos/ui'
-import { Mail, Pencil, Phone, Plus, ReceiptText, Trash2 } from 'lucide-react'
+import { ArrowDownUp, Mail, Pencil, Phone, ReceiptText, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Client, ClientInvoice, InvoicePayer, Letter, PaginatedResult } from '@/shared/types'
+import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import {
@@ -59,15 +62,17 @@ const sortDirections = ['asc', 'desc'] as const
 
 export function ClientsPage({
   letters,
+  createRequestId,
   onSave,
   onDelete,
-  onOpenInvoice,
+  onOpenDocument,
   onOpenLetter,
 }: {
   letters: Letter[]
+  createRequestId: number
   onSave: (client: Client | ClientInput) => Promise<void>
   onDelete: (client: Client) => Promise<void>
-  onOpenInvoice: (invoiceId: string) => void
+  onOpenDocument: (invoice: ClientInvoice) => void
   onOpenLetter: (letterId: string) => void
 }) {
   const [editing, setEditing] = useState<Client | null | undefined>(undefined)
@@ -187,6 +192,10 @@ export function ClientsPage({
     }
   }, [selected])
 
+  useEffect(() => {
+    if (createRequestId) setEditing(null)
+  }, [createRequestId])
+
   async function remove(client: Client) {
     setDeletingClient(true)
     setDeleteError('')
@@ -211,231 +220,245 @@ export function ClientsPage({
 
   return (
     <>
-      <div className="page-intro">
-        <p>Ficha y actividad comercial de remitentes y destinatarios.</p>
-        <Button onClick={() => setEditing(null)}>
-          <Plus /> Nuevo cliente
-        </Button>
-      </div>
-      <div className="clients-layout">
-        <Card className="clients-list">
-          <CardContent>
-            <div className="clients-list-heading">
-              <h3>Directorio</h3>
-              <span>{loading ? 'Cargando…' : `${result.total} clientes`}</span>
-            </div>
-            <div className="client-list-controls">
-              <label>
-                Buscar
-                <input
-                  value={query}
-                  onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
-                  placeholder="Nombre, NIF, email o ciudad"
-                />
-              </label>
-              <label>
-                Ordenar
-                <select
-                  value={sort}
-                  onChange={(event) =>
-                    updateParams({ orden: event.target.value as ClientSort, pagina: undefined })
-                  }
-                >
-                  <option value="name">Nombre</option>
-                  <option value="city">Ciudad</option>
-                  <option value="created_at">Alta</option>
-                </select>
-              </label>
-              <label>
-                Dirección
-                <select
-                  value={direction}
-                  onChange={(event) =>
-                    updateParams({
-                      direccion: event.target.value as SortDirection,
-                      pagina: undefined,
-                    })
-                  }
-                >
-                  <option value="asc">Ascendente</option>
-                  <option value="desc">Descendente</option>
-                </select>
-              </label>
-            </div>
-            {result.items.length === 0 ? (
-              <p className="empty-copy">
-                {loadError ||
-                  (query
-                    ? 'No hay clientes que coincidan con la búsqueda.'
-                    : 'Aún no hay clientes. Crea uno o genera la primera factura.')}
-              </p>
-            ) : (
-              <>
-                <div className="client-rows">
-                  {result.items.map((client) => (
-                    <button
-                      type="button"
-                      className={`client-row ${selected?.id === client.id ? 'is-selected' : ''}`}
-                      key={client.id}
-                      onClick={() => updateParams({ client: client.id, pagina: undefined }, false)}
-                    >
-                      <span className="client-initials">
-                        {client.fullName
-                          .split(' ')
-                          .slice(0, 2)
-                          .map((part) => part[0])
-                          .join('')
-                          .toUpperCase()}
-                      </span>
-                      <span>
-                        <strong>{client.fullName}</strong>
-                        <small>{client.city || client.email || 'Sin datos de contacto'}</small>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-                <Pagination
-                  page={page}
-                  pageCount={pageCount}
-                  ariaLabel="Paginación de clientes"
-                  onPageChange={(nextPage) =>
-                    updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
-                  }
-                  summary={`Mostrando ${firstRecord}–${lastRecord} de ${result.total}`}
-                />
-              </>
-            )}
-          </CardContent>
-        </Card>
-        {selected ? (
-          <div className="client-detail">
-            <Card>
-              <CardContent>
-                <div className="client-profile-head">
-                  <div>
-                    <p className="eyebrow">Ficha de cliente</p>
-                    <h3>{selected.fullName}</h3>
-                    <p>{selected.nif || 'NIF pendiente'}</p>
-                  </div>
-                  <div className="profile-actions">
-                    <button
-                      type="button"
-                      title="Editar cliente"
-                      onClick={() => setEditing(selected)}
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      title="Eliminar cliente"
-                      className="danger-action"
-                      onClick={() => setDeleting(selected)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="client-contact-grid">
-                  <span>
-                    <Phone size={15} /> {selected.phone || 'Teléfono pendiente'}
-                  </span>
-                  <span>
-                    <Mail size={15} /> {selected.email || 'Email pendiente'}
-                  </span>
-                  <span>
-                    {[selected.address, selected.postalCode, selected.city]
-                      .filter(Boolean)
-                      .join(', ') || 'Dirección pendiente'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-            <div className="client-history-grid">
-              <Card>
-                <CardContent>
-                  <div className="history-heading">
-                    <div>
-                      <ReceiptText size={18} />
-                      <h3>Facturas</h3>
-                    </div>
-                    <b>{loadingHistory ? '…' : clientInvoices.total}</b>
-                  </div>
-                  {clientInvoices.items.length ? (
-                    <div className="history-list">
-                      {clientInvoices.items.map((invoice) => (
-                        <button
-                          key={invoice.id}
-                          type="button"
-                          className="history-link"
-                          onClick={() => onOpenInvoice(invoice.letterId)}
-                        >
-                          <span className="invoice-mark">F</span>
-                          <span>
-                            <strong>{invoice.letterId.replace('CARTA DE PORTE Nº ', '')}</strong>
-                            <small>
-                              {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
-                              {payerLabels[invoice.payer]}
-                            </small>
-                          </span>
-                          <b>{currency(invoice.total)}</b>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="empty-copy">
-                      {loadingHistory
-                        ? 'Cargando facturas…'
-                        : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
-                    </p>
-                  )}
-                  {clientInvoices.total > clientInvoices.items.length && (
-                    <p className="empty-copy">Se muestran las 12 facturas más recientes.</p>
-                  )}
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <div className="history-heading">
-                    <div>
-                      <ReceiptText size={18} />
-                      <h3>Órdenes</h3>
-                    </div>
-                    <b>{orders.length}</b>
-                  </div>
-                  {orders.length ? (
-                    <div className="history-list">
-                      {orders.map((letter) => (
-                        <button
-                          key={letter.id}
-                          type="button"
-                          className="history-link"
-                          onClick={() => onOpenLetter(letter.id)}
-                        >
-                          <span className="order-mark">O</span>
-                          <span>
-                            <strong>{letter.id.replace('CARTA DE PORTE Nº ', '')}</strong>
-                            <small>
-                              {letter.origin} → {letter.destination} · {letter.serviceDate}
-                            </small>
-                          </span>
-                          <span className={`status status-${letter.status}`}>{letter.status}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="empty-copy">No hay órdenes relacionadas todavía.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        ) : (
-          <Card>
+      <div className="clients-workspace">
+        <div className="clients-layout">
+          <Card className="clients-list">
             <CardContent>
-              <p className="empty-copy">Selecciona un cliente para consultar su historial.</p>
+              <div className="clients-list-heading">
+                <h3>Directorio</h3>
+                <span>{loading ? 'Cargando…' : `${result.total} clientes`}</span>
+              </div>
+              <div className="client-list-controls">
+                <label>
+                  Buscar
+                  <input
+                    value={query}
+                    onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
+                    placeholder="Nombre, NIF, email o ciudad"
+                  />
+                </label>
+                <PopoverTrigger>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="client-list-sort-button"
+                    aria-label="Cambiar el orden del directorio"
+                  >
+                    <ArrowDownUp size={16} />
+                  </Button>
+                  <PopoverContent placement="bottom end" className="client-list-sort-popover">
+                    <label>
+                      Ordenar por
+                      <select
+                        value={sort}
+                        onChange={(event) =>
+                          updateParams({
+                            orden: event.target.value as ClientSort,
+                            pagina: undefined,
+                          })
+                        }
+                      >
+                        <option value="name">Nombre</option>
+                        <option value="city">Ciudad</option>
+                        <option value="created_at">Alta</option>
+                      </select>
+                    </label>
+                    <label>
+                      Dirección
+                      <select
+                        value={direction}
+                        onChange={(event) =>
+                          updateParams({
+                            direccion: event.target.value as SortDirection,
+                            pagina: undefined,
+                          })
+                        }
+                      >
+                        <option value="asc">Ascendente</option>
+                        <option value="desc">Descendente</option>
+                      </select>
+                    </label>
+                  </PopoverContent>
+                </PopoverTrigger>
+              </div>
+              {result.items.length === 0 ? (
+                <p className="empty-copy">
+                  {loadError ||
+                    (query
+                      ? 'No hay clientes que coincidan con la búsqueda.'
+                      : 'Aún no hay clientes. Crea uno o genera la primera factura.')}
+                </p>
+              ) : (
+                <>
+                  <div className="client-rows">
+                    {result.items.map((client) => (
+                      <button
+                        type="button"
+                        className={`client-row ${selected?.id === client.id ? 'is-selected' : ''}`}
+                        key={client.id}
+                        onClick={() =>
+                          updateParams({ client: client.id, pagina: undefined }, false)
+                        }
+                      >
+                        <span className="client-initials">
+                          {client.fullName
+                            .split(' ')
+                            .slice(0, 2)
+                            .map((part) => part[0])
+                            .join('')
+                            .toUpperCase()}
+                        </span>
+                        <span>
+                          <strong>{client.fullName}</strong>
+                          <small>{client.city || client.email || 'Sin datos de contacto'}</small>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <Pagination
+                    page={page}
+                    pageCount={pageCount}
+                    ariaLabel="Paginación de clientes"
+                    onPageChange={(nextPage) =>
+                      updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+                    }
+                    summary={`Mostrando ${firstRecord}–${lastRecord} de ${result.total}`}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
-        )}
+          {selected ? (
+            <div className="client-detail">
+              <Card>
+                <CardContent>
+                  <div className="client-profile-head">
+                    <div>
+                      <p className="eyebrow">Ficha de cliente</p>
+                      <h3>{selected.fullName}</h3>
+                      <p>{selected.nif || 'NIF pendiente'}</p>
+                    </div>
+                    <div className="profile-actions">
+                      <button
+                        type="button"
+                        title="Editar cliente"
+                        onClick={() => setEditing(selected)}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        title="Eliminar cliente"
+                        className="danger-action"
+                        onClick={() => setDeleting(selected)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="client-contact-grid">
+                    <span>
+                      <Phone size={15} /> {selected.phone || 'Teléfono pendiente'}
+                    </span>
+                    <span>
+                      <Mail size={15} /> {selected.email || 'Email pendiente'}
+                    </span>
+                    <span>
+                      {[selected.address, selected.postalCode, selected.city]
+                        .filter(Boolean)
+                        .join(', ') || 'Dirección pendiente'}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+              <div className="client-history-grid">
+                <Card>
+                  <CardContent>
+                    <div className="history-heading">
+                      <div>
+                        <ReceiptText size={18} />
+                        <h3>Facturas</h3>
+                      </div>
+                      <b>{loadingHistory ? '…' : clientInvoices.total}</b>
+                    </div>
+                    {clientInvoices.items.length ? (
+                      <div className="history-list">
+                        {clientInvoices.items.map((invoice) => (
+                          <button
+                            key={invoice.id}
+                            type="button"
+                            className="history-link"
+                            onClick={() => onOpenDocument(invoice)}
+                          >
+                            <span className="invoice-mark">F</span>
+                            <span>
+                              <strong>{invoice.letterId.replace('CARTA DE PORTE Nº ', '')}</strong>
+                              <small>
+                                {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
+                                {payerLabels[invoice.payer]}
+                              </small>
+                            </span>
+                            <b>{currency(invoice.total)}</b>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-copy">
+                        {loadingHistory
+                          ? 'Cargando facturas…'
+                          : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
+                      </p>
+                    )}
+                    {clientInvoices.total > clientInvoices.items.length && (
+                      <p className="empty-copy">Se muestran las 12 facturas más recientes.</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent>
+                    <div className="history-heading">
+                      <div>
+                        <ReceiptText size={18} />
+                        <h3>Órdenes</h3>
+                      </div>
+                      <b>{orders.length}</b>
+                    </div>
+                    {orders.length ? (
+                      <div className="history-list">
+                        {orders.map((letter) => (
+                          <button
+                            key={letter.id}
+                            type="button"
+                            className="history-link"
+                            onClick={() => onOpenLetter(letter.id)}
+                          >
+                            <span className="order-mark">O</span>
+                            <span>
+                              <strong>{letter.id.replace('CARTA DE PORTE Nº ', '')}</strong>
+                              <small>
+                                {letter.origin} → {letter.destination} · {letter.serviceDate}
+                              </small>
+                            </span>
+                            <StatusBadge status={letter.status}>{letter.status}</StatusBadge>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-copy">No hay órdenes relacionadas todavía.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <Card>
+              <CardContent>
+                <p className="empty-copy">Selecciona un cliente para consultar su historial.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
       {editing !== undefined && (
         <ClientDialog

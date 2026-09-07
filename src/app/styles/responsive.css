@@ -1,14 +1,5 @@
 /* Product-specific mobile refinements, loaded after the legacy stylesheet. */
 @media (max-width: 600px) {
-  .page-intro {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .page-intro > [data-slot='button'] {
-    width: 100%;
-  }
-
   .invoice-filters {
     grid-template-columns: minmax(0, 1fr);
   }

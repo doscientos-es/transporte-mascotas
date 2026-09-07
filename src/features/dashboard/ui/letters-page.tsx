@@ -14,8 +14,6 @@ import {
   ChevronRight,
   Eye,
   FilePenLine,
-  FilePlus2,
-  HandCoins,
   PawPrint,
   ReceiptText,
   Search,
@@ -24,10 +22,10 @@ import {
 import { useMemo } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
-import { statusLabels } from '@/shared/lib/status-labels'
 import type { Letter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
+import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 type Props = {
@@ -35,11 +33,9 @@ type Props = {
   loading: boolean
   error: string
   onRetry: () => void
-  onImport: () => void
   onEdit: (letter: Letter) => void
-  onInvoice: (letter: Letter) => void
   onOpenClient: (clientName: string) => void
-  onOpenInvoices: (letterId: string) => void
+  onOpenPaymentRequests: (letterId: string) => void
 }
 
 const accompanyingDocumentLabels = {
@@ -79,11 +75,9 @@ export function LettersPage({
   loading,
   error,
   onRetry,
-  onImport,
   onEdit,
-  onInvoice,
   onOpenClient,
-  onOpenInvoices,
+  onOpenPaymentRequests,
 }: Props) {
   const pageSize = 8
   const { searchParams, updateParams } = useUrlParams()
@@ -141,12 +135,8 @@ export function LettersPage({
 
   return (
     <>
-      <PageIntro text="Crea y prepara los servicios para cada ruta.">
-        <Button onClick={onImport}>
-          <FilePlus2 /> Nueva carta
-        </Button>
-      </PageIntro>
-      <section className="stats-grid">
+      <PageIntro text="Crea y prepara los servicios para cada ruta." />
+      <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
         <Stat label="Necesita revisión" value={summary.pending} accent="lime" loading={loading} />
         <Stat label="Programadas (semana)" value={summary.scheduled} loading={loading} />
         <Stat label="En transporte" value={summary.animals} loading={loading} />
@@ -223,10 +213,9 @@ export function LettersPage({
                         letter={letter}
                         onView={(letter) => updateParams({ carta: letter.id }, false)}
                         onEdit={onEdit}
-                        onInvoice={onInvoice}
                         clientName={letter.billingClient.fullName}
                         onOpenClient={onOpenClient}
-                        onOpenInvoices={onOpenInvoices}
+                        onOpenPaymentRequests={onOpenPaymentRequests}
                       />
                     ))}
                   </tbody>
@@ -239,10 +228,9 @@ export function LettersPage({
                     letter={letter}
                     onView={(letter) => updateParams({ carta: letter.id }, false)}
                     onEdit={onEdit}
-                    onInvoice={onInvoice}
                     clientName={letter.billingClient.fullName}
                     onOpenClient={onOpenClient}
-                    onOpenInvoices={onOpenInvoices}
+                    onOpenPaymentRequests={onOpenPaymentRequests}
                   />
                 ))}
               </div>
@@ -265,7 +253,7 @@ export function LettersPage({
           clientName={viewingLetter.billingClient.fullName}
           onClose={() => updateParams({ carta: undefined })}
           onOpenClient={onOpenClient}
-          onOpenInvoices={onOpenInvoices}
+          onOpenPaymentRequests={onOpenPaymentRequests}
         />
       )}
     </>
@@ -291,18 +279,16 @@ function LetterRow({
   letter,
   onView,
   onEdit,
-  onInvoice,
   clientName,
   onOpenClient,
-  onOpenInvoices,
+  onOpenPaymentRequests,
 }: {
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
-  onInvoice: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
-  onOpenInvoices: (letterId: string) => void
+  onOpenPaymentRequests: (letterId: string) => void
 }) {
   return (
     <tr>
@@ -333,7 +319,7 @@ function LetterRow({
         })}
       </td>
       <td>
-        <span className={`status status-${letter.status}`}>{statusLabels[letter.status]}</span>
+        <StatusBadge status={letter.status} />
       </td>
       <td>
         <div className="row-actions">
@@ -345,15 +331,8 @@ function LetterRow({
           </IconButton>
           <IconButton
             type="button"
-            label="Crear solicitud de pago"
-            onClick={() => onInvoice(letter)}
-          >
-            <HandCoins size={17} />
-          </IconButton>
-          <IconButton
-            type="button"
-            label="Ver facturas relacionadas"
-            onClick={() => onOpenInvoices(letter.id)}
+            label="Ver solicitud de pago"
+            onClick={() => onOpenPaymentRequests(letter.id)}
           >
             <ReceiptText size={17} />
           </IconButton>
@@ -376,18 +355,16 @@ function LetterCard({
   letter,
   onView,
   onEdit,
-  onInvoice,
   clientName,
   onOpenClient,
-  onOpenInvoices,
+  onOpenPaymentRequests,
 }: {
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
-  onInvoice: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
-  onOpenInvoices: (letterId: string) => void
+  onOpenPaymentRequests: (letterId: string) => void
 }) {
   return (
     <article className="letter-card">
@@ -396,7 +373,7 @@ function LetterCard({
           <strong>{letter.id}</strong>
           <small>Creada {letter.importedAt}</small>
         </div>
-        <span className={`status status-${letter.status}`}>{statusLabels[letter.status]}</span>
+        <StatusBadge status={letter.status} />
       </div>
       <div className="letter-card-route">
         <span>{letter.origin}</span>
@@ -423,11 +400,8 @@ function LetterCard({
           <button type="button" onClick={() => onEdit(letter)}>
             <FilePenLine size={16} /> Editar
           </button>
-          <button type="button" onClick={() => onInvoice(letter)}>
-            <HandCoins size={16} /> Pago
-          </button>
-          <button type="button" onClick={() => onOpenInvoices(letter.id)}>
-            <ReceiptText size={16} /> Facturas
+          <button type="button" onClick={() => onOpenPaymentRequests(letter.id)}>
+            <ReceiptText size={16} /> Solicitud
           </button>
           {clientName && (
             <button type="button" onClick={() => onOpenClient(clientName)}>
@@ -445,13 +419,13 @@ function LetterDetailsDialog({
   clientName,
   onClose,
   onOpenClient,
-  onOpenInvoices,
+  onOpenPaymentRequests,
 }: {
   letter: Letter
   clientName: string
   onClose: () => void
   onOpenClient: (clientName: string) => void
-  onOpenInvoices: (letterId: string) => void
+  onOpenPaymentRequests: (letterId: string) => void
 }) {
   const senderAddress = [letter.senderAddress, letter.senderPostalCode, letter.senderCity]
     .filter(Boolean)
@@ -495,9 +469,7 @@ function LetterDetailsDialog({
           <div>
             <dt>Estado</dt>
             <dd>
-              <span className={`status status-${letter.status}`}>
-                {statusLabels[letter.status]}
-              </span>
+              <StatusBadge status={letter.status} />
             </dd>
           </div>
         </dl>
@@ -558,8 +530,8 @@ function LetterDetailsDialog({
           </div>
         </section>
         <div className="invoice-card-actions">
-          <Button size="sm" variant="outline" onClick={() => onOpenInvoices(letter.id)}>
-            <ReceiptText size={15} /> Ver facturas
+          <Button size="sm" variant="outline" onClick={() => onOpenPaymentRequests(letter.id)}>
+            <ReceiptText size={15} /> Ver solicitud
           </Button>
           {clientName && (
             <Button size="sm" variant="outline" onClick={() => onOpenClient(clientName)}>

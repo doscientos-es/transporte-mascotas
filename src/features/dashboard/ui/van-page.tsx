@@ -8,12 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@doscientos/ui'
-import { ArrowRightLeft, MapPin, PawPrint, Printer, UserRound } from 'lucide-react'
+import { ArrowRightLeft, MapPin, PawPrint, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { statusLabels } from '@/shared/lib/status-labels'
 import type { AnimalSize, DailyRoute, Letter, RouteTemplate, ServiceAction } from '@/shared/types'
-import { PageIntro } from '@/shared/ui/page-intro'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { boxGridSpan, boxSize, type VanAssignment, vanLanes } from '../application/van'
 
@@ -41,8 +41,6 @@ export function VanPage({
   canManage,
   onSelectRoute,
   onReassignBox,
-  onPrint,
-  printing = false,
 }: {
   route: DailyRoute
   routes: DailyRoute[]
@@ -52,8 +50,6 @@ export function VanPage({
   canManage: boolean
   onSelectRoute: (route: DailyRoute) => void
   onReassignBox: (letterId: string, box: number) => Promise<void>
-  onPrint: () => void
-  printing?: boolean
 }) {
   const [selectedBox, setSelectedBox] = useState<number | null>(null)
   const leftLanes = vanLanes.filter((lane) => lane.side === 'left')
@@ -149,48 +145,53 @@ export function VanPage({
   )
   return (
     <>
-      <PageIntro text="Consulta la ocupación de cada ruta y cambia de recorrido sin salir de la furgoneta.">
-        <div className="van-toolbar">
-          <label className="van-route-picker">
-            <span>Ruta mostrada</span>
-            <select
-              value={route.id}
-              onChange={(event) => {
-                const selected = routes.find((item) => item.id === event.target.value)
-                if (selected) onSelectRoute(selected)
-              }}
-            >
-              {routes.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {routeOptionLabel(item)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button disabled={printing} onClick={onPrint}>
-            <Printer /> {printing ? 'Preparando PDF…' : 'Imprimir tramo'}
-          </Button>
-        </div>
-      </PageIntro>
-      <section className="van-summary" aria-label={`Resumen de ocupación de ${routeName(route)}`}>
-        <div>
-          <span>Boxes ocupados</span>
-          <strong>
-            {assignments.length}
-            <small> de {totalBoxes}</small>
-          </strong>
-        </div>
-        <div>
-          <span>Mascotas a bordo</span>
-          <strong>{animalsOnBoard}</strong>
-        </div>
-        <div>
-          <span>Disponibilidad</span>
-          <strong>
-            {totalBoxes - assignments.length}
-            <small> boxes libres</small>
-          </strong>
-        </div>
+      <section className="mb-3 grid gap-3 md:grid-cols-[minmax(220px,0.8fr)_minmax(0,1fr)] md:items-end">
+        <label className="grid min-w-0 gap-1">
+          <span className="text-[11px] font-bold text-[#6b6b6b]">Ruta mostrada</span>
+          <select
+            className="min-h-8 w-full rounded-lg border border-[#d8d8d8] bg-white py-0 pr-7 pl-2.5 text-[13px] text-[#171717] outline-none focus:border-[#cf1f2a] focus:outline-2 focus:outline-offset-1 focus:outline-[#cf1f2a]/15"
+            value={route.id}
+            onChange={(event) => {
+              const selected = routes.find((item) => item.id === event.target.value)
+              if (selected) onSelectRoute(selected)
+            }}
+          >
+            {routes.map((item) => (
+              <option key={item.id} value={item.id}>
+                {routeOptionLabel(item)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <section
+          className="grid grid-cols-3 gap-1.5 md:justify-self-end"
+          aria-label={`Resumen de ocupación de ${routeName(route)}`}
+        >
+          <div className="grid min-w-[94px] gap-0.5 rounded-lg border border-[#e1e1e1] bg-white px-2.5 py-2">
+            <span className="text-[10px] leading-tight text-[#6b6b6b]">Boxes ocupados</span>
+            <strong className="text-lg leading-none tracking-[-0.04em] text-[#171717]">
+              {assignments.length}
+              <small className="ml-1 text-[10px] font-medium tracking-normal text-[#6b6b6b]">
+                de {totalBoxes}
+              </small>
+            </strong>
+          </div>
+          <div className="grid min-w-[94px] gap-0.5 rounded-lg border border-[#e1e1e1] bg-white px-2.5 py-2">
+            <span className="text-[10px] leading-tight text-[#6b6b6b]">Mascotas a bordo</span>
+            <strong className="text-lg leading-none tracking-[-0.04em] text-[#171717]">
+              {animalsOnBoard}
+            </strong>
+          </div>
+          <div className="grid min-w-[94px] gap-0.5 rounded-lg border border-[#e1e1e1] bg-white px-2.5 py-2">
+            <span className="text-[10px] leading-tight text-[#6b6b6b]">Disponibilidad</span>
+            <strong className="text-lg leading-none tracking-[-0.04em] text-[#171717]">
+              {totalBoxes - assignments.length}
+              <small className="ml-1 text-[10px] font-medium tracking-normal text-[#6b6b6b]">
+                libres
+              </small>
+            </strong>
+          </div>
+        </section>
       </section>
       <div className="van-legend">
         <span>
@@ -241,11 +242,7 @@ export function VanPage({
                     · Recogida{pickup ? ` · ${pickup.stop}` : ''}
                   </p>
                 </div>
-                {pickup && (
-                  <span className={`status status-${pickup.status}`}>
-                    {statusLabels[pickup.status]}
-                  </span>
-                )}
+                {pickup && <StatusBadge status={pickup.status} />}
               </div>
             )
           })
@@ -352,9 +349,7 @@ function BoxDetailsDialog({
                         · {pickup.letterId}
                       </small>
                     </div>
-                    <span className={`status status-${pickup.status}`}>
-                      {statusLabels[pickup.status]}
-                    </span>
+                    <StatusBadge status={pickup.status} />
                   </div>
                   <dl className="box-animal-details">
                     <div>

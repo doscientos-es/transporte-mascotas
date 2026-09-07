@@ -36,21 +36,24 @@ import {
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 
-const invoiceStatusFilters = ['todas', 'solicitud_pago', 'emitida'] as const
 const sortDirections = ['asc', 'desc'] as const
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 
 export function InvoicesPage({
   transportista,
+  documentType,
   onSend,
   onConfirmManualPayment,
+  onPaymentConfirmed,
   onOpenClient,
   onOpenLetter,
 }: {
   transportista: boolean
+  documentType: 'payment-requests' | 'invoices'
   onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void>
   onConfirmManualPayment?: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
+  onPaymentConfirmed?: (invoice: ClientInvoice) => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
 }) {
@@ -63,7 +66,8 @@ export function InvoicesPage({
   const [refreshKey, setRefreshKey] = useState(0)
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
-  const status = readEnumParam(searchParams.get('estado'), invoiceStatusFilters, 'todas')
+  const isPaymentRequests = documentType === 'payment-requests'
+  const documentStatus = isPaymentRequests ? 'solicitud_pago' : 'emitida'
   const from = searchParams.get('desde') ?? ''
   const to = searchParams.get('hasta') ?? ''
   const sort = readEnumParam(searchParams.get('orden'), invoiceSortOptions, 'date')
@@ -85,7 +89,7 @@ export function InvoicesPage({
     setError('')
     loadInvoicePage({
       query: query.trim(),
-      status: status === 'todas' ? undefined : status,
+      status: documentStatus,
       from,
       to,
       sort,
@@ -104,7 +108,7 @@ export function InvoicesPage({
     return () => {
       active = false
     }
-  }, [direction, from, query, refreshKey, requestedPage, sort, status, to])
+  }, [direction, documentStatus, from, query, refreshKey, requestedPage, sort, to])
 
   useEffect(() => {
     if (requestedPage > pageCount) updateParams({ pagina: pageCount === 1 ? undefined : pageCount })
@@ -115,7 +119,7 @@ export function InvoicesPage({
     try {
       const exportResult = await loadInvoicePage({
         query: query.trim(),
-        status: status === 'todas' ? undefined : status,
+        status: documentStatus,
         from,
         to,
         sort,
@@ -182,9 +186,11 @@ export function InvoicesPage({
     <>
       <PageIntro
         text={
-          transportista
-            ? 'Consulta, previsualiza y descarga las solicitudes y facturas vinculadas a tus servicios asignados.'
-            : 'Gestiona solicitudes de pago y facturas emitidas. Las solicitudes se descargan como documentos informativos.'
+          isPaymentRequests
+            ? 'Gestiona las solicitudes de pago creadas al dar de alta una carta de porte.'
+            : transportista
+              ? 'Consulta, previsualiza y descarga las solicitudes y facturas vinculadas a tus servicios asignados.'
+              : 'Consulta, descarga y reenvía las facturas emitidas tras confirmar cada cobro.'
         }
       />
       <div className="invoice-filters" aria-label="Filtros de facturas">
@@ -197,22 +203,6 @@ export function InvoicesPage({
             }}
             placeholder="Nº, cliente, carta o concepto"
           />
-        </label>
-        <label>
-          Estado
-          <select
-            value={status}
-            onChange={(event) => {
-              updateParams({
-                estado: event.target.value === 'todas' ? undefined : event.target.value,
-                ...resetPage(),
-              })
-            }}
-          >
-            <option value="todas">Todos</option>
-            <option value="solicitud_pago">Solicitud de pago</option>
-            <option value="emitida">Emitida</option>
-          </select>
         </label>
         <label>
           Desde
@@ -308,10 +298,12 @@ export function InvoicesPage({
             <CardContent>
               <ReceiptText size={22} />
               <div>
-                <h3>No hay facturas disponibles</h3>
+                <h3>No hay {isPaymentRequests ? 'solicitudes de pago' : 'facturas'} disponibles</h3>
                 <p>
                   {error ||
-                    'Prueba a cambiar los filtros o crea una solicitud de pago desde una carta de porte.'}
+                    (isPaymentRequests
+                      ? 'Las solicitudes aparecerán automáticamente al crear una carta de porte.'
+                      : 'Las facturas aparecerán automáticamente al confirmar los cobros.')}
                 </p>
               </div>
             </CardContent>
@@ -364,6 +356,7 @@ export function InvoicesPage({
             await onConfirmManualPayment(invoice, method)
             setRefreshKey((current) => current + 1)
           }}
+          onConfirmed={() => onPaymentConfirmed?.({ ...manualPayment, status: 'emitida' })}
         />
       )}
     </>
@@ -703,10 +696,12 @@ function ManualPaymentDialog({
   invoice,
   onClose,
   onConfirm,
+  onConfirmed,
 }: {
   invoice: ClientInvoice
   onClose: () => void
   onConfirm: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
+  onConfirmed?: () => void
 }) {
   const [method, setMethod] = useState<ManualPaymentMethod>('Transferencia')
   const [saving, setSaving] = useState(false)
@@ -717,6 +712,7 @@ function ManualPaymentDialog({
     try {
       await onConfirm(invoice, method)
       onClose()
+      onConfirmed?.()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido registrar el cobro.')
     } finally {

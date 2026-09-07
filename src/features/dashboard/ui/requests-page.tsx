@@ -7,9 +7,9 @@ import {
   loadTransportRequests,
   rejectTransportRequest,
 } from '@/features/client-portal'
-import { statusLabels } from '@/shared/lib/status-labels'
 import type { DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { dispatchTransportRequestNotifications } from '../application/whatsapp'
 
@@ -117,7 +117,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
 
   return (
     <>
-      <PageIntro text="Cada solicitud pagada llega aquí. Asigna una ruta y las paradas para crear la carta de porte.">
+      <PageIntro text="Gestiona las solicitudes de transporte recibidas desde el portal de clientes.">
         <Button
           variant="outline"
           disabled={refreshing || Boolean(busy)}
@@ -131,10 +131,10 @@ export function RequestsPage({ routes, onNotify }: Props) {
         <CardContent>
           <div className="table-heading">
             <div>
-              <h3>Acción necesaria</h3>
+              <h3>Solicitudes de transporte pendientes</h3>
               <p>{pending.length} solicitudes pagadas pendientes de asignar</p>
             </div>
-            <span className="status status-por_verificar">{pending.length} pendientes</span>
+            <StatusBadge status="por_verificar">{pending.length} pendientes</StatusBadge>
           </div>
           {pending.length === 0 ? (
             <p className="empty-copy">No hay solicitudes pendientes de verificar.</p>
@@ -313,9 +313,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       </td>
                       <td>{formatDate(request.desiredDate)}</td>
                       <td>
-                        <span className={`status status-${request.status}`}>
-                          {statusLabels[request.status] ?? request.status}
-                        </span>
+                        <StatusBadge status={request.status} />
                       </td>
                     </tr>
                   ))}

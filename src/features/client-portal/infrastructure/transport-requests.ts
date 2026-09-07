@@ -223,7 +223,8 @@ export async function confirmTransportRequest(
   deliveryStopId: string,
   adminNote: string,
 ) {
-  const { error } = await requireSupabase().rpc('confirm_transport_request', {
+  const database = requireSupabase()
+  const { data, error } = await database.rpc('confirm_transport_request', {
     p_request_id: requestId,
     p_daily_route_id: dailyRouteId,
     p_pickup_stop_id: pickupStopId,
@@ -232,6 +233,13 @@ export async function confirmTransportRequest(
   })
   if (error)
     throwRequestError(error, 'No se ha podido confirmar la solicitud. Vuelve a intentarlo.')
+  if (typeof data === 'string') {
+    await database.functions
+      .invoke('send-carriage-letter-notifications', {
+        body: { action: 'dispatch', letterId: data },
+      })
+      .catch(() => undefined)
+  }
 }
 
 export async function rejectTransportRequest(requestId: string, adminNote: string) {

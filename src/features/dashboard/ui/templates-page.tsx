@@ -22,6 +22,7 @@ import { NewTemplateDialog, StopFormDialog, type StopFormValues } from './operat
 type Props = {
   templates: RouteTemplate[]
   selected: RouteTemplate | null
+  createRequestId: number
   onSelect: (template: RouteTemplate) => void
   onCreate: (name: string, color: string) => Promise<void>
   onUpdate: (templateId: string, name: string, color: string) => Promise<void>
@@ -33,6 +34,7 @@ type Props = {
 export function TemplatesPage({
   templates,
   selected,
+  createRequestId,
   onSelect,
   onCreate,
   onUpdate,
@@ -60,14 +62,14 @@ export function TemplatesPage({
     setError('')
   }, [selected?.id])
 
+  useEffect(() => {
+    if (createRequestId) setCreating(true)
+  }, [createRequestId])
+
   if (!selected)
     return (
       <>
-        <PageIntro text="Crea una plantilla de ruta para empezar a organizar los transportes.">
-          <Button onClick={() => setCreating(true)}>
-            <Plus /> Nueva ruta
-          </Button>
-        </PageIntro>
+        <PageIntro text="Crea una plantilla de ruta para empezar a organizar los transportes." />
         <Card className="stops-card">
           <CardContent>
             <p>Aún no hay plantillas de ruta.</p>
@@ -234,11 +236,7 @@ export function TemplatesPage({
 
   return (
     <>
-      <PageIntro text="El orden de las paradas se conservará al crear una ruta diaria.">
-        <Button onClick={() => setCreating(true)}>
-          <Plus /> Nueva ruta
-        </Button>
-      </PageIntro>
+      <PageIntro text="El orden de las paradas se conservará al crear una ruta diaria." />
       <div className="template-layout">
         <Card className="template-list">
           <CardContent>

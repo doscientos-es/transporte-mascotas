@@ -165,6 +165,7 @@ export async function saveManualLetter(
   actions: ServiceAction[],
   reference: string,
   signatureConfirmed: boolean,
+  billingTotal: number,
 ) {
   const { data, error } = await requireSupabase().rpc('create_manual_carriage_letter', {
     p_daily_route_id: route.id,
@@ -196,6 +197,7 @@ export async function saveManualLetter(
     p_accompanying_documents: letter.accompanyingDocuments,
     p_billing_payer: letter.billingPayer,
     p_billing_client: letter.billingClient,
+    p_billing_total: billingTotal,
     p_signature_confirmed: signatureConfirmed,
     p_animals: letter.animals.map(
       ({ id, species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm }) => ({

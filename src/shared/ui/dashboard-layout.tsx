@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, Menu, MenuContent, MenuItem, MenuTrigger } from '@doscientos/ui'
+import { Avatar, AvatarFallback, PopoverContent, PopoverTrigger } from '@doscientos/ui'
 import {
   CalendarDays,
   ClipboardList,
@@ -44,6 +44,7 @@ type Props = {
   hrefForSection: (section: NavSection) => string
   onSignOut: () => void
   title?: string
+  headerAction?: ReactNode
   children: ReactNode
 }
 
@@ -56,6 +57,7 @@ export function DashboardLayout({
   hrefForSection,
   onSignOut,
   title,
+  headerAction,
   children,
 }: Props) {
   const visibleItems =
@@ -99,9 +101,11 @@ export function DashboardLayout({
         className={
           mobile
             ? section === id
-              ? 'is-active'
-              : ''
-            : `nav-item ${section === id ? 'is-active' : ''}`
+              ? 'grid justify-items-center gap-[3px] rounded-lg bg-[#fff0f1] text-[10px] text-[#9f1720] no-underline'
+              : 'grid justify-items-center gap-[3px] rounded-lg text-[10px] text-[#686868] no-underline'
+            : section === id
+              ? 'flex min-h-11 items-center gap-[11px] rounded-[9px] bg-[var(--accent)] px-[11px] text-sm font-bold text-white no-underline'
+              : 'flex min-h-11 items-center gap-[11px] rounded-[9px] px-[11px] text-sm text-[#bdbdbd] no-underline hover:bg-[#303030] hover:text-white'
         }
         aria-current={section === id ? 'page' : undefined}
         key={id}
@@ -109,61 +113,90 @@ export function DashboardLayout({
       >
         <Icon size={mobile ? 19 : 18} />
         <span>{mobile ? label.split(' ')[0] : label}</span>
-        {!mobile && id === 'cartas' && <b>{pendingLetters}</b>}
+        {!mobile && id === 'cartas' && (
+          <b className="ml-auto grid size-5 place-items-center rounded-full bg-white/20 text-[11px]">
+            {pendingLetters}
+          </b>
+        )}
       </a>
     ))
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar" aria-label="Navegación principal">
-        <div className="brand">
-          <BrandLogo variant="dark" />
+    <div className="grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7] max-[850px]:block max-[850px]:pb-[69px]">
+      <aside
+        className="sticky top-0 flex h-dvh min-h-dvh flex-col bg-[#171717] px-[14px] py-[22px] text-[#f5f5f5] max-[850px]:hidden"
+        aria-label="Navegación principal"
+      >
+        <div className="flex items-center gap-[11px] px-2.5 pt-0.5 pb-7 text-sm leading-[1.05] font-[650] text-white">
+          <BrandLogo variant="dark" className="h-[34px] w-[42px] rounded-md object-contain" />
           <span>Kache Envíos</span>
         </div>
-        <div className="workspace-label">
+        <div className="px-2.5 pb-2.5 text-[10px] font-[750] tracking-[0.12em] text-[#bdbdbd] uppercase">
           {profileRole === 'admin'
             ? 'OPERACIONES'
             : isClientRole(profileRole)
               ? 'MI ÁREA'
               : 'MI JORNADA'}
         </div>
-        <nav>{renderNavigation()}</nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-profile">
-            <MenuTrigger>
-              <button type="button" className="profile-trigger" aria-label="Abrir menú de perfil">
-                <Avatar className="avatar">
+        <nav className="grid gap-1">{renderNavigation()}</nav>
+        <div className="mt-auto grid gap-3 border-t border-[#3b3b3b] px-2.5 pt-4 pb-1 text-xs">
+          <div className="relative">
+            <PopoverTrigger>
+              <button
+                type="button"
+                className="flex min-h-[52px] w-full cursor-pointer items-center gap-2.5 rounded-[10px] bg-transparent p-2 text-left text-inherit transition-colors hover:bg-[#303030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:bg-[#303030]"
+                aria-label="Abrir menú de perfil"
+              >
+                <Avatar className="grid size-9 shrink-0 place-items-center rounded-full bg-[#171717] text-xs font-bold text-white">
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
-                <span>
-                  <strong>{displayName}</strong>
-                  <span className="role-dot">
+                <span className="min-w-0">
+                  <strong className="block text-[13px] text-[#f1f6ef]">{displayName}</strong>
+                  <span className="mt-0.5 flex items-center gap-[5px] text-[#bdbdbd]">
                     <ShieldCheck size={13} /> {roleLabel}
                   </span>
                 </span>
               </button>
-              <MenuContent className="profile-menu">
-                <div className="profile-menu-header">
-                  <span>Cuenta</span>
-                  <strong>{displayName}</strong>
+              <PopoverContent
+                placement="top start"
+                className="min-w-[196px] rounded-xl border-[#4a4a4a] bg-[#171717] p-2 shadow-[0_14px_30px_rgb(0_0_0_/_42%)]"
+              >
+                <div className="grid gap-0.5 border-b border-[#3b3b3b] px-2 pt-1 pb-2.5">
+                  <span className="text-[10px] font-[750] tracking-[0.1em] text-[#bdbdbd] uppercase">
+                    Cuenta
+                  </span>
+                  <strong className="text-[13px] text-[#f1f6ef]">{displayName}</strong>
                 </div>
-                <Menu aria-label="Acciones de cuenta">
-                  <MenuItem className="profile-menu-item" id="sign-out" onAction={onSignOut}>
-                    <LogOut size={15} /> Cerrar sesión
-                  </MenuItem>
-                </Menu>
-              </MenuContent>
-            </MenuTrigger>
+                <button
+                  type="button"
+                  className="mt-1.5 flex min-h-[38px] w-full items-center gap-2 rounded-md bg-transparent px-[9px] text-left text-xs text-white hover:bg-[#3b2022] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[highlighted]:bg-[#3b2022]"
+                  onClick={onSignOut}
+                >
+                  <LogOut size={15} /> Cerrar sesión
+                </button>
+              </PopoverContent>
+            </PopoverTrigger>
           </div>
         </div>
       </aside>
-      <main>
-        <header className="topbar">
-          <h1>{pageTitle}</h1>
+      <main className="min-w-0">
+        <header className="mx-auto flex w-full max-w-[1440px] items-center gap-2.5 px-[clamp(20px,4vw,52px)] pt-6 max-[850px]:px-[18px] max-[850px]:pt-[17px]">
+          <h1 className="m-0 text-[25px] tracking-[-0.04em] text-[#171717] max-[850px]:text-[21px]">
+            {pageTitle}
+          </h1>
+          {headerAction && <div className="ml-auto">{headerAction}</div>}
         </header>
-        <div className="page-content">{children}</div>
+        <div
+          data-dashboard-content
+          className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,52px)] pt-3 pb-14 max-[850px]:px-4 max-[850px]:pt-[22px] max-[850px]:pb-9"
+        >
+          {children}
+        </div>
       </main>
-      <nav className="mobile-nav" aria-label="Navegación móvil">
+      <nav
+        className="fixed right-0 bottom-0 left-0 z-[6] hidden h-[69px] grid-cols-5 border-t border-[#dedede] bg-white px-1.5 pt-1.5 pb-[env(safe-area-inset-bottom)] max-[850px]:grid"
+        aria-label="Navegación móvil"
+      >
         {renderNavigation(true)}
       </nav>
     </div>

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
 import type {
   AccompanyingDocument,
   DailyRoute,
@@ -127,6 +128,7 @@ const emptyLetter: LetterDraft = {
   recipientProvince: '',
   accompanyingDocuments: [],
   billingPayer: 'remitente',
+  billingTotal: 0,
   otherPayer: emptyInvoiceClient(),
   signatureConfirmed: true,
   animals: [emptyAnimal()],
@@ -185,6 +187,7 @@ export function LetterForm({
           destinationPoint: letter.destinationPoint,
           accompanyingDocuments: letter.accompanyingDocuments,
           billingPayer: letter.billingPayer,
+          billingTotal: 0,
           otherPayer:
             letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
           signatureConfirmed: false,
@@ -235,6 +238,10 @@ export function LetterForm({
     }))
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault()
+    if (!isWhatsAppPhone(draft.senderPhone) || !isWhatsAppPhone(draft.recipientPhone)) {
+      setError('Indica teléfonos válidos para remitente y destinatario.')
+      return
+    }
     if (!draft.accompanyingDocuments.length) {
       setError('Selecciona al menos un documento que acompañe al animal.')
       return
@@ -338,6 +345,7 @@ export function LetterForm({
       <BillingAndSignatureSection
         draft={draft}
         update={update}
+        isEditing={isEditing}
         onOtherPayerChange={(field, value) =>
           setDraft((current) => ({
             ...current,
@@ -1359,10 +1367,12 @@ function DocumentsSection({
 function BillingAndSignatureSection({
   draft,
   update,
+  isEditing,
   onOtherPayerChange,
 }: {
   draft: LetterDraft
   update: LetterUpdate
+  isEditing: boolean
   onOtherPayerChange: (field: keyof InvoiceClientInput, value: string) => void
 }) {
   const payerLabels: Record<InvoicePayer, [string, string]> = {
@@ -1376,7 +1386,7 @@ function BillingAndSignatureSection({
         <CreditCard size={17} />
         <div>
           <h3>¿Quién paga el servicio?</h3>
-          <p>Estos datos se usarán al preparar la factura.</p>
+          <p>Al guardar, se creará una solicitud de pago para la persona elegida.</p>
         </div>
       </div>
       <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-[70px] [&_button]:gap-1 [&_button]:rounded-[9px] [&_button]:border [&_button]:p-2.5 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:text-xs">
@@ -1454,6 +1464,19 @@ function BillingAndSignatureSection({
             />
           </Label>
         </div>
+      )}
+      {!isEditing && (
+        <Label className="date-field mt-4">
+          Importe a cobrar (IVA incluido)
+          <Input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={draft.billingTotal || ''}
+            onChange={(event) => update('billingTotal', Number(event.target.value))}
+            required
+          />
+        </Label>
       )}
     </section>
   )

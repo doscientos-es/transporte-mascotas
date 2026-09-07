@@ -24,6 +24,30 @@ export async function dispatchTransportRequestNotifications(requestId: string) {
     throw new Error(result.error || 'WhatsApp no ha aceptado el envío.')
 }
 
+export async function dispatchCarriageLetterNotifications(letterId: string) {
+  if (!supabase) throw new Error('Supabase no está configurado.')
+  const { data, error } = await supabase.functions.invoke('send-carriage-letter-notifications', {
+    body: { action: 'dispatch', letterId },
+  })
+  if (error)
+    throw new Error(await functionError(error, 'No se han podido enviar los avisos de WhatsApp.'))
+  const result = data as { error?: string; failed?: number } | null
+  if (result?.error || result?.failed)
+    throw new Error(result.error || 'WhatsApp no ha aceptado el envío.')
+}
+
+export async function dispatchPendingBillingNotifications() {
+  if (!supabase) throw new Error('Supabase no está configurado.')
+  const { data, error } = await supabase.functions.invoke('send-billing-notifications', {
+    body: { action: 'dispatch' },
+  })
+  if (error)
+    throw new Error(await functionError(error, 'No se ha podido enviar la solicitud de pago.'))
+  const result = data as { error?: string; failed?: number } | null
+  if (result?.error || result?.failed)
+    throw new Error(result.error || 'WhatsApp no ha aceptado el envío.')
+}
+
 async function functionError(error: unknown, fallback: string) {
   const response =
     error &&

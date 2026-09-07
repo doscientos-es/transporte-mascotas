@@ -19,7 +19,7 @@ Todos los avisos se entregan por WhatsApp. Para WhatsApp Cloud API configurad `M
 
 ### Confirmaciones y recordatorios de transporte
 
-Al confirmar una solicitud pagada, se encola una confirmación inmediata y un recordatorio para las 10:00 (Europe/Madrid) del día anterior a la ruta. Configurad dos plantillas de utilidad aprobadas en Meta, idioma `es`, con **seis** variables de cuerpo, en este orden: nombre, fecha de ruta, origen, destino, enlace de Google Maps para la recogida y enlace de Google Maps para la entrega:
+Una carta de porte manual queda programada al guardarse; una solicitud queda programada al confirmarla. Se encola una confirmación inmediata y un recordatorio para las 10:00 (Europe/Madrid) del día anterior a la ruta para remitente y destinatario. Si ambos teléfonos coinciden, se evita el duplicado. Configurad dos plantillas de utilidad aprobadas en Meta, idioma `es`, con **seis** variables de cuerpo, en este orden: nombre, fecha de ruta, origen, destino, enlace de Google Maps para la recogida y enlace de Google Maps para la entrega:
 
 - `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE`: debe comunicar que el pago y la ruta están confirmados.
 - `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`: debe recordar la salida prevista para el día siguiente.
@@ -28,7 +28,7 @@ Al confirmar una solicitud pagada, se encola una confirmación inmediata y un re
 
 Cerrar una ruta el día anterior deja una notificación durable por cada teléfono de cliente implicado. Cuando se configure la API, desplegad e invocad `send-daily-route-closure-notifications` para procesarla. Configurad `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE` como plantilla de utilidad, idioma `es`, con tres variables de cuerpo: nombre del cliente, fecha de servicio e itinerario.
 
-La página **Ajustes → Pruebas de WhatsApp** comprueba ambos mensajes sin crear datos de clientes. Para despachar la cola automáticamente, configurad el secreto `TRANSPORT_NOTIFICATIONS_CRON_SECRET` y un cron que invoque `send-transport-notifications` con `POST`, el cuerpo `{ "action": "dispatch" }` y la cabecera `x-transport-notifications-cron-secret`. Ejecutadlo al menos cada hora. El procesador reclama cada aviso de forma atómica y permite reintentos seguros; sin ese secreto, el endpoint sólo acepta sesiones de administrador.
+La página **Ajustes → Pruebas de WhatsApp** comprueba ambos mensajes sin crear datos de clientes. Para despachar cartas automáticamente, configurad `CARRIAGE_LETTER_NOTIFICATIONS_CRON_SECRET` y un cron cada cinco minutos que invoque `send-carriage-letter-notifications` con `POST`, el cuerpo `{ "action": "dispatch" }` y la cabecera `x-carriage-letter-notifications-cron-secret`. Configurad otro cron equivalente para `send-billing-notifications`, usando `BILLING_NOTIFICATIONS_CRON_SECRET` y `x-billing-notifications-cron-secret`. El procesador reclama cada aviso de forma atómica y permite reintentos seguros; sin esos secretos, los endpoints sólo aceptan sesiones de administrador.
 
 Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. Cada envío queda registrado y los reintentos se reclaman de forma atómica para evitar duplicados.
 

@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
-import { statusLabels } from '@/shared/lib/status-labels'
 import type {
   ClientPet,
   DashboardNavigation,
@@ -23,6 +22,7 @@ import type {
 } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { signOut as signOutSession } from '../application/session'
 import {
@@ -353,7 +353,16 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
             <div className="invoices-list">
               {requests.length ? (
                 requests.map((request) => (
-                  <Card key={request.id} className="invoice-card client-transport-card">
+                  <Card
+                    key={request.id}
+                    className={`invoice-card client-transport-card ${
+                      request.status === 'por_verificar'
+                        ? '!border-l-[#ca8a04]'
+                        : request.status === 'confirmada' || request.status === 'en_ruta'
+                          ? '!border-l-[#171717]'
+                          : ''
+                    }`}
+                  >
                     <CardContent>
                       <div className="invoice-icon">
                         <PawPrint size={19} />
@@ -388,9 +397,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           )}
                       </div>
                       <div className="invoice-amount">
-                        <span className={`status status-${request.status}`}>
-                          {statusLabels[request.status] ?? request.status}
-                        </span>
+                        <StatusBadge status={request.status} />
                         {request.paidAt && (
                           <small className="payment-state">
                             <CheckCircle2 size={13} /> Pago registrado

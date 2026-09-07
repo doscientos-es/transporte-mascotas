@@ -60,25 +60,34 @@ export function LoginPage({ audience }: Props) {
   const description = isClient
     ? 'Consulta tus solicitudes, tus mascotas y cada actualización del transporte.'
     : 'Accede a las rutas y tareas que tengas asignadas.'
+  const screenClassName = isClient
+    ? 'login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px]'
+    : 'login-screen [background:radial-gradient(circle_at_top_right,#dfead8,transparent_38%),#f7f8f5]'
 
   return (
-    <main className={`login-screen login-screen-${audience}`}>
+    <main className={screenClassName}>
       {isClient && (
-        <aside className="client-login-showcase">
-          <BrandLogo />
-          <p className="eyebrow">Kache envíos</p>
-          <h2>Una forma tranquila de organizar su próximo viaje.</h2>
-          <p>
+        <aside className="max-w-[490px] text-[#171717] max-[820px]:max-w-[440px]">
+          <BrandLogo className="mb-[34px] h-[58px] w-[72px] object-contain max-[820px]:mb-[18px]" />
+          <p className="eyebrow text-[#b51e27]">Kache envíos</p>
+          <h2 className="my-2 mr-0 mb-4 ml-0 max-w-[440px] text-[clamp(35px,5vw,58px)] leading-[0.96] tracking-[-0.065em] max-[820px]:text-[clamp(32px,10vw,48px)]">
+            Una forma tranquila de organizar su próximo viaje.
+          </h2>
+          <p className="m-0 max-w-[420px] text-base leading-[1.6] text-[#555]">
             Solicita el transporte, guarda los datos de tus mascotas y recibe todas las
             actualizaciones en un único lugar.
           </p>
-          <div>
+          <div className="mt-8 grid gap-2.5">
             <Benefit icon={PawPrint} text="Una o varias mascotas por solicitud" />
             <Benefit icon={CheckCircle2} text="Seguimiento privado de cada transporte" />
           </div>
         </aside>
       )}
-      <section className="login-card">
+      <section
+        className={
+          isClient ? 'login-card !shadow-[0_28px_70px_rgb(101_35_40_/_14%)]' : 'login-card'
+        }
+      >
         <BrandLogo />
         <p className="eyebrow">{isClient ? 'Área de cliente' : 'Área profesional'}</p>
         <h1>{title}</h1>
@@ -180,7 +189,10 @@ export function LoginPage({ audience }: Props) {
             ? '¿Es tu primera vez? Crea tu cuenta'
             : 'Ya tengo una cuenta, quiero entrar'}
         </button>
-        <a className="auth-audience-link" href={isClient ? '/admin' : '/cliente/acceso'}>
+        <a
+          className="mt-[22px] flex min-h-11 items-center justify-center text-center text-xs text-[#686868] no-underline hover:text-[var(--accent)] hover:underline hover:underline-offset-[3px]"
+          href={isClient ? '/admin' : '/cliente/acceso'}
+        >
           {isClient
             ? '¿Trabajas con nosotros? Acceso profesional'
             : '¿Eres cliente? Accede a tu área personal'}
@@ -192,8 +204,8 @@ export function LoginPage({ audience }: Props) {
 
 function Benefit({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
   return (
-    <span>
-      <Icon size={15} /> {text}
+    <span className="flex items-center gap-2 text-sm font-[650] text-[#3c3c3c]">
+      <Icon className="text-[#b51e27]" size={15} /> {text}
     </span>
   )
 }
