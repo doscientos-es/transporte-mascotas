@@ -40,6 +40,9 @@ const InvoiceDialog = lazy(() =>
 const LetterFormDialog = lazy(() =>
   import('./operation-dialogs').then(({ LetterFormDialog: dialog }) => ({ default: dialog })),
 )
+const LetterCreatePage = lazy(() =>
+  import('./letter-create-page').then(({ LetterCreatePage: page }) => ({ default: page })),
+)
 const NewRouteDirectionDialog = lazy(() =>
   import('./operation-dialogs').then(({ NewRouteDirectionDialog: dialog }) => ({
     default: dialog,
@@ -62,9 +65,11 @@ export function AdminDashboardPage({
     section,
     routeId,
     navigateToSection,
+    navigateToLetterCreate,
     navigateToRoute,
     navigateToVan,
     replaceWithSection,
+    isCreatingLetter,
   } = navigation
   const isTransporter = profile.role === 'transportista'
   const ensureLetters = dashboard.ensureLetters
@@ -166,25 +171,45 @@ export function AdminDashboardPage({
         pendingLetters={pendingLetters}
         profileRole={profile.role}
         displayName={profile.displayName}
-        title={section === 'whatsapp-test' ? 'Pruebas de WhatsApp' : undefined}
+        title={
+          isCreatingLetter
+            ? 'Nueva carta de porte'
+            : section === 'whatsapp-test'
+              ? 'Pruebas de WhatsApp'
+              : undefined
+        }
         onNavigate={navigateToSection}
         hrefForSection={navigation.hrefForSection}
         onSignOut={() => void dashboard.signOut()}
       >
         <SectionBoundary>
           <Suspense fallback={<PageLoading />}>
-            {!isTransporter && section === 'cartas' && (
-              <LettersPage
-                letters={dashboard.letters}
-                loading={dashboard.lettersLoading}
-                error={dashboard.lettersError}
-                onRetry={() => void dashboard.ensureLetters(true)}
-                onImport={() => dashboard.setShowImport(true)}
-                onEdit={dashboard.setEditingLetter}
-                onInvoice={dashboard.setInvoiceLetter}
-                onOpenClient={searchClient}
-                onOpenInvoices={openInvoicesForLetter}
+            {isCreatingLetter ? (
+              <LetterCreatePage
+                routes={dashboard.dailyRoutes}
+                templates={dashboard.routeTemplates}
+                onClose={() => navigateToSection('cartas')}
+                onCreate={async (draft) => {
+                  await dashboard.createLetter(draft)
+                  navigateToSection('cartas')
+                }}
+                onAddStop={dashboard.addLetterRouteStop}
               />
+            ) : (
+              !isTransporter &&
+              section === 'cartas' && (
+                <LettersPage
+                  letters={dashboard.letters}
+                  loading={dashboard.lettersLoading}
+                  error={dashboard.lettersError}
+                  onRetry={() => void dashboard.ensureLetters(true)}
+                  onImport={navigateToLetterCreate}
+                  onEdit={dashboard.setEditingLetter}
+                  onInvoice={dashboard.setInvoiceLetter}
+                  onOpenClient={searchClient}
+                  onOpenInvoices={openInvoicesForLetter}
+                />
+              )
             )}
             {!isTransporter && section === 'clientes' && (
               <ClientsPage
@@ -288,15 +313,6 @@ export function AdminDashboardPage({
       </DashboardLayout>
       <SectionBoundary label="No hemos podido abrir esta ventana. Vuelve a intentarlo.">
         <Suspense fallback={null}>
-          {!isTransporter && dashboard.showImport && (
-            <LetterFormDialog
-              routes={dashboard.dailyRoutes}
-              templates={dashboard.routeTemplates}
-              onClose={() => dashboard.setShowImport(false)}
-              onCreate={dashboard.createLetter}
-              onAddStop={dashboard.addLetterRouteStop}
-            />
-          )}
           {!isTransporter && dashboard.editingLetter && (
             <LetterFormDialog
               routes={dashboard.dailyRoutes}

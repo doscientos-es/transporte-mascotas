@@ -9,6 +9,7 @@ import {
   dashboardPathFor,
   dashboardPaths,
   isStaffAccessPath,
+  letterCreatePath,
   routePathFor,
   ROUTER_PATHS,
   vanPathFor,
@@ -30,6 +31,9 @@ describe('dashboard routes', () => {
     expect(routePathFor('ruta norte')).toBe('/rutas/ruta%20norte')
     expect(vanPathFor('van/01')).toBe('/furgoneta/van%2F01')
     expect(dashboardLocationForPath('/ajustes/whatsapp')).toEqual({ section: 'whatsapp-test' })
+    expect(letterCreatePath).toBe('/cartas/nueva')
+    expect(ROUTER_PATHS.adminLetterCreate).toBe('cartas/nueva')
+    expect(dashboardLocationForPath(letterCreatePath)).toEqual({ section: 'cartas' })
     expect(APP_PATHS.clientHome).toBe('/mis-transportes')
     expect(DEFAULT_DASHBOARD_SECTIONS.transporter).toBe('rutas')
     expect(ROUTER_PATHS.staffRouteDetail).toBe('rutas/:routeId')

@@ -6,6 +6,7 @@ import type { DashboardNavigation, NavSection } from '@/shared/types'
 import {
   dashboardLocationForPath,
   dashboardPathFor,
+  letterCreatePath,
   routePathFor,
   vanPathFor,
 } from './dashboard-routes'
@@ -23,8 +24,10 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
   return {
     ...location,
     routeId: routeId ?? location.routeId,
+    isCreatingLetter: pathname.replace(/\/+$/, '') === letterCreatePath,
     hrefForSection: dashboardPathFor,
     navigateToSection: (section) => void navigateTo(dashboardPathFor(section)),
+    navigateToLetterCreate: () => void navigateTo(letterCreatePath),
     navigateToRoute: (id) => void navigateTo(routePathFor(id)),
     navigateToVan: (id) => void navigateTo(vanPathFor(id)),
     replaceWithSection: (section) => void navigateTo(dashboardPathFor(section), true),

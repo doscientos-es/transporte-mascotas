@@ -22,11 +22,9 @@ const labels: Record<NavSection, string> = {
 }
 
 export function StaffDashboardRoutePage({ session, profile, navigation }: Props) {
-  const { section } = navigation
-  usePageMetadata(
-    labels[section],
-    `Gestiona ${labels[section].toLocaleLowerCase()} en Kache Envíos.`,
-  )
+  const { isCreatingLetter, section } = navigation
+  const pageLabel = isCreatingLetter ? 'Nueva carta de porte' : labels[section]
+  usePageMetadata(pageLabel, `Gestiona ${pageLabel.toLocaleLowerCase()} en Kache Envíos.`)
 
   return <AdminDashboardPage session={session} profile={profile} navigation={navigation} />
 }

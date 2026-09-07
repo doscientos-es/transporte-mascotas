@@ -190,7 +190,7 @@ export function RoutesPage({
   const visibleRoutes = routes.slice((page - 1) * pageSize, page * pageSize)
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
-  const itineraryClosed = Boolean(route.closedAt)
+  const itineraryClosed = route.status === 'cerrada'
   const canClose = canManage && !itineraryClosed && canCloseRouteOn(route.date)
   const servicesByStop = useMemo(
     () => groupedServices(route, stops, letters),
@@ -405,9 +405,6 @@ export function RoutesPage({
                   <span className={`status status-${route.status}`}>
                     {statusLabels[route.status]}
                   </span>
-                  {itineraryClosed && (
-                    <span className="status status-completada">Itinerario cerrado</span>
-                  )}
                 </div>
               </div>
             </div>

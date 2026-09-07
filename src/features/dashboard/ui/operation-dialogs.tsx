@@ -137,15 +137,7 @@ const todayIso = () => {
   return today.toISOString().slice(0, 10)
 }
 
-export function LetterFormDialog({
-  routes,
-  templates,
-  onClose,
-  onCreate,
-  onAddStop,
-  letter,
-  routeId,
-}: {
+export type LetterFormProps = {
   routes: DailyRoute[]
   templates: RouteTemplate[]
   onClose: () => void
@@ -153,7 +145,18 @@ export function LetterFormDialog({
   onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>
   letter?: Letter
   routeId?: string
-}) {
+}
+
+export function LetterForm({
+  routes,
+  templates,
+  onClose,
+  onCreate,
+  onAddStop,
+  letter,
+  routeId,
+  fullPage = false,
+}: LetterFormProps & { fullPage?: boolean }) {
   const isEditing = Boolean(letter)
   const [draft, setDraft] = useState<LetterDraft>(() =>
     letter
@@ -279,93 +282,108 @@ export function LetterFormDialog({
         (_, index) => current.animals[index] ?? emptyAnimal(),
       ),
     }))
+  const form = (
+    <form
+      className={
+        fullPage
+          ? 'space-y-3 pb-2.5'
+          : 'max-h-[min(69vh,620px)] space-y-3 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]'
+      }
+      onSubmit={(event) => void submit(event)}
+    >
+      <TripSection
+        draft={draft}
+        routes={routes}
+        templates={templates}
+        selectedRoute={selectedRoute}
+        stops={stops}
+        update={update}
+        onRouteChange={selectRoute}
+        onAddStop={setAddingStopFor}
+        lockReference={isEditing}
+      />
+      <ContactsSection draft={draft} update={update} />
+      <Label
+        className="mb-3 grid max-w-[185px] gap-1.5 text-xs font-bold text-[#454545]"
+        htmlFor="animal-count"
+      >
+        Número de animales
+        <Input
+          id="animal-count"
+          type="number"
+          min="1"
+          max="12"
+          value={draft.animals.length}
+          onChange={(event) => updateAnimalCount(Number(event.target.value))}
+          required
+        />
+      </Label>
+      <AnimalsSection
+        animals={draft.animals}
+        updateAnimal={updateAnimal}
+        onAdd={() => updateAnimalCount(draft.animals.length + 1)}
+        onRemove={(index) =>
+          setDraft((current) => ({
+            ...current,
+            animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
+          }))
+        }
+      />
+      <DocumentsSection
+        documents={draft.accompanyingDocuments}
+        onChange={(documents) =>
+          setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
+        }
+      />
+      <BillingAndSignatureSection
+        draft={draft}
+        update={update}
+        onOtherPayerChange={(field, value) =>
+          setDraft((current) => ({
+            ...current,
+            otherPayer: { ...current.otherPayer, [field]: value },
+          }))
+        }
+      />
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="bg-card sticky bottom-0 flex justify-end gap-[9px] pt-[9px] shadow-[0_-8px_14px_#fff] max-sm:[&_button]:flex-1">
+        <Button type="submit" disabled={saving}>
+          <ShieldCheck />{' '}
+          {saving
+            ? 'Guardando carta…'
+            : isEditing
+              ? 'Firmar y guardar cambios'
+              : 'Firmar y crear carta'}
+        </Button>
+      </div>
+    </form>
+  )
   return (
     <>
-      <OperationDialog
-        title={isEditing ? 'Editar carta de porte' : 'Nueva carta de porte'}
-        description="Completa los datos, revísalos y firma la carta antes de guardarla."
-        icon={isEditing ? <FilePenLine size={24} /> : <FilePlus2 size={24} />}
-        onClose={onClose}
-        wide
-      >
-        <form
-          className="max-h-[min(69vh,620px)] space-y-3 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]"
-          onSubmit={(event) => void submit(event)}
+      {fullPage ? (
+        form
+      ) : (
+        <OperationDialog
+          title={isEditing ? 'Editar carta de porte' : 'Nueva carta de porte'}
+          description="Completa los datos, revísalos y firma la carta antes de guardarla."
+          icon={isEditing ? <FilePenLine size={24} /> : <FilePlus2 size={24} />}
+          onClose={onClose}
+          wide
         >
-          <TripSection
-            draft={draft}
-            routes={routes}
-            templates={templates}
-            selectedRoute={selectedRoute}
-            stops={stops}
-            update={update}
-            onRouteChange={selectRoute}
-            onAddStop={setAddingStopFor}
-            lockReference={isEditing}
-          />
-          <ContactsSection draft={draft} update={update} />
-          <Label
-            className="mb-3 grid max-w-[185px] gap-1.5 text-xs font-bold text-[#454545]"
-            htmlFor="animal-count"
-          >
-            Número de animales
-            <Input
-              id="animal-count"
-              type="number"
-              min="1"
-              max="12"
-              value={draft.animals.length}
-              onChange={(event) => updateAnimalCount(Number(event.target.value))}
-              required
-            />
-          </Label>
-          <AnimalsSection
-            animals={draft.animals}
-            updateAnimal={updateAnimal}
-            onAdd={() => updateAnimalCount(draft.animals.length + 1)}
-            onRemove={(index) =>
-              setDraft((current) => ({
-                ...current,
-                animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
-              }))
-            }
-          />
-          <DocumentsSection
-            documents={draft.accompanyingDocuments}
-            onChange={(documents) =>
-              setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
-            }
-          />
-          <BillingAndSignatureSection
-            draft={draft}
-            update={update}
-            onOtherPayerChange={(field, value) =>
-              setDraft((current) => ({
-                ...current,
-                otherPayer: { ...current.otherPayer, [field]: value },
-              }))
-            }
-          />
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="bg-card sticky bottom-0 flex justify-end gap-[9px] pt-[9px] shadow-[0_-8px_14px_#fff] max-sm:[&_button]:flex-1">
-            <Button type="submit" disabled={saving}>
-              <ShieldCheck />{' '}
-              {saving
-                ? 'Guardando carta…'
-                : isEditing
-                  ? 'Firmar y guardar cambios'
-                  : 'Firmar y crear carta'}
-            </Button>
-          </div>
-        </form>
-      </OperationDialog>
+          {form}
+        </OperationDialog>
+      )}
       {addingStopFor && <StopFormDialog onClose={() => setAddingStopFor(null)} onAdd={addStop} />}
     </>
   )
+}
+
+export function LetterFormDialog(props: LetterFormProps) {
+  return <LetterForm {...props} />
 }
 
 function TripSection({

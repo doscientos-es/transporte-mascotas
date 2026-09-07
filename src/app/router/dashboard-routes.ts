@@ -23,6 +23,8 @@ export const APP_PATHS = {
   transporterHome: dashboardPaths.rutas,
 } as const
 
+export const letterCreatePath = `${dashboardPaths.cartas}/nueva`
+
 export const DEFAULT_DASHBOARD_SECTIONS = {
   client: 'mis-transportes',
   staff: 'cartas',
@@ -42,6 +44,7 @@ export const ROUTER_PATHS = {
   staffVanDetail: `${routePath(dashboardPaths.furgoneta)}/:routeId`,
   staffInvoices: routePath(dashboardPaths.facturas),
   adminLetters: routePath(dashboardPaths.cartas),
+  adminLetterCreate: routePath(letterCreatePath),
   adminClients: routePath(dashboardPaths.clientes),
   adminTemplates: routePath(dashboardPaths.plantillas),
   adminRequests: routePath(dashboardPaths.solicitudes),
@@ -61,6 +64,7 @@ export function dashboardLocationForPath(
 ): DashboardLocation {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { section: fallback }
+  if (path === letterCreatePath) return { section: 'cartas' }
   if (path === dashboardPaths.cartas) return { section: 'cartas' }
   if (path === dashboardPaths.plantillas) return { section: 'plantillas' }
   if (path === dashboardPaths.furgoneta) return { section: 'furgoneta' }

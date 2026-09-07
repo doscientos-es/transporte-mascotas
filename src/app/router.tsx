@@ -95,6 +95,11 @@ const router = createBrowserRouter([
             errorElement: <RouteErrorBoundary returnTo={APP_PATHS.staffHome} />,
             children: [
               {
+                path: ROUTER_PATHS.adminLetterCreate,
+                lazy: staffDashboardRoute,
+                HydrateFallback: LoadingRoute,
+              },
+              {
                 path: ROUTER_PATHS.adminLetters,
                 lazy: staffDashboardRoute,
                 HydrateFallback: LoadingRoute,

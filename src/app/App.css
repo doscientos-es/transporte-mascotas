@@ -3150,6 +3150,7 @@ main {
 .stop-kind-recogida,
 .status-en_ruta,
 .status-activa,
+.status-cerrada,
 .status-entregada,
 .status-completada,
 .status-confirmada {

@@ -188,7 +188,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [routesLoading, setRoutesLoading] = useState(Boolean(session))
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
   const [selectedRoute, setSelectedRoute] = useState<DailyRoute | null>(null)
-  const [showImport, setShowImport] = useState(false)
   const [editingLetter, setEditingLetter] = useState<Letter | null>(null)
   const [showNewRoute, setShowNewRoute] = useState(false)
   const [invoiceLetter, setInvoiceLetter] = useState<Letter | null>(null)
@@ -702,7 +701,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
-      setShowImport(false)
       toast(`Carta creada y vinculada a ${routeTemplate.name}.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
@@ -861,7 +859,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       id: crypto.randomUUID(),
       templateId: template.id,
       date,
-      status: 'borrador',
+      status: 'activa',
       transporterId,
       direction,
       stops,
@@ -893,7 +891,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const result = await closeDailyRoute(routeId)
     const update = (item: DailyRoute): DailyRoute =>
       item.id === routeId
-        ? { ...item, closedAt: result?.closedAt ?? new Date().toISOString() }
+        ? { ...item, status: 'cerrada', closedAt: result?.closedAt ?? new Date().toISOString() }
         : item
     setDailyRoutes((current) => current.map(update))
     setSelectedRoute((current) => (current ? update(current) : null))
@@ -998,8 +996,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setSelectedRoute,
     activeTemplate,
     assignments,
-    showImport,
-    setShowImport,
     editingLetter,
     setEditingLetter,
     showNewRoute,

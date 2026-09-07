@@ -26,8 +26,10 @@ export type NavSection =
 export type DashboardNavigation = {
   section: NavSection
   routeId?: string
+  isCreatingLetter: boolean
   hrefForSection: (section: NavSection) => string
   navigateToSection: (section: NavSection) => void
+  navigateToLetterCreate: () => void
   navigateToRoute: (routeId: string) => void
   navigateToVan: (routeId: string) => void
   replaceWithSection: (section: NavSection) => void
@@ -248,7 +250,7 @@ export interface DailyRoute {
   id: string
   templateId: string
   date: string
-  status: 'borrador' | 'activa' | 'completada' | 'cancelada'
+  status: 'activa' | 'cerrada'
   closedAt?: string
   transporterId?: string
   direction?: RouteDirection
