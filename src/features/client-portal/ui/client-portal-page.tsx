@@ -13,13 +13,16 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-import type {
-  ClientPet,
-  DashboardNavigation,
-  TransportRequest,
-  TransportRequestAnimal,
-  UpcomingRoute,
-  UserProfile,
+import { loadTransportBoxPrices } from '@/shared/infrastructure/transport-pricing'
+import {
+  defaultTransportBoxPrices,
+  type ClientPet,
+  type DashboardNavigation,
+  type TransportRequest,
+  type TransportRequestAnimal,
+  type TransportBoxPrices,
+  type UpcomingRoute,
+  type UserProfile,
 } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
@@ -40,6 +43,9 @@ import { UpcomingRouteDetail } from './upcoming-route-detail'
 
 type Props = { session: Session | null; profile: UserProfile; navigation: DashboardNavigation }
 
+const formatCurrency = (cents: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
+
 export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
     navigation
@@ -49,6 +55,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
+  const [boxPrices, setBoxPrices] = useState<TransportBoxPrices>(defaultTransportBoxPrices)
   const [showForm, setShowForm] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -67,14 +74,16 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   const refresh = useCallback(async () => {
     if (!userId) return
-    const [nextRoutes, nextRequests, nextPets] = await Promise.all([
+    const [nextRoutes, nextRequests, nextPets, nextBoxPrices] = await Promise.all([
       loadUpcomingRoutes(),
       loadTransportRequests(userId),
       loadClientPets(),
+      loadTransportBoxPrices(),
     ])
     setRoutes(nextRoutes)
     setRequests(nextRequests)
     setSavedPets(nextPets)
+    setBoxPrices(nextBoxPrices)
     setPendingPaymentRequestId((current) => {
       const currentIsPending = nextRequests.some(
         (request) => request.id === current && request.status === 'pago_pendiente',
@@ -117,16 +126,8 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   async function completeRequestPayment(requestId: string) {
-    await payTransportRequest(requestId)
-    setPendingPaymentRequestId(null)
-    setNotice('Pago registrado. Estamos revisando tu solicitud y te avisaremos al asignar la ruta.')
-    try {
-      await refresh()
-    } catch {
-      setError(
-        'El pago está registrado, pero no hemos podido actualizar la información. Reinténtalo más tarde.',
-      )
-    }
+    const paymentUrl = await payTransportRequest(requestId)
+    window.location.assign(paymentUrl)
   }
 
   async function submitRequest(values?: RequestFormValues) {
@@ -356,6 +357,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               onSubmit={submitRequest}
               onCancel={() => setShowForm(false)}
               onSavePets={saveRecurringPets}
+              boxPrices={boxPrices}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
               initialRouteId={preselectRouteId}
@@ -426,6 +428,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           )}
                       </div>
                       <div className="invoice-amount">
+                        <strong>{formatCurrency(request.amountCents)}</strong>
                         <StatusBadge status={request.status} />
                         {request.paidAt && (
                           <small className="payment-state">

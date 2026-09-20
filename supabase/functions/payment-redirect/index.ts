@@ -9,12 +9,20 @@ type Payment = {
   invoice_id: string
 }
 type Invoice = { status: string; concept: string }
+type TransportRequest = {
+  payment_merchant_order: string
+  amount_cents: number
+  status: string
+  payment_expires_at: string
+}
 
 Deno.serve(async (request) => {
   if (request.method !== 'GET') return new Response('Método no permitido.', { status: 405 })
   try {
     const token = new URL(request.url).searchParams.get('token')
+    const kind = new URL(request.url).searchParams.get('kind')
     if (!token || !/^[0-9a-f-]{36}$/i.test(token)) return page('Enlace de pago no válido.', 400)
+    if (kind === 'transport') return transportPaymentPage(token)
     const paymentResponse = await rest(
       `invoice_payments?public_token=eq.${encodeURIComponent(token)}&select=merchant_order,amount_cents,status,expires_at,invoice_id`,
     )
@@ -32,23 +40,63 @@ Deno.serve(async (request) => {
       DS_MERCHANT_AMOUNT: String(payment.amount_cents),
       DS_MERCHANT_ORDER: payment.merchant_order,
       DS_MERCHANT_MERCHANTCODE: config.merchantCode,
-      DS_MERCHANT_CURRENCY: '978',
-      DS_MERCHANT_TRANSACTIONTYPE: '0',
+      DS_MERCHANT_CURRENCY: config.currency,
+      DS_MERCHANT_TRANSACTIONTYPE: config.transactionType,
       DS_MERCHANT_TERMINAL: config.terminal,
       DS_MERCHANT_MERCHANTURL: `${config.supabaseUrl}/functions/v1/caixabank-webhook`,
       DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok`,
       DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko`,
-      DS_MERCHANT_PAYMETHODS: 'z',
       DS_MERCHANT_PRODUCTDESCRIPTION: invoice.concept.slice(0, 125),
+      ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
     })
     const signature = await cyberpacSignature(payment.merchant_order, parameters, config.secret)
-    return new Response(form(config.endpoint, parameters, signature), {
+    return new Response(form(config.endpoint, config.signatureVersion, parameters, signature), {
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
     })
   } catch (error) {
-    return page(error instanceof Error ? error.message : 'No se ha podido abrir el pago.', 503)
+    console.error(
+      'Cyberpac payment redirect failed',
+      error instanceof Error ? error.message : error,
+    )
+    return page('No se ha podido abrir el pago.', 503)
   }
 })
+
+async function transportPaymentPage(token: string) {
+  const response = await rest(
+    `transport_requests?payment_public_token=eq.${encodeURIComponent(token)}&select=payment_merchant_order,amount_cents,status,payment_expires_at`,
+  )
+  const [payment] = (await response.json()) as TransportRequest[]
+  if (
+    !payment ||
+    payment.status !== 'pago_pendiente' ||
+    !payment.payment_merchant_order ||
+    new Date(payment.payment_expires_at) <= new Date()
+  )
+    return page('Este enlace de pago ya no está disponible.', 410)
+  const config = configuration()
+  const parameters = encodeMerchantParameters({
+    DS_MERCHANT_AMOUNT: String(payment.amount_cents),
+    DS_MERCHANT_ORDER: payment.payment_merchant_order,
+    DS_MERCHANT_MERCHANTCODE: config.merchantCode,
+    DS_MERCHANT_CURRENCY: config.currency,
+    DS_MERCHANT_TRANSACTIONTYPE: config.transactionType,
+    DS_MERCHANT_TERMINAL: config.terminal,
+    DS_MERCHANT_MERCHANTURL: `${config.supabaseUrl}/functions/v1/caixabank-webhook`,
+    DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok`,
+    DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko`,
+    DS_MERCHANT_PRODUCTDESCRIPTION: 'Transporte de mascotas',
+    ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
+  })
+  const signature = await cyberpacSignature(
+    payment.payment_merchant_order,
+    parameters,
+    config.secret,
+  )
+  return new Response(form(config.endpoint, config.signatureVersion, parameters, signature), {
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  })
+}
 
 function configuration() {
   const merchantCode = Deno.env.get('CAIXABANK_CYBERPAC_MERCHANT_CODE')
@@ -57,15 +105,32 @@ function configuration() {
   const publicAppUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
   const endpoint = Deno.env.get('CAIXABANK_CYBERPAC_ENDPOINT')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '')
+  const currency = Deno.env.get('CAIXABANK_CYBERPAC_CURRENCY') || '978'
+  const transactionType = Deno.env.get('CAIXABANK_CYBERPAC_TRANSACTION_TYPE') || '0'
+  const signatureVersion = Deno.env.get('CAIXABANK_CYBERPAC_SIGNATURE_VERSION') || 'HMAC_SHA256_V1'
+  const payMethods = Deno.env.get('CAIXABANK_CYBERPAC_PAYMETHODS')?.trim()
   if (!merchantCode || !terminal || !secret || !publicAppUrl || !endpoint || !supabaseUrl)
-    throw new Error('Bizum para comercios de CaixaBank todavía no está configurado.')
-  return { merchantCode, terminal, secret, publicAppUrl, endpoint, supabaseUrl }
+    throw new Error('La pasarela de CaixaBank todavía no está configurada.')
+  if (signatureVersion !== 'HMAC_SHA256_V1')
+    throw new Error('La versión de firma Cyberpac debe ser HMAC_SHA256_V1.')
+  return {
+    merchantCode,
+    terminal,
+    secret,
+    publicAppUrl,
+    endpoint,
+    supabaseUrl,
+    currency,
+    transactionType,
+    signatureVersion,
+    payMethods,
+  }
 }
 
-function form(endpoint: string, parameters: string, signature: string) {
+function form(endpoint: string, signatureVersion: string, parameters: string, signature: string) {
   const escape = (value: string) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-  return `<!doctype html><html lang="es"><body><p>Abriendo Bizum…</p><form id="payment" action="${escape(endpoint)}" method="post"><input type="hidden" name="Ds_SignatureVersion" value="HMAC_SHA256_V1"><input type="hidden" name="Ds_MerchantParameters" value="${escape(parameters)}"><input type="hidden" name="Ds_Signature" value="${escape(signature)}"></form><script>document.getElementById('payment').submit()</script></body></html>`
+  return `<!doctype html><html lang="es"><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(endpoint)}" method="post"><input type="hidden" name="Ds_SignatureVersion" value="${escape(signatureVersion)}"><input type="hidden" name="Ds_MerchantParameters" value="${escape(parameters)}"><input type="hidden" name="Ds_Signature" value="${escape(signature)}"></form><script>document.getElementById('payment').submit()</script></body></html>`
 }
 
 function page(message: string, status: number) {

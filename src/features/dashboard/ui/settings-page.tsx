@@ -14,6 +14,7 @@ import {
 } from '@doscientos/ui'
 import {
   ArrowUpRight,
+  CircleDollarSign,
   Crown,
   MessageCircle,
   Search,
@@ -21,14 +22,16 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-import type { Transporter } from '@/shared/types'
+import type { TransportBoxPrices, Transporter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 type Props = {
   transporters: Transporter[]
   onPromote: (transporterId: string) => Promise<void>
+  boxPrices: TransportBoxPrices
+  onSaveBoxPrices: (prices: TransportBoxPrices) => Promise<void>
 }
 
 function initialsFor(name: string) {
@@ -43,11 +46,15 @@ function initialsFor(name: string) {
   )
 }
 
-export function SettingsPage({ transporters, onPromote }: Props) {
+export function SettingsPage({ transporters, onPromote, boxPrices, onSaveBoxPrices }: Props) {
   const [query, setQuery] = useState('')
   const [candidate, setCandidate] = useState<Transporter | null>(null)
   const [promoting, setPromoting] = useState(false)
   const [error, setError] = useState('')
+  const [draftPrices, setDraftPrices] = useState(boxPrices)
+  const [savingPrices, setSavingPrices] = useState(false)
+  const [priceError, setPriceError] = useState('')
+  useEffect(() => setDraftPrices(boxPrices), [boxPrices])
   const matchingTransporters = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
     return transporters.filter((transporter) =>
@@ -68,6 +75,24 @@ export function SettingsPage({ transporters, onPromote }: Props) {
       )
     } finally {
       setPromoting(false)
+    }
+  }
+
+  async function savePrices() {
+    if (Object.values(draftPrices).some((price) => !Number.isFinite(price) || price <= 0)) {
+      setPriceError('Introduce un importe positivo para cada tamaño de box.')
+      return
+    }
+    setSavingPrices(true)
+    setPriceError('')
+    try {
+      await onSaveBoxPrices(draftPrices)
+    } catch (reason) {
+      setPriceError(
+        reason instanceof Error ? reason.message : 'No se han podido guardar las tarifas.',
+      )
+    } finally {
+      setSavingPrices(false)
     }
   }
 
@@ -158,6 +183,38 @@ export function SettingsPage({ transporters, onPromote }: Props) {
             </p>
           </div>
         )}
+      </section>
+      <section className="settings-support">
+        <div>
+          <span className="eyebrow">Precios</span>
+          <h2>Tarifa por tamaño de box</h2>
+          <p>El importe se calcula sumando un box por cada mascota de la solicitud.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(['pequeno', 'mediano', 'grande'] as const).map((size) => (
+            <label className="grid gap-1.5 text-xs font-bold text-[#454545]" key={size}>
+              {size === 'pequeno' ? 'Pequeño' : size === 'mediano' ? 'Mediano' : 'Grande'} (€)
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={draftPrices[size]}
+                onChange={(event) =>
+                  setDraftPrices((current) => ({ ...current, [size]: Number(event.target.value) }))
+                }
+                disabled={savingPrices}
+              />
+            </label>
+          ))}
+        </div>
+        {priceError && (
+          <p className="form-error" role="alert">
+            {priceError}
+          </p>
+        )}
+        <Button onClick={() => void savePrices()} disabled={savingPrices}>
+          <CircleDollarSign size={16} /> {savingPrices ? 'Guardando…' : 'Guardar tarifas'}
+        </Button>
       </section>
       <section className="settings-support settings-whatsapp">
         <div>

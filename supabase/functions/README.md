@@ -1,15 +1,15 @@
-# Bizum comercios de CaixaBank (Cyberpac)
+# Pagos con tarjeta de CaixaBank (Cyberpac/Redsys)
 
-Las funciones implementan el flujo **solicitud de pago → Bizum → factura emitida**. El cliente recibe un enlace opaco, completa Bizum en Cyberpac y sólo la notificación firmada emite y numera la factura.
+Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac → factura emitida**. El cliente recibe un enlace opaco, completa el pago en la pasarela alojada y sólo la notificación firmada emite y numera la factura.
 
 ## Antes de desplegar
 
-1. Contratad con CaixaBank la pasarela online **Cyberpac/TPV Virtual con Bizum para comercios** y solicitad acceso de pruebas y producción.
+1. Contratad con CaixaBank la pasarela online **Cyberpac/TPV Virtual para comercios** y solicitad acceso de pruebas y producción.
 2. Configurad los secretos de CaixaBank: `CAIXABANK_CYBERPAC_MERCHANT_CODE`, `CAIXABANK_CYBERPAC_TERMINAL`, `CAIXABANK_CYBERPAC_SECRET`, `CAIXABANK_CYBERPAC_ENDPOINT` y `PUBLIC_APP_URL`.
-3. En Cyberpac configurad la notificación HTTP a `https://<project-ref>.supabase.co/functions/v1/caixabank-webhook` y activad Bizum para el terminal.
-4. Desplegad `invoice-payment`, `payment-redirect`, `caixabank-webhook`, `send-billing-notifications`, `send-transport-notifications`, `issued-invoice` y `confirm-manual-invoice-payment`, aplicad las migraciones y realizad primero una operación en pruebas.
+3. En Cyberpac configurad la notificación HTTP a `https://<project-ref>.supabase.co/functions/v1/caixabank-webhook` para el terminal. La integración usa redirección alojada y tarjetas; no se envían datos de tarjeta a la aplicación.
+4. Desplegad `invoice-payment`, `transport-payment`, `payment-redirect`, `caixabank-webhook`, `send-billing-notifications`, `send-transport-notifications`, `issued-invoice` y `confirm-manual-invoice-payment`, aplicad las migraciones y realizad primero una operación en pruebas.
 
-`CAIXABANK_CYBERPAC_ENDPOINT` debe ser la URL que entregue CaixaBank para cada entorno; no se debe adivinar ni guardar ninguna clave en el frontend.
+`CAIXABANK_CYBERPAC_ENDPOINT` debe ser la URL que entregue CaixaBank para cada entorno; en test suele ser `https://sis-t.redsys.es:25443/sis/realizarPago`. No se debe adivinar ni guardar ninguna clave en el frontend. Para restringir métodos opcionalmente se puede usar `CAIXABANK_CYBERPAC_PAYMETHODS`; si se deja vacío, Cyberpac muestra los métodos habilitados para el terminal.
 
 ## Facturación y comunicaciones
 
@@ -52,6 +52,12 @@ Una carta de porte manual queda programada al guardarse; una solicitud queda pro
 Cerrar una ruta el día anterior deja una notificación durable por cada teléfono de cliente implicado. Cuando se configure la API, desplegad e invocad `send-daily-route-closure-notifications` para procesarla. Configurad `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE` como plantilla de utilidad, idioma `es`, con tres variables de cuerpo: nombre del cliente, fecha de servicio e itinerario.
 
 La página **Ajustes → Pruebas de WhatsApp** comprueba ambos mensajes sin crear datos de clientes. Para despachar cartas automáticamente, configurad `CARRIAGE_LETTER_NOTIFICATIONS_CRON_SECRET` y un cron cada cinco minutos que invoque `send-carriage-letter-notifications` con `POST`, el cuerpo `{ "action": "dispatch" }` y la cabecera `x-carriage-letter-notifications-cron-secret`. Configurad otro cron equivalente para `send-billing-notifications`, usando `BILLING_NOTIFICATIONS_CRON_SECRET` y `x-billing-notifications-cron-secret`. El procesador reclama cada aviso de forma atómica y permite reintentos seguros; sin esos secretos, los endpoints sólo aceptan sesiones de administrador.
+
+Las solicitudes de transporte usan `transport-payment`: el importe se calcula en la base
+de datos según el tamaño de cada box y se guarda en la solicitud antes de generar el
+enlace de Cyberpac. Las tarifas iniciales son 80 €, 100 € y 140 € para pequeño,
+mediano y grande; sólo un administrador puede cambiarlas desde **Ajustes → Tarifa por
+tamaño de box**.
 
 Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. Cada envío queda registrado y los reintentos se reclaman de forma atómica para evitar duplicados.
 

@@ -26,8 +26,14 @@ import {
 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
+import { animalSizeLabel, sizeForMeasurements } from '@/shared/application/animal-size'
 import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
-import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+import type {
+  ClientPet,
+  TransportBoxPrices,
+  TransportRequestAnimal,
+  UpcomingRoute,
+} from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 
@@ -44,6 +50,8 @@ export type RequestFormValues = {
 }
 
 const steps = ['Contacto', 'Trayecto', 'Mascotas', 'Revisar']
+const currency = (amount: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   ordinal,
   name: '',
@@ -121,6 +129,7 @@ type Props = {
   onSubmit: (values: RequestFormValues) => Promise<void>
   onCancel: () => void
   onSavePets: (animals: TransportRequestAnimal[]) => Promise<void>
+  boxPrices: TransportBoxPrices
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
   initialRouteId?: string
@@ -135,6 +144,7 @@ export function ClientRequestForm({
   onSubmit,
   onCancel,
   onSavePets,
+  boxPrices,
   pendingPayment = false,
   onRetryPayment,
   initialRouteId,
@@ -277,6 +287,10 @@ export function ClientRequestForm({
   }
 
   const selectedRoute = routes.find((route) => route.id === values.dailyRouteId)
+  const requestTotal = values.animals.reduce(
+    (total, animal) => total + boxPrices[sizeForMeasurements(animal)],
+    0,
+  )
   const routeStops = selectedRoute?.localities ?? []
   const destinationStops = values.origin
     ? routeStops.slice(routeStops.indexOf(values.origin) + 1)
@@ -721,6 +735,10 @@ export function ClientRequestForm({
                       />
                     </Field>
                   </div>
+                  <p className="text-muted-foreground mt-3 text-xs">
+                    Box {animalSizeLabel(sizeForMeasurements(animal)).toLocaleLowerCase()} ·{' '}
+                    {currency(boxPrices[sizeForMeasurements(animal)])}
+                  </p>
                 </div>
               ))}
               <Button
@@ -779,6 +797,11 @@ export function ClientRequestForm({
                     {values.animals.length} mascota{values.animals.length === 1 ? '' : 's'}
                   </strong>
                   <small>{values.animals.map((animal) => animal.species).join(' · ')}</small>
+                </div>
+                <div>
+                  <span>Importe del transporte</span>
+                  <strong>{currency(requestTotal)}</strong>
+                  <small>Según el tamaño de cada box</small>
                 </div>
               </div>
               <p className="payment-note">

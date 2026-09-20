@@ -2,21 +2,27 @@ import type { Session } from '@supabase/supabase-js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
-import type {
-  Animal,
-  AppRole,
-  Client,
-  ClientInvoice,
-  DailyRoute,
-  DailyRouteStop,
-  InvoiceClientInput,
-  Letter,
-  LetterDraft,
-  ManualPaymentMethod,
-  RouteDirection,
-  RouteTemplate,
-  ServiceAction,
-  Transporter,
+import {
+  loadTransportBoxPrices,
+  saveTransportBoxPrices,
+} from '@/shared/infrastructure/transport-pricing'
+import {
+  defaultTransportBoxPrices,
+  type Animal,
+  type AppRole,
+  type Client,
+  type ClientInvoice,
+  type DailyRoute,
+  type DailyRouteStop,
+  type InvoiceClientInput,
+  type Letter,
+  type LetterDraft,
+  type ManualPaymentMethod,
+  type RouteDirection,
+  type RouteTemplate,
+  type ServiceAction,
+  type Transporter,
+  type TransportBoxPrices,
 } from '@/shared/types'
 
 import {
@@ -185,6 +191,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
+  const [boxPrices, setBoxPrices] = useState<TransportBoxPrices>(defaultTransportBoxPrices)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
   const [routesLoading, setRoutesLoading] = useState(Boolean(session))
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
@@ -273,6 +280,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
       loadTransporters()
         .then(setTransporters)
         .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
+      loadTransportBoxPrices()
+        .then(setBoxPrices)
+        .catch(() => toast('No se han podido cargar las tarifas de transporte.'))
     }
   }, [role, session, toast])
 
@@ -291,6 +301,19 @@ export function useDashboard(session: Session | null, role: AppRole) {
       toast(`${transporter.displayName} ahora es administrador.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido actualizar el rol.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function updateBoxPrices(prices: TransportBoxPrices) {
+    try {
+      await saveTransportBoxPrices(prices)
+      setBoxPrices(prices)
+      toast('Tarifas de box actualizadas.')
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se han podido guardar las tarifas.'
       toast(message)
       throw error
     }
@@ -967,6 +990,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     ensureLetters,
     routeTemplates,
     transporters,
+    boxPrices,
     dailyRoutes,
     routesLoading,
     selectedTemplate,
@@ -985,6 +1009,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast,
     signOut,
     promoteTransporter,
+    updateBoxPrices,
     updateActions,
     updateRouteStops,
     suggestRouteStop,

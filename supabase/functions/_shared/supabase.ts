@@ -39,6 +39,14 @@ export async function rest(path: string, init: RequestInit = {}) {
 }
 
 export async function requireAdmin(request: Request) {
+  const user = await requireUser(request)
+  const profileResponse = await rest(`profiles?id=eq.${encodeURIComponent(user.id)}&select=role`)
+  const [profile] = (await profileResponse.json()) as Array<{ role: string }>
+  if (profile?.role !== 'admin') throw new Error('No tienes permisos para generar pagos.')
+  return user.id
+}
+
+export async function requireUser(request: Request) {
   const authorization = request.headers.get('authorization')
   const url = Deno.env.get('SUPABASE_URL')
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -47,9 +55,5 @@ export async function requireAdmin(request: Request) {
     headers: { apikey: key, Authorization: authorization },
   })
   if (!userResponse.ok) throw new Error('No autenticado.')
-  const user = (await userResponse.json()) as { id: string }
-  const profileResponse = await rest(`profiles?id=eq.${encodeURIComponent(user.id)}&select=role`)
-  const [profile] = (await profileResponse.json()) as Array<{ role: string }>
-  if (profile?.role !== 'admin') throw new Error('No tienes permisos para generar pagos.')
-  return user.id
+  return (await userResponse.json()) as { id: string }
 }

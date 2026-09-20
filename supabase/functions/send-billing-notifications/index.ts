@@ -66,7 +66,7 @@ function requirePaymentConfiguration() {
     'INVOICE_ISSUER_ADDRESS',
   ]
   if (required.some((name) => !Deno.env.get(name)))
-    throw new Error('Falta configurar CaixaBank o los datos fiscales del emisor.')
+    throw new Error('Falta configurar la pasarela de CaixaBank o los datos fiscales del emisor.')
 }
 
 function isCronRequest(request: Request) {

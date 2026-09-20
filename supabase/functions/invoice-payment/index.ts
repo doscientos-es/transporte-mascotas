@@ -14,7 +14,7 @@ Deno.serve(async (request) => {
   try {
     await requireAdmin(request)
     if (!isCyberpacConfigured())
-      return json({ error: 'Bizum para comercios de CaixaBank todavía no está configurado.' })
+      return json({ error: 'La pasarela de CaixaBank todavía no está configurada.' })
     const { invoiceId } = (await request.json()) as { invoiceId?: string }
     if (!invoiceId || !/^[0-9a-f-]{36}$/i.test(invoiceId))
       return json({ error: 'Factura no válida.' }, 400)

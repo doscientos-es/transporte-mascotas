@@ -28,6 +28,9 @@ arquitectura, y Oxfmt para un formato rápido y determinista.
 La guía de capas y la migración incremental a features está en
 [`docs/frontend-architecture.md`](./docs/frontend-architecture.md).
 
+La configuración y el checklist de pruebas del TPV virtual de CaixaBank están en
+[`docs/caixabank-cyberpac-test.md`](./docs/caixabank-cyberpac-test.md).
+
 Los documentos de entrada se clasifican en
 [`docs/documentos-referencia`](./docs/documentos-referencia/README.md) y no se incluyen en el
 bundle de producción.

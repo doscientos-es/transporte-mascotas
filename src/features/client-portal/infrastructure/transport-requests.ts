@@ -24,6 +24,7 @@ type RequestRow = {
   destination_longitude: number | null
   notes: string
   status: TransportRequest['status']
+  amount_cents: number
   payment_reference: string
   paid_at: string | null
   admin_note: string
@@ -60,6 +61,7 @@ function mapRequest(row: RequestRow): TransportRequest {
     destinationLongitude: row.destination_longitude ?? undefined,
     notes: row.notes,
     status: row.status,
+    amountCents: row.amount_cents,
     paymentReference: row.payment_reference,
     paidAt: row.paid_at ?? undefined,
     adminNote: row.admin_note,
@@ -165,7 +167,14 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
 export async function createTransportRequest(
   input: Omit<
     TransportRequest,
-    'id' | 'requesterId' | 'status' | 'paymentReference' | 'createdAt' | 'adminNote' | 'paidAt'
+    | 'id'
+    | 'requesterId'
+    | 'status'
+    | 'amountCents'
+    | 'paymentReference'
+    | 'createdAt'
+    | 'adminNote'
+    | 'paidAt'
   >,
 ) {
   const database = requireSupabase()
@@ -201,19 +210,15 @@ export async function createTransportRequest(
   return data as string
 }
 
-// Placeholder for the Redsys redirect: the gateway will end up calling the same
-// RPC with its own operation reference.
 export async function payTransportRequest(requestId: string) {
-  const reference = `SIMULADO-${Date.now()}`
-  const { error } = await requireSupabase().rpc('confirm_transport_request_payment', {
-    p_request_id: requestId,
-    p_reference: reference,
+  const { data, error } = await requireSupabase().functions.invoke('transport-payment', {
+    body: { requestId },
   })
-  if (error)
-    throwRequestError(
-      error,
-      'No se ha podido registrar el pago. Vuelve a intentarlo sin crear otra solicitud.',
-    )
+  if (error) throw new Error('No se ha podido preparar el pago. Vuelve a intentarlo.')
+  const result = data as { paymentUrl?: string; error?: string } | null
+  if (result?.error) throw new Error(result.error)
+  if (!result?.paymentUrl) throw new Error('No se ha recibido el enlace de pago.')
+  return result.paymentUrl
 }
 
 export async function confirmTransportRequest(

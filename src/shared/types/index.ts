@@ -1,4 +1,10 @@
 export type AnimalSize = 'pequeno' | 'mediano' | 'grande'
+export type TransportBoxPrices = Record<AnimalSize, number>
+export const defaultTransportBoxPrices: TransportBoxPrices = {
+  pequeno: 80,
+  mediano: 100,
+  grande: 140,
+}
 export type LetterStatus =
   | 'pendiente'
   | 'revisada'
@@ -317,6 +323,7 @@ export interface TransportRequest {
   destinationLongitude?: number
   notes: string
   status: TransportRequestStatus
+  amountCents: number
   paymentReference: string
   paidAt?: string
   adminNote: string
