@@ -2,9 +2,13 @@
 
 ## Alcance
 
-Kache Envíos usa una única cuenta de WhatsApp Business propia. Los clientes no
-aportan credenciales ni pagan Meta: reciben comunicaciones transaccionales sobre
-su transporte o su pago.
+Kache Envíos usa dos números separados. El número principal del transportista
+permanece en su app de WhatsApp Business para la conversación humana, sin
+migrarlo ni tocarlo. Los avisos transaccionales salen de un número nuevo
+dedicado, registrado en la Cloud API, que paga Meta por mensaje sin cuotas a
+terceros. Los clientes no aportan credenciales ni pagan Meta: reciben
+comunicaciones sobre su transporte o su pago, y si escriben al número de avisos
+una autorespuesta los redirige al teléfono principal.
 
 Los avisos son una cola durable: crear una carta, una solicitud de pago o una
 factura nunca depende de que Meta esté disponible en ese momento.
@@ -40,6 +44,12 @@ frontend.
 | `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`         | Recordatorio de ruta                      |
 | `META_WHATSAPP_PAYMENT_TEMPLATE`                | Solicitud de pago                         |
 | `META_WHATSAPP_INVOICE_TEMPLATE`                | Factura emitida                           |
+| `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE`    | Cierre de itinerario diario               |
+
+Para el webhook del número de avisos (autorespuesta que redirige al teléfono
+principal) hay que añadir `META_WHATSAPP_VERIFY_TOKEN`, `META_WHATSAPP_APP_SECRET`
+y `META_WHATSAPP_AUTOREPLY_TEXT`, y desplegar `whatsapp-webhook` con el campo
+`messages` suscrito en Meta.
 
 Las plantillas de confirmación y recordatorio requieren seis variables de cuerpo,
 en este orden: nombre del contacto, fecha, origen, destino, enlace Maps de

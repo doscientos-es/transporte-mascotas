@@ -422,3 +422,17 @@ verify_jwt = true
 
 [functions.send-transport-notifications]
 verify_jwt = false
+
+[functions.send-carriage-letter-notifications]
+verify_jwt = false
+
+[functions.send-billing-notifications]
+verify_jwt = false
+
+[functions.send-daily-route-closure-notifications]
+verify_jwt = false
+
+# Meta's servers call this endpoint; authentication is the signed payload plus
+# the verify token exchange, never a Supabase JWT.
+[functions.whatsapp-webhook]
+verify_jwt = false
