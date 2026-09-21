@@ -31,5 +31,7 @@ describe('DashboardLayout', () => {
     expect(markup).toContain('flex-1')
     expect(markup).toContain('kache-dashboard-sidebar')
     expect(markup).toContain('kache-dashboard-mobile-navigation')
+    expect(markup).toContain('data-slot="button"')
+    expect(markup).toContain('aria-label="Abrir menú de perfil"')
   })
 })

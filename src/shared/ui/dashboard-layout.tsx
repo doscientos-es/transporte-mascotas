@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  Button,
   MobileNavigation,
   MobileNavigationItem,
   PopoverContent,
@@ -157,7 +158,7 @@ export function DashboardLayout({
         <div className="mt-auto grid gap-3 border-t border-[#3b3b3b] px-2.5 pt-4 pb-1 text-xs">
           <div className="relative">
             <PopoverTrigger>
-              <button
+              <Button
                 type="button"
                 className="flex min-h-[52px] w-full cursor-pointer items-center gap-2.5 rounded-[10px] bg-transparent p-2 text-left text-inherit transition-colors hover:bg-[#303030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:bg-[#303030]"
                 aria-label="Abrir menú de perfil"
@@ -171,7 +172,7 @@ export function DashboardLayout({
                     <ShieldCheck size={13} /> {roleLabel}
                   </span>
                 </span>
-              </button>
+              </Button>
               <PopoverContent
                 placement="top start"
                 className="min-w-[196px] rounded-xl border-[#4a4a4a] bg-[#171717] p-2 shadow-[0_14px_30px_rgb(0_0_0_/_42%)]"
