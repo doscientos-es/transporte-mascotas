@@ -242,13 +242,22 @@ export function useDashboard(session: Session | null, role: AppRole) {
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
   useEffect(() => {
+    let active = true
     if (!session) {
+      setRouteTemplates([])
+      setTransporters([])
+      setDailyRoutes([])
+      setSelectedTemplate(null)
+      setSelectedRoute(null)
       setRoutesLoading(false)
-      return
+      return () => {
+        active = false
+      }
     }
     setRoutesLoading(true)
     void Promise.allSettled([loadRouteTemplates(), loadDailyRoutes()])
       .then(([templatesResult, routesResult]) => {
+        if (!active) return
         if (templatesResult.status === 'fulfilled') {
           const loadedTemplates = templatesResult.value
           setRouteTemplates(loadedTemplates)
@@ -273,14 +282,27 @@ export function useDashboard(session: Session | null, role: AppRole) {
           toast('No se han podido cargar las rutas programadas.')
         }
       })
-      .finally(() => setRoutesLoading(false))
+      .finally(() => {
+        if (active) setRoutesLoading(false)
+      })
     if (role === 'admin') {
       loadTransporters()
-        .then(setTransporters)
-        .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
+        .then((loadedTransporters) => {
+          if (active) setTransporters(loadedTransporters)
+        })
+        .catch(() => {
+          if (active) toast('No se ha podido cargar el equipo de transporte.')
+        })
       loadTransportBoxCatalog()
-        .then(setBoxCatalog)
-        .catch(() => toast('No se han podido cargar las tarifas de transporte.'))
+        .then((loadedCatalog) => {
+          if (active) setBoxCatalog(loadedCatalog)
+        })
+        .catch(() => {
+          if (active) toast('No se han podido cargar las tarifas de transporte.')
+        })
+    }
+    return () => {
+      active = false
     }
   }, [role, session, toast])
 

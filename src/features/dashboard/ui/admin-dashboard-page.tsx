@@ -18,14 +18,30 @@ function lazyWithRetry<T extends Record<string, unknown>, P>(
     let lastError: unknown
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return { default: select(await load()) }
+        const loaded = select(await load())
+        sessionStorage.removeItem('kache:chunk-reload')
+        return { default: loaded }
       } catch (error) {
         lastError = error
         if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 150))
       }
     }
+    if (isStaleChunkError(lastError)) {
+      const reloadKey = 'kache:chunk-reload'
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1')
+        window.location.reload()
+        throw new Error('Actualizando la aplicación…')
+      }
+      sessionStorage.removeItem(reloadKey)
+    }
     throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la sección.')
   })
+}
+
+function isStaleChunkError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  return /dynamically imported module|importing a module script failed|loading chunk/i.test(message)
 }
 
 const ClientsPage = lazyWithRetry(
@@ -136,13 +152,15 @@ export function AdminDashboardPage({
     : dashboard.letters.filter((letter) => letter.status === 'pendiente').length
   const sectionNeedsLetters =
     !isTransporter && ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
+  const routesLoading = dashboard.routesLoading
+  const setSelectedRoute = dashboard.setSelectedRoute
 
   useEffect(() => {
     if ((section !== 'rutas' && section !== 'furgoneta') || !routeId) return
-    if (dashboard.routesLoading) return
-    if (routeFromUrl) dashboard.setSelectedRoute(routeFromUrl)
+    if (routesLoading) return
+    if (routeFromUrl) setSelectedRoute(routeFromUrl)
     else replaceWithSection(section)
-  }, [dashboard, replaceWithSection, routeFromUrl, routeId, section])
+  }, [replaceWithSection, routeFromUrl, routeId, routesLoading, section, setSelectedRoute])
 
   useEffect(() => {
     if (sectionNeedsLetters) void ensureLetters()

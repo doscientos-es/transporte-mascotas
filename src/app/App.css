@@ -1463,7 +1463,7 @@
 
 .invoice-filters {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) repeat(5, minmax(120px, max-content));
+  grid-template-columns: minmax(190px, 1fr) repeat(4, minmax(120px, max-content));
   gap: 10px;
   max-width: 920px;
   margin-bottom: 8px;
@@ -1487,6 +1487,15 @@
   color: #171717;
   font: inherit;
   font-size: 13px;
+}
+
+.invoice-direction-toggle {
+  display: flex;
+  align-items: end;
+}
+
+.invoice-direction-toggle [data-slot='button'] {
+  min-width: 38px;
 }
 
 .invoice-results {
@@ -3756,6 +3765,56 @@
 }
 
 /* Invoice and request handling polish */
+.invoice-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1080px;
+  margin-bottom: 14px;
+  padding: 2px 2px 0;
+}
+
+.invoice-page-heading h2 {
+  margin: 3px 0 4px;
+  color: #171717;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.invoice-page-heading p:last-child {
+  margin: 0;
+  color: #686868;
+  font-size: 13px;
+}
+
+.invoice-page-kicker {
+  margin: 0;
+  color: #cf1f2a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.invoice-page-total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: #686868;
+}
+
+.invoice-page-total strong {
+  color: #171717;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.invoice-page-total span {
+  font-size: 11px;
+}
+
 .invoice-brand-hero {
   position: relative;
   display: grid;

@@ -1,5 +1,5 @@
 import { Button, Card, CardContent, Pagination } from '@doscientos/ui'
-import { ChevronRight, ClipboardList, PawPrint, RefreshCw } from 'lucide-react'
+import { ChevronRight, PawPrint, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import {
@@ -440,11 +440,6 @@ export function RequestsPage({ routes, onNotify }: Props) {
           )}
         </CardContent>
       </Card>
-      {requests.length === 0 && (
-        <p className="empty-copy">
-          <ClipboardList size={15} /> Las solicitudes del portal de clientes aparecerán aquí.
-        </p>
-      )}
     </>
   )
 }

@@ -37,9 +37,9 @@ export function useAuthSession() {
         if (active) setReady(true)
       })
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) =>
-      setSession(nextSession),
-    )
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (active) setSession(nextSession)
+    })
     return () => {
       active = false
       subscription.subscription.unsubscribe()

@@ -8,13 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
   Pagination,
+  Tooltip,
 } from '@doscientos/ui'
-import { CheckCircle2, Download, Eye, FileText, ReceiptText } from 'lucide-react'
+import {
+  ArrowDownWideNarrow,
+  ArrowUpWideNarrow,
+  CheckCircle2,
+  Download,
+  Eye,
+  FileText,
+  ReceiptText,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { ClientInvoice, ManualPaymentMethod, PaginatedResult } from '@/shared/types'
-import { BrandLogo } from '@/shared/ui/brand-logo'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
@@ -27,6 +35,7 @@ import {
 } from '../application/paginated-lists'
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
+import { toggleSortDirection } from '../application/sort-direction'
 
 const sortDirections = ['asc', 'desc'] as const
 const currency = (amount: number) =>
@@ -67,7 +76,6 @@ export function InvoicesPage({
   const invoices = result.items
   const firstRecord = result.total === 0 ? 0 : (currentPage - 1) * INVOICE_LIST_PAGE_SIZE + 1
   const lastRecord = Math.min(currentPage * INVOICE_LIST_PAGE_SIZE, result.total)
-  const visibleTotal = invoices.reduce((total, invoice) => total + invoice.total, 0)
   const previewing =
     invoices.find(
       (item) => item.id === (searchParams.get('factura') ?? searchParams.get('invoice')),
@@ -170,37 +178,20 @@ export function InvoicesPage({
   }
   return (
     <>
-      <section className="invoice-brand-hero" aria-label="Área de facturación Kache Envíos">
-        <div className="invoice-brand-lockup">
-          <div className="invoice-brand-logo-wrap">
-            <BrandLogo variant="dark" className="invoice-brand-logo" />
-          </div>
-          <span>Kache Envíos</span>
-        </div>
-        <div className="invoice-brand-copy">
-          <h2>{isPaymentRequests ? 'Solicitudes de pago' : 'Facturas de transporte'}</h2>
+      <section className="invoice-page-heading" aria-label="Facturación">
+        <div>
+          <p className="invoice-page-kicker">Facturación</p>
+          <h2>{isPaymentRequests ? 'Solicitudes de pago' : 'Facturas'}</h2>
           <p>
             {isPaymentRequests
-              ? 'Gestiona las solicitudes de pago creadas al dar de alta una carta de porte.'
-              : transportista
-                ? 'Consulta y descarga los documentos vinculados a tus servicios asignados.'
-                : 'Consulta, descarga y reenvía las facturas emitidas tras confirmar cada cobro.'}
+              ? 'Pendientes de cobro y revisión.'
+              : 'Documentos emitidos y listos para consultar.'}
           </p>
         </div>
-        <dl className="invoice-brand-summary" aria-label="Resumen de facturación">
-          <div>
-            <dt>Documentos</dt>
-            <dd>{loading ? '—' : result.total}</dd>
-          </div>
-          <div>
-            <dt>En esta página</dt>
-            <dd>{loading ? '—' : invoices.length}</dd>
-          </div>
-          <div>
-            <dt>Importe mostrado</dt>
-            <dd>{loading ? '—' : currency(visibleTotal)}</dd>
-          </div>
-        </dl>
+        <div className="invoice-page-total">
+          <strong>{loading ? '—' : result.total}</strong>
+          <span>{result.total === 1 ? 'documento' : 'documentos'}</span>
+        </div>
       </section>
       <section className="invoice-filter-surface" aria-label="Consulta de facturas">
         <div className="invoice-filter-heading">
@@ -263,18 +254,42 @@ export function InvoicesPage({
               <option value="status">Estado</option>
             </select>
           </label>
-          <label>
-            Dirección
-            <select
-              value={direction}
-              onChange={(event) =>
-                updateParams({ direccion: event.target.value as SortDirection, ...resetPage() })
-              }
-            >
-              <option value="desc">Descendente</option>
-              <option value="asc">Ascendente</option>
-            </select>
-          </label>
+          {isPaymentRequests ? (
+            <div className="invoice-direction-toggle">
+              <Tooltip
+                label={`Orden ${direction === 'desc' ? 'descendente' : 'ascendente'}. Pulsa para cambiarla.`}
+              >
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label={`Cambiar a orden ${direction === 'desc' ? 'ascendente' : 'descendente'}`}
+                  onClick={() =>
+                    updateParams({ direccion: toggleSortDirection(direction), ...resetPage() })
+                  }
+                >
+                  {direction === 'desc' ? (
+                    <ArrowDownWideNarrow size={16} aria-hidden="true" />
+                  ) : (
+                    <ArrowUpWideNarrow size={16} aria-hidden="true" />
+                  )}
+                </Button>
+              </Tooltip>
+            </div>
+          ) : (
+            <label>
+              Dirección
+              <select
+                value={direction}
+                onChange={(event) =>
+                  updateParams({ direccion: event.target.value as SortDirection, ...resetPage() })
+                }
+              >
+                <option value="desc">Descendente</option>
+                <option value="asc">Ascendente</option>
+              </select>
+            </label>
+          )}
         </div>
       </section>
       <div className="invoice-results" aria-live="polite">
