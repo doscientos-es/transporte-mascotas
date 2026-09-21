@@ -1,6 +1,6 @@
 -- Real box catalogue and the distinction between the automatic recommendation,
 -- the client's requested category and the final operational assignment.
-create table public.transport_box_catalog (
+create table if not exists public.transport_box_catalog (
   category text primary key check (category in ('pequeno', 'mediano', 'grande', 'paso_rueda')),
   label text not null,
   amount_cents integer not null check (amount_cents > 0),
@@ -25,13 +25,16 @@ on conflict (category) do update set
   dimensions = excluded.dimensions,
   sort_order = excluded.sort_order;
 
+drop trigger if exists transport_box_catalog_updated_at on public.transport_box_catalog;
 create trigger transport_box_catalog_updated_at
 before update on public.transport_box_catalog
 for each row execute function public.set_updated_at();
 
 alter table public.transport_box_catalog enable row level security;
+drop policy if exists "transport box catalog authenticated read" on public.transport_box_catalog;
 create policy "transport box catalog authenticated read" on public.transport_box_catalog
   for select to authenticated using (true);
+drop policy if exists "transport box catalog admin manage" on public.transport_box_catalog;
 create policy "transport box catalog admin manage" on public.transport_box_catalog
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 grant select on public.transport_box_catalog to authenticated;
@@ -136,6 +139,7 @@ end;
 $$;
 
 drop trigger if exists transport_request_animals_size on public.transport_request_animals;
+drop trigger if exists transport_request_animals_box_categories on public.transport_request_animals;
 create trigger transport_request_animals_box_categories
 before insert or update of weight_kg, length_cm, height_cm, width_cm, requested_box_category, assigned_box_category
 on public.transport_request_animals

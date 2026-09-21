@@ -11,13 +11,13 @@ describe('requestErrorMessage', () => {
     ).toBe('La salida ya no está disponible')
   })
 
-  it('hides database and network implementation details', () => {
+  it('turns validation errors into useful user feedback', () => {
     expect(
       requestErrorMessage(
         { code: '22P02', message: 'invalid input syntax for type numeric' },
         fallback,
       ),
-    ).toBe(fallback)
+    ).toBe('Revisa el peso, las medidas y los datos obligatorios de cada mascota.')
     expect(requestErrorMessage(new TypeError('Failed to fetch'), fallback)).toBe(fallback)
   })
 })
