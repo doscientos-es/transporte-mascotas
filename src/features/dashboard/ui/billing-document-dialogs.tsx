@@ -30,6 +30,7 @@ export function InvoicePreviewDialog({
   onClose: () => void
 }) {
   const [document, setDocument] = useState<{ blob: Blob; fileName: string } | null>(null)
+  const [sourceUrl, setSourceUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -38,6 +39,7 @@ export function InvoicePreviewDialog({
     prepareInvoiceDocument(invoice.invoiceDraftId)
       .then(async (preparedDocument) => {
         if (!preparedDocument) return
+        if (active) setSourceUrl(preparedDocument.url)
         const response = await fetch(preparedDocument.url)
         if (!response.ok) throw new Error('No se ha podido descargar la factura.')
         if (active) {
@@ -81,9 +83,17 @@ export function InvoicePreviewDialog({
         </div>
         {loading && <p className="page-loading">Preparando factura…</p>}
         {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <div className="form-error" role="alert">
+            <p>{error}</p>
+            {sourceUrl && (
+              <Button
+                variant="outline"
+                onClick={() => window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
+              >
+                <ExternalLink /> Abrir factura
+              </Button>
+            )}
+          </div>
         )}
         {document && (
           <PaymentRequestPdfPreview

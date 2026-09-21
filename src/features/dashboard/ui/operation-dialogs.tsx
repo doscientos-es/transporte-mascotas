@@ -70,7 +70,7 @@ function OperationDialog({
       }}
     >
       <DialogContent
-        className={`dialog-card w-[calc(100%-2.5rem)]! p-6.5! ${wide ? 'max-w-190!' : 'max-w-115!'}`}
+        className={`dialog-card route-create-dialog w-[calc(100%-2.5rem)]! p-6.5! ${wide ? 'max-w-190!' : 'max-w-115!'}`}
       >
         <DialogHeader className="gap-0">
           <div className="dialog-icon">{icon}</div>

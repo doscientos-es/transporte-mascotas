@@ -1078,9 +1078,20 @@
 
 .route-stop-selection-list {
   display: grid;
-  max-height: 230px;
+  height: min(230px, 32vh);
+  min-height: 0;
   gap: 6px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  position: relative;
+  isolation: isolate;
+}
+
+.route-create-dialog {
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .route-stop-selection-list [data-slot='checkbox'] {

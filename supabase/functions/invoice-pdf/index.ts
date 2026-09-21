@@ -86,6 +86,7 @@ Deno.serve(async (request) => {
     const disposition = url.searchParams.get('download') === '1' ? 'attachment' : 'inline'
     return new Response(storedFile.body, {
       headers: {
+        ...corsHeaders,
         'Content-Type': 'application/pdf',
         'Content-Disposition': `${disposition}; filename="${document.file_name}"; filename*=UTF-8''${encodeURIComponent(document.file_name)}`,
         'Cache-Control': 'private, no-store',
