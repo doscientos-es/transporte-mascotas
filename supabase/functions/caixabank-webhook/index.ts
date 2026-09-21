@@ -1,5 +1,10 @@
 import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
-import { cyberpacSignature, decodeMerchantParameters, safeEqual } from '../_shared/cyberpac.ts'
+import {
+  cyberpacSignature,
+  decodeMerchantParameters,
+  safeEqual,
+  type CyberpacSignatureVersion,
+} from '../_shared/cyberpac.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import {
   isSuccessfulCyberpacPayment,
@@ -31,7 +36,14 @@ Deno.serve(async (request) => {
     const merchantCode = Deno.env.get('CAIXABANK_CYBERPAC_MERCHANT_CODE')
     const terminal = Deno.env.get('CAIXABANK_CYBERPAC_TERMINAL')
     const currency = Deno.env.get('CAIXABANK_CYBERPAC_CURRENCY') || '978'
-    const expectedSignature = secret ? await cyberpacSignature(order, parameters, secret) : ''
+    const expectedSignature = secret
+      ? await cyberpacSignature(
+          order,
+          parameters,
+          secret,
+          signatureVersion as CyberpacSignatureVersion,
+        )
+      : ''
     if (
       !isValidCyberpacNotification({
         signatureVersion,

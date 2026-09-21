@@ -22,7 +22,7 @@ export function isValidCyberpacNotification({
   expectedSignature,
 }: CyberpacNotificationValidation) {
   return (
-    signatureVersion === 'HMAC_SHA256_V1' &&
+    (signatureVersion === 'HMAC_SHA256_V1' || signatureVersion === 'HMAC_SHA512_V2') &&
     Boolean(order && secret && merchantCode && terminal) &&
     notification.Ds_MerchantCode === merchantCode &&
     notification.Ds_Terminal === terminal &&

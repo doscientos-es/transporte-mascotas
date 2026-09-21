@@ -12,10 +12,10 @@ En el entorno local están preparados los datos no secretos en `.env.local`:
 - Terminal: `1`
 - Moneda: `978` (EUR)
 - Tipo de operación: `0` (autorización)
-- Firma: `HMAC_SHA256_V1`
+- Firma: `HMAC_SHA512_V2`
 - Endpoint de test: `https://sis-t.redsys.es:25443/sis/realizarPago`
 
-La clave secreta debe pegarse sólo en `CAIXABANK_CYBERPAC_SECRET` de los secretos
+La clave secreta SHA-512 debe pegarse sólo en `CAIXABANK_CYBERPAC_SECRET` de los secretos
 de Supabase Edge Functions y en el entorno local si se ejecuta la pasarela local.
 No debe añadirse al frontend, al repositorio ni a un mensaje de soporte. También
 hay que configurar `PUBLIC_APP_URL` con la URL HTTPS pública de la aplicación.

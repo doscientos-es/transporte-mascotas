@@ -19,6 +19,15 @@ describe('isValidCyberpacNotification', () => {
     expect(isValidCyberpacNotification(validNotification)).toBe(true)
   })
 
+  it('accepts the current SHA-512 signature version', () => {
+    expect(
+      isValidCyberpacNotification({
+        ...validNotification,
+        signatureVersion: 'HMAC_SHA512_V2',
+      }),
+    ).toBe(true)
+  })
+
   it.each([
     ['the signature version', { signatureVersion: 'SHA1' }],
     [

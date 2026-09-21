@@ -1,6 +1,8 @@
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
+export type CyberpacSignatureVersion = 'HMAC_SHA256_V1' | 'HMAC_SHA512_V2'
+
 const IP = [
   58, 50, 42, 34, 26, 18, 10, 2, 60, 52, 44, 36, 28, 20, 12, 4, 62, 54, 46, 38, 30, 22, 14, 6, 64,
   56, 48, 40, 32, 24, 16, 8, 57, 49, 41, 33, 25, 17, 9, 1, 59, 51, 43, 35, 27, 19, 11, 3, 61, 53,
@@ -155,7 +157,32 @@ function deriveKey(order: string, secret: string) {
   return result
 }
 
-export async function cyberpacSignature(order: string, parameters: string, secret: string) {
+async function deriveAesKey(order: string, secret: string) {
+  const keyText = secret.length >= 16 ? secret.slice(0, 16) : secret.padEnd(16, '0')
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(keyText),
+    { name: 'AES-CBC' },
+    false,
+    ['encrypt'],
+  )
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-CBC', iv: new Uint8Array(16) },
+    key,
+    encoder.encode(order),
+  )
+  return encodeBase64(new Uint8Array(encrypted))
+}
+
+function encodeBase64(value: Uint8Array) {
+  let binary = ''
+  value.forEach((byte) => {
+    binary += String.fromCharCode(byte)
+  })
+  return btoa(binary)
+}
+
+async function cyberpacSha256Signature(order: string, parameters: string, secret: string) {
   const signingKey = await crypto.subtle.importKey(
     'raw',
     deriveKey(order, secret),
@@ -168,8 +195,33 @@ export async function cyberpacSignature(order: string, parameters: string, secre
   )
 }
 
+async function cyberpacSha512Signature(order: string, parameters: string, secret: string) {
+  const diversifiedKey = await deriveAesKey(order, secret)
+  const signingKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(diversifiedKey),
+    { name: 'HMAC', hash: 'SHA-512' },
+    false,
+    ['sign'],
+  )
+  return encodeBase64Url(
+    new Uint8Array(await crypto.subtle.sign('HMAC', signingKey, encoder.encode(parameters))),
+  )
+}
+
+export async function cyberpacSignature(
+  order: string,
+  parameters: string,
+  secret: string,
+  version: CyberpacSignatureVersion = 'HMAC_SHA256_V1',
+) {
+  if (version === 'HMAC_SHA512_V2') return cyberpacSha512Signature(order, parameters, secret)
+  return cyberpacSha256Signature(order, parameters, secret)
+}
+
 export function encodeMerchantParameters(parameters: Record<string, string>) {
-  return encodeBase64Url(encoder.encode(JSON.stringify(parameters)))
+  const json = JSON.stringify(parameters).replaceAll('/', '\\/')
+  return encodeBase64Url(encoder.encode(json))
 }
 
 export function decodeMerchantParameters(value: string) {

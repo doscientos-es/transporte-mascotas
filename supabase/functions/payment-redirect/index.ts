@@ -56,7 +56,12 @@ Deno.serve(async (request) => {
       DS_MERCHANT_PRODUCTDESCRIPTION: invoice.concept.slice(0, 125),
       ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
     })
-    const signature = await cyberpacSignature(payment.merchant_order, parameters, config.secret)
+    const signature = await cyberpacSignature(
+      payment.merchant_order,
+      parameters,
+      config.secret,
+      config.signatureVersion,
+    )
     const paymentForm = createPaymentForm(
       config.endpoint,
       config.signatureVersion,
@@ -103,6 +108,7 @@ async function transportPaymentPage(token: string, jsonFormat: boolean) {
     payment.payment_merchant_order,
     parameters,
     config.secret,
+    config.signatureVersion,
   )
   const paymentForm = createPaymentForm(
     config.endpoint,
@@ -122,12 +128,12 @@ function configuration() {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.replace(/\/$/, '')
   const currency = Deno.env.get('CAIXABANK_CYBERPAC_CURRENCY') || '978'
   const transactionType = Deno.env.get('CAIXABANK_CYBERPAC_TRANSACTION_TYPE') || '0'
-  const signatureVersion = Deno.env.get('CAIXABANK_CYBERPAC_SIGNATURE_VERSION') || 'HMAC_SHA256_V1'
+  const signatureVersion = Deno.env.get('CAIXABANK_CYBERPAC_SIGNATURE_VERSION') || 'HMAC_SHA512_V2'
   const payMethods = Deno.env.get('CAIXABANK_CYBERPAC_PAYMETHODS')?.trim()
   if (!merchantCode || !terminal || !secret || !publicAppUrl || !endpoint || !supabaseUrl)
     throw new Error('La pasarela de CaixaBank todavía no está configurada.')
-  if (signatureVersion !== 'HMAC_SHA256_V1')
-    throw new Error('La versión de firma Cyberpac debe ser HMAC_SHA256_V1.')
+  if (signatureVersion !== 'HMAC_SHA256_V1' && signatureVersion !== 'HMAC_SHA512_V2')
+    throw new Error('La versión de firma Cyberpac no es válida.')
   return {
     merchantCode,
     terminal,
@@ -162,10 +168,7 @@ function form(paymentForm: PaymentForm) {
   const escape = (value: string) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
   const fields = Object.entries(paymentForm.fields)
-    .map(
-      ([name, value]) =>
-        `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`,
-    )
+    .map(([name, value]) => `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`)
     .join('')
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(paymentForm.endpoint)}" method="post">${fields}<button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
 }

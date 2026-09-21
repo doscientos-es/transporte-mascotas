@@ -34,6 +34,18 @@ describe('Cyberpac helpers', () => {
     expect(changed).not.toBe(original)
   })
 
+  it('matches the AES-CBC and HMAC-SHA512 calculation', async () => {
+    const parameters = encodeMerchantParameters({
+      DS_MERCHANT_ORDER: '1234567890',
+      DS_MERCHANT_AMOUNT: '12000',
+    })
+    await expect(
+      cyberpacSignature('1234567890', parameters, 'merchant-test-key', 'HMAC_SHA512_V2'),
+    ).resolves.toBe(
+      'QoA7MMtYSfwxGvYcZsEJ_i46DvMVgfGVkgpc4IeYQqmHtFCjaro_xhWLz2IBsL57oQpes1FtYIME1UDrDndyhw',
+    )
+  })
+
   it('rejects malformed signing keys', async () => {
     const parameters = encodeMerchantParameters({ Ds_Order: 'B12345678901' })
     await expect(cyberpacSignature('B12345678901', parameters, 'invalid')).rejects.toThrow(
