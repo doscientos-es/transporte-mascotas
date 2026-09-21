@@ -1,4 +1,4 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+import { Button, Card, CardContent, Pagination } from '@doscientos/ui'
 import { ChevronRight, ClipboardList, PawPrint, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -12,6 +12,7 @@ import {
   transportBoxCategoryLabel,
   transportBoxOptions,
 } from '@/shared/application/transport-boxes'
+import { paginate } from '@/shared/lib/pagination'
 import type { DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -21,6 +22,7 @@ type Props = { routes: DailyRoute[]; onNotify: (message: string) => void }
 type Assignment = { routeId: string; pickupStopId: string; deliveryStopId: string; note: string }
 
 const emptyAssignment: Assignment = { routeId: '', pickupStopId: '', deliveryStopId: '', note: '' }
+const REQUEST_PAGE_SIZE = 8
 
 const formatDate = (value: string) =>
   new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
@@ -34,6 +36,8 @@ export function RequestsPage({ routes, onNotify }: Props) {
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [busy, setBusy] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [pendingPage, setPendingPage] = useState(1)
+  const [historyPage, setHistoryPage] = useState(1)
 
   const refresh = useCallback(async () => {
     const loaded = await loadTransportRequests()
@@ -127,6 +131,8 @@ export function RequestsPage({ routes, onNotify }: Props) {
   const pending = requests.filter((request) => request.status === 'por_verificar')
   const rest = requests.filter((request) => request.status !== 'por_verificar')
   const availableRoutes = routes.filter((route) => route.status === 'activa')
+  const pendingPagination = paginate(pending, pendingPage, REQUEST_PAGE_SIZE)
+  const historyPagination = paginate(rest, historyPage, REQUEST_PAGE_SIZE)
 
   return (
     <>
@@ -152,7 +158,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
           {pending.length === 0 ? (
             <p className="empty-copy">No hay solicitudes pendientes de verificar.</p>
           ) : (
-            pending.map((request) => {
+            pendingPagination.items.map((request) => {
               const assignment = assignmentFor(request.id)
               const route = routes.find((item) => item.id === assignment.routeId)
               const stops = route?.stops ?? []
@@ -311,6 +317,15 @@ export function RequestsPage({ routes, onNotify }: Props) {
               )
             })
           )}
+          {pending.length > 0 && (
+            <Pagination
+              page={pendingPagination.page}
+              pageCount={pendingPagination.pageCount}
+              ariaLabel="Paginación de solicitudes pendientes"
+              onPageChange={setPendingPage}
+              summary={`Mostrando ${pendingPagination.firstRecord}–${pendingPagination.lastRecord} de ${pending.length}`}
+            />
+          )}
         </CardContent>
       </Card>
       <Card className="table-card">
@@ -336,7 +351,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rest.map((request) => (
+                  {historyPagination.items.map((request) => (
                     <tr key={request.id}>
                       <td>
                         <strong>{request.contactName}</strong>
@@ -397,6 +412,15 @@ export function RequestsPage({ routes, onNotify }: Props) {
                 </tbody>
               </table>
             </div>
+          )}
+          {rest.length > 0 && (
+            <Pagination
+              page={historyPagination.page}
+              pageCount={historyPagination.pageCount}
+              ariaLabel="Paginación del histórico de solicitudes"
+              onPageChange={setHistoryPage}
+              summary={`Mostrando ${historyPagination.firstRecord}–${historyPagination.lastRecord} de ${rest.length}`}
+            />
           )}
         </CardContent>
       </Card>

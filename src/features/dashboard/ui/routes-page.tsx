@@ -11,6 +11,7 @@ import {
   Card,
   CardContent,
   Input,
+  Pagination,
 } from '@doscientos/ui'
 import {
   ArrowDown,
@@ -31,6 +32,8 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 
 import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
+import { paginate } from '@/shared/lib/pagination'
+import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
 import type {
   DailyRoute,
@@ -42,6 +45,7 @@ import type {
   ServiceAction,
 } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
+import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn } from '../application/route-closure'
@@ -92,12 +96,9 @@ const formatRouteDate = (date: string) => ({
     .toLocaleDateString('es-ES', { month: 'short' })
     .replace('.', ''),
 })
-const formatRouteDay = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
+const routeStatusFilters = ['todos', 'activa', 'cerrada'] as const
+const sortDirections = ['asc', 'desc'] as const
+const ROUTE_LIST_PAGE_SIZE = 12
 
 const isoToday = () => {
   const now = new Date()
@@ -118,8 +119,11 @@ export function RoutesCatalogPage({
   onSelect: (route: DailyRoute) => void
   onOpenVan?: (route: DailyRoute) => void
 }) {
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'todos' | DailyRoute['status']>('todos')
+  const { searchParams, updateParams } = useUrlParams()
+  const query = searchParams.get('q') ?? ''
+  const statusFilter = readEnumParam(searchParams.get('estado'), routeStatusFilters, 'todos')
+  const direction = readEnumParam(searchParams.get('direccion'), sortDirections, 'asc')
+  const requestedPage = readPageParam(searchParams.get('pagina'))
   const today = isoToday()
   const templateName = (route: DailyRoute) =>
     templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
@@ -136,15 +140,27 @@ export function RoutesCatalogPage({
           (value) => value.toLocaleLowerCase().includes(normalizedQuery),
         )
       })
-      .sort((left, right) => left.date.localeCompare(right.date))
-  }, [query, routes, statusFilter, templates])
+      .sort((left, right) =>
+        direction === 'asc'
+          ? left.date.localeCompare(right.date)
+          : right.date.localeCompare(left.date),
+      )
+  }, [direction, query, routes, statusFilter, templates])
+  const routePagination = paginate(filteredRoutes, requestedPage, ROUTE_LIST_PAGE_SIZE)
   const countLabel = `${filteredRoutes.length} ${filteredRoutes.length === 1 ? 'ruta' : 'rutas'}`
+
+  useEffect(() => {
+    if (requestedPage > routePagination.pageCount) {
+      updateParams({
+        pagina: routePagination.pageCount === 1 ? undefined : routePagination.pageCount,
+      })
+    }
+  }, [requestedPage, routePagination.pageCount, updateParams])
 
   return (
     <section className="route-catalog" aria-label="Rutas programadas">
       <div className="route-catalog-heading">
         <div>
-          <span className="eyebrow">Planificación</span>
           <strong>Rutas programadas</strong>
         </div>
         <span>{countLabel}</span>
@@ -160,7 +176,7 @@ export function RoutesCatalogPage({
                 id="route-search"
                 placeholder="Buscar por nombre, sentido o estado"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
               />
             </label>
             <label className="route-status-filter">
@@ -169,12 +185,28 @@ export function RoutesCatalogPage({
                 aria-label="Filtrar por estado"
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(event.target.value as 'todos' | DailyRoute['status'])
+                  updateParams({
+                    estado: event.target.value === 'todos' ? undefined : event.target.value,
+                    pagina: undefined,
+                  })
                 }
               >
                 <option value="todos">Todas</option>
                 <option value="activa">Activas</option>
                 <option value="cerrada">Cerradas</option>
+              </select>
+            </label>
+            <label className="route-status-filter">
+              <span>Orden</span>
+              <select
+                aria-label="Ordenar rutas por fecha"
+                value={direction}
+                onChange={(event) =>
+                  updateParams({ direccion: event.target.value, pagina: undefined })
+                }
+              >
+                <option value="asc">Más próximas</option>
+                <option value="desc">Más lejanas</option>
               </select>
             </label>
           </div>
@@ -194,7 +226,7 @@ export function RoutesCatalogPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRoutes.map((item) => {
+                  {routePagination.items.map((item) => {
                     const date = formatRouteDate(item.date)
                     const stops =
                       item.stops?.length ??
@@ -225,7 +257,6 @@ export function RoutesCatalogPage({
                             <strong>{date.day}</strong>
                             <span>{date.month}</span>
                           </time>
-                          <span className="route-table-day">{formatRouteDay(item.date)}</span>
                         </td>
                         <td data-label="Ruta">
                           <strong className="route-table-name">{templateName(item)}</strong>
@@ -282,6 +313,17 @@ export function RoutesCatalogPage({
               <strong>No hay rutas con estos filtros</strong>
               <p>Prueba con otra búsqueda o cambia el estado seleccionado.</p>
             </div>
+          )}
+          {filteredRoutes.length > 0 && (
+            <Pagination
+              page={routePagination.page}
+              pageCount={routePagination.pageCount}
+              ariaLabel="Paginación de rutas"
+              onPageChange={(nextPage) =>
+                updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+              }
+              summary={`Mostrando ${routePagination.firstRecord}–${routePagination.lastRecord} de ${filteredRoutes.length}`}
+            />
           )}
         </CardContent>
       </Card>
@@ -518,7 +560,6 @@ export function RoutesPage({
                 <small>{formatRouteDate(route.date).month}</small>
               </time>
               <div>
-                <span className="eyebrow">Itinerario del día</span>
                 <h3>Ruta {template.name}</h3>
                 <div className="journey-route-badges">
                   <span className={`route-direction-badge direction-${direction}`}>

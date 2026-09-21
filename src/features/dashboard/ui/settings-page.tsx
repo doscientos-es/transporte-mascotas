@@ -146,7 +146,6 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
       <section className="team-settings">
         <div className="team-settings-heading">
           <div>
-            <span className="eyebrow">Equipo profesional</span>
             <h2>Transportistas</h2>
             <p>Los perfiles promovidos dejarán de aparecer en esta lista.</p>
           </div>
@@ -200,7 +199,6 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
       </section>
       <section className="settings-support settings-pricing">
         <div className="settings-pricing-heading">
-          <span className="eyebrow">Precios</span>
           <h2>Catálogo de boxes</h2>
           <p>El cliente puede elegir una categoría superior y el importe se calcula por mascota.</p>
         </div>
@@ -271,7 +269,6 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
       </section>
       <section className="settings-support settings-whatsapp">
         <div>
-          <span className="eyebrow">Integraciones</span>
           <h2>Pruebas de WhatsApp</h2>
           <p>Envía los mensajes de confirmación y recordatorio a un número de prueba.</p>
         </div>
@@ -281,7 +278,6 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
       </section>
       <section className="settings-support">
         <div>
-          <span className="eyebrow">Soporte</span>
           <h2>Ayuda y soporte</h2>
           <p>Accede al espacio de soporte para consultar o gestionar incidencias.</p>
         </div>

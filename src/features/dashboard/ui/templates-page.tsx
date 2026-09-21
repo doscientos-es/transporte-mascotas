@@ -262,7 +262,6 @@ export function TemplatesPage({
           <CardContent>
             <div className="template-header">
               <div>
-                <span className="eyebrow">Plantilla activa</span>
                 <h3>Ruta {selected.name}</h3>
               </div>
               <div className="template-header-actions">

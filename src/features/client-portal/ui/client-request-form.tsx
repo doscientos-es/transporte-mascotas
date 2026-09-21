@@ -511,7 +511,6 @@ export function ClientRequestForm({
         <form className="request-form" onSubmit={(event) => void submit(event)} noValidate>
           <div className="request-form-heading">
             <div>
-              <span className="eyebrow">Nueva solicitud</span>
               <h2>Organiza el viaje en cuatro pasos</h2>
               <p>Guardaremos tus datos para que puedas seguir el transporte desde aquí.</p>
             </div>

@@ -296,7 +296,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         <>
           <div className="client-portal-hero">
             <div>
-              <span className="eyebrow">Área de cliente</span>
               <h2>El viaje de tu mascota, siempre a la vista.</h2>
               <p>
                 Elige una salida programada, registra el pago y sigue cada actualización desde aquí.

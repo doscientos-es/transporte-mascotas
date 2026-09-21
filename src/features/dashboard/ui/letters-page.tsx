@@ -19,8 +19,9 @@ import {
   Search,
   UserRound,
 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
+import { paginate } from '@/shared/lib/pagination'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Letter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
@@ -127,11 +128,15 @@ export function LettersPage({
       ),
     [letters],
   )
-  const pageCount = Math.max(1, Math.ceil(letters.length / pageSize))
-  const page = Math.min(requestedPage, pageCount)
-  const visibleLetters = letters.slice((page - 1) * pageSize, page * pageSize)
-  const firstRecord = letters.length === 0 ? 0 : (page - 1) * pageSize + 1
-  const lastRecord = Math.min(page * pageSize, letters.length)
+  const letterPagination = paginate(letters, requestedPage, pageSize)
+
+  useEffect(() => {
+    if (requestedPage > letterPagination.pageCount) {
+      updateParams({
+        pagina: letterPagination.pageCount === 1 ? undefined : letterPagination.pageCount,
+      })
+    }
+  }, [letterPagination.pageCount, requestedPage, updateParams])
 
   return (
     <>
@@ -207,7 +212,7 @@ export function LettersPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleLetters.map((letter) => (
+                    {letterPagination.items.map((letter) => (
                       <LetterRow
                         key={letter.id}
                         letter={letter}
@@ -222,7 +227,7 @@ export function LettersPage({
                 </table>
               </div>
               <div className="letter-cards">
-                {visibleLetters.map((letter) => (
+                {letterPagination.items.map((letter) => (
                   <LetterCard
                     key={letter.id}
                     letter={letter}
@@ -235,13 +240,13 @@ export function LettersPage({
                 ))}
               </div>
               <Pagination
-                page={page}
-                pageCount={pageCount}
+                page={letterPagination.page}
+                pageCount={letterPagination.pageCount}
                 ariaLabel="Paginación de cartas"
                 onPageChange={(nextPage) =>
                   updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
                 }
-                summary={`Mostrando ${firstRecord}–${lastRecord} de ${letters.length}`}
+                summary={`Mostrando ${letterPagination.firstRecord}–${letterPagination.lastRecord} de ${letters.length}`}
               />
             </>
           )}

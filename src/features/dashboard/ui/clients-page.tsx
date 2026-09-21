@@ -335,7 +335,6 @@ export function ClientsPage({
                 <CardContent>
                   <div className="client-profile-head">
                     <div>
-                      <p className="eyebrow">Ficha de cliente</p>
                       <h3>{selected.fullName}</h3>
                       <p>{selected.nif || 'NIF pendiente'}</p>
                     </div>

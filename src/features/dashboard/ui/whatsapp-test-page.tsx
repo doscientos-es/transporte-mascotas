@@ -105,7 +105,6 @@ export function WhatsAppTestPage({ onBack }: Props) {
 function PageHeader() {
   return (
     <header className="whatsapp-test-heading">
-      <span className="eyebrow">Integraciones</span>
       <h2>Pruebas de WhatsApp</h2>
       <p>Comprueba la conexión y las dos comunicaciones automatizadas antes de activarlas.</p>
     </header>

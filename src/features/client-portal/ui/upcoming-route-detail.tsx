@@ -38,7 +38,6 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
                 <small>{month}</small>
               </time>
               <div>
-                <span className="eyebrow">Salida programada</span>
                 <h3>{route.templateName || 'Ruta programada'}</h3>
                 <div className="journey-route-badges">
                   <span className={`route-direction-badge direction-${route.routeDirection}`}>

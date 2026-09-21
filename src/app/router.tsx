@@ -240,7 +240,6 @@ function RouteErrorBoundary({ returnTo }: { returnTo: string }) {
         <div className="route-error-icon" aria-hidden="true">
           <CircleAlert size={28} />
         </div>
-        <p className="route-error-eyebrow">Problema de navegación</p>
         <h1 id="route-error-title">Esta página no se ha podido abrir</h1>
         <p className="route-error-copy">
           Puede que el enlace ya no esté disponible o que haya ocurrido un problema puntual.

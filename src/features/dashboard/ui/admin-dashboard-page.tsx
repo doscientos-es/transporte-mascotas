@@ -91,13 +91,13 @@ export function AdminDashboardPage({
   const activeAssignments = activeRoute ? assignmentsForRoute(activeRoute) : []
   const editingRouteId = dashboard.editingLetter
     ? (dashboard.dailyRoutes.find((route) =>
-      route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
-    )?.id ??
+        route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
+      )?.id ??
       dashboard.dailyRoutes.find(
         (route) =>
           route.date === dashboard.editingLetter?.serviceDate &&
           dashboard.routeTemplates.find((template) => template.id === route.templateId)?.name ===
-          dashboard.editingLetter?.route,
+            dashboard.editingLetter?.route,
       )?.id)
     : undefined
   const pendingLetters = isTransporter
@@ -142,7 +142,7 @@ export function AdminDashboardPage({
       await downloadVanManifest(
         activeAssignments,
         dashboard.routeTemplates.find((template) => template.id === activeRoute.templateId)?.name ??
-        'ruta',
+          'ruta',
       )
     } catch {
       dashboard.toast('No se ha podido generar el PDF. Vuelve a intentarlo.')
@@ -278,9 +278,9 @@ export function AdminDashboardPage({
                     isTransporter
                       ? undefined
                       : (route) => {
-                        dashboard.setSelectedRoute(route)
-                        navigateToVan(route.id)
-                      }
+                          dashboard.setSelectedRoute(route)
+                          navigateToVan(route.id)
+                        }
                   }
                   onAction={dashboard.updateActions}
                   onUpdateStops={dashboard.updateRouteStops}
@@ -304,9 +304,9 @@ export function AdminDashboardPage({
                     isTransporter
                       ? undefined
                       : (route) => {
-                        dashboard.setSelectedRoute(route)
-                        navigateToVan(route.id)
-                      }
+                          dashboard.setSelectedRoute(route)
+                          navigateToVan(route.id)
+                        }
                   }
                 />
               ))}

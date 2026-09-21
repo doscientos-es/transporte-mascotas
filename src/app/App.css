@@ -1,9 +1,3 @@
-.eyebrow {
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
 .table-card,
 .template-list,
 .stops-card,
@@ -1224,15 +1218,6 @@
   background: #fff0f1;
 }
 
-.route-error-eyebrow {
-  margin: 0 0 8px;
-  color: #687866;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
 .route-error-card h1 {
   max-width: 400px;
   margin: 0 auto;
@@ -1309,7 +1294,7 @@
   letter-spacing: -0.055em;
 }
 
-.login-card > p:not(.eyebrow) {
+.login-card > p {
   color: #5e665d;
   line-height: 1.5;
 }
@@ -2578,7 +2563,7 @@
 .dropzone span,
 .import-selected small,
 .dialog-options small,
-.login-card > p:not(.eyebrow),
+.login-card > p,
 .invoice-card span,
 .invoice-card small,
 .invoice-empty p,
@@ -3125,11 +3110,6 @@
   border-radius: 16px;
   background: #171717;
   color: #fff;
-}
-
-.client-portal-hero .eyebrow,
-.request-form-heading .eyebrow {
-  color: #bdff7b;
 }
 
 .client-portal-hero h2,
@@ -3820,16 +3800,6 @@
 
 .invoice-brand-copy {
   min-width: 0;
-}
-
-.invoice-brand-eyebrow,
-.invoice-filter-heading span {
-  display: block;
-  color: #cf1f2a;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .invoice-brand-copy h2 {
@@ -4962,10 +4932,6 @@
   gap: 3px;
 }
 
-.route-catalog-heading .eyebrow {
-  color: #a61c25;
-}
-
 .route-catalog-heading strong {
   color: #171717;
   font-size: 15px;
@@ -5143,18 +5109,11 @@
   text-transform: uppercase;
 }
 
-.route-table-day,
 .route-table-direction,
 .route-table-progress {
   display: block;
   color: #6f6566;
   font-size: 12px;
-}
-
-.route-table-day {
-  display: inline-block;
-  text-transform: capitalize;
-  white-space: nowrap;
 }
 
 .route-table-name,
@@ -5408,10 +5367,6 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.route-journey-header .eyebrow {
-  color: #f3a8ad;
 }
 
 .route-journey-header h3 {

@@ -69,7 +69,6 @@ export function LoginPage({ audience }: Props) {
       {isClient && (
         <aside className="max-w-[490px] text-[#171717] max-[820px]:max-w-[440px]">
           <BrandLogo className="mb-[34px] h-[58px] w-[72px] object-contain max-[820px]:mb-[18px]" />
-          <p className="eyebrow text-[#b51e27]">Kache envíos</p>
           <h2 className="my-2 mr-0 mb-4 ml-0 max-w-[440px] text-[clamp(35px,5vw,58px)] leading-[0.96] tracking-[-0.065em] max-[820px]:text-[clamp(32px,10vw,48px)]">
             Una forma tranquila de organizar su próximo viaje.
           </h2>
@@ -89,7 +88,6 @@ export function LoginPage({ audience }: Props) {
         }
       >
         <BrandLogo />
-        <p className="eyebrow">{isClient ? 'Área de cliente' : 'Área profesional'}</p>
         <h1>{title}</h1>
         <p>{description}</p>
         <form onSubmit={(event) => void signIn(event)}>

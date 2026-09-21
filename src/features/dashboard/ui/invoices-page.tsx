@@ -7,16 +7,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Pagination,
 } from '@doscientos/ui'
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  Eye,
-  FileText,
-  ReceiptText,
-} from 'lucide-react'
+import { CheckCircle2, Download, Eye, FileText, ReceiptText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
@@ -72,6 +65,8 @@ export function InvoicesPage({
   const pageCount = Math.max(1, Math.ceil(result.total / INVOICE_LIST_PAGE_SIZE))
   const currentPage = Math.min(requestedPage, pageCount)
   const invoices = result.items
+  const firstRecord = result.total === 0 ? 0 : (currentPage - 1) * INVOICE_LIST_PAGE_SIZE + 1
+  const lastRecord = Math.min(currentPage * INVOICE_LIST_PAGE_SIZE, result.total)
   const visibleTotal = invoices.reduce((total, invoice) => total + invoice.total, 0)
   const previewing =
     invoices.find(
@@ -179,7 +174,6 @@ export function InvoicesPage({
           <span>Kache Envíos</span>
         </div>
         <div className="invoice-brand-copy">
-          <span className="invoice-brand-eyebrow">Centro de facturación</span>
           <h2>{isPaymentRequests ? 'Solicitudes de pago' : 'Facturas de transporte'}</h2>
           <p>
             {isPaymentRequests
@@ -207,7 +201,6 @@ export function InvoicesPage({
       <section className="invoice-filter-surface" aria-label="Consulta de facturas">
         <div className="invoice-filter-heading">
           <div>
-            <span>Consulta de documentos</span>
             <strong>Encuentra lo que necesitas</strong>
           </div>
           {!transportista && (
@@ -327,30 +320,16 @@ export function InvoicesPage({
           </Card>
         )}
       </div>
-      {result.total > INVOICE_LIST_PAGE_SIZE && (
-        <nav className="invoice-pagination" aria-label="Paginación de facturas">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage <= 1}
-            onClick={() =>
-              updateParams({ pagina: currentPage - 1 === 1 ? undefined : currentPage - 1 })
-            }
-          >
-            <ChevronLeft /> Anterior
-          </Button>
-          <span>
-            Página {currentPage} de {pageCount}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={currentPage >= pageCount}
-            onClick={() => updateParams({ pagina: currentPage + 1 })}
-          >
-            Siguiente <ChevronRight />
-          </Button>
-        </nav>
+      {result.total > 0 && (
+        <Pagination
+          page={currentPage}
+          pageCount={pageCount}
+          ariaLabel="Paginación de facturas"
+          onPageChange={(nextPage) =>
+            updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+          }
+          summary={`Mostrando ${firstRecord}–${lastRecord} de ${result.total}`}
+        />
       )}
       {previewing &&
         (previewing.issuedInvoice ? (
