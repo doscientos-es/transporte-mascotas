@@ -387,7 +387,7 @@ export function AdminDashboardPage({
         </Suspense>
       </SectionBoundary>
       {dashboard.notice && (
-        <output className="toast">
+        <output className="toast" aria-live="polite">
           <CheckCircle2 size={18} /> {dashboard.notice}
         </output>
       )}

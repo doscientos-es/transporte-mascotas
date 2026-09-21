@@ -510,7 +510,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       )}
 
       {notice && (
-        <output className="toast">
+        <output className="toast" aria-live="polite">
           <CheckCircle2 size={18} /> {notice}
         </output>
       )}

@@ -256,6 +256,11 @@ export function RequestsPage({ routes, onNotify }: Props) {
                             {item.direction === 'inversa' ? 'sentido inverso' : 'sentido habitual'}
                           </option>
                         ))}
+                        {!availableRoutes.length && (
+                          <option value="" disabled>
+                            No hay rutas activas para ese día
+                          </option>
+                        )}
                       </select>
                     </label>
                     <label>
