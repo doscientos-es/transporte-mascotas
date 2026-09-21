@@ -591,8 +591,8 @@ export function RoutesPage({
           <AlertDialogHeader>
             <AlertDialogTitle>Cerrar itinerario</AlertDialogTitle>
             <AlertDialogDescription>
-              Se fijarán las paradas y los tiempos de esta ruta. Los clientes implicados quedarán
-              preparados para recibir el aviso por WhatsApp cuando se configure la API.
+              Se fijarán las paradas y los tiempos de esta ruta. No se enviarán avisos automáticos a
+              los clientes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

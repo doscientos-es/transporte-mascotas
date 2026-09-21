@@ -319,7 +319,6 @@ export function AdminDashboardPage({
                 <InvoicesPage
                   transportista={false}
                   documentType="payment-requests"
-                  onSend={dashboard.sendInvoiceNotification}
                   onConfirmManualPayment={dashboard.confirmManualPayment}
                   onPaymentConfirmed={openBillingDocument}
                   onOpenClient={openClient}
@@ -343,7 +342,6 @@ export function AdminDashboardPage({
               <InvoicesPage
                 transportista={isTransporter}
                 documentType="invoices"
-                onSend={dashboard.sendInvoiceNotification}
                 onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}
                 onOpenClient={isTransporter ? undefined : openClient}
                 onOpenLetter={isTransporter ? undefined : openLetter}

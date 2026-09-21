@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   Download,
   Eye,
   FileText,
@@ -43,7 +42,6 @@ const currency = (amount: number) =>
 export function InvoicesPage({
   transportista,
   documentType,
-  onSend,
   onConfirmManualPayment,
   onPaymentConfirmed,
   onOpenClient,
@@ -51,13 +49,11 @@ export function InvoicesPage({
 }: {
   transportista: boolean
   documentType: 'payment-requests' | 'invoices'
-  onSend: (invoice: ClientInvoice, kind: 'solicitud_pago' | 'factura_emitida') => Promise<void>
   onConfirmManualPayment?: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
   onPaymentConfirmed?: (invoice: ClientInvoice) => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
 }) {
-  const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null)
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [result, setResult] = useState<PaginatedResult<ClientInvoice>>({ items: [], total: 0 })
@@ -133,16 +129,6 @@ export function InvoicesPage({
       window.alert('No se ha podido exportar el registro de facturas.')
     } finally {
       setExporting(false)
-    }
-  }
-  async function send(invoice: ClientInvoice) {
-    setSendingInvoiceId(invoice.id)
-    try {
-      await onSend(invoice, invoice.status === 'emitida' ? 'factura_emitida' : 'solicitud_pago')
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'No se ha podido enviar el documento.')
-    } finally {
-      setSendingInvoiceId(null)
     }
   }
   async function download(invoice: NonNullable<ClientInvoice['issuedInvoice']>) {
@@ -311,7 +297,6 @@ export function InvoicesPage({
                 invoice={invoice}
                 clientName={clientName}
                 transportista={transportista}
-                sending={sendingInvoiceId === invoice.id}
                 downloading={downloadingInvoiceId === invoice.id}
                 onPreview={() => updateParams({ factura: invoice.id }, false)}
                 onDownload={() =>
@@ -319,7 +304,6 @@ export function InvoicesPage({
                     ? void download(invoice.issuedInvoice)
                     : void downloadPaymentRequest(invoice, clientName)
                 }
-                onSend={() => void send(invoice)}
                 onManualPayment={() => updateParams({ cobro: invoice.id }, false)}
                 onOpenClient={onOpenClient}
                 onOpenLetter={onOpenLetter}
@@ -457,11 +441,9 @@ function InvoiceCard({
   invoice,
   clientName,
   transportista,
-  sending,
   downloading,
   onPreview,
   onDownload,
-  onSend,
   onManualPayment,
   onOpenClient,
   onOpenLetter,
@@ -469,11 +451,9 @@ function InvoiceCard({
   invoice: ClientInvoice
   clientName: string
   transportista: boolean
-  sending: boolean
   downloading: boolean
   onPreview: () => void
   onDownload: () => void
-  onSend: () => void
   onManualPayment: () => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
@@ -559,18 +539,8 @@ function InvoiceCard({
             {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
           </Button>
           {!transportista && !isIssued && (
-            <Button size="sm" variant="outline" disabled={sending} onClick={onManualPayment}>
+            <Button size="sm" variant="outline" onClick={onManualPayment}>
               <CheckCircle2 size={15} /> Registrar cobro
-            </Button>
-          )}
-          {!transportista && (
-            <Button size="sm" className="invoice-pay-button" disabled={sending} onClick={onSend}>
-              <CreditCard size={15} />{' '}
-              {sending
-                ? 'Enviando…'
-                : isIssued
-                  ? 'Reenviar factura por WhatsApp'
-                  : 'Reenviar solicitud por WhatsApp'}
             </Button>
           )}
         </div>

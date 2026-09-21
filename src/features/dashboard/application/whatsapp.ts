@@ -1,5 +1,1 @@
-export {
-  dispatchTransportRequestNotifications,
-  sendWhatsAppTest,
-  type WhatsAppTestKind,
-} from '../infrastructure/whatsapp'
+export { sendWhatsAppTest, type WhatsAppTestKind } from '../infrastructure/whatsapp'

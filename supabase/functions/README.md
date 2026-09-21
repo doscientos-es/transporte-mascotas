@@ -7,7 +7,7 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 1. Contratad con CaixaBank la pasarela online **Cyberpac/TPV Virtual para comercios** y solicitad acceso de pruebas y producción.
 2. Configurad los secretos de CaixaBank: `CAIXABANK_CYBERPAC_MERCHANT_CODE`, `CAIXABANK_CYBERPAC_TERMINAL`, `CAIXABANK_CYBERPAC_SECRET`, `CAIXABANK_CYBERPAC_ENDPOINT` y `PUBLIC_APP_URL`.
 3. En Cyberpac configurad la notificación HTTP a `https://<project-ref>.supabase.co/functions/v1/caixabank-webhook` para el terminal. La integración usa redirección alojada y tarjetas; no se envían datos de tarjeta a la aplicación.
-4. Desplegad `invoice-payment`, `transport-payment`, `payment-redirect`, `caixabank-webhook`, `send-billing-notifications`, `send-transport-notifications`, `issued-invoice` y `confirm-manual-invoice-payment`, aplicad las migraciones y realizad primero una operación en pruebas.
+4. Desplegad `invoice-payment`, `transport-payment`, `payment-redirect`, `caixabank-webhook`, `issued-invoice` y `confirm-manual-invoice-payment`, aplicad las migraciones y realizad primero una operación en pruebas. Las funciones de notificación transaccional no son necesarias.
 
 `CAIXABANK_CYBERPAC_ENDPOINT` debe ser la URL que entregue CaixaBank para cada entorno; en test suele ser `https://sis-t.redsys.es:25443/sis/realizarPago`. No se debe adivinar ni guardar ninguna clave en el frontend. Para restringir métodos opcionalmente se puede usar `CAIXABANK_CYBERPAC_PAYMETHODS`; si se deja vacío, Cyberpac muestra los métodos habilitados para el terminal.
 
@@ -15,15 +15,16 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 
 Antes de abrir cobros configurad los datos fiscales no secretos que aparecerán congelados en cada factura: `INVOICE_ISSUER_NAME`, `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`. No se emite una factura si falta alguno.
 
-Todos los avisos se entregan por WhatsApp. Para WhatsApp Cloud API configurad `META_WHATSAPP_ACCESS_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID`, `META_WHATSAPP_PAYMENT_TEMPLATE` y `META_WHATSAPP_INVOICE_TEMPLATE`. Las dos plantillas aprobadas en Meta deben ser de utilidad, idioma `es`, y tener exactamente dos variables de cuerpo: texto descriptivo y enlace. Se puede sobrescribir la versión de Graph con `META_WHATSAPP_GRAPH_API_VERSION`.
+Los avisos transaccionales están desactivados y la facturación no depende de
+WhatsApp. Si se necesita probar la integración manualmente, configurad
+`META_WHATSAPP_ACCESS_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID` y las plantillas
+únicamente en Edge Functions.
 
 ### Número de avisos y número principal (modelo de dos números)
 
 Kache usa dos números separados. El número principal del transportista queda en
-su app de WhatsApp Business para conversación humana, sin tocarlo. Las
-notificaciones automáticas salen de un número nuevo dedicado a avisos,
-registrado en la Cloud API; su SIM debe conservarse encendida según las
-condiciones del operador y conviene activar el PIN de dos factores de la cuenta.
+su app de WhatsApp Business para conversación humana, sin tocarlo. El número
+dedicado sólo se utiliza para pruebas explícitas de administración.
 
 Quien escriba al número de avisos recibe una autorespuesta que redirige al
 teléfono principal. Para activarla desplegad `whatsapp-webhook` y configurad:
@@ -42,16 +43,21 @@ Meta no dé de baja la suscripción.
 
 ### Confirmaciones y recordatorios de transporte
 
-Una carta de porte manual queda programada al guardarse; una solicitud queda programada al confirmarla. Se encola una confirmación inmediata y un recordatorio para las 10:00 (Europe/Madrid) del día anterior a la ruta para remitente y destinatario. Si ambos teléfonos coinciden, se evita el duplicado. Configurad dos plantillas de utilidad aprobadas en Meta, idioma `es`, con **seis** variables de cuerpo, en este orden: nombre, fecha de ruta, origen, destino, enlace de Google Maps para la recogida y enlace de Google Maps para la entrega:
+Una carta de porte manual queda programada al guardarse y una solicitud queda
+programada al confirmarla, pero ninguna de las dos operaciones encola WhatsApp.
+Las plantillas de Meta sólo se usan desde las pruebas explícitas de administración:
 
 - `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE`: debe comunicar que el pago y la ruta están confirmados.
 - `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`: debe recordar la salida prevista para el día siguiente.
 
 ### Cierre de itinerario diario
 
-Cerrar una ruta el día anterior deja una notificación durable por cada teléfono de cliente implicado. Cuando se configure la API, desplegad e invocad `send-daily-route-closure-notifications` para procesarla. Configurad `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE` como plantilla de utilidad, idioma `es`, con tres variables de cuerpo: nombre del cliente, fecha de servicio e itinerario.
+Cerrar una ruta el día anterior sólo fija las paradas y los tiempos. No deja una
+notificación para clientes ni requiere configurar `send-daily-route-closure-notifications`.
 
-La página **Ajustes → Pruebas de WhatsApp** comprueba ambos mensajes sin crear datos de clientes. Para despachar cartas automáticamente, configurad `CARRIAGE_LETTER_NOTIFICATIONS_CRON_SECRET` y un cron cada cinco minutos que invoque `send-carriage-letter-notifications` con `POST`, el cuerpo `{ "action": "dispatch" }` y la cabecera `x-carriage-letter-notifications-cron-secret`. Configurad otro cron equivalente para `send-billing-notifications`, usando `BILLING_NOTIFICATIONS_CRON_SECRET` y `x-billing-notifications-cron-secret`. El procesador reclama cada aviso de forma atómica y permite reintentos seguros; sin esos secretos, los endpoints sólo aceptan sesiones de administrador.
+La página **Ajustes → Pruebas de WhatsApp** es la única operación que puede
+contactar con Meta. Las cartas, reservas, pagos, facturas y cierres de ruta no
+se despachan automáticamente.
 
 Las solicitudes de transporte usan `transport-payment`: el importe se calcula en la base
 de datos según el tamaño de cada box y se guarda en la solicitud antes de generar el
@@ -59,7 +65,7 @@ enlace de Cyberpac. Las tarifas iniciales son 80 €, 100 € y 140 € para peq
 mediano y grande; sólo un administrador puede cambiarlas desde **Ajustes → Tarifa por
 tamaño de box**.
 
-Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. Cada envío queda registrado y los reintentos se reclaman de forma atómica para evitar duplicados.
+Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. La emisión y la disponibilidad en el CRM no dependen de WhatsApp.
 
 ## Cobros manuales y documentos fiscales
 

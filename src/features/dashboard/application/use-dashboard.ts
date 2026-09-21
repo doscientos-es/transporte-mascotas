@@ -58,10 +58,6 @@ import {
   updateRouteTemplate,
   updateRouteTemplateStopOrder,
 } from '../infrastructure/routes'
-import {
-  dispatchCarriageLetterNotifications,
-  dispatchPendingBillingNotifications,
-} from '../infrastructure/whatsapp'
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
@@ -728,10 +724,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
-      await Promise.allSettled([
-        dispatchCarriageLetterNotifications(savedLetter.id),
-        dispatchPendingBillingNotifications(),
-      ])
       toast(`Carta creada y solicitud de pago vinculada a ${routeTemplate.name}.`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
@@ -926,9 +918,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         : item
     setDailyRoutes((current) => current.map(update))
     setSelectedRoute((current) => (current ? update(current) : null))
-    toast(
-      `Itinerario cerrado. ${result?.notificationsQueued ?? 0} avisos de WhatsApp preparados para su envío.`,
-    )
+    toast('Itinerario cerrado. Las paradas y los tiempos han quedado fijados.')
   }
 
   async function saveClient(client: Client | Omit<Client, 'id' | 'createdAt'>) {
@@ -962,27 +952,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) throw new Error('Inicia sesión para registrar un cobro.')
     await confirmManualInvoicePayment(invoice.id, paymentMethod)
     toast('Cobro registrado y factura emitida.')
-  }
-
-  async function sendInvoiceNotification(
-    invoice: ClientInvoice,
-    kind: 'solicitud_pago' | 'factura_emitida' = 'solicitud_pago',
-    notify = true,
-  ) {
-    if (!supabase || !session) throw new Error('Inicia sesión para enviar el documento.')
-    const { data, error } = await supabase.functions.invoke('send-billing-notifications', {
-      body: { invoiceId: invoice.id, kind },
-    })
-    if (error)
-      throw new Error(
-        kind === 'solicitud_pago'
-          ? 'La solicitud se ha creado, pero no se ha podido enviar.'
-          : 'No se ha podido reenviar la factura.',
-      )
-    const result = data as { error?: string; sent?: number } | null
-    if (result?.error) throw new Error(result.error)
-    if (notify)
-      toast(`${kind === 'solicitud_pago' ? 'Solicitud' : 'Factura'} enviada por WhatsApp.`)
   }
 
   return {
@@ -1033,6 +1002,5 @@ export function useDashboard(session: Session | null, role: AppRole) {
     saveClient,
     removeClient,
     confirmManualPayment,
-    sendInvoiceNotification,
   }
 }

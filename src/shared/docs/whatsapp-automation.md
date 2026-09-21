@@ -4,36 +4,32 @@
 
 Kache Envíos usa dos números separados. El número principal del transportista
 permanece en su app de WhatsApp Business para la conversación humana, sin
-migrarlo ni tocarlo. Los avisos transaccionales salen de un número nuevo
-dedicado, registrado en la Cloud API, que paga Meta por mensaje sin cuotas a
-terceros. Los clientes no aportan credenciales ni pagan Meta: reciben
-comunicaciones sobre su transporte o su pago, y si escriben al número de avisos
-una autorespuesta los redirige al teléfono principal.
+migrarlo ni tocarlo. El número dedicado y la integración con Cloud API se
+conservan únicamente para pruebas explícitas de administración. Los clientes no
+reciben comunicaciones automáticas sobre su transporte ni su pago; si escriben
+al número de avisos, la autorespuesta puede redirigirlos al teléfono principal.
 
-Los avisos son una cola durable: crear una carta, una solicitud de pago o una
-factura nunca depende de que Meta esté disponible en ese momento.
+Los avisos transaccionales están desactivados: crear una carta, confirmar una
+reserva, solicitar un pago, emitir una factura o cerrar una ruta no genera ni
+envía WhatsApp. Las reservas creadas desde el portal tampoco generan avisos al
+confirmarse. El área de pruebas de administración sigue disponible para validar
+la integración de Meta de forma explícita.
 
 ## Eventos automáticos
 
-| Evento                                       | Destinatario             | Plantilla                  | Momento                              |
-| -------------------------------------------- | ------------------------ | -------------------------- | ------------------------------------ |
-| Carta de porte manual o solicitud confirmada | Remitente y destinatario | Confirmación de transporte | Al quedar programada                 |
-| Ruta de una carta programada                 | Remitente y destinatario | Recordatorio de ruta       | 10:00 Europe/Madrid del día anterior |
-| Carta manual con importe                     | Pagador fiscal           | Solicitud de pago          | Al crear la solicitud                |
-| Cobro validado por CaixaBank                 | Pagador fiscal           | Factura emitida            | Tras el webhook bancario firmado     |
+| Evento transaccional                                      | Resultado                         |
+| --------------------------------------------------------- | --------------------------------- |
+| Reserva del portal, carta, pago, factura o cierre de ruta | No se genera ni se envía WhatsApp |
 
-Si remitente y destinatario tienen el mismo número se envía un solo WhatsApp.
-Los dos teléfonos son obligatorios y deben tener formato español de nueve cifras
-o internacional. Un número bien formado que no tenga WhatsApp no bloquea el
-negocio: Meta lo rechazará, Kache registrará el fallo final y no repetirá el
-mensaje indefinidamente.
+Los teléfonos pueden conservarse como datos de contacto operativo, pero no son
+requisitos de entrega de WhatsApp ni activan ningún envío.
 
 ## Configuración de Meta
 
-Crear una app de Meta Business con el producto **WhatsApp**, asociar y verificar
-el número de Kache Envíos, y crear las siguientes plantillas de utilidad en
-español. Los secretos solo se configuran en Supabase Edge Functions; nunca en el
-frontend.
+Si se habilitan pruebas controladas, crear una app de Meta Business con el
+producto **WhatsApp**, asociar y verificar el número de Kache Envíos, y crear las
+plantillas de utilidad en español. Los secretos solo se configuran en Supabase
+Edge Functions; nunca en el frontend.
 
 | Secreto                                         | Uso                                       |
 | ----------------------------------------------- | ----------------------------------------- |
@@ -74,35 +70,23 @@ importe de esa notificación. La URL de retorno del navegador no emite facturas.
 
 ## Trabajadores y recuperación
 
-Desplegar `send-carriage-letter-notifications` y la versión actualizada de
-`send-billing-notifications`. Crear secretos aleatorios distintos:
+Las funciones de envío transaccional no forman parte del flujo operativo actual:
+no se deben configurar cron ni secretos para despacharlas. La aplicación no
+intenta despachar avisos y las migraciones cancelan cualquier cola histórica
+pendiente.
 
-| Secreto                                     | Cabecera del cron                             |
-| ------------------------------------------- | --------------------------------------------- |
-| `CARRIAGE_LETTER_NOTIFICATIONS_CRON_SECRET` | `x-carriage-letter-notifications-cron-secret` |
-| `BILLING_NOTIFICATIONS_CRON_SECRET`         | `x-billing-notifications-cron-secret`         |
-
-Ejecutar ambos cada cinco minutos con `POST` y cuerpo `{"action":"dispatch"}`.
-Los endpoints aceptan la cabecera del cron o una sesión de administrador. El alta
-desde la aplicación intenta entregarlos al instante; el cron recupera cortes de
-red, cierres de navegador y reintentos pendientes.
-
-Cada trabajo se reclama de forma atómica. Los errores transitorios de Meta y de
-red se reintentan hasta cinco veces con espera exponencial; los rechazos finales
-de Meta quedan registrados para revisión. Las cartas canceladas detienen los
-avisos que todavía no se hayan entregado.
+Las pruebas explícitas desde **Ajustes → Pruebas de WhatsApp** son la única
+operación que puede contactar con Meta.
 
 ## Puesta en marcha y prueba
 
 1. Aplicar todas las migraciones y desplegar las funciones de Edge.
-2. Configurar los secretos de Meta y las cuatro plantillas aprobadas.
-3. Configurar los dos cron y comprobar que reciben un `2xx`.
-4. Usar **Ajustes → Pruebas de WhatsApp** para verificar las plantillas de
-   transporte con un teléfono controlado.
-5. Crear una carta manual de prueba para verificar: dos confirmaciones (o una si
-   el teléfono coincide), recordatorio pendiente y solicitud de pago en cola.
-6. En el entorno de pruebas de CaixaBank, validar pago correcto, rechazado,
-   reintento del webhook y reenvío manual de factura.
+2. Si se desea probar Meta, configurar sus secretos y plantillas sólo en Edge
+   Functions.
+3. Usar **Ajustes → Pruebas de WhatsApp** únicamente si se desea validar Meta con
+   un teléfono controlado.
+4. En el entorno de pruebas de CaixaBank, validar pago correcto, rechazado,
+   reintento del webhook y generación administrativa de factura sin WhatsApp.
 
 No registrar tokens, secretos, teléfonos completos ni enlaces de pago en logs.
 El historial de las tablas de notificaciones contiene únicamente el estado, el

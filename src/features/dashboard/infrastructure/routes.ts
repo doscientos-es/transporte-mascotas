@@ -291,7 +291,7 @@ export async function closeDailyRoute(routeId: string) {
     p_daily_route_id: routeId,
   })
   if (error) throw error
-  return data as { closedAt?: string; notificationsQueued?: number } | null
+  return data as { closedAt?: string } | null
 }
 
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {

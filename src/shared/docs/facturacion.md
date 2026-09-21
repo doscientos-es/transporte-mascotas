@@ -3,7 +3,7 @@
 ## Flujo operativo
 
 1. Administración crea una **solicitud de pago** desde la carta de porte e incluye los datos fiscales del destinatario.
-2. Se encola y envía automáticamente por WhatsApp un enlace de pago al pagador fiscal; la entrega se recupera por cron si Meta no está disponible.
+2. La solicitud queda disponible para administración en el CRM; no se envía por WhatsApp.
 3. Solo al confirmarse el cobro mediante el webhook firmado de Cyberpac, o al registrar el cobro manual, se emite la factura: se asigna un número correlativo por serie y año y se congela el emisor, destinatario, importes, operación y cobro.
 4. Un proceso servidor genera y guarda el PDF canónico exclusivamente desde esa instantánea emitida. La factura emitida se puede buscar, filtrar, previsualizar y descargar; la solicitud de pago se puede previsualizar y descargar solo como documento informativo, nunca como factura.
 
@@ -17,7 +17,7 @@
 - Cada PDF se vincula explícitamente a `issued_invoices.id`; los documentos previos sin ese vínculo se regeneran de forma segura al siguiente acceso.
 - Mientras siga pendiente de cobro, la misma carta permite corregir su solicitud fiscal; al emitirse, cualquier intento de modificación queda bloqueado.
 - El enlace público caduca por seguridad; administración conserva acceso a la factura emitida y puede reenviarla.
-- Tras emitir la factura se encola automáticamente su enlace seguro de consulta por WhatsApp al mismo pagador. La redirección que ve el cliente no es prueba de pago y nunca activa esta emisión.
+- Tras emitir la factura queda disponible para administración mediante el documento privado generado desde la instantánea fiscal.
 
 ## Antes de producción
 

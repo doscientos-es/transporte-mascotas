@@ -37,7 +37,6 @@ import type {
   InvoicePayer,
   Letter,
   LetterDraft,
-  PaymentDelivery,
   RouteDirection,
   RouteTemplate,
   Transporter,
@@ -1704,7 +1703,6 @@ export function InvoiceDialog({
     payer: InvoicePayer,
     total: number,
     client: InvoiceClientInput,
-    delivery?: PaymentDelivery,
   ) => Promise<void>
 }) {
   const payerClient = (nextPayer: InvoicePayer): InvoiceClientInput => {
@@ -1725,9 +1723,6 @@ export function InvoiceDialog({
   const [total, setTotal] = useState('200')
   const [generating, setGenerating] = useState(false)
   const [client, setClient] = useState<InvoiceClientInput>(() => payerClient(letter.billingPayer))
-  const [deliveryPhone, setDeliveryPhone] = useState(
-    letter.billingClient.phone || letter.senderPhone,
-  )
   const [error, setError] = useState('')
   const updateClient = (field: keyof InvoiceClientInput, value: string) =>
     setClient((current) => ({ ...current, [field]: value }))
@@ -1735,17 +1730,12 @@ export function InvoiceDialog({
     const nextClient = payerClient(nextPayer)
     setPayer(nextPayer)
     setClient(nextClient)
-    setDeliveryPhone(nextClient.phone)
     setError('')
   }
   const generate = async () => {
-    if (!deliveryPhone.trim())
-      return setError('Indica el móvil al que se enviará la factura por WhatsApp.')
     setGenerating(true)
     try {
-      await onGenerate(letter, payer, Number(total), client, {
-        phone: deliveryPhone,
-      })
+      await onGenerate(letter, payer, Number(total), client)
       onClose()
     } catch (reason) {
       setError(
@@ -1867,15 +1857,9 @@ export function InvoiceDialog({
           required
         />
       </Label>
-      <Label className="date-field">
-        Móvil con WhatsApp
-        <Input
-          type="tel"
-          value={deliveryPhone}
-          onChange={(event) => setDeliveryPhone(event.target.value)}
-          required
-        />
-      </Label>
+      <p className="text-muted-foreground text-sm">
+        La factura quedará disponible en el CRM para administración. No se enviará por WhatsApp.
+      </p>
       {error && (
         <p className="form-error" role="alert">
           {error}

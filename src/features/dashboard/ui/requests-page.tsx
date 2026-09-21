@@ -16,8 +16,6 @@ import type { DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
-import { dispatchTransportRequestNotifications } from '../application/whatsapp'
-
 type Props = { routes: DailyRoute[]; onNotify: (message: string) => void }
 
 type Assignment = { routeId: string; pickupStopId: string; deliveryStopId: string; note: string }
@@ -83,14 +81,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
         assignment.deliveryStopId,
         assignment.note,
       )
-      try {
-        await dispatchTransportRequestNotifications(request.id)
-        onNotify('Solicitud confirmada: carta creada, box asignado y aviso de WhatsApp enviado.')
-      } catch {
-        onNotify(
-          'Solicitud confirmada: carta creada y box asignado. El aviso de WhatsApp queda pendiente.',
-        )
-      }
+      onNotify('Solicitud confirmada: carta creada y box asignado en la ruta.')
       try {
         await refresh()
       } catch {
