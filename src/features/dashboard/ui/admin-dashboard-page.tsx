@@ -52,6 +52,10 @@ const InvoicesPage = lazyWithRetry(
   () => import('./invoices-page'),
   ({ InvoicesPage: page }) => page,
 )
+const PaymentRequestsPage = lazyWithRetry(
+  () => import('./payment-requests-page'),
+  ({ PaymentRequestsPage: page }) => page,
+)
 const LettersPage = lazyWithRetry(
   () => import('./letters-page'),
   ({ LettersPage: page }) => page,
@@ -378,9 +382,8 @@ export function AdminDashboardPage({
             )}
             {!isTransporter && section === 'solicitudes' && (
               <>
-                <InvoicesPage
+                <PaymentRequestsPage
                   transportista={false}
-                  documentType="payment-requests"
                   onConfirmManualPayment={dashboard.confirmManualPayment}
                   onPaymentConfirmed={openBillingDocument}
                   onOpenClient={openClient}
@@ -403,7 +406,6 @@ export function AdminDashboardPage({
             {section === 'facturas' && (
               <InvoicesPage
                 transportista={isTransporter}
-                documentType="invoices"
                 onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}
                 onOpenClient={isTransporter ? undefined : openClient}
                 onOpenLetter={isTransporter ? undefined : openLetter}

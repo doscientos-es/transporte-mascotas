@@ -57,6 +57,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     preselectRouteId?: string
     paymentStatus?: 'ok' | 'ko'
   } | null
+  const paymentStatus =
+    navigationState?.paymentStatus ??
+    (new URLSearchParams(routerLocation.search).get('payment') as 'ok' | 'ko' | null)
   const preselectRouteId = navigationState?.preselectRouteId
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
@@ -79,7 +82,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   const refresh = useCallback(async () => {
-    if (!userId) return
+    if (!userId) return [] as TransportRequest[]
     const [nextRoutes, nextRequests, nextPets, nextBoxCatalog] = await Promise.all([
       loadUpcomingRoutes(),
       loadTransportRequests(userId),
@@ -99,6 +102,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         : (nextRequests.find((request) => request.status === 'pago_pendiente')?.id ?? null)
     })
     setError('')
+    return nextRequests
   }, [userId])
 
   useEffect(() => {
@@ -120,12 +124,18 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (preselectRouteId) setShowForm(true)
   }, [preselectRouteId])
   useEffect(() => {
-    if (navigationState?.paymentStatus === 'ok') {
-      setNotice('Pago confirmado. Tu solicitud queda pendiente de revisión.')
-    } else if (navigationState?.paymentStatus === 'ko') {
+    if (paymentStatus === 'ok') {
+      void refresh()
+        .then(() => {
+          setNotice('Pago recibido. Estamos actualizando el estado de tu solicitud.')
+        })
+        .catch(() => {
+          setError('El pago se ha recibido, pero no hemos podido actualizar el estado todavía.')
+        })
+    } else if (paymentStatus === 'ko') {
       setError('El pago no se ha completado. Puedes reintentarlo desde Mis transportes.')
     }
-  }, [navigationState?.paymentStatus])
+  }, [paymentStatus, refresh])
   async function refreshData() {
     setLoading(true)
     setError('')

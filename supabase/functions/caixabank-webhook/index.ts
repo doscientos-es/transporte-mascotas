@@ -13,6 +13,9 @@ type TransportPayment = {
   amount_cents: number
   status: string
   payment_merchant_order: string
+  daily_route_id: string
+  origin_text: string
+  destination_text: string
 }
 
 Deno.serve(async (request) => {
@@ -50,7 +53,7 @@ Deno.serve(async (request) => {
     const [payment] = (await paymentResponse.json()) as Payment[]
     if (!payment) {
       const transportResponse = await rest(
-        `transport_requests?payment_merchant_order=eq.${encodeURIComponent(order)}&select=id,amount_cents,status,payment_merchant_order`,
+        `transport_requests?payment_merchant_order=eq.${encodeURIComponent(order)}&select=id,amount_cents,status,payment_merchant_order,daily_route_id,origin_text,destination_text`,
       )
       const [transportPayment] = (await transportResponse.json()) as TransportPayment[]
       if (!transportPayment) return new Response('Pedido no encontrado.', { status: 404 })
@@ -122,7 +125,14 @@ async function processTransportPayment(
   payment: TransportPayment,
   notification: Record<string, string>,
 ) {
-  if (payment.status !== 'pago_pendiente') return new Response('OK')
+  if (
+    payment.status === 'confirmada' ||
+    payment.status === 'en_ruta' ||
+    payment.status === 'entregada'
+  )
+    return new Response('OK')
+  if (payment.status !== 'pago_pendiente' && payment.status !== 'por_verificar')
+    return new Response('OK')
   const gatewayResponse = {
     response: notification.Ds_Response ?? null,
     authorisationCode: notification.Ds_AuthorisationCode ?? null,
@@ -133,20 +143,35 @@ async function processTransportPayment(
     amount: notification.Ds_Amount,
     response: notification.Ds_Response,
     expectedAmount: payment.amount_cents,
+    currency: notification.Ds_Currency,
+    expectedCurrency: Deno.env.get('CAIXABANK_CYBERPAC_CURRENCY') || '978',
   })
-  await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(
-      paid
-        ? {
-            status: 'por_verificar',
-            payment_reference: payment.payment_merchant_order,
-            paid_at: new Date().toISOString(),
-            payment_gateway_response: gatewayResponse,
-          }
-        : { payment_gateway_response: gatewayResponse },
-    ),
-  })
+  if (payment.status === 'pago_pendiente')
+    await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(
+        paid
+          ? {
+              status: 'por_verificar',
+              payment_reference: payment.payment_merchant_order,
+              paid_at: new Date().toISOString(),
+              payment_gateway_response: gatewayResponse,
+            }
+          : { payment_gateway_response: gatewayResponse },
+      ),
+    })
+  if (paid) {
+    const issuer = issuerSnapshot()
+    await rest('rpc/auto_finalize_paid_transport', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_request_id: payment.id,
+        p_paid_at: new Date().toISOString(),
+        p_gateway_response: gatewayResponse,
+        p_issuer_snapshot: issuer,
+      }),
+    })
+  }
   return new Response('OK')
 }
 

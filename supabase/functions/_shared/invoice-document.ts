@@ -115,14 +115,48 @@ async function renderInvoice(invoice: IssuedInvoice) {
   const page = pdf.addPage([595.28, 841.89])
   const regular = await pdf.embedFont(StandardFonts.Helvetica)
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
-  const draw = (value: string, x: number, y: number, size = 10, emphasis = false) =>
+  const ink = rgb(0.11, 0.11, 0.1)
+  const coral = rgb(0.96, 0.26, 0.27)
+  const cream = rgb(0.98, 0.96, 0.94)
+  const muted = rgb(0.42, 0.4, 0.38)
+  const white = rgb(1, 1, 1)
+  const draw = (value: string, x: number, y: number, size = 10, emphasis = false, color = ink) =>
     page.drawText(value, {
       x,
       y,
       size,
       font: emphasis ? bold : regular,
-      color: rgb(0.09, 0.09, 0.09),
+      color,
     })
+  const drawRight = (
+    value: string,
+    right: number,
+    y: number,
+    size = 10,
+    emphasis = false,
+    color = ink,
+  ) =>
+    draw(
+      value,
+      right - (emphasis ? bold : regular).widthOfTextAtSize(value, size),
+      y,
+      size,
+      emphasis,
+      color,
+    )
+  const drawLines = (
+    values: string[],
+    x: number,
+    y: number,
+    size = 9,
+    emphasis = false,
+    color = ink,
+    gap = 14,
+  ) => values.forEach((value, index) => draw(value, x, y - index * gap, size, emphasis, color))
+  const drawLogo = (x: number, y: number) => {
+    page.drawEllipse({ x, y, width: 42, height: 42, color: white })
+    draw('K', x + 13, y + 12, 20, true, coral)
+  }
   const clientLines = [
     clientNif && `NIF/CIF: ${clientNif}`,
     clientAddress,
@@ -131,40 +165,76 @@ async function renderInvoice(invoice: IssuedInvoice) {
     typeof client.phone === 'string' ? `Tel.: ${client.phone}` : '',
   ].filter(Boolean)
 
-  draw('Factura', 54, 790, 23, true)
-  draw(issuerName, 54, 758, 11, true)
-  draw(`NIF/CIF: ${issuerTaxId}`, 54, 742)
-  draw(issuerAddress, 54, 728, 9)
-  draw('CLIENTE', 54, 670, 9, true)
-  draw(clientName, 54, 651, 11, true)
-  clientLines.forEach((line, index) => draw(line, 54, 635 - index * 14, 9))
-  draw('NÚMERO', 430, 670, 9, true)
-  draw(number, 430, 651, 10)
-  draw('FECHA EMISIÓN', 430, 625, 9, true)
-  draw(date(invoice.issued_at), 430, 606, 10)
-  page.drawRectangle({ x: 54, y: 540, width: 487, height: 28, color: rgb(0.97, 0.26, 0.27) })
-  page.drawText('CONCEPTO', { x: 62, y: 551, size: 9, font: bold, color: rgb(1, 1, 1) })
-  page.drawText('BASE', { x: 480, y: 551, size: 9, font: bold, color: rgb(1, 1, 1) })
-  draw(concept, 62, 518, 10)
-  draw(money(netAmount), 475, 518, 10, true)
-  draw('Base imponible', 370, 455, 10)
-  draw(money(netAmount), 485, 455, 10)
-  draw(`IVA (${vatRate} %)`, 370, 435, 10)
-  draw(money(vatAmount), 485, 435, 10)
-  draw('Total', 370, 395, 14, true)
-  draw(money(totalAmount), 465, 395, 15, true)
-  draw('OPERACIÓN Y COBRO', 54, 335, 9, true)
+  page.drawRectangle({ x: 0, y: 724, width: 595.28, height: 117.89, color: ink })
+  drawLogo(54, 761)
+  draw('KACHE ENVÍOS', 112, 786, 18, true, white)
+  draw('Transporte de mascotas', 112, 767, 10, false, white)
+  drawRight('FACTURA', 541, 794, 21, true, coral)
+  drawRight(`N.º ${number}`, 541, 774, 10, false, white)
+  drawRight(date(invoice.issued_at), 541, 758, 9, false, white)
+
+  draw('EMISOR', 54, 695, 8, true, muted)
+  draw(issuerName, 54, 677, 11, true)
+  draw(`NIF/CIF: ${issuerTaxId}`, 54, 661, 9, false, muted)
+  draw(issuerAddress, 54, 647, 9, false, muted)
+
+  page.drawRectangle({ x: 54, y: 520, width: 487, height: 105, color: cream })
+  draw('CLIENTE', 72, 601, 8, true, muted)
+  draw(clientName, 72, 583, 11, true)
+  drawLines(clientLines, 72, 567, 8.5, false, muted, 13)
+
+  draw('DATOS DE EMISIÓN', 365, 601, 8, true, muted)
+  draw('Número de factura', 365, 583, 8.5, false, muted)
+  draw(number, 365, 568, 10, true)
+  draw('Fecha de emisión', 365, 548, 8.5, false, muted)
+  draw(date(invoice.issued_at), 365, 533, 10, true)
+
+  page.drawRectangle({ x: 54, y: 442, width: 487, height: 32, color: coral })
+  draw('CONCEPTO', 72, 454, 8, true, white)
+  drawRight('BASE IMPONIBLE', 523, 454, 8, true, white)
+  draw(concept, 72, 420, 10)
+  drawRight(money(netAmount), 523, 420, 10, true, ink)
+  page.drawLine({ start: { x: 54, y: 403 }, end: { x: 541, y: 403 }, thickness: 0.6, color: cream })
+
+  page.drawRectangle({ x: 337, y: 270, width: 204, height: 105, color: cream })
+  draw('RESUMEN', 357, 355, 8, true, muted)
+  draw('Base imponible', 357, 332, 10)
+  drawRight(money(netAmount), 520, 332, 10, false, ink)
+  draw(`IVA (${vatRate} %)`, 357, 310, 10)
+  drawRight(money(vatAmount), 520, 310, 10, false, ink)
+  page.drawLine({
+    start: { x: 357, y: 291 },
+    end: { x: 520, y: 291 },
+    thickness: 0.8,
+    color: coral,
+  })
+  draw('TOTAL', 357, 278, 10, true, coral)
+  drawRight(money(totalAmount), 520, 278, 14, true, coral)
+
+  draw('OPERACIÓN Y COBRO', 54, 355, 8, true, muted)
   draw(
-    `Fecha operación: ${date(typeof snapshot.operation_date === 'string' ? snapshot.operation_date : invoice.issued_at)}`,
+    `Fecha de operación: ${date(typeof snapshot.operation_date === 'string' ? snapshot.operation_date : invoice.issued_at)}`,
     54,
-    315,
-    10,
+    332,
+    9,
   )
   draw(
     `Método de pago: ${typeof snapshot.payment_method === 'string' ? snapshot.payment_method : 'Pago confirmado'}`,
     54,
-    297,
-    10,
+    314,
+    9,
+  )
+  if (typeof snapshot.payment_date === 'string')
+    draw(`Cobro confirmado: ${date(snapshot.payment_date)}`, 54, 296, 9)
+
+  page.drawLine({ start: { x: 54, y: 82 }, end: { x: 541, y: 82 }, thickness: 0.7, color: cream })
+  draw(
+    'KACHE ENVÍOS  ·  Documento generado desde una instantánea fiscal inmutable',
+    54,
+    62,
+    8,
+    false,
+    muted,
   )
   return { body: await pdf.save(), fileName: `factura_${filePart(number)}.pdf` }
 }
