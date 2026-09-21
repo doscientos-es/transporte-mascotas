@@ -130,7 +130,8 @@ export function RequestsPage({ routes, onNotify }: Props) {
 
   const pending = requests.filter((request) => request.status === 'por_verificar')
   const rest = requests.filter((request) => request.status !== 'por_verificar')
-  const availableRoutes = routes.filter((route) => route.status === 'activa')
+  const availableRoutesFor = (request: TransportRequest) =>
+    routes.filter((route) => route.status === 'activa' && route.date === request.desiredDate)
   const pendingPagination = paginate(pending, pendingPage, REQUEST_PAGE_SIZE)
   const historyPagination = paginate(rest, historyPage, REQUEST_PAGE_SIZE)
 
@@ -162,6 +163,9 @@ export function RequestsPage({ routes, onNotify }: Props) {
               const assignment = assignmentFor(request.id)
               const route = routes.find((item) => item.id === assignment.routeId)
               const stops = route?.stops ?? []
+              const pickupIndex = stops.findIndex((stop) => stop.id === assignment.pickupStopId)
+              const deliveryStops = pickupIndex >= 0 ? stops.slice(pickupIndex + 1) : []
+              const availableRoutes = availableRoutesFor(request)
               return (
                 <div
                   className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
@@ -248,7 +252,8 @@ export function RequestsPage({ routes, onNotify }: Props) {
                         <option value="">Selecciona una ruta</option>
                         {availableRoutes.map((item) => (
                           <option value={item.id} key={item.id}>
-                            {formatDate(item.date)}
+                            {formatDate(item.date)} ·{' '}
+                            {item.direction === 'inversa' ? 'sentido inverso' : 'sentido habitual'}
                           </option>
                         ))}
                       </select>
@@ -271,7 +276,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                         disabled={!stops.length || Boolean(busy)}
                       >
                         <option value="">Selecciona una parada</option>
-                        {stops.map((stop) => (
+                        {deliveryStops.map((stop) => (
                           <option value={stop.id} key={stop.id}>
                             {stop.locality}
                           </option>
