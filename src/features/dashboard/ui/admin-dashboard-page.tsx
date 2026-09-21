@@ -1,7 +1,7 @@
 import { Button } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
 import { CalendarDays, CheckCircle2, FilePlus2, Plus, Printer } from 'lucide-react'
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import type { ClientInvoice, DashboardNavigation, UserProfile } from '@/shared/types'
@@ -10,44 +10,75 @@ import { SectionBoundary } from '@/shared/ui/section-boundary'
 
 import { useDashboard } from '../application/use-dashboard'
 import { assignmentsForRoute } from '../application/van'
-const ClientsPage = lazy(() =>
-  import('./clients-page').then(({ ClientsPage: page }) => ({ default: page })),
+function lazyWithRetry<T extends Record<string, unknown>, P>(
+  load: () => Promise<T>,
+  select: (module: T) => ComponentType<P>,
+) {
+  return lazy(async () => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return { default: select(await load()) }
+      } catch (error) {
+        lastError = error
+        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 150))
+      }
+    }
+    throw lastError
+  })
+}
+
+const ClientsPage = lazyWithRetry(
+  () => import('./clients-page'),
+  ({ ClientsPage: page }) => page,
 )
-const InvoicesPage = lazy(() =>
-  import('./invoices-page').then(({ InvoicesPage: page }) => ({ default: page })),
+const InvoicesPage = lazyWithRetry(
+  () => import('./invoices-page'),
+  ({ InvoicesPage: page }) => page,
 )
-const LettersPage = lazy(() =>
-  import('./letters-page').then(({ LettersPage: page }) => ({ default: page })),
+const LettersPage = lazyWithRetry(
+  () => import('./letters-page'),
+  ({ LettersPage: page }) => page,
 )
-const RequestsPage = lazy(() =>
-  import('./requests-page').then(({ RequestsPage: page }) => ({ default: page })),
+const RequestsPage = lazyWithRetry(
+  () => import('./requests-page'),
+  ({ RequestsPage: page }) => page,
 )
-const RoutesPage = lazy(() =>
-  import('./routes-page').then(({ RoutesPage: page }) => ({ default: page })),
+const RoutesPage = lazyWithRetry(
+  () => import('./routes-page'),
+  ({ RoutesPage: page }) => page,
 )
-const RoutesCatalogPage = lazy(() =>
-  import('./routes-page').then(({ RoutesCatalogPage: page }) => ({ default: page })),
+const RoutesCatalogPage = lazyWithRetry(
+  () => import('./routes-page'),
+  ({ RoutesCatalogPage: page }) => page,
 )
-const SettingsPage = lazy(() =>
-  import('./settings-page').then(({ SettingsPage: page }) => ({ default: page })),
+const SettingsPage = lazyWithRetry(
+  () => import('./settings-page'),
+  ({ SettingsPage: page }) => page,
 )
-const WhatsAppTestPage = lazy(() =>
-  import('./whatsapp-test-page').then(({ WhatsAppTestPage: page }) => ({ default: page })),
+const WhatsAppTestPage = lazyWithRetry(
+  () => import('./whatsapp-test-page'),
+  ({ WhatsAppTestPage: page }) => page,
 )
-const TemplatesPage = lazy(() =>
-  import('./templates-page').then(({ TemplatesPage: page }) => ({ default: page })),
+const TemplatesPage = lazyWithRetry(
+  () => import('./templates-page'),
+  ({ TemplatesPage: page }) => page,
 )
-const VanPage = lazy(() => import('./van-page').then(({ VanPage: page }) => ({ default: page })))
-const LetterFormDialog = lazy(() =>
-  import('./operation-dialogs').then(({ LetterFormDialog: dialog }) => ({ default: dialog })),
+const VanPage = lazyWithRetry(
+  () => import('./van-page'),
+  ({ VanPage: page }) => page,
 )
-const LetterCreatePage = lazy(() =>
-  import('./letter-create-page').then(({ LetterCreatePage: page }) => ({ default: page })),
+const LetterFormDialog = lazyWithRetry(
+  () => import('./operation-dialogs'),
+  ({ LetterFormDialog: dialog }) => dialog,
 )
-const NewRouteDirectionDialog = lazy(() =>
-  import('./operation-dialogs').then(({ NewRouteDirectionDialog: dialog }) => ({
-    default: dialog,
-  })),
+const LetterCreatePage = lazyWithRetry(
+  () => import('./letter-create-page'),
+  ({ LetterCreatePage: page }) => page,
+)
+const NewRouteDirectionDialog = lazyWithRetry(
+  () => import('./operation-dialogs'),
+  ({ NewRouteDirectionDialog: dialog }) => dialog,
 )
 
 export function AdminDashboardPage({

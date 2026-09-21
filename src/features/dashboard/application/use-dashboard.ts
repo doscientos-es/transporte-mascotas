@@ -142,44 +142,41 @@ function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Le
   const segment = findForwardRouteSegment(stops, letter.origin, letter.destination)
   if (!segment) return []
   const { originStop, destinationStop } = segment
-  return letter.animals.flatMap((animal) => {
-    const box = selectFreeBox([animal], usedBoxes)
-    if (box !== undefined) usedBoxes.add(box)
-    return [
-      ...(originStop
-        ? [
-            {
-              id: crypto.randomUUID(),
-              letterId: letter.id,
-              animalId: animal.id,
-              type: 'recogida' as const,
-              stop: originStop.locality,
-              stopId: originStop.id,
-              customer: letter.sender,
-              phone: letter.senderPhone,
-              status: 'pendiente' as const,
-              box,
-            },
-          ]
-        : []),
-      ...(destinationStop
-        ? [
-            {
-              id: crypto.randomUUID(),
-              letterId: letter.id,
-              animalId: animal.id,
-              type: 'entrega' as const,
-              stop: destinationStop.locality,
-              stopId: destinationStop.id,
-              customer: letter.recipient,
-              phone: letter.recipientPhone,
-              status: 'pendiente' as const,
-              box,
-            },
-          ]
-        : []),
-    ]
-  })
+  const box = selectFreeBox(letter.animals, usedBoxes)
+  return letter.animals.flatMap((animal) => [
+    ...(originStop
+      ? [
+          {
+            id: crypto.randomUUID(),
+            letterId: letter.id,
+            animalId: animal.id,
+            type: 'recogida' as const,
+            stop: originStop.locality,
+            stopId: originStop.id,
+            customer: letter.sender,
+            phone: letter.senderPhone,
+            status: 'pendiente' as const,
+            box,
+          },
+        ]
+      : []),
+    ...(destinationStop
+      ? [
+          {
+            id: crypto.randomUUID(),
+            letterId: letter.id,
+            animalId: animal.id,
+            type: 'entrega' as const,
+            stop: destinationStop.locality,
+            stopId: destinationStop.id,
+            customer: letter.recipient,
+            phone: letter.recipientPhone,
+            status: 'pendiente' as const,
+            box,
+          },
+        ]
+      : []),
+  ])
 }
 
 export function useDashboard(session: Session | null, role: AppRole) {
