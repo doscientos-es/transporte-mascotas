@@ -24,7 +24,7 @@ function lazyWithRetry<T extends Record<string, unknown>, P>(
         if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 150))
       }
     }
-    throw lastError
+    throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la sección.')
   })
 }
 

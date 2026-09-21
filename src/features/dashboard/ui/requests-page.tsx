@@ -164,6 +164,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
               const route = routes.find((item) => item.id === assignment.routeId)
               const stops = route?.stops ?? []
               const pickupIndex = stops.findIndex((stop) => stop.id === assignment.pickupStopId)
+              const pickupStops = stops.slice(0, -1)
               const deliveryStops = pickupIndex >= 0 ? stops.slice(pickupIndex + 1) : []
               const availableRoutes = availableRoutesFor(request)
               return (
@@ -276,12 +277,15 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       <select
                         value={assignment.pickupStopId}
                         onChange={(event) =>
-                          update(request.id, { pickupStopId: event.target.value })
+                          update(request.id, {
+                            pickupStopId: event.target.value,
+                            deliveryStopId: '',
+                          })
                         }
                         disabled={!stops.length || Boolean(busy)}
                       >
                         <option value="">Selecciona una parada</option>
-                        {deliveryStops.map((stop) => (
+                        {pickupStops.map((stop) => (
                           <option value={stop.id} key={stop.id}>
                             {stop.locality}
                           </option>
@@ -295,10 +299,12 @@ export function RequestsPage({ routes, onNotify }: Props) {
                         onChange={(event) =>
                           update(request.id, { deliveryStopId: event.target.value })
                         }
-                        disabled={!stops.length || Boolean(busy)}
+                        disabled={
+                          !assignment.pickupStopId || !deliveryStops.length || Boolean(busy)
+                        }
                       >
                         <option value="">Selecciona una parada</option>
-                        {stops.map((stop) => (
+                        {deliveryStops.map((stop) => (
                           <option value={stop.id} key={stop.id}>
                             {stop.locality}
                           </option>

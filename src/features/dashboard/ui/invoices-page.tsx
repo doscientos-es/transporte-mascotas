@@ -121,15 +121,19 @@ export function InvoicesPage({
       })
       downloadInvoiceRegister(exportResult.items)
     } catch {
-      window.alert('No se ha podido exportar el registro de facturas.')
+      setError('No se ha podido exportar el registro de facturas.')
     } finally {
       setExporting(false)
     }
   }
   async function download(invoice: NonNullable<ClientInvoice['issuedInvoice']>) {
     const downloadWindow = window.open('', '_blank')
-    if (!downloadWindow)
-      return window.alert('Permite las ventanas emergentes para descargar la factura.')
+    if (!downloadWindow) {
+      setError(
+        'El navegador ha bloqueado la descarga. Permite las ventanas emergentes e inténtalo de nuevo.',
+      )
+      return
+    }
     downloadWindow.opener = null
     setDownloadingInvoiceId(invoice.invoiceDraftId)
     try {
@@ -138,7 +142,7 @@ export function InvoicesPage({
       downloadWindow.location.replace(`${document.url}&download=1`)
     } catch (error) {
       downloadWindow.close()
-      window.alert(error instanceof Error ? error.message : 'No se ha podido descargar la factura.')
+      setError(error instanceof Error ? error.message : 'No se ha podido descargar la factura.')
     } finally {
       setDownloadingInvoiceId(null)
     }
@@ -157,7 +161,7 @@ export function InvoicesPage({
       })
       downloadBlob(document.blob, document.fileName)
     } catch (error) {
-      window.alert(
+      setError(
         error instanceof Error ? error.message : 'No se ha podido descargar la solicitud de pago.',
       )
     } finally {

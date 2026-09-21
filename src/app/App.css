@@ -2142,7 +2142,7 @@
 
 .clients-layout {
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -2287,7 +2287,9 @@
 
 .client-detail {
   display: grid;
+  align-content: start;
   gap: 18px;
+  min-width: 0;
 }
 
 .client-profile-head,
@@ -2345,8 +2347,26 @@
 
 .client-history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+
+.client-history-card {
+  min-width: 0;
+  min-height: 310px;
+}
+
+.client-history-content {
+  position: relative;
+  min-height: 220px;
+}
+
+.history-loading-overlay {
+  position: absolute;
+  top: -38px;
+  right: 0;
+  color: #788375;
+  font-size: 11px;
 }
 
 .history-heading {
@@ -3709,6 +3729,10 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
+  }
+
+  .client-detail {
+    padding-right: 2px;
   }
 }
 

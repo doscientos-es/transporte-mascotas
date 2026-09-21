@@ -330,7 +330,7 @@ export function ClientsPage({
             </CardContent>
           </Card>
           {selected ? (
-            <div className="client-detail">
+            <div className="client-detail" aria-busy={loadingHistory}>
               <Card>
                 <CardContent>
                   <div className="client-profile-head">
@@ -372,7 +372,7 @@ export function ClientsPage({
                 </CardContent>
               </Card>
               <div className="client-history-grid">
-                <Card>
+                <Card className="client-history-card">
                   <CardContent>
                     <div className="history-heading">
                       <div>
@@ -381,40 +381,47 @@ export function ClientsPage({
                       </div>
                       <b>{loadingHistory ? '…' : clientInvoices.total}</b>
                     </div>
-                    {clientInvoices.items.length ? (
-                      <div className="history-list">
-                        {clientInvoices.items.map((invoice) => (
-                          <button
-                            key={invoice.id}
-                            type="button"
-                            className="history-link"
-                            onClick={() => onOpenDocument(invoice)}
-                          >
-                            <span className="invoice-mark">F</span>
-                            <span>
-                              <strong>{invoice.letterId.replace('CARTA DE PORTE Nº ', '')}</strong>
-                              <small>
-                                {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
-                                {payerLabels[invoice.payer]}
-                              </small>
-                            </span>
-                            <b>{currency(invoice.total)}</b>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="empty-copy">
-                        {loadingHistory
-                          ? 'Cargando facturas…'
-                          : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
-                      </p>
+                    <div className="client-history-content">
+                      {clientInvoices.items.length ? (
+                        <div className="history-list">
+                          {clientInvoices.items.map((invoice) => (
+                            <button
+                              key={invoice.id}
+                              type="button"
+                              className="history-link"
+                              onClick={() => onOpenDocument(invoice)}
+                            >
+                              <span className="invoice-mark">F</span>
+                              <span>
+                                <strong>
+                                  {invoice.letterId.replace('CARTA DE PORTE Nº ', '')}
+                                </strong>
+                                <small>
+                                  {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
+                                  {payerLabels[invoice.payer]}
+                                </small>
+                              </span>
+                              <b>{currency(invoice.total)}</b>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="empty-copy">
+                          {loadingHistory
+                            ? 'Cargando facturas…'
+                            : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
+                        </p>
+                      )}
+                    </div>
+                    {loadingHistory && (
+                      <span className="history-loading-overlay">Actualizando…</span>
                     )}
                     {clientInvoices.total > clientInvoices.items.length && (
                       <p className="empty-copy">Se muestran las 12 facturas más recientes.</p>
                     )}
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className="client-history-card">
                   <CardContent>
                     <div className="history-heading">
                       <div>

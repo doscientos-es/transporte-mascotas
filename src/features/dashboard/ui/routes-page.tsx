@@ -310,8 +310,16 @@ export function RoutesCatalogPage({
           ) : (
             <div className="route-table-empty">
               <Search size={22} />
-              <strong>No hay rutas con estos filtros</strong>
-              <p>Prueba con otra búsqueda o cambia el estado seleccionado.</p>
+              <strong>
+                {routes.length === 0
+                  ? 'Todavía no hay rutas asignadas'
+                  : 'No hay rutas con estos filtros'}
+              </strong>
+              <p>
+                {routes.length === 0
+                  ? 'Cuando administración te asigne una ruta aparecerá aquí.'
+                  : 'Prueba con otra búsqueda o cambia el estado seleccionado.'}
+              </p>
             </div>
           )}
           {filteredRoutes.length > 0 && (
