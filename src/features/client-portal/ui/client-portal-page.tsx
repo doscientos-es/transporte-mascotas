@@ -53,8 +53,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
     navigation
   const routerLocation = useLocation()
-  const preselectRouteId = (routerLocation.state as { preselectRouteId?: string } | null)
-    ?.preselectRouteId
+  const navigationState = routerLocation.state as {
+    preselectRouteId?: string
+    paymentStatus?: 'ok' | 'ko'
+  } | null
+  const preselectRouteId = navigationState?.preselectRouteId
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
@@ -116,6 +119,13 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   useEffect(() => {
     if (preselectRouteId) setShowForm(true)
   }, [preselectRouteId])
+  useEffect(() => {
+    if (navigationState?.paymentStatus === 'ok') {
+      setNotice('Pago confirmado. Tu solicitud queda pendiente de revisión.')
+    } else if (navigationState?.paymentStatus === 'ko') {
+      setError('El pago no se ha completado. Puedes reintentarlo desde Mis transportes.')
+    }
+  }, [navigationState?.paymentStatus])
   async function refreshData() {
     setLoading(true)
     setError('')

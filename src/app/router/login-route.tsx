@@ -10,11 +10,13 @@ type PublicRouteContext = { session: Session | null; profile: UserProfile | null
 
 export function Component() {
   const { session, profile } = useOutletContext<PublicRouteContext>()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
+  const payment = new URLSearchParams(search).get('payment')
   if (session && profile)
     return (
       <Navigate
         to={isClientRole(profile.role) ? APP_PATHS.clientHome : APP_PATHS.staffHome}
+        state={payment === 'ok' || payment === 'ko' ? { paymentStatus: payment } : undefined}
         replace
       />
     )
