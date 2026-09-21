@@ -61,19 +61,3 @@ válidas para producción.
 5. Repetir con la tarjeta denegada y verificar que el pago queda fallido y la
    factura no se emite.
 6. Revisar los logs de `caixabank-webhook` y que el endpoint responde `OK`.
-
-## Tarifas del transporte por box
-
-Las tarifas iniciales son **80 € para pequeño**, **100 € para mediano** y **140 €
-para grande**. Un administrador puede cambiarlas en `Ajustes → Tarifa por tamaño
-de box`. El cliente sólo ve una estimación; al enviar la solicitud, la base de
-datos recalcula el tamaño desde peso y medidas y guarda el importe en céntimos.
-El pago de Redsys usa ese importe guardado, por lo que cambiar una tarifa no
-modifica solicitudes ya creadas.
-
-## Pase a producción
-
-No se debe cambiar a producción sólo sustituyendo el endpoint. CaixaBank debe
-proporcionar la clave, el endpoint y la configuración del terminal real. Antes
-del pase hay que actualizar las URLs públicas, cargar los secretos en el
-proyecto de producción y repetir una operación real de importe controlado.

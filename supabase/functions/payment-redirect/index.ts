@@ -162,7 +162,10 @@ function form(paymentForm: PaymentForm) {
   const escape = (value: string) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
   const fields = Object.entries(paymentForm.fields)
-    .map(([name, value]) => `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`)
+    .map(
+      ([name, value]) =>
+        `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`,
+    )
     .join('')
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(paymentForm.endpoint)}" method="post">${fields}<button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
 }
