@@ -5087,7 +5087,9 @@
 .route-table tbody tr {
   cursor: pointer;
   outline: 0;
-  transition: background 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .route-table tbody tr:hover,

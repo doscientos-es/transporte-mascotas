@@ -25,6 +25,9 @@ const RequestsPage = lazy(() =>
 const RoutesPage = lazy(() =>
   import('./routes-page').then(({ RoutesPage: page }) => ({ default: page })),
 )
+const RoutesCatalogPage = lazy(() =>
+  import('./routes-page').then(({ RoutesCatalogPage: page }) => ({ default: page })),
+)
 const SettingsPage = lazy(() =>
   import('./settings-page').then(({ SettingsPage: page }) => ({ default: page })),
 )
@@ -88,13 +91,13 @@ export function AdminDashboardPage({
   const activeAssignments = activeRoute ? assignmentsForRoute(activeRoute) : []
   const editingRouteId = dashboard.editingLetter
     ? (dashboard.dailyRoutes.find((route) =>
-        route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
-      )?.id ??
+      route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
+    )?.id ??
       dashboard.dailyRoutes.find(
         (route) =>
           route.date === dashboard.editingLetter?.serviceDate &&
           dashboard.routeTemplates.find((template) => template.id === route.templateId)?.name ===
-            dashboard.editingLetter?.route,
+          dashboard.editingLetter?.route,
       )?.id)
     : undefined
   const pendingLetters = isTransporter
@@ -139,7 +142,7 @@ export function AdminDashboardPage({
       await downloadVanManifest(
         activeAssignments,
         dashboard.routeTemplates.find((template) => template.id === activeRoute.templateId)?.name ??
-          'ruta',
+        'ruta',
       )
     } catch {
       dashboard.toast('No se ha podido generar el PDF. Vuelve a intentarlo.')
@@ -265,24 +268,19 @@ export function AdminDashboardPage({
             {section === 'rutas' &&
               (dashboard.routesLoading ? (
                 <PageLoading />
-              ) : activeRoute && activeTemplate ? (
+              ) : routeFromUrl && activeRoute && activeTemplate ? (
                 <RoutesPage
                   route={activeRoute}
                   template={activeTemplate}
-                  templates={dashboard.routeTemplates}
-                  routes={visibleRoutes}
                   letters={dashboard.letters}
-                  onSelect={(route) => {
-                    dashboard.setSelectedRoute(route)
-                    navigateToRoute(route.id)
-                  }}
+                  onBack={() => navigateToSection('rutas')}
                   onOpenVan={
                     isTransporter
                       ? undefined
                       : (route) => {
-                          dashboard.setSelectedRoute(route)
-                          navigateToVan(route.id)
-                        }
+                        dashboard.setSelectedRoute(route)
+                        navigateToVan(route.id)
+                      }
                   }
                   onAction={dashboard.updateActions}
                   onUpdateStops={dashboard.updateRouteStops}
@@ -295,7 +293,22 @@ export function AdminDashboardPage({
                   canManage={!isTransporter}
                 />
               ) : (
-                <EmptyRoute />
+                <RoutesCatalogPage
+                  routes={visibleRoutes}
+                  templates={dashboard.routeTemplates}
+                  onSelect={(route) => {
+                    dashboard.setSelectedRoute(route)
+                    navigateToRoute(route.id)
+                  }}
+                  onOpenVan={
+                    isTransporter
+                      ? undefined
+                      : (route) => {
+                        dashboard.setSelectedRoute(route)
+                        navigateToVan(route.id)
+                      }
+                  }
+                />
               ))}
             {!isTransporter && section === 'furgoneta' && activeRoute && (
               <VanPage
@@ -380,10 +393,6 @@ export function AdminDashboardPage({
       )}
     </>
   )
-}
-
-function EmptyRoute() {
-  return <div className="page-loading">No tienes una ruta asignada para consultar.</div>
 }
 
 function PageLoading() {

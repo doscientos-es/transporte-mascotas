@@ -130,7 +130,8 @@ export function RoutesCatalogPage({
       .filter((route) => {
         if (!normalizedQuery) return true
         const name =
-          templates.find((template) => template.id === route.templateId)?.name ?? 'Ruta sin plantilla'
+          templates.find((template) => template.id === route.templateId)?.name ??
+          'Ruta sin plantilla'
         return [name, directionLabel(route.direction ?? 'normal'), statusLabels[route.status]].some(
           (value) => value.toLocaleLowerCase().includes(normalizedQuery),
         )
@@ -237,7 +238,9 @@ export function RoutesCatalogPage({
                             {stops} {stops === 1 ? 'parada' : 'paradas'}
                           </strong>
                           <small className="route-table-progress">
-                            {services ? `${completed}/${services} servicios completados` : 'Sin servicios'}
+                            {services
+                              ? `${completed}/${services} servicios completados`
+                              : 'Sin servicios'}
                           </small>
                         </td>
                         <td data-label="Estado">
@@ -399,7 +402,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
-      ;[next[index], next[target]] = [next[target], next[index]]
+    ;[next[index], next[target]] = [next[target], next[index]]
     setMovingStop(true)
     try {
       setOperationError('')
@@ -415,7 +418,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= plannedStops.length) return
     const next = [...plannedStops]
-      ;[next[index], next[target]] = [next[target], next[index]]
+    ;[next[index], next[target]] = [next[target], next[index]]
     try {
       setPlannedStops(await calculateDrivingTimes(next))
     } catch {
