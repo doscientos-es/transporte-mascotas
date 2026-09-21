@@ -15,6 +15,8 @@ type RequestRow = {
   contact_name: string
   contact_phone: string
   contact_email: string
+  billing_payer: TransportRequest['billingPayer']
+  billing_client: TransportRequest['billingClient']
   origin_text: string
   destination_text: string
   desired_date: string
@@ -55,6 +57,8 @@ function mapRequest(row: RequestRow): TransportRequest {
     contactName: row.contact_name,
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
+    billingPayer: row.billing_payer,
+    billingClient: row.billing_client,
     origin: row.origin_text,
     destination: row.destination_text,
     desiredDate: row.desired_date,
@@ -190,6 +194,8 @@ export async function createTransportRequest(
     p_contact_name: request.contactName,
     p_contact_phone: request.contactPhone,
     p_contact_email: request.contactEmail,
+    p_billing_payer: request.billingPayer,
+    p_billing_client: request.billingClient,
     p_daily_route_id: request.dailyRouteId,
     p_origin: request.origin,
     p_destination: request.destination,

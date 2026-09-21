@@ -8,7 +8,6 @@ import type {
   Letter,
   ManualPaymentMethod,
   PaginatedResult,
-  PaymentDelivery,
 } from '@/shared/types'
 
 type ClientRow = {
@@ -241,7 +240,6 @@ export async function persistInvoice(
   total: number,
   userId: string,
   clientInput: InvoiceClientInput,
-  _delivery?: PaymentDelivery,
 ) {
   if (!supabase) return null
   const fiscalData = fiscalClient(clientInput)

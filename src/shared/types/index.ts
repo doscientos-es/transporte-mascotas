@@ -317,6 +317,8 @@ export interface TransportRequest {
   contactName: string
   contactPhone: string
   contactEmail: string
+  billingPayer: InvoicePayer
+  billingClient: InvoiceClientInput
   origin: string
   destination: string
   desiredDate: string

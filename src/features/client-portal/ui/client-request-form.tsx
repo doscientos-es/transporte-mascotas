@@ -34,8 +34,13 @@ import {
   transportBoxPriceCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
-import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
-import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
+import type {
+  ClientPet,
+  InvoiceClientInput,
+  InvoicePayer,
+  TransportRequestAnimal,
+  UpcomingRoute,
+} from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 
@@ -43,6 +48,8 @@ export type RequestFormValues = {
   contactName: string
   contactPhone: string
   contactEmail: string
+  billingPayer: InvoicePayer
+  billingClient: InvoiceClientInput
   origin: string
   destination: string
   desiredDate: string
@@ -63,6 +70,16 @@ const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   lengthCm: 0,
   heightCm: 0,
   widthCm: 0,
+})
+
+const invoiceClient = (fullName = '', email = '', phone = ''): InvoiceClientInput => ({
+  fullName,
+  nif: '',
+  email,
+  phone,
+  address: '',
+  city: '',
+  postalCode: '',
 })
 
 function requestedCategoryFor(
@@ -92,6 +109,8 @@ const initialValues = (
   contactName,
   contactPhone,
   contactEmail,
+  billingPayer: 'remitente',
+  billingClient: invoiceClient(contactName, contactEmail, contactPhone),
   origin: '',
   destination: '',
   desiredDate: preselectedRoute?.serviceDate ?? '',
@@ -229,10 +248,21 @@ export function ClientRequestForm({
     if (step === 0) {
       if (!values.contactName.trim() || !values.contactPhone.trim() || !values.contactEmail.trim())
         return 'Completa los datos de contacto para poder avisarte.'
-      if (!isWhatsAppPhone(values.contactPhone))
-        return 'Escribe un teléfono válido para los avisos de WhatsApp.'
       if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
         return 'Escribe un correo electrónico válido.'
+      const requiredFiscalFields: Array<[string, string]> = [
+        ['nombre o razón social', values.billingClient.fullName],
+        ['NIF/CIF', values.billingClient.nif],
+        ['dirección fiscal', values.billingClient.address],
+        ['código postal', values.billingClient.postalCode],
+        ['ciudad', values.billingClient.city],
+        ['correo del pagador', values.billingClient.email],
+        ['teléfono del pagador', values.billingClient.phone],
+      ]
+      const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
+      if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
+      if (!/^\S+@\S+\.\S+$/.test(values.billingClient.email))
+        return 'Escribe un correo válido para el pagador.'
     }
     if (step === 1) {
       if (!values.dailyRouteId || !values.origin || !values.destination || !values.desiredDate)
@@ -329,7 +359,7 @@ export function ClientRequestForm({
         { weightKg: animal.weightKg, minimumCategory },
         boxCatalog,
       ) /
-        100
+      100
     )
   }, 0)
   const routeStops = selectedRoute?.localities ?? []
@@ -811,7 +841,7 @@ export function ClientRequestForm({
                                   ) / 100,
                                 )}
                                 {transportBoxCategoryRank(category) >
-                                transportBoxCategoryRank(minimumCategory)
+                                  transportBoxCategoryRank(minimumCategory)
                                   ? ' · extra por comodidad'
                                   : ''}
                               </option>
