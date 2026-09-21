@@ -244,6 +244,21 @@ export function ClientRequestForm({
     })
   }
 
+  function selectBillingPayer(billingPayer: InvoicePayer) {
+    const billingClient =
+      billingPayer === 'remitente'
+        ? invoiceClient(values.contactName, values.contactEmail, values.contactPhone)
+        : invoiceClient()
+    setValues((current) => ({ ...current, billingPayer, billingClient }))
+  }
+
+  function updateBillingClient(field: keyof InvoiceClientInput, value: string) {
+    setValues((current) => ({
+      ...current,
+      billingClient: { ...current.billingClient, [field]: value },
+    }))
+  }
+
   function validateCurrentStep() {
     if (step === 0) {
       if (!values.contactName.trim() || !values.contactPhone.trim() || !values.contactEmail.trim())
@@ -514,9 +529,9 @@ export function ClientRequestForm({
                   <ShieldCheck size={17} />
                 </span>
                 <div>
-                  <h3 className="text-foreground text-base font-semibold">Cómo te contactamos</h3>
+                  <h3 className="text-foreground text-base font-semibold">Datos de contacto</h3>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Te avisaremos cuando revisemos la solicitud y asignemos la ruta.
+                    Los usaremos para gestionar la reserva y resolver cualquier incidencia.
                   </p>
                 </div>
               </div>
@@ -560,9 +575,114 @@ export function ClientRequestForm({
                     required
                   />
                   <FieldDescription>
-                    Te enviaremos aquí la confirmación de la solicitud.
+                    Aquí recibirás la información de tu solicitud.
                   </FieldDescription>
                 </Field>
+              </div>
+              <div className="border-border mt-6 border-t pt-5">
+                <div className="mb-4">
+                  <h3 className="text-foreground text-base font-semibold">Datos para la factura</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Elige quién paga el transporte y completa sus datos fiscales. Se guardarán en el
+                    CRM para que administración pueda emitir la factura.
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-billing-payer">¿Quién paga el transporte?</FieldLabel>
+                    <select
+                      id="request-billing-payer"
+                      className="bg-background min-h-11 rounded-md border px-3 text-sm"
+                      value={values.billingPayer}
+                      onChange={(event) => selectBillingPayer(event.target.value as InvoicePayer)}
+                    >
+                      <option value="remitente">La persona que envía el animal</option>
+                      <option value="destinatario">La persona que recibe el animal</option>
+                      <option value="manual">Otra persona o empresa</option>
+                    </select>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-name">Nombre o razón social</FieldLabel>
+                    <Input
+                      id="request-billing-name"
+                      value={values.billingClient.fullName}
+                      onChange={(event) => updateBillingClient('fullName', event.target.value)}
+                      autoComplete="organization"
+                      placeholder="Nombre completo o empresa"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-nif">NIF/CIF</FieldLabel>
+                    <Input
+                      id="request-billing-nif"
+                      value={values.billingClient.nif}
+                      onChange={(event) => updateBillingClient('nif', event.target.value)}
+                      placeholder="NIF o CIF"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-billing-address">Dirección fiscal</FieldLabel>
+                    <Input
+                      id="request-billing-address"
+                      value={values.billingClient.address}
+                      onChange={(event) => updateBillingClient('address', event.target.value)}
+                      autoComplete="street-address"
+                      placeholder="Calle, número, piso…"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-postal-code">Código postal</FieldLabel>
+                    <Input
+                      id="request-billing-postal-code"
+                      value={values.billingClient.postalCode}
+                      onChange={(event) => updateBillingClient('postalCode', event.target.value)}
+                      autoComplete="postal-code"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-city">Ciudad</FieldLabel>
+                    <Input
+                      id="request-billing-city"
+                      value={values.billingClient.city}
+                      onChange={(event) => updateBillingClient('city', event.target.value)}
+                      autoComplete="address-level2"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-email">Correo del pagador</FieldLabel>
+                    <Input
+                      id="request-billing-email"
+                      type="email"
+                      value={values.billingClient.email}
+                      onChange={(event) => updateBillingClient('email', event.target.value)}
+                      autoComplete="email"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-billing-phone">Teléfono del pagador</FieldLabel>
+                    <Input
+                      id="request-billing-phone"
+                      type="tel"
+                      value={values.billingClient.phone}
+                      onChange={(event) => updateBillingClient('phone', event.target.value)}
+                      autoComplete="tel"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                </div>
               </div>
             </section>
           )}
