@@ -6,8 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@doscientos/ui'
-import { CheckCircle2, Download } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CheckCircle2, Download, ExternalLink } from 'lucide-react'
+import * as pdfjs from 'pdfjs-dist'
+import { useEffect, useRef, useState } from 'react'
 
 import type { ClientInvoice, ManualPaymentMethod } from '@/shared/types'
 
@@ -16,6 +17,11 @@ import { paymentRequestLetterName } from '../application/payment-request-letter-
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 import { downloadBlob } from './billing-document-export'
 
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
+
 export function InvoicePreviewDialog({
   invoice,
   onClose,
@@ -23,15 +29,20 @@ export function InvoicePreviewDialog({
   invoice: NonNullable<ClientInvoice['issuedInvoice']>
   onClose: () => void
 }) {
-  const [previewUrl, setPreviewUrl] = useState('')
+  const [document, setDocument] = useState<{ blob: Blob; fileName: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
     prepareInvoiceDocument(invoice.invoiceDraftId)
-      .then((document) => {
-        if (active) setPreviewUrl(document?.url ?? '')
+      .then(async (preparedDocument) => {
+        if (!preparedDocument) return
+        const response = await fetch(preparedDocument.url)
+        if (!response.ok) throw new Error('No se ha podido descargar la factura.')
+        if (active) {
+          setDocument({ blob: await response.blob(), fileName: preparedDocument.fileName })
+        }
       })
       .catch(() => {
         if (active) setError('No se ha podido preparar la vista previa de la factura.')
@@ -47,36 +58,48 @@ export function InvoicePreviewDialog({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="dialog-card invoice-preview-dialog">
-        <DialogHeader className="gap-0">
-          <DialogTitle>Factura {invoice.number}</DialogTitle>
-          <DialogDescription>
-            Documento creado desde la instantánea fiscal emitida.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="invoice-preview-dialog-topbar">
+          <DialogHeader className="gap-0">
+            <DialogTitle>Factura {invoice.number}</DialogTitle>
+            <DialogDescription>
+              Documento creado desde la instantánea fiscal emitida.
+            </DialogDescription>
+          </DialogHeader>
+          {document && (
+            <div className="invoice-preview-top-actions">
+              <Button
+                variant="outline"
+                onClick={() => downloadBlob(document.blob, document.fileName)}
+              >
+                <Download /> Descargar
+              </Button>
+              <Button variant="outline" onClick={() => openBlob(document.blob)}>
+                <ExternalLink /> Abrir
+              </Button>
+            </div>
+          )}
+        </div>
         {loading && <p className="page-loading">Preparando factura…</p>}
         {error && (
           <p className="form-error" role="alert">
             {error}
           </p>
         )}
-        {previewUrl && (
-          <iframe
-            className="invoice-preview"
-            src={previewUrl}
-            title={`Vista previa de la factura ${invoice.number}`}
+        {document && (
+          <PaymentRequestPdfPreview
+            blob={document.blob}
+            fallback={<p className="form-error">Usa «Abrir» para ver la factura completa.</p>}
           />
-        )}
-        {previewUrl && (
-          <Button
-            className="dialog-submit"
-            onClick={() => window.open(`${previewUrl}&download=1`, '_blank', 'noopener,noreferrer')}
-          >
-            <Download /> Descargar factura
-          </Button>
         )}
       </DialogContent>
     </Dialog>
   )
+}
+
+function openBlob(blob: Blob) {
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener,noreferrer')
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export function PaymentRequestPreviewDialog({
@@ -88,14 +111,11 @@ export function PaymentRequestPreviewDialog({
   clientName: string
   onClose: () => void
 }) {
-  const [document, setDocument] = useState<{ blob: Blob; fileName: string; url: string } | null>(
-    null,
-  )
+  const [document, setDocument] = useState<{ blob: Blob; fileName: string } | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
-    let url = ''
     paymentRequestLetterName(invoice.letterId)
       .then((letterName) =>
         createPaymentRequestDocument({
@@ -109,27 +129,36 @@ export function PaymentRequestPreviewDialog({
       )
       .then((paymentRequest) => {
         if (!active) return
-        url = URL.createObjectURL(paymentRequest.blob)
-        setDocument({ ...paymentRequest, url })
+        setDocument(paymentRequest)
       })
       .catch(() => {
         if (active) setError('No se ha podido preparar la vista previa de la solicitud.')
       })
     return () => {
       active = false
-      if (url) URL.revokeObjectURL(url)
     }
   }, [clientName, invoice.concept, invoice.createdAt, invoice.letterId, invoice.total])
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="dialog-card invoice-preview-dialog">
-        <DialogHeader className="gap-0">
-          <DialogTitle>Solicitud de pago {invoice.letterId}</DialogTitle>
-          <DialogDescription>
-            Documento informativo pendiente de cobro. No es una factura.
-          </DialogDescription>
-        </DialogHeader>
+        <div className="invoice-preview-dialog-topbar">
+          <DialogHeader className="gap-0">
+            <DialogTitle>Solicitud de pago {invoice.letterId}</DialogTitle>
+            <DialogDescription>
+              Documento informativo pendiente de cobro. No es una factura.
+            </DialogDescription>
+          </DialogHeader>
+          {document && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => downloadBlob(document.blob, document.fileName)}
+            >
+              <Download size={14} /> Descargar
+            </Button>
+          )}
+        </div>
         {!document && !error && <p className="page-loading">Preparando solicitud…</p>}
         {error && (
           <p className="form-error" role="alert">
@@ -137,22 +166,106 @@ export function PaymentRequestPreviewDialog({
           </p>
         )}
         {document && (
-          <iframe
-            className="invoice-preview"
-            src={document.url}
-            title={`Vista previa de la solicitud de pago ${invoice.letterId}`}
+          <PaymentRequestPdfPreview
+            blob={document.blob}
+            fallback={<PaymentRequestDocumentPreview invoice={invoice} clientName={clientName} />}
           />
-        )}
-        {document && (
-          <Button
-            className="dialog-submit"
-            onClick={() => downloadBlob(document.blob, document.fileName)}
-          >
-            <Download /> Descargar solicitud
-          </Button>
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+function PaymentRequestPdfPreview({ blob, fallback }: { blob: Blob; fallback: React.ReactNode }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    let loadingTask: ReturnType<typeof pdfjs.getDocument> | undefined
+    void blob
+      .arrayBuffer()
+      .then((data) => {
+        if (!active) return null
+        loadingTask = pdfjs.getDocument({ data })
+        return loadingTask.promise
+      })
+      .then(async (pdf) => {
+        if (!pdf) return
+        const page = await pdf.getPage(1)
+        if (!active || !canvasRef.current) return
+        const viewport = page.getViewport({ scale: 1.35 })
+        const canvas = canvasRef.current
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        const canvasContext = canvas.getContext('2d')
+        if (!canvasContext) throw new Error('No se ha podido preparar la vista previa.')
+        await page.render({ canvas, canvasContext, viewport }).promise
+      })
+      .catch(() => {
+        if (active) setFailed(true)
+      })
+    return () => {
+      active = false
+      void loadingTask?.destroy()
+    }
+  }, [blob])
+
+  if (failed) return fallback
+  return (
+    <canvas ref={canvasRef} className="invoice-preview-pdf" aria-label="Vista previa del PDF" />
+  )
+}
+
+function PaymentRequestDocumentPreview({
+  invoice,
+  clientName,
+}: {
+  invoice: ClientInvoice
+  clientName: string
+}) {
+  return (
+    <article className="payment-request-preview" aria-label="Vista previa de la solicitud de pago">
+      <header className="payment-request-preview-header">
+        <div>
+          <strong>KACHE ENVÍOS</strong>
+          <span>Transporte de mascotas</span>
+        </div>
+        <b>DOCUMENTO NO FISCAL</b>
+      </header>
+      <div className="payment-request-preview-body">
+        <p className="payment-request-preview-kicker">Solicitud de pago</p>
+        <h3>Resumen del servicio y del importe solicitado</h3>
+        <div className="payment-request-preview-meta">
+          <div>
+            <span>Cliente</span>
+            <strong>{clientName}</strong>
+          </div>
+          <div>
+            <span>Carta de porte</span>
+            <strong>{invoice.letterId}</strong>
+          </div>
+        </div>
+        <div className="payment-request-preview-concept">
+          <span>Concepto</span>
+          <strong>{invoice.concept}</strong>
+        </div>
+        <div className="payment-request-preview-total">
+          <span>Importe solicitado</span>
+          <strong>
+            {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(
+              invoice.total,
+            )}
+          </strong>
+        </div>
+        <p className="payment-request-preview-date">
+          Solicitud creada el {new Date(invoice.createdAt).toLocaleDateString('es-ES')}
+        </p>
+        <p className="payment-request-preview-note">
+          Este documento es informativo y no sustituye a una factura.
+        </p>
+      </div>
+    </article>
   )
 }
 

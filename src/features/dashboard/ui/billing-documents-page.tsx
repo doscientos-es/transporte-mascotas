@@ -142,7 +142,10 @@ export function BillingDocumentsPage({
     }
   }
 
-  async function downloadIssued(invoice: NonNullable<ClientInvoice['issuedInvoice']>) {
+  async function downloadIssued(
+    invoice: NonNullable<ClientInvoice['issuedInvoice']>,
+    documentId: string,
+  ) {
     const downloadWindow = window.open('', '_blank')
     if (!downloadWindow) {
       setError(
@@ -151,7 +154,7 @@ export function BillingDocumentsPage({
       return
     }
     downloadWindow.opener = null
-    setDownloadingId(invoice.invoiceDraftId)
+    setDownloadingId(documentId)
     try {
       const document = await prepareInvoiceDocument(invoice.invoiceDraftId)
       if (!document) throw new Error('No se ha podido preparar la descarga de la factura.')
@@ -190,7 +193,7 @@ export function BillingDocumentsPage({
 
   function downloadDocument(invoice: ClientInvoice, clientName: string) {
     return mode === 'invoices' && invoice.issuedInvoice
-      ? downloadIssued(invoice.issuedInvoice)
+      ? downloadIssued(invoice.issuedInvoice, invoice.id)
       : downloadPaymentRequest(invoice, clientName)
   }
 
