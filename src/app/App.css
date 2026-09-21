@@ -5923,17 +5923,22 @@
 
 .route-journey .journey-route-title {
   flex: 1 1 auto;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
 }
 
 .route-journey .journey-actions {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   gap: 12px;
 }
 
 .route-journey .route-total {
+  flex: 0 0 auto;
   min-height: 36px;
-  max-width: 232px;
-  padding: 6px 9px;
+  max-width: 220px;
+  padding: 9px 12px;
+  background: rgb(255 255 255 / 10%);
 }
 
 .route-journey .journey-action-buttons {
@@ -5967,6 +5972,34 @@
 .route-journey .journey-action-buttons .journey-organize-stops {
   background: transparent;
   color: #f3e9e9;
+}
+
+@media (max-width: 1180px) {
+  .route-journey .journey-header.route-journey-header {
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  .route-journey .journey-route-title {
+    flex: 1 1 100%;
+  }
+
+  .route-journey .journey-actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .route-journey .journey-route-title {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .route-journey .route-total {
+    width: 100%;
+    max-width: none;
+  }
 }
 
 .route-journey .journey-action-buttons .journey-view-van:hover:not(:disabled),

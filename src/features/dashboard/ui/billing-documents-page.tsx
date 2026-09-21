@@ -12,7 +12,6 @@ import {
   invoiceSortOptions,
   loadInvoicePage,
   type InvoiceSort,
-  type SortDirection,
 } from '../application/paginated-lists'
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
@@ -269,42 +268,27 @@ export function BillingDocumentsPage({
               <option value="status">Estado</option>
             </select>
           </label>
-          {isPaymentRequests ? (
-            <div className="invoice-direction-toggle">
-              <Tooltip
-                label={`Orden ${direction === 'desc' ? 'descendente' : 'ascendente'}. Pulsa para cambiarla.`}
-              >
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  variant="outline"
-                  aria-label={`Cambiar a orden ${direction === 'desc' ? 'ascendente' : 'descendente'}`}
-                  onClick={() =>
-                    updateParams({ direccion: toggleSortDirection(direction), ...resetPage })
-                  }
-                >
-                  {direction === 'desc' ? (
-                    <ArrowDownWideNarrow size={16} aria-hidden="true" />
-                  ) : (
-                    <ArrowUpWideNarrow size={16} aria-hidden="true" />
-                  )}
-                </Button>
-              </Tooltip>
-            </div>
-          ) : (
-            <label>
-              Dirección
-              <select
-                value={direction}
-                onChange={(event) =>
-                  updateParams({ direccion: event.target.value as SortDirection, ...resetPage })
+          <div className="invoice-direction-toggle">
+            <Tooltip
+              label={`Orden ${direction === 'desc' ? 'descendente' : 'ascendente'}. Pulsa para cambiarla.`}
+            >
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                aria-label={`Cambiar a orden ${direction === 'desc' ? 'ascendente' : 'descendente'}`}
+                onClick={() =>
+                  updateParams({ direccion: toggleSortDirection(direction), ...resetPage })
                 }
               >
-                <option value="desc">Descendente</option>
-                <option value="asc">Ascendente</option>
-              </select>
-            </label>
-          )}
+                {direction === 'desc' ? (
+                  <ArrowDownWideNarrow size={16} aria-hidden="true" />
+                ) : (
+                  <ArrowUpWideNarrow size={16} aria-hidden="true" />
+                )}
+              </Button>
+            </Tooltip>
+          </div>
         </div>
       </section>
 

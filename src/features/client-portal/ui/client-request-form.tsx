@@ -854,14 +854,21 @@ export function ClientRequestForm({
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`animal-${animal.ordinal}-species`}>Especie</FieldLabel>
-                      <Input
+                      <select
                         id={`animal-${animal.ordinal}-species`}
                         value={animal.species}
                         onChange={(event) => updateAnimal(index, { species: event.target.value })}
-                        placeholder="Perro, gato…"
-                        className="min-h-11"
+                        className="border-input bg-background text-foreground focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
                         required
-                      />
+                      >
+                        <option value="">Selecciona una especie</option>
+                        <option value="Canina">Perro</option>
+                        <option value="Felina">Gato</option>
+                        <option value="Ave">Ave</option>
+                        <option value="Roedor">Roedor</option>
+                        <option value="Reptil">Reptil</option>
+                        <option value="Otra">Otra</option>
+                      </select>
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`animal-${animal.ordinal}-breed`}>Raza</FieldLabel>

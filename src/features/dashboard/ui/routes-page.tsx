@@ -576,8 +576,6 @@ export function RoutesPage({
                   <StatusBadge status={route.status} className="self-center" />
                 </div>
               </div>
-            </div>
-            <div className="journey-actions">
               <div className="route-total">
                 <Clock3 size={16} />
                 <span>Estimación total</span>
@@ -586,6 +584,8 @@ export function RoutesPage({
                   {formatDuration(travelMinutes)} trayectos · {formatDuration(pointMinutes)} paradas
                 </small>
               </div>
+            </div>
+            <div className="journey-actions">
               {(onOpenVan || canManage) && (
                 <div className="journey-action-buttons" aria-label="Acciones de la ruta">
                   {onOpenVan && (
