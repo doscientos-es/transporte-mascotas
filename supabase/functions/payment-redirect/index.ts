@@ -50,9 +50,7 @@ Deno.serve(async (request) => {
       ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
     })
     const signature = await cyberpacSignature(payment.merchant_order, parameters, config.secret)
-    return new Response(form(config.endpoint, config.signatureVersion, parameters, signature), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-    })
+    return htmlResponse(form(config.endpoint, config.signatureVersion, parameters, signature))
   } catch (error) {
     console.error(
       'Cyberpac payment redirect failed',
@@ -93,9 +91,7 @@ async function transportPaymentPage(token: string) {
     parameters,
     config.secret,
   )
-  return new Response(form(config.endpoint, config.signatureVersion, parameters, signature), {
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-  })
+  return htmlResponse(form(config.endpoint, config.signatureVersion, parameters, signature))
 }
 
 function configuration() {
@@ -130,12 +126,23 @@ function configuration() {
 function form(endpoint: string, signatureVersion: string, parameters: string, signature: string) {
   const escape = (value: string) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-  return `<!doctype html><html lang="es"><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(endpoint)}" method="post"><input type="hidden" name="Ds_SignatureVersion" value="${escape(signatureVersion)}"><input type="hidden" name="Ds_MerchantParameters" value="${escape(parameters)}"><input type="hidden" name="Ds_Signature" value="${escape(signature)}"></form><script>document.getElementById('payment').submit()</script></body></html>`
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(endpoint)}" method="post"><input type="hidden" name="Ds_SignatureVersion" value="${escape(signatureVersion)}"><input type="hidden" name="Ds_MerchantParameters" value="${escape(parameters)}"><input type="hidden" name="Ds_Signature" value="${escape(signature)}"><button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
 }
 
 function page(message: string, status: number) {
-  return new Response(
-    `<!doctype html><html lang="es"><body><h1>${message}</h1><p>Contacta con el comercio si necesitas ayuda.</p></body></html>`,
-    { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+  return htmlResponse(
+    `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Error de pago</title></head><body><h1>${message}</h1><p>Contacta con el comercio si necesitas ayuda.</p></body></html>`,
+    status,
   )
+}
+
+function htmlResponse(body: string, status = 200) {
+  return new Response(new TextEncoder().encode(body), {
+    status,
+    headers: new Headers({
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    }),
+  })
 }

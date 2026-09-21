@@ -1,4 +1,4 @@
-import { json, requireUser, rest } from '../_shared/supabase.ts'
+import { corsHeaders, json, requireUser, rest } from '../_shared/supabase.ts'
 
 type PreparedPayment = {
   public_token: string
@@ -7,7 +7,7 @@ type PreparedPayment = {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok')
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     const user = await requireUser(request)
