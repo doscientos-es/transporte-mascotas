@@ -3309,6 +3309,66 @@
 
 .client-transport-card {
   border-left: 3px solid #dedede;
+  overflow: hidden;
+  background: linear-gradient(135deg, #fff 0%, #fcfcfb 100%);
+  box-shadow: 0 8px 24px rgb(25 25 25 / 5%);
+}
+
+.client-transport-card > [data-slot='card-content'] {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 18px;
+}
+
+.client-transport-card .invoice-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff0f1;
+  color: #b51e27;
+}
+
+.client-transport-card .invoice-icon + div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.client-transport-card .invoice-icon + div > span {
+  color: #777;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.client-transport-card .invoice-icon + div > strong {
+  color: #252525;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.client-transport-pay-button {
+  margin-top: 4px;
+  background: #171717;
+  color: #fff;
+}
+
+.client-transport-pay-button:hover:not(:disabled) {
+  background: #3b3636;
+}
+
+@media (max-width: 560px) {
+  .client-transport-card > [data-slot='card-content'] {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .client-transport-card .invoice-amount {
+    grid-column: 2;
+    justify-items: start;
+  }
 }
 
 .client-transport-card:has(.status-por_verificar) {

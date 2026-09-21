@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   ClipboardCheck,
+  CreditCard,
   FilePlus2,
   Navigation,
   PawPrint,
@@ -41,6 +42,7 @@ import {
   payTransportRequest,
   saveClientPets,
 } from '../application/transport-requests'
+import type { TransportPaymentForm } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
@@ -48,6 +50,22 @@ type Props = { session: Session | null; profile: UserProfile; navigation: Dashbo
 
 const formatCurrency = (cents: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
+
+function submitPaymentForm(payment: TransportPaymentForm) {
+  const form = document.createElement('form')
+  form.method = 'post'
+  form.action = payment.endpoint
+  form.hidden = true
+  for (const [name, value] of Object.entries(payment.fields)) {
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value
+    form.append(input)
+  }
+  document.body.append(form)
+  form.submit()
+}
 
 export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
@@ -149,8 +167,16 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   async function completeRequestPayment(requestId: string) {
-    const paymentUrl = await payTransportRequest(requestId)
-    window.location.assign(paymentUrl)
+    submitPaymentForm(await payTransportRequest(requestId))
+  }
+
+  async function continuePayment(requestId: string) {
+    setError('')
+    try {
+      await completeRequestPayment(requestId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
+    }
   }
 
   async function submitRequest(values?: RequestFormValues) {
@@ -408,13 +434,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 requests.map((request) => (
                   <Card
                     key={request.id}
-                    className={`invoice-card client-transport-card ${
-                      request.status === 'por_verificar'
+                    className={`invoice-card client-transport-card ${request.status === 'por_verificar'
                         ? '!border-l-[#ca8a04]'
                         : request.status === 'confirmada' || request.status === 'en_ruta'
                           ? '!border-l-[#171717]'
                           : ''
-                    }`}
+                      }`}
                   >
                     <CardContent>
                       <div className="invoice-icon">
@@ -434,9 +459,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             .map((animal) =>
                               transportBoxCategoryLabel(
                                 animal.assignedBoxCategory ??
-                                  animal.requestedBoxCategory ??
-                                  animal.minimumBoxCategory ??
-                                  'pequeno',
+                                animal.requestedBoxCategory ??
+                                animal.minimumBoxCategory ??
+                                'pequeno',
                               ),
                             )
                             .join(' · ')}
@@ -468,6 +493,15 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           <small className="payment-state">
                             <CheckCircle2 size={13} /> Pago registrado
                           </small>
+                        )}
+                        {request.status === 'pago_pendiente' && (
+                          <Button
+                            className="client-transport-pay-button"
+                            size="sm"
+                            onClick={() => void continuePayment(request.id)}
+                          >
+                            <CreditCard size={15} /> Continuar pago
+                          </Button>
                         )}
                       </div>
                     </CardContent>

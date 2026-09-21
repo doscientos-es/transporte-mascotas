@@ -50,6 +50,11 @@ type RequestRow = {
   }>
 }
 
+export type TransportPaymentForm = {
+  endpoint: string
+  fields: Record<string, string>
+}
+
 function mapRequest(row: RequestRow): TransportRequest {
   return {
     id: row.id,
@@ -243,7 +248,18 @@ export async function payTransportRequest(requestId: string) {
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
   if (!result?.paymentUrl) throw new Error('No se ha recibido el enlace de pago.')
-  return result.paymentUrl
+  const paymentUrl = new URL(result.paymentUrl)
+  paymentUrl.searchParams.set('format', 'json')
+  const paymentResponse = await fetch(paymentUrl)
+  if (!paymentResponse.ok) throw new Error('No se ha podido abrir la pasarela de pago.')
+  const paymentForm = (await paymentResponse.json()) as Partial<TransportPaymentForm>
+  if (
+    typeof paymentForm.endpoint !== 'string' ||
+    !paymentForm.fields ||
+    typeof paymentForm.fields !== 'object'
+  )
+    throw new Error('La pasarela de pago no ha devuelto un formulario válido.')
+  return paymentForm as TransportPaymentForm
 }
 
 export async function confirmTransportRequest(

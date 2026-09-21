@@ -1,5 +1,5 @@
 import { cyberpacSignature, encodeMerchantParameters } from '../_shared/cyberpac.ts'
-import { rest } from '../_shared/supabase.ts'
+import { corsHeaders, json, rest } from '../_shared/supabase.ts'
 
 type Payment = {
   merchant_order: string
@@ -15,14 +15,21 @@ type TransportRequest = {
   status: string
   payment_expires_at: string
 }
+type PaymentForm = {
+  endpoint: string
+  fields: Record<string, string>
+}
 
 Deno.serve(async (request) => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'GET') return new Response('Método no permitido.', { status: 405 })
   try {
-    const token = new URL(request.url).searchParams.get('token')
-    const kind = new URL(request.url).searchParams.get('kind')
+    const url = new URL(request.url)
+    const token = url.searchParams.get('token')
+    const kind = url.searchParams.get('kind')
+    const jsonFormat = url.searchParams.get('format') === 'json'
     if (!token || !/^[0-9a-f-]{36}$/i.test(token)) return page('Enlace de pago no válido.', 400)
-    if (kind === 'transport') return transportPaymentPage(token)
+    if (kind === 'transport') return transportPaymentPage(token, jsonFormat)
     const paymentResponse = await rest(
       `invoice_payments?public_token=eq.${encodeURIComponent(token)}&select=merchant_order,amount_cents,status,expires_at,invoice_id`,
     )
@@ -50,7 +57,13 @@ Deno.serve(async (request) => {
       ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
     })
     const signature = await cyberpacSignature(payment.merchant_order, parameters, config.secret)
-    return htmlResponse(form(config.endpoint, config.signatureVersion, parameters, signature))
+    const paymentForm = createPaymentForm(
+      config.endpoint,
+      config.signatureVersion,
+      parameters,
+      signature,
+    )
+    return jsonFormat ? json(paymentForm) : htmlResponse(form(paymentForm))
   } catch (error) {
     console.error(
       'Cyberpac payment redirect failed',
@@ -60,7 +73,7 @@ Deno.serve(async (request) => {
   }
 })
 
-async function transportPaymentPage(token: string) {
+async function transportPaymentPage(token: string, jsonFormat: boolean) {
   const response = await rest(
     `transport_requests?payment_public_token=eq.${encodeURIComponent(token)}&select=payment_merchant_order,amount_cents,status,payment_expires_at`,
   )
@@ -91,7 +104,13 @@ async function transportPaymentPage(token: string) {
     parameters,
     config.secret,
   )
-  return htmlResponse(form(config.endpoint, config.signatureVersion, parameters, signature))
+  const paymentForm = createPaymentForm(
+    config.endpoint,
+    config.signatureVersion,
+    parameters,
+    signature,
+  )
+  return jsonFormat ? json(paymentForm) : htmlResponse(form(paymentForm))
 }
 
 function configuration() {
@@ -123,10 +142,32 @@ function configuration() {
   }
 }
 
-function form(endpoint: string, signatureVersion: string, parameters: string, signature: string) {
+function createPaymentForm(
+  endpoint: string,
+  signatureVersion: string,
+  parameters: string,
+  signature: string,
+): PaymentForm {
+  return {
+    endpoint,
+    fields: {
+      Ds_SignatureVersion: signatureVersion,
+      Ds_MerchantParameters: parameters,
+      Ds_Signature: signature,
+    },
+  }
+}
+
+function form(paymentForm: PaymentForm) {
   const escape = (value: string) =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(endpoint)}" method="post"><input type="hidden" name="Ds_SignatureVersion" value="${escape(signatureVersion)}"><input type="hidden" name="Ds_MerchantParameters" value="${escape(parameters)}"><input type="hidden" name="Ds_Signature" value="${escape(signature)}"><button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
+  const fields = Object.entries(paymentForm.fields)
+    .map(
+      ([name, value]) =>
+        `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`,
+    )
+    .join('')
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(paymentForm.endpoint)}" method="post">${fields}<button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
 }
 
 function page(message: string, status: number) {
@@ -137,12 +178,12 @@ function page(message: string, status: number) {
 }
 
 function htmlResponse(body: string, status = 200) {
-  return new Response(new TextEncoder().encode(body), {
+  return new Response(body, {
     status,
-    headers: new Headers({
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-    }),
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    },
   })
 }
