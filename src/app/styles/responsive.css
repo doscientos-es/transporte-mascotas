@@ -13,6 +13,10 @@
     display: block;
   }
 
+  .settings-pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .invoice-brand-hero {
     grid-template-columns: auto minmax(0, 1fr);
   }
@@ -23,6 +27,20 @@
 }
 
 @media (max-width: 600px) {
+  .settings-pricing {
+    display: grid;
+    gap: 16px;
+  }
+
+  .settings-pricing-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-pricing-actions,
+  .settings-pricing-actions [data-slot='button'] {
+    width: 100%;
+  }
+
   .invoice-brand-hero {
     grid-template-columns: 1fr;
     gap: 18px;

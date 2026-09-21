@@ -1,6 +1,10 @@
 import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import { cyberpacSignature, decodeMerchantParameters, safeEqual } from '../_shared/cyberpac.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import {
+  isSuccessfulCyberpacPayment,
+  isValidCyberpacNotification,
+} from '../_shared/payment-validation.ts'
 import { rest } from '../_shared/supabase.ts'
 
 type Payment = { id: string; invoice_id: string; amount_cents: number; status: string }
@@ -24,16 +28,20 @@ Deno.serve(async (request) => {
     const merchantCode = Deno.env.get('CAIXABANK_CYBERPAC_MERCHANT_CODE')
     const terminal = Deno.env.get('CAIXABANK_CYBERPAC_TERMINAL')
     const currency = Deno.env.get('CAIXABANK_CYBERPAC_CURRENCY') || '978'
+    const expectedSignature = secret ? await cyberpacSignature(order, parameters, secret) : ''
     if (
-      signatureVersion !== 'HMAC_SHA256_V1' ||
-      !order ||
-      !secret ||
-      !merchantCode ||
-      !terminal ||
-      notification.Ds_MerchantCode !== merchantCode ||
-      notification.Ds_Terminal !== terminal ||
-      notification.Ds_Currency !== currency ||
-      !safeEqual(await cyberpacSignature(order, parameters, secret), signature)
+      !isValidCyberpacNotification({
+        signatureVersion,
+        order,
+        secret,
+        merchantCode,
+        terminal,
+        currency,
+        notification,
+        signature,
+        expectedSignature,
+      }) ||
+      !safeEqual(expectedSignature, signature)
     )
       return new Response('Firma no válida.', { status: 400 })
     const paymentResponse = await rest(
@@ -61,14 +69,13 @@ Deno.serve(async (request) => {
       return new Response('OK')
     }
     if (payment.status !== 'pendiente') return new Response('OK')
-    const amount = Number(notification.Ds_Amount)
-    const response = Number(notification.Ds_Response)
-    const paid =
-      Number.isInteger(response) &&
-      response >= 0 &&
-      response <= 99 &&
-      amount === payment.amount_cents &&
-      notification.Ds_Currency === currency
+    const paid = isSuccessfulCyberpacPayment({
+      amount: notification.Ds_Amount,
+      response: notification.Ds_Response,
+      expectedAmount: payment.amount_cents,
+      currency: notification.Ds_Currency,
+      expectedCurrency: currency,
+    })
     const gatewayResponse = {
       response: notification.Ds_Response ?? null,
       authorisationCode: notification.Ds_AuthorisationCode ?? null,
@@ -116,16 +123,17 @@ async function processTransportPayment(
   notification: Record<string, string>,
 ) {
   if (payment.status !== 'pago_pendiente') return new Response('OK')
-  const amount = Number(notification.Ds_Amount)
-  const response = Number(notification.Ds_Response)
   const gatewayResponse = {
     response: notification.Ds_Response ?? null,
     authorisationCode: notification.Ds_AuthorisationCode ?? null,
     date: notification.Ds_Date ?? null,
     hour: notification.Ds_Hour ?? null,
   }
-  const paid =
-    Number.isInteger(response) && response >= 0 && response <= 99 && amount === payment.amount_cents
+  const paid = isSuccessfulCyberpacPayment({
+    amount: notification.Ds_Amount,
+    response: notification.Ds_Response,
+    expectedAmount: payment.amount_cents,
+  })
   await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
     method: 'PATCH',
     body: JSON.stringify(

@@ -46,7 +46,7 @@ export default defineConfig({
   },
   test: createVitestConfig({
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/**/*.test.ts'],
     coverage: {
       include: [
         'src/app/router/dashboard-routes.ts',

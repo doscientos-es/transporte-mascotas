@@ -198,65 +198,63 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
           </div>
         )}
       </section>
-      <section className="settings-support">
-        <div>
+      <section className="settings-support settings-pricing">
+        <div className="settings-pricing-heading">
           <span className="eyebrow">Precios</span>
           <h2>Catálogo de boxes</h2>
           <p>El cliente puede elegir una categoría superior y el importe se calcula por mascota.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="settings-pricing-grid">
           {transportBoxCategories.map((category) => (
-            <div className="grid gap-2 rounded-lg border p-3" key={category}>
-              <strong>{transportBoxCategoryLabel(category)}</strong>
-              <small className="text-muted-foreground">{draftCatalog[category].dimensions}</small>
-              <label
-                className="grid gap-1.5 text-xs font-bold text-[#454545]"
-                htmlFor={`box-${category}-base`}
-              >
-                Tarifa base (€)
-                <Input
-                  id={`box-${category}-base`}
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={draftCatalog[category].amountCents / 100}
-                  onChange={(event) =>
-                    setDraftCatalog((current) => ({
-                      ...current,
-                      [category]: {
-                        ...current[category],
-                        amountCents: Math.round(Number(event.target.value) * 100),
-                      },
-                    }))
-                  }
-                  disabled={savingPrices}
-                />
-              </label>
-              {draftCatalog[category].largeAmountCents !== undefined && (
-                <label
-                  className="grid gap-1.5 text-xs font-bold text-[#454545]"
-                  htmlFor={`box-${category}-large`}
-                >
-                  Tarifa superior (€)
+            <div className="settings-pricing-card" key={category}>
+              <div className="settings-pricing-card-heading">
+                <strong>{transportBoxCategoryLabel(category)}</strong>
+                <small>{draftCatalog[category].dimensions}</small>
+              </div>
+              <div className="settings-pricing-fields">
+                <label className="settings-pricing-field" htmlFor={`box-${category}-base`}>
+                  Tarifa base (€)
                   <Input
-                    id={`box-${category}-large`}
+                    id={`box-${category}-base`}
                     type="number"
                     min="0.01"
                     step="0.01"
-                    value={draftCatalog[category].largeAmountCents / 100}
+                    value={draftCatalog[category].amountCents / 100}
                     onChange={(event) =>
                       setDraftCatalog((current) => ({
                         ...current,
                         [category]: {
                           ...current[category],
-                          largeAmountCents: Math.round(Number(event.target.value) * 100),
+                          amountCents: Math.round(Number(event.target.value) * 100),
                         },
                       }))
                     }
                     disabled={savingPrices}
                   />
                 </label>
-              )}
+                {draftCatalog[category].largeAmountCents !== undefined && (
+                  <label className="settings-pricing-field" htmlFor={`box-${category}-large`}>
+                    Tarifa superior (€)
+                    <Input
+                      id={`box-${category}-large`}
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={draftCatalog[category].largeAmountCents / 100}
+                      onChange={(event) =>
+                        setDraftCatalog((current) => ({
+                          ...current,
+                          [category]: {
+                            ...current[category],
+                            largeAmountCents: Math.round(Number(event.target.value) * 100),
+                          },
+                        }))
+                      }
+                      disabled={savingPrices}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -265,9 +263,11 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
             {priceError}
           </p>
         )}
-        <Button onClick={() => void savePrices()} disabled={savingPrices}>
-          <CircleDollarSign size={16} /> {savingPrices ? 'Guardando…' : 'Guardar tarifas'}
-        </Button>
+        <div className="settings-pricing-actions">
+          <Button onClick={() => void savePrices()} disabled={savingPrices}>
+            <CircleDollarSign size={16} /> {savingPrices ? 'Guardando…' : 'Guardar tarifas'}
+          </Button>
+        </div>
       </section>
       <section className="settings-support settings-whatsapp">
         <div>

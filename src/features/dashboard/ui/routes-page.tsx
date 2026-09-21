@@ -11,14 +11,10 @@ import {
   Card,
   CardContent,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectList,
-  SelectTrigger,
 } from '@doscientos/ui'
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   Clock3,
   Lock,
@@ -28,7 +24,7 @@ import {
   Pencil,
   Phone,
   Plus,
-  Route,
+  Search,
   Trash2,
   Truck,
 } from 'lucide-react'
@@ -49,17 +45,14 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn } from '../application/route-closure'
-import { groupRoutesForSelector } from '../application/route-selector'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
   route: DailyRoute
   template: RouteTemplate
-  templates: RouteTemplate[]
-  routes: DailyRoute[]
   letters: Letter[]
-  onSelect: (route: DailyRoute) => void
   onOpenVan?: (route: DailyRoute) => void
+  onBack: () => void
   onAction: (ids: string[]) => Promise<void>
   onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>
   onSuggestStop: (
@@ -105,6 +98,193 @@ const formatRouteDay = (date: string) =>
     day: 'numeric',
     month: 'long',
   })
+
+const isoToday = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export function RoutesCatalogPage({
+  routes,
+  templates,
+  onSelect,
+  onOpenVan,
+}: {
+  routes: DailyRoute[]
+  templates: RouteTemplate[]
+  onSelect: (route: DailyRoute) => void
+  onOpenVan?: (route: DailyRoute) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'todos' | DailyRoute['status']>('todos')
+  const today = isoToday()
+  const templateName = (route: DailyRoute) =>
+    templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
+  const filteredRoutes = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase()
+    return [...routes]
+      .filter((route) => statusFilter === 'todos' || route.status === statusFilter)
+      .filter((route) => {
+        if (!normalizedQuery) return true
+        const name =
+          templates.find((template) => template.id === route.templateId)?.name ?? 'Ruta sin plantilla'
+        return [name, directionLabel(route.direction ?? 'normal'), statusLabels[route.status]].some(
+          (value) => value.toLocaleLowerCase().includes(normalizedQuery),
+        )
+      })
+      .sort((left, right) => left.date.localeCompare(right.date))
+  }, [query, routes, statusFilter, templates])
+  const countLabel = `${filteredRoutes.length} ${filteredRoutes.length === 1 ? 'ruta' : 'rutas'}`
+
+  return (
+    <section className="route-catalog" aria-label="Rutas programadas">
+      <div className="route-catalog-heading">
+        <div>
+          <span className="eyebrow">Planificación</span>
+          <strong>Rutas programadas</strong>
+        </div>
+        <span>{countLabel}</span>
+      </div>
+      <Card className="route-catalog-card">
+        <CardContent>
+          <div className="route-catalog-tools">
+            <label className="route-search" htmlFor="route-search">
+              <Search size={16} />
+              <span className="sr-only">Buscar rutas</span>
+              <Input
+                aria-label="Buscar rutas"
+                id="route-search"
+                placeholder="Buscar por nombre, sentido o estado"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <label className="route-status-filter">
+              <span>Estado</span>
+              <select
+                aria-label="Filtrar por estado"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as 'todos' | DailyRoute['status'])
+                }
+              >
+                <option value="todos">Todas</option>
+                <option value="activa">Activas</option>
+                <option value="cerrada">Cerradas</option>
+              </select>
+            </label>
+          </div>
+          {filteredRoutes.length ? (
+            <div className="route-table-wrap">
+              <table className="route-table">
+                <caption className="sr-only">Listado de rutas programadas</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Ruta</th>
+                    <th scope="col">Operación</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRoutes.map((item) => {
+                    const date = formatRouteDate(item.date)
+                    const stops =
+                      item.stops?.length ??
+                      templates.find((template) => template.id === item.templateId)?.stops.length ??
+                      0
+                    const completed = item.actions.filter(
+                      (action) => action.status === 'completada',
+                    ).length
+                    const services = item.actions.length
+                    const isToday = item.date === today
+                    return (
+                      <tr
+                        aria-label={`Abrir recorrido de ${templateName(item)}`}
+                        className={isToday ? 'is-today' : undefined}
+                        key={item.id}
+                        tabIndex={0}
+                        onClick={() => onSelect(item)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            onSelect(item)
+                          }
+                        }}
+                      >
+                        <td data-label="Fecha">
+                          <time className="route-table-date" dateTime={item.date}>
+                            {isToday && <span className="route-table-today">Hoy</span>}
+                            <strong>{date.day}</strong>
+                            <span>{date.month}</span>
+                          </time>
+                          <span className="route-table-day">{formatRouteDay(item.date)}</span>
+                        </td>
+                        <td data-label="Ruta">
+                          <strong className="route-table-name">{templateName(item)}</strong>
+                          <small className="route-table-direction">
+                            {directionLabel(item.direction ?? 'normal')}
+                          </small>
+                        </td>
+                        <td data-label="Operación">
+                          <strong className="route-table-operation">
+                            {stops} {stops === 1 ? 'parada' : 'paradas'}
+                          </strong>
+                          <small className="route-table-progress">
+                            {services ? `${completed}/${services} servicios completados` : 'Sin servicios'}
+                          </small>
+                        </td>
+                        <td data-label="Estado">
+                          <StatusBadge status={item.status} />
+                        </td>
+                        <td className="route-table-actions">
+                          <Button
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onSelect(item)
+                            }}
+                          >
+                            Ver recorrido
+                          </Button>
+                          {onOpenVan && (
+                            <Button
+                              aria-label={`Ver furgoneta de ${templateName(item)}`}
+                              size="sm"
+                              variant="outline"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onOpenVan(item)
+                              }}
+                            >
+                              <Truck />
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="route-table-empty">
+              <Search size={22} />
+              <strong>No hay rutas con estos filtros</strong>
+              <p>Prueba con otra búsqueda o cambia el estado seleccionado.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  )
+}
 const mapUrlFor = (
   stop: Pick<
     DailyRouteStop,
@@ -167,11 +347,9 @@ function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Le
 export function RoutesPage({
   route,
   template,
-  templates,
-  routes,
   letters,
-  onSelect,
   onOpenVan,
+  onBack,
   onAction,
   onUpdateStops,
   onSuggestStop,
@@ -191,9 +369,6 @@ export function RoutesPage({
   const [closingRoute, setClosingRoute] = useState(false)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [operationError, setOperationError] = useState('')
-  const routeGroups = useMemo(() => groupRoutesForSelector(routes, templates), [routes, templates])
-  const selectedTemplateName =
-    templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
   const itineraryClosed = route.status === 'cerrada'
@@ -224,7 +399,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     setMovingStop(true)
     try {
       setOperationError('')
@@ -240,7 +415,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= plannedStops.length) return
     const next = [...plannedStops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     try {
       setPlannedStops(await calculateDrivingTimes(next))
     } catch {
@@ -326,86 +501,11 @@ export function RoutesPage({
 
   return (
     <>
-      <section className="route-catalog" aria-label="Rutas programadas">
-        <div className="route-catalog-heading">
-          <div>
-            <span className="eyebrow">Planificación</span>
-            <strong>Rutas programadas</strong>
-          </div>
-          <span>
-            {routes.length} {routes.length === 1 ? 'ruta' : 'rutas'}
-          </span>
-        </div>
-        <Select
-          aria-label="Ruta programada"
-          className="route-picker"
-          selectedKey={route.id}
-          onSelectionChange={(key) => {
-            const selected = routes.find((item) => item.id === String(key))
-            if (selected) onSelect(selected)
-          }}
-        >
-          <SelectTrigger className="route-picker-trigger">
-            <span className="route-selector-icon">
-              <Route size={17} />
-            </span>
-            <span className="route-selector-details">
-              <strong>{selectedTemplateName}</strong>
-              <small>{directionLabel(route.direction ?? 'normal')}</small>
-            </span>
-            <time dateTime={route.date}>
-              <b>{formatRouteDate(route.date).day}</b>
-              <small>{formatRouteDate(route.date).month}</small>
-            </time>
-            <StatusBadge
-              status={route.status}
-              className="!w-fit !px-1.5 !py-0.5 !text-[9px] [grid-area:status]"
-            />
-          </SelectTrigger>
-          <SelectContent className="route-picker-content">
-            <SelectList aria-label="Rutas programadas">
-              {routeGroups.flatMap((group) =>
-                group.routes.map(({ route: item, templateName }, index) => {
-                  const itemDate = formatRouteDate(item.date)
-                  return (
-                    <SelectItem
-                      className={
-                        index === 0
-                          ? 'route-picker-option route-picker-option-first'
-                          : 'route-picker-option'
-                      }
-                      id={item.id}
-                      key={item.id}
-                      textValue={`${templateName}, ${formatRouteDay(item.date)}, ${directionLabel(item.direction ?? 'normal')}, ${statusLabels[item.status]}`}
-                    >
-                      {index === 0 && (
-                        <span aria-hidden="true" className="route-picker-day">
-                          <time dateTime={group.date}>{formatRouteDay(group.date)}</time>
-                        </span>
-                      )}
-                      <span className="route-selector-icon">
-                        <Route size={17} />
-                      </span>
-                      <span className="route-selector-details">
-                        <strong>{templateName}</strong>
-                        <small>{directionLabel(item.direction ?? 'normal')}</small>
-                      </span>
-                      <time dateTime={item.date}>
-                        <b>{itemDate.day}</b>
-                        <small>{itemDate.month}</small>
-                      </time>
-                      <StatusBadge
-                        status={item.status}
-                        className="!w-fit !px-1.5 !py-0.5 !text-[9px] [grid-area:status]"
-                      />
-                    </SelectItem>
-                  )
-                }),
-              )}
-            </SelectList>
-          </SelectContent>
-        </Select>
-      </section>
+      <div className="route-detail-toolbar">
+        <Button variant="outline" size="sm" onClick={onBack}>
+          <ArrowLeft /> Todas las rutas
+        </Button>
+      </div>
       <Card className="route-journey">
         <CardContent>
           <div className="journey-header route-journey-header">
