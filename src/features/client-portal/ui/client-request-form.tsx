@@ -320,6 +320,15 @@ export function ClientRequestForm({
     try {
       const normalizedValues = {
         ...values,
+        billingClient:
+          values.billingPayer === 'remitente'
+            ? {
+                ...values.billingClient,
+                fullName: values.contactName,
+                email: values.contactEmail,
+                phone: values.contactPhone,
+              }
+            : values.billingClient,
         animals: values.animals.map((animal) => {
           const minimumCategory = minimumTransportBoxCategory(animal)
           const requestedCategory = requestedCategoryFor(animal, minimumCategory)
@@ -374,7 +383,7 @@ export function ClientRequestForm({
         { weightKg: animal.weightKg, minimumCategory },
         boxCatalog,
       ) /
-      100
+        100
     )
   }, 0)
   const routeStops = selectedRoute?.localities ?? []
@@ -549,7 +558,7 @@ export function ClientRequestForm({
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="request-contact-phone">Teléfono de WhatsApp</FieldLabel>
+                  <FieldLabel htmlFor="request-contact-phone">Teléfono de contacto</FieldLabel>
                   <Input
                     id="request-contact-phone"
                     type="tel"
@@ -589,7 +598,9 @@ export function ClientRequestForm({
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field className="sm:col-span-2">
-                    <FieldLabel htmlFor="request-billing-payer">¿Quién paga el transporte?</FieldLabel>
+                    <FieldLabel htmlFor="request-billing-payer">
+                      ¿Quién paga el transporte?
+                    </FieldLabel>
                     <select
                       id="request-billing-payer"
                       className="bg-background min-h-11 rounded-md border px-3 text-sm"
@@ -961,7 +972,7 @@ export function ClientRequestForm({
                                   ) / 100,
                                 )}
                                 {transportBoxCategoryRank(category) >
-                                  transportBoxCategoryRank(minimumCategory)
+                                transportBoxCategoryRank(minimumCategory)
                                   ? ' · extra por comodidad'
                                   : ''}
                               </option>
@@ -1008,6 +1019,18 @@ export function ClientRequestForm({
                   <strong>{values.contactName}</strong>
                   <small>
                     {values.contactPhone} · {values.contactEmail}
+                  </small>
+                </div>
+                <div>
+                  <span>Factura a nombre de</span>
+                  <strong>{values.billingClient.fullName}</strong>
+                  <small>
+                    {values.billingPayer === 'remitente'
+                      ? 'Persona que envía'
+                      : values.billingPayer === 'destinatario'
+                        ? 'Persona que recibe'
+                        : 'Otra persona o empresa'}{' '}
+                    · {values.billingClient.nif}
                   </small>
                 </div>
                 <div>
