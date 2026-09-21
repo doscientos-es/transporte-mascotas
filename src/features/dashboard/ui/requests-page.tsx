@@ -6,7 +6,12 @@ import {
   confirmTransportRequest,
   loadTransportRequests,
   rejectTransportRequest,
+  updateTransportRequestAnimalBox,
 } from '@/features/client-portal'
+import {
+  transportBoxCategoryLabel,
+  transportBoxOptions,
+} from '@/shared/application/transport-boxes'
 import type { DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -111,6 +116,23 @@ export function RequestsPage({ routes, onNotify }: Props) {
     }
   }
 
+  async function changeAnimalBox(request: TransportRequest, animalId: string, category: string) {
+    if (!category) return
+    setBusy(request.id)
+    try {
+      await updateTransportRequestAnimalBox(
+        animalId,
+        category as NonNullable<TransportRequest['animals'][number]['assignedBoxCategory']>,
+      )
+      onNotify('Categoría de box actualizada.')
+      await refresh()
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : 'No se ha podido cambiar el box.')
+    } finally {
+      setBusy('')
+    }
+  }
+
   const pending = requests.filter((request) => request.status === 'por_verificar')
   const rest = requests.filter((request) => request.status !== 'por_verificar')
   const availableRoutes = routes.filter((route) => route.status === 'activa')
@@ -165,9 +187,39 @@ export function RequestsPage({ routes, onNotify }: Props) {
                     </span>
                     <span>
                       <b>Mascotas</b>
-                      {request.animals
-                        .map((animal) => `${animal.species} · ${animal.weightKg} kg`)
-                        .join('  ·  ')}
+                      <span className="grid gap-2">
+                        {request.animals.map((animal) => {
+                          const minimumCategory = animal.minimumBoxCategory ?? 'pequeno'
+                          return (
+                            <span className="grid gap-1" key={animal.id ?? animal.ordinal}>
+                              <span>
+                                {animal.species} · {animal.weightKg} kg · recomendación:{' '}
+                                {transportBoxCategoryLabel(minimumCategory)}
+                              </span>
+                              {animal.id && (
+                                <select
+                                  value={animal.assignedBoxCategory ?? animal.requestedBoxCategory}
+                                  onChange={(event) =>
+                                    void changeAnimalBox(
+                                      request,
+                                      animal.id ?? '',
+                                      event.target.value,
+                                    )
+                                  }
+                                  disabled={Boolean(busy)}
+                                  aria-label={`Box de ${animal.name}`}
+                                >
+                                  {transportBoxOptions(minimumCategory).map((category) => (
+                                    <option value={category} key={category}>
+                                      {transportBoxCategoryLabel(category)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </span>
+                          )
+                        })}
+                      </span>
                     </span>
                     <span>
                       <b>Pago</b>
@@ -307,9 +359,43 @@ export function RequestsPage({ routes, onNotify }: Props) {
                         </span>
                       </td>
                       <td>
-                        <span className="pet-list">
-                          <PawPrint size={15} /> {request.animals.length}
-                        </span>
+                        <div className="grid gap-1.5">
+                          {request.animals.map((animal) => {
+                            const minimumCategory = animal.minimumBoxCategory ?? 'pequeno'
+                            return (
+                              <label
+                                className="grid gap-0.5 text-xs"
+                                key={animal.id ?? animal.ordinal}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <PawPrint size={13} /> {animal.name || animal.species}
+                                </span>
+                                {animal.id && (
+                                  <select
+                                    value={
+                                      animal.assignedBoxCategory ?? animal.requestedBoxCategory
+                                    }
+                                    onChange={(event) =>
+                                      void changeAnimalBox(
+                                        request,
+                                        animal.id ?? '',
+                                        event.target.value,
+                                      )
+                                    }
+                                    disabled={Boolean(busy)}
+                                    aria-label={`Box de ${animal.name}`}
+                                  >
+                                    {transportBoxOptions(minimumCategory).map((category) => (
+                                      <option value={category} key={category}>
+                                        {transportBoxCategoryLabel(category)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              </label>
+                            )
+                          })}
+                        </div>
                       </td>
                       <td>{formatDate(request.desiredDate)}</td>
                       <td>

@@ -5,6 +5,7 @@ export const defaultTransportBoxPrices: TransportBoxPrices = {
   mediano: 100,
   grande: 140,
 }
+export type TransportBoxCategory = AnimalSize | 'paso_rueda'
 export type LetterStatus =
   | 'pendiente'
   | 'revisada'
@@ -293,6 +294,9 @@ export interface TransportRequestAnimal {
   heightCm: number
   widthCm: number
   size?: AnimalSize
+  minimumBoxCategory?: Exclude<TransportBoxCategory, 'paso_rueda'>
+  requestedBoxCategory?: TransportBoxCategory
+  assignedBoxCategory?: TransportBoxCategory
   clientPetId?: string
 }
 

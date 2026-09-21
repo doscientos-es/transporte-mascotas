@@ -7,4 +7,5 @@ export {
   payTransportRequest,
   rejectTransportRequest,
   saveClientPets,
+  updateTransportRequestAnimalBox,
 } from '../infrastructure/transport-requests'

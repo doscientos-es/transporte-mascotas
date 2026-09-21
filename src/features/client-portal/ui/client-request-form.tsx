@@ -26,14 +26,16 @@ import {
 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
-import { animalSizeLabel, sizeForMeasurements } from '@/shared/application/animal-size'
+import {
+  minimumTransportBoxCategory,
+  transportBoxCategoryLabel,
+  transportBoxCategoryRank,
+  transportBoxOptions,
+  transportBoxPriceCents,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
 import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
-import type {
-  ClientPet,
-  TransportBoxPrices,
-  TransportRequestAnimal,
-  UpcomingRoute,
-} from '@/shared/types'
+import type { ClientPet, TransportRequestAnimal, UpcomingRoute } from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 
@@ -62,6 +64,24 @@ const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   heightCm: 0,
   widthCm: 0,
 })
+
+function requestedCategoryFor(
+  animal: TransportRequestAnimal,
+  minimumCategory: Exclude<
+    TransportRequestAnimal['requestedBoxCategory'],
+    undefined | 'paso_rueda'
+  >,
+) {
+  const requestedCategory = animal.requestedBoxCategory
+  if (
+    requestedCategory &&
+    (requestedCategory === 'paso_rueda' ||
+      transportBoxCategoryRank(requestedCategory) >= transportBoxCategoryRank(minimumCategory))
+  ) {
+    return requestedCategory
+  }
+  return minimumCategory
+}
 
 const initialValues = (
   contactName: string,
@@ -129,7 +149,7 @@ type Props = {
   onSubmit: (values: RequestFormValues) => Promise<void>
   onCancel: () => void
   onSavePets: (animals: TransportRequestAnimal[]) => Promise<void>
-  boxPrices: TransportBoxPrices
+  boxCatalog: TransportBoxCatalog
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
   initialRouteId?: string
@@ -144,7 +164,7 @@ export function ClientRequestForm({
   onSubmit,
   onCancel,
   onSavePets,
-  boxPrices,
+  boxCatalog,
   pendingPayment = false,
   onRetryPayment,
   initialRouteId,
@@ -253,8 +273,20 @@ export function ClientRequestForm({
     setSending(true)
     setError('')
     try {
-      await onSubmit(values)
-      const newPets = values.animals.filter((animal) => !animal.clientPetId)
+      const normalizedValues = {
+        ...values,
+        animals: values.animals.map((animal) => {
+          const minimumCategory = minimumTransportBoxCategory(animal)
+          const requestedCategory = requestedCategoryFor(animal, minimumCategory)
+          return {
+            ...animal,
+            minimumBoxCategory: minimumCategory,
+            requestedBoxCategory: requestedCategory,
+          }
+        }),
+      }
+      await onSubmit(normalizedValues)
+      const newPets = normalizedValues.animals.filter((animal) => !animal.clientPetId)
       setValues(initialValues(contactName, contactPhone, contactEmail))
       setStep(0)
       if (newPets.length) setPetsToSave(newPets)
@@ -287,10 +319,19 @@ export function ClientRequestForm({
   }
 
   const selectedRoute = routes.find((route) => route.id === values.dailyRouteId)
-  const requestTotal = values.animals.reduce(
-    (total, animal) => total + boxPrices[sizeForMeasurements(animal)],
-    0,
-  )
+  const requestTotal = values.animals.reduce((total, animal) => {
+    const minimumCategory = minimumTransportBoxCategory(animal)
+    const requestedCategory = requestedCategoryFor(animal, minimumCategory)
+    return (
+      total +
+      transportBoxPriceCents(
+        requestedCategory,
+        { weightKg: animal.weightKg, minimumCategory },
+        boxCatalog,
+      ) /
+        100
+    )
+  }, 0)
   const routeStops = selectedRoute?.localities ?? []
   const destinationStops = values.origin
     ? routeStops.slice(routeStops.indexOf(values.origin) + 1)
@@ -735,10 +776,51 @@ export function ClientRequestForm({
                       />
                     </Field>
                   </div>
-                  <p className="text-muted-foreground mt-3 text-xs">
-                    Box {animalSizeLabel(sizeForMeasurements(animal)).toLocaleLowerCase()} ·{' '}
-                    {currency(boxPrices[sizeForMeasurements(animal)])}
-                  </p>
+                  {(() => {
+                    const minimumCategory = minimumTransportBoxCategory(animal)
+                    const requestedCategory = requestedCategoryFor(animal, minimumCategory)
+                    return (
+                      <div className="mt-3 grid gap-3">
+                        <p className="text-muted-foreground text-xs">
+                          Recomendación automática: {transportBoxCategoryLabel(minimumCategory)} ·{' '}
+                          {boxCatalog[minimumCategory].dimensions}
+                        </p>
+                        <Field>
+                          <FieldLabel htmlFor={`animal-${animal.ordinal}-box-category`}>
+                            Categoría de box
+                          </FieldLabel>
+                          <select
+                            id={`animal-${animal.ordinal}-box-category`}
+                            className="bg-background min-h-11 rounded-md border px-3 text-sm"
+                            value={requestedCategory}
+                            onChange={(event) =>
+                              updateAnimal(index, {
+                                requestedBoxCategory: event.target
+                                  .value as TransportRequestAnimal['requestedBoxCategory'],
+                              })
+                            }
+                          >
+                            {transportBoxOptions(minimumCategory).map((category) => (
+                              <option value={category} key={category}>
+                                {transportBoxCategoryLabel(category)} ·{' '}
+                                {currency(
+                                  transportBoxPriceCents(
+                                    category,
+                                    { weightKg: animal.weightKg, minimumCategory },
+                                    boxCatalog,
+                                  ) / 100,
+                                )}
+                                {transportBoxCategoryRank(category) >
+                                transportBoxCategoryRank(minimumCategory)
+                                  ? ' · extra por comodidad'
+                                  : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                      </div>
+                    )
+                  })()}
                 </div>
               ))}
               <Button

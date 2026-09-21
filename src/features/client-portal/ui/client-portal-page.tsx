@@ -13,14 +13,17 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
-import { loadTransportBoxPrices } from '@/shared/infrastructure/transport-pricing'
 import {
-  defaultTransportBoxPrices,
+  defaultTransportBoxCatalog,
+  transportBoxCategoryLabel,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
+import { loadTransportBoxCatalog } from '@/shared/infrastructure/transport-pricing'
+import {
   type ClientPet,
   type DashboardNavigation,
   type TransportRequest,
   type TransportRequestAnimal,
-  type TransportBoxPrices,
   type UpcomingRoute,
   type UserProfile,
 } from '@/shared/types'
@@ -55,7 +58,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
-  const [boxPrices, setBoxPrices] = useState<TransportBoxPrices>(defaultTransportBoxPrices)
+  const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [showForm, setShowForm] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
@@ -74,16 +77,16 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   const refresh = useCallback(async () => {
     if (!userId) return
-    const [nextRoutes, nextRequests, nextPets, nextBoxPrices] = await Promise.all([
+    const [nextRoutes, nextRequests, nextPets, nextBoxCatalog] = await Promise.all([
       loadUpcomingRoutes(),
       loadTransportRequests(userId),
       loadClientPets(),
-      loadTransportBoxPrices(),
+      loadTransportBoxCatalog(),
     ])
     setRoutes(nextRoutes)
     setRequests(nextRequests)
     setSavedPets(nextPets)
-    setBoxPrices(nextBoxPrices)
+    setBoxCatalog(nextBoxCatalog)
     setPendingPaymentRequestId((current) => {
       const currentIsPending = nextRequests.some(
         (request) => request.id === current && request.status === 'pago_pendiente',
@@ -357,7 +360,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               onSubmit={submitRequest}
               onCancel={() => setShowForm(false)}
               onSavePets={saveRecurringPets}
-              boxPrices={boxPrices}
+              boxCatalog={boxCatalog}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
               initialRouteId={preselectRouteId}
@@ -407,6 +410,18 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           {request.origin} → {request.destination}
                         </strong>
                         <small>{request.adminNote || clientStatusHint(request.status)}</small>
+                        <small>
+                          {request.animals
+                            .map((animal) =>
+                              transportBoxCategoryLabel(
+                                animal.assignedBoxCategory ??
+                                  animal.requestedBoxCategory ??
+                                  animal.minimumBoxCategory ??
+                                  'pequeno',
+                              ),
+                            )
+                            .join(' · ')}
+                        </small>
                         {typeof request.originLatitude === 'number' &&
                           typeof request.originLongitude === 'number' &&
                           typeof request.destinationLatitude === 'number' &&
@@ -554,7 +569,12 @@ function PetCard({ pet }: { pet: TransportRequestAnimal & { requestDate: string 
         </div>
         {pet.size && (
           <div className="invoice-amount">
-            <span className="status">Tamaño {pet.size}</span>
+            <span className="status">
+              Box{' '}
+              {transportBoxCategoryLabel(
+                pet.assignedBoxCategory ?? pet.requestedBoxCategory ?? pet.size ?? 'pequeno',
+              )}
+            </span>
           </div>
         )}
       </CardContent>

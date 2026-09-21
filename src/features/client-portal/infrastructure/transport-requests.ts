@@ -3,6 +3,7 @@ import type {
   ClientPet,
   TransportRequest,
   TransportRequestAnimal,
+  TransportBoxCategory,
   UpcomingRoute,
 } from '@/shared/types'
 
@@ -40,6 +41,9 @@ type RequestRow = {
     height_cm: number
     width_cm: number
     size: TransportRequestAnimal['size']
+    minimum_box_category: TransportRequestAnimal['minimumBoxCategory']
+    requested_box_category: TransportBoxCategory
+    assigned_box_category: TransportBoxCategory
     client_pet_id: string | null
   }>
 }
@@ -77,6 +81,9 @@ function mapRequest(row: RequestRow): TransportRequest {
       heightCm: animal.height_cm,
       widthCm: animal.width_cm,
       size: animal.size,
+      minimumBoxCategory: animal.minimum_box_category,
+      requestedBoxCategory: animal.requested_box_category,
+      assignedBoxCategory: animal.assigned_box_category,
       clientPetId: animal.client_pet_id ?? undefined,
     })),
   }
@@ -189,7 +196,18 @@ export async function createTransportRequest(
     p_desired_date: request.desiredDate,
     p_notes: request.notes,
     p_animals: animals.map(
-      ({ ordinal, name, species, breed, weightKg, lengthCm, heightCm, widthCm, clientPetId }) => ({
+      ({
+        ordinal,
+        name,
+        species,
+        breed,
+        weightKg,
+        lengthCm,
+        heightCm,
+        widthCm,
+        requestedBoxCategory,
+        clientPetId,
+      }) => ({
         ordinal,
         name,
         species,
@@ -198,6 +216,7 @@ export async function createTransportRequest(
         length_cm: lengthCm,
         height_cm: heightCm,
         width_cm: widthCm,
+        requested_box_category: requestedBoxCategory ?? 'pequeno',
         client_pet_id: clientPetId ?? null,
       }),
     ),
@@ -253,4 +272,15 @@ export async function rejectTransportRequest(requestId: string, adminNote: strin
     p_admin_note: adminNote,
   })
   if (error) throwRequestError(error, 'No se ha podido rechazar la solicitud. Vuelve a intentarlo.')
+}
+
+export async function updateTransportRequestAnimalBox(
+  animalId: string,
+  category: TransportBoxCategory,
+) {
+  const { error } = await requireSupabase().rpc('update_transport_request_animal_box', {
+    p_animal_id: animalId,
+    p_category: category,
+  })
+  if (error) throwRequestError(error, 'No se ha podido cambiar la categoría del box.')
 }

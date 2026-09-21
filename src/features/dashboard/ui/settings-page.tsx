@@ -24,14 +24,19 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import type { TransportBoxPrices, Transporter } from '@/shared/types'
+import {
+  transportBoxCategories,
+  transportBoxCategoryLabel,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
+import type { Transporter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 type Props = {
   transporters: Transporter[]
   onPromote: (transporterId: string) => Promise<void>
-  boxPrices: TransportBoxPrices
-  onSaveBoxPrices: (prices: TransportBoxPrices) => Promise<void>
+  boxCatalog: TransportBoxCatalog
+  onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
 }
 
 function initialsFor(name: string) {
@@ -46,15 +51,15 @@ function initialsFor(name: string) {
   )
 }
 
-export function SettingsPage({ transporters, onPromote, boxPrices, onSaveBoxPrices }: Props) {
+export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCatalog }: Props) {
   const [query, setQuery] = useState('')
   const [candidate, setCandidate] = useState<Transporter | null>(null)
   const [promoting, setPromoting] = useState(false)
   const [error, setError] = useState('')
-  const [draftPrices, setDraftPrices] = useState(boxPrices)
+  const [draftCatalog, setDraftCatalog] = useState(boxCatalog)
   const [savingPrices, setSavingPrices] = useState(false)
   const [priceError, setPriceError] = useState('')
-  useEffect(() => setDraftPrices(boxPrices), [boxPrices])
+  useEffect(() => setDraftCatalog(boxCatalog), [boxCatalog])
   const matchingTransporters = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
     return transporters.filter((transporter) =>
@@ -79,14 +84,23 @@ export function SettingsPage({ transporters, onPromote, boxPrices, onSaveBoxPric
   }
 
   async function savePrices() {
-    if (Object.values(draftPrices).some((price) => !Number.isFinite(price) || price <= 0)) {
-      setPriceError('Introduce un importe positivo para cada tamaño de box.')
+    if (
+      transportBoxCategories.some(
+        (category) =>
+          !Number.isFinite(draftCatalog[category].amountCents) ||
+          draftCatalog[category].amountCents <= 0 ||
+          (draftCatalog[category].largeAmountCents !== undefined &&
+            (!Number.isFinite(draftCatalog[category].largeAmountCents) ||
+              draftCatalog[category].largeAmountCents <= 0)),
+      )
+    ) {
+      setPriceError('Introduce un importe positivo para cada categoría de box.')
       return
     }
     setSavingPrices(true)
     setPriceError('')
     try {
-      await onSaveBoxPrices(draftPrices)
+      await onSaveBoxCatalog(draftCatalog)
     } catch (reason) {
       setPriceError(
         reason instanceof Error ? reason.message : 'No se han podido guardar las tarifas.',
@@ -187,24 +201,63 @@ export function SettingsPage({ transporters, onPromote, boxPrices, onSaveBoxPric
       <section className="settings-support">
         <div>
           <span className="eyebrow">Precios</span>
-          <h2>Tarifa por tamaño de box</h2>
-          <p>El importe se calcula sumando un box por cada mascota de la solicitud.</p>
+          <h2>Catálogo de boxes</h2>
+          <p>El cliente puede elegir una categoría superior y el importe se calcula por mascota.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {(['pequeno', 'mediano', 'grande'] as const).map((size) => (
-            <label className="grid gap-1.5 text-xs font-bold text-[#454545]" key={size}>
-              {size === 'pequeno' ? 'Pequeño' : size === 'mediano' ? 'Mediano' : 'Grande'} (€)
-              <Input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={draftPrices[size]}
-                onChange={(event) =>
-                  setDraftPrices((current) => ({ ...current, [size]: Number(event.target.value) }))
-                }
-                disabled={savingPrices}
-              />
-            </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {transportBoxCategories.map((category) => (
+            <div className="grid gap-2 rounded-lg border p-3" key={category}>
+              <strong>{transportBoxCategoryLabel(category)}</strong>
+              <small className="text-muted-foreground">{draftCatalog[category].dimensions}</small>
+              <label
+                className="grid gap-1.5 text-xs font-bold text-[#454545]"
+                htmlFor={`box-${category}-base`}
+              >
+                Tarifa base (€)
+                <Input
+                  id={`box-${category}-base`}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={draftCatalog[category].amountCents / 100}
+                  onChange={(event) =>
+                    setDraftCatalog((current) => ({
+                      ...current,
+                      [category]: {
+                        ...current[category],
+                        amountCents: Math.round(Number(event.target.value) * 100),
+                      },
+                    }))
+                  }
+                  disabled={savingPrices}
+                />
+              </label>
+              {draftCatalog[category].largeAmountCents !== undefined && (
+                <label
+                  className="grid gap-1.5 text-xs font-bold text-[#454545]"
+                  htmlFor={`box-${category}-large`}
+                >
+                  Tarifa superior (€)
+                  <Input
+                    id={`box-${category}-large`}
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={draftCatalog[category].largeAmountCents / 100}
+                    onChange={(event) =>
+                      setDraftCatalog((current) => ({
+                        ...current,
+                        [category]: {
+                          ...current[category],
+                          largeAmountCents: Math.round(Number(event.target.value) * 100),
+                        },
+                      }))
+                    }
+                    disabled={savingPrices}
+                  />
+                </label>
+              )}
+            </div>
           ))}
         </div>
         {priceError && (

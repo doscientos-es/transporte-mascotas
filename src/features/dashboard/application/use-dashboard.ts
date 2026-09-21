@@ -1,13 +1,16 @@
 import type { Session } from '@supabase/supabase-js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import {
+  defaultTransportBoxCatalog,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
 import {
-  loadTransportBoxPrices,
-  saveTransportBoxPrices,
+  loadTransportBoxCatalog,
+  saveTransportBoxCatalog,
 } from '@/shared/infrastructure/transport-pricing'
 import {
-  defaultTransportBoxPrices,
   type Animal,
   type AppRole,
   type Client,
@@ -22,7 +25,6 @@ import {
   type RouteTemplate,
   type ServiceAction,
   type Transporter,
-  type TransportBoxPrices,
 } from '@/shared/types'
 
 import {
@@ -191,7 +193,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
-  const [boxPrices, setBoxPrices] = useState<TransportBoxPrices>(defaultTransportBoxPrices)
+  const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
   const [routesLoading, setRoutesLoading] = useState(Boolean(session))
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
@@ -280,8 +282,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
       loadTransporters()
         .then(setTransporters)
         .catch(() => toast('No se ha podido cargar el equipo de transporte.'))
-      loadTransportBoxPrices()
-        .then(setBoxPrices)
+      loadTransportBoxCatalog()
+        .then(setBoxCatalog)
         .catch(() => toast('No se han podido cargar las tarifas de transporte.'))
     }
   }, [role, session, toast])
@@ -306,10 +308,10 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function updateBoxPrices(prices: TransportBoxPrices) {
+  async function updateBoxCatalog(catalog: TransportBoxCatalog) {
     try {
-      await saveTransportBoxPrices(prices)
-      setBoxPrices(prices)
+      await saveTransportBoxCatalog(catalog)
+      setBoxCatalog(catalog)
       toast('Tarifas de box actualizadas.')
     } catch (error) {
       const message =
@@ -990,7 +992,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     ensureLetters,
     routeTemplates,
     transporters,
-    boxPrices,
+    boxCatalog,
     dailyRoutes,
     routesLoading,
     selectedTemplate,
@@ -1009,7 +1011,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast,
     signOut,
     promoteTransporter,
-    updateBoxPrices,
+    updateBoxCatalog,
     updateActions,
     updateRouteStops,
     suggestRouteStop,

@@ -332,8 +332,8 @@ export function AdminDashboardPage({
               <SettingsPage
                 transporters={dashboard.transporters}
                 onPromote={dashboard.promoteTransporter}
-                boxPrices={dashboard.boxPrices}
-                onSaveBoxPrices={dashboard.updateBoxPrices}
+                boxCatalog={dashboard.boxCatalog}
+                onSaveBoxCatalog={dashboard.updateBoxCatalog}
               />
             )}
             {profile.role === 'admin' && section === 'whatsapp-test' && (
