@@ -28,11 +28,7 @@ Deno.serve(async (request) => {
     validateFiscalClient(invoice.client_snapshot)
     validateIssuer()
 
-    const existingResponse = await rest(
-      `invoice_payments?invoice_id=eq.${encodeURIComponent(invoice.id)}&status=eq.pendiente&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=public_token,status,expires_at&order=created_at.desc&limit=1`,
-    )
-    const [existing] = (await existingResponse.json()) as Payment[]
-    const payment = existing ?? (await createPayment(invoice))
+    const payment = await createPayment(invoice)
     const url = Deno.env.get('SUPABASE_URL')
     return json({
       paymentUrl: `${url}/functions/v1/payment-redirect?token=${encodeURIComponent(payment.public_token)}`,

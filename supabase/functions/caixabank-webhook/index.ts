@@ -64,12 +64,21 @@ Deno.serve(async (request) => {
     )
     const [payment] = (await paymentResponse.json()) as Payment[]
     if (!payment) {
-      const transportResponse = await rest(
-        `transport_requests?payment_merchant_order=eq.${encodeURIComponent(order)}&select=id,amount_cents,status,payment_merchant_order,daily_route_id,origin_text,destination_text`,
+      const transportFields =
+        'id,amount_cents,status,payment_merchant_order,daily_route_id,origin_text,destination_text'
+      let transportResponse = await rest(
+        `transport_requests?payment_merchant_order=eq.${encodeURIComponent(order)}&select=${transportFields}`,
       )
-      const [transportPayment] = (await transportResponse.json()) as TransportPayment[]
+      let [transportPayment] = (await transportResponse.json()) as TransportPayment[]
+      if (!transportPayment) {
+        transportResponse = await rest(
+          `transport_requests?payment_merchant_orders=cs.%7B${encodeURIComponent(order)}%7D&select=${transportFields}`,
+        )
+        const [historicalPayment] = (await transportResponse.json()) as TransportPayment[]
+        transportPayment = historicalPayment
+      }
       if (!transportPayment) return new Response('Pedido no encontrado.', { status: 404 })
-      return processTransportPayment(transportPayment, notification)
+      return processTransportPayment(transportPayment, notification, order)
     }
     if (payment.status === 'pagado') {
       await persistIssuedInvoiceDocument(payment.invoice_id)
@@ -136,6 +145,7 @@ Deno.serve(async (request) => {
 async function processTransportPayment(
   payment: TransportPayment,
   notification: Record<string, string>,
+  merchantOrder: string,
 ) {
   if (
     payment.status === 'confirmada' ||
@@ -165,7 +175,7 @@ async function processTransportPayment(
         paid
           ? {
               status: 'por_verificar',
-              payment_reference: payment.payment_merchant_order,
+              payment_reference: merchantOrder,
               paid_at: new Date().toISOString(),
               payment_gateway_response: gatewayResponse,
             }

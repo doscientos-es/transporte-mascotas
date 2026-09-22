@@ -41,6 +41,12 @@ const navigationItems = [
   ['mis-mascotas', 'Mis mascotas', PawPrint],
 ] as const satisfies ReadonlyArray<readonly [NavSection, string, typeof Route]>
 
+const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
+  'proximas-rutas': 'Rutas',
+  'mis-transportes': 'Transportes',
+  'mis-mascotas': 'Mascotas',
+}
+
 const transporterSections = new Set<NavSection>(['rutas', 'facturas'])
 
 type Props = {
@@ -131,7 +137,7 @@ export function DashboardLayout({
         key={id}
         href={hrefForSection(id)}
         icon={<Icon />}
-        label={label.split(' ')[0]}
+        label={mobileNavigationLabels[id] ?? label.split(' ')[0]}
         active={section === id}
         onClick={(event) => handleNavigation(event, id)}
       />

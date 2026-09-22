@@ -1,7 +1,6 @@
 import { rest } from './supabase.ts'
 import { isRetryableWhatsAppError, sendWhatsAppTemplate } from './whatsapp.ts'
 
-type Payment = { public_token: string }
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
 type Notification = {
   id: string
@@ -21,11 +20,7 @@ type IssuedInvoice = {
 }
 
 export async function paymentUrl(invoiceId: string) {
-  const existingResponse = await rest(
-    `invoice_payments?invoice_id=eq.${encodeURIComponent(invoiceId)}&status=eq.pendiente&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=public_token&order=created_at.desc&limit=1`,
-  )
-  const [existing] = (await existingResponse.json()) as Payment[]
-  const payment = existing ?? (await createPayment(invoiceId))
+  const payment = await createPayment(invoiceId)
   const url = Deno.env.get('SUPABASE_URL')
   if (!url) throw new Error('Falta SUPABASE_URL.')
   return `${url}/functions/v1/payment-redirect?token=${encodeURIComponent(payment.public_token)}`

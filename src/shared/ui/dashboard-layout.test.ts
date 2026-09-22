@@ -34,4 +34,29 @@ describe('DashboardLayout', () => {
     expect(markup).toContain('data-slot="button"')
     expect(markup).toContain('aria-label="Abrir menú de perfil"')
   })
+
+  it('uses concise labels for the client mobile destinations', () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        DashboardLayout,
+        {
+          section: 'mis-transportes',
+          pendingLetters: 0,
+          profileRole: 'user',
+          displayName: 'Ana Cliente',
+          onNavigate: vi.fn(),
+          hrefForSection: (section: NavSection) => `/${section}`,
+          onSignOut: vi.fn(),
+        } as unknown as ComponentProps<typeof DashboardLayout>,
+        'Contenido',
+      ),
+    )
+
+    const mobileNavigation = markup.slice(markup.indexOf('data-slot="mobile-navigation"'))
+    expect(mobileNavigation).toContain('Rutas')
+    expect(mobileNavigation).toContain('Transportes')
+    expect(mobileNavigation).toContain('Mascotas')
+    expect(mobileNavigation).not.toContain('Próximas')
+    expect(mobileNavigation).not.toContain('Mis')
+  })
 })
