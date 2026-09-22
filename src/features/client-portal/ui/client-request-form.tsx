@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ClipboardCheck,
   CreditCard,
   PawPrint,
   Plus,
@@ -172,6 +173,7 @@ type Props = {
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
   initialRouteId?: string
+  adminMode?: boolean
 }
 
 export function ClientRequestForm({
@@ -187,6 +189,7 @@ export function ClientRequestForm({
   pendingPayment = false,
   onRetryPayment,
   initialRouteId,
+  adminMode = false,
 }: Props) {
   const [values, setValues] = useState(() =>
     initialValues(
@@ -256,6 +259,22 @@ export function ClientRequestForm({
     setValues((current) => ({
       ...current,
       billingClient: { ...current.billingClient, [field]: value },
+    }))
+  }
+
+  function updateContact(field: 'contactName' | 'contactPhone' | 'contactEmail', value: string) {
+    setValues((current) => ({
+      ...current,
+      [field]: value,
+      billingClient:
+        current.billingPayer === 'remitente'
+          ? {
+              ...current.billingClient,
+              ...(field === 'contactName' ? { fullName: value } : {}),
+              ...(field === 'contactPhone' ? { phone: value } : {}),
+              ...(field === 'contactEmail' ? { email: value } : {}),
+            }
+          : current.billingClient,
     }))
   }
 
@@ -343,7 +362,7 @@ export function ClientRequestForm({
       const newPets = normalizedValues.animals.filter((animal) => !animal.clientPetId)
       setValues(initialValues(contactName, contactPhone, contactEmail))
       setStep(0)
-      if (newPets.length) setPetsToSave(newPets)
+      if (newPets.length && !adminMode) setPetsToSave(newPets)
       else onCancel()
     } catch (submitError) {
       setError(
@@ -511,15 +530,24 @@ export function ClientRequestForm({
         <form className="request-form" onSubmit={(event) => void submit(event)} noValidate>
           <div className="request-form-heading">
             <div>
-              <h2>Organiza el viaje en cuatro pasos</h2>
-              <p>Guardaremos tus datos para que puedas seguir el transporte desde aquí.</p>
+              <div className="request-form-kicker">
+                {adminMode ? 'Alta interna · sin cobro' : 'Nueva solicitud'}
+              </div>
+              <h2>
+                {adminMode ? 'Crear transporte manualmente' : 'Organiza el viaje en cuatro pasos'}
+              </h2>
+              <p>
+                {adminMode
+                  ? 'Completa los datos del cliente como si lo hiciera desde el portal. La solicitud quedará lista para revisar, sin pasar por la pasarela de pago.'
+                  : 'Guardaremos tus datos para que puedas seguir el transporte desde aquí.'}
+              </p>
             </div>
             <Button type="button" variant="ghost" onClick={onCancel}>
               Cancelar
             </Button>
           </div>
           <ol className="request-steps" aria-label="Progreso de solicitud">
-            {steps.map((label, index) => (
+            {(adminMode ? ['Cliente', ...steps.slice(1)] : steps).map((label, index) => (
               <li
                 key={label}
                 className={index === step ? 'is-current' : index < step ? 'is-complete' : ''}
@@ -531,69 +559,88 @@ export function ClientRequestForm({
           </ol>
 
           {step === 0 && (
-            <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
-              <div className="mb-5 flex items-start gap-3">
+            <section className="request-step-panel border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
+              <div className="request-step-hero mb-5 flex items-start gap-3">
                 <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
                   <ShieldCheck size={17} />
                 </span>
                 <div>
-                  <h3 className="text-foreground text-base font-semibold">Datos de contacto</h3>
+                  <span className="request-step-eyebrow">Paso 1 de 4</span>
+                  <h3 className="text-foreground text-base font-semibold">
+                    {adminMode ? 'Datos del cliente' : 'Datos de contacto'}
+                  </h3>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Los usaremos para gestionar la reserva y resolver cualquier incidencia.
+                    {adminMode
+                      ? 'Los usaremos para que operaciones pueda contactar con la persona responsable del transporte.'
+                      : 'Los usaremos para gestionar la reserva y resolver cualquier incidencia.'}
                   </p>
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field>
-                  <FieldLabel htmlFor="request-contact-name">Nombre y apellidos</FieldLabel>
-                  <Input
-                    id="request-contact-name"
-                    value={values.contactName}
-                    onChange={(event) => setValues({ ...values, contactName: event.target.value })}
-                    autoComplete="name"
-                    placeholder="Tu nombre completo"
-                    className="min-h-11"
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="request-contact-phone">Teléfono de contacto</FieldLabel>
-                  <Input
-                    id="request-contact-phone"
-                    type="tel"
-                    value={values.contactPhone}
-                    onChange={(event) => setValues({ ...values, contactPhone: event.target.value })}
-                    autoComplete="tel"
-                    inputMode="tel"
-                    placeholder="600 000 000"
-                    className="min-h-11"
-                    required
-                  />
-                </Field>
-                <Field className="sm:col-span-2">
-                  <FieldLabel htmlFor="request-contact-email">Correo electrónico</FieldLabel>
-                  <Input
-                    id="request-contact-email"
-                    type="email"
-                    value={values.contactEmail}
-                    onChange={(event) => setValues({ ...values, contactEmail: event.target.value })}
-                    autoComplete="email"
-                    placeholder="nombre@correo.com"
-                    className="min-h-11"
-                    required
-                  />
-                  <FieldDescription>
-                    Aquí recibirás la información de tu solicitud.
-                  </FieldDescription>
-                </Field>
+              <div className="request-form-block">
+                <div className="request-form-block-heading">
+                  <span className="request-form-block-icon">01</span>
+                  <div>
+                    <h4>Cómo contactarle</h4>
+                    <p>La confirmación y cualquier incidencia llegarán a estos datos.</p>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="request-contact-name">Nombre y apellidos</FieldLabel>
+                    <Input
+                      id="request-contact-name"
+                      value={values.contactName}
+                      onChange={(event) => updateContact('contactName', event.target.value)}
+                      autoComplete="name"
+                      placeholder="Tu nombre completo"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-contact-phone">Teléfono de contacto</FieldLabel>
+                    <Input
+                      id="request-contact-phone"
+                      type="tel"
+                      value={values.contactPhone}
+                      onChange={(event) => updateContact('contactPhone', event.target.value)}
+                      autoComplete="tel"
+                      inputMode="tel"
+                      placeholder="600 000 000"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-contact-email">Correo electrónico</FieldLabel>
+                    <Input
+                      id="request-contact-email"
+                      type="email"
+                      value={values.contactEmail}
+                      onChange={(event) => updateContact('contactEmail', event.target.value)}
+                      autoComplete="email"
+                      placeholder="nombre@correo.com"
+                      className="min-h-11"
+                      required
+                    />
+                    <FieldDescription>
+                      {adminMode
+                        ? 'Usaremos este correo para enviar la información al cliente.'
+                        : 'Aquí recibirás la información de tu solicitud.'}
+                    </FieldDescription>
+                  </Field>
+                </div>
               </div>
-              <div className="border-border mt-6 border-t pt-5">
-                <div className="mb-4">
-                  <h3 className="text-foreground text-base font-semibold">Datos para la factura</h3>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Elige quién paga el transporte y completa sus datos fiscales. Se guardarán en el
-                    CRM para que administración pueda emitir la factura.
-                  </p>
+              <div className="request-form-block request-billing-block">
+                <div className="request-form-block-heading">
+                  <span className="request-form-block-icon">02</span>
+                  <div>
+                    <h4>Datos para la factura</h4>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Elige quién paga y completa sus datos fiscales. Se guardarán en el CRM para
+                      que administración pueda emitir la factura.
+                    </p>
+                  </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field className="sm:col-span-2">
@@ -1010,12 +1057,16 @@ export function ClientRequestForm({
             <section className="request-review border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
               <div className="mb-5 flex items-start gap-3">
                 <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
-                  <CreditCard size={17} />
+                  {adminMode ? <ClipboardCheck size={17} /> : <CreditCard size={17} />}
                 </span>
                 <div>
-                  <h3 className="text-foreground text-base font-semibold">Revisa y confirma</h3>
+                  <h3 className="text-foreground text-base font-semibold">
+                    {adminMode ? 'Revisa y registra' : 'Revisa y confirma'}
+                  </h3>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Tu solicitud se enviará a operaciones después de registrar el pago.
+                    {adminMode
+                      ? 'Comprueba que todo está correcto antes de crear la solicitud interna.'
+                      : 'Tu solicitud se enviará a operaciones después de registrar el pago.'}
                   </p>
                 </div>
               </div>
@@ -1060,14 +1111,16 @@ export function ClientRequestForm({
                   <small>{values.animals.map((animal) => animal.species).join(' · ')}</small>
                 </div>
                 <div>
-                  <span>Importe del transporte</span>
+                  <span>{adminMode ? 'Importe de referencia' : 'Importe del transporte'}</span>
                   <strong>{currency(requestTotal)}</strong>
                   <small>Según el tamaño de cada box</small>
                 </div>
               </div>
               <p className="payment-note">
-                <ShieldCheck size={15} /> El pago queda registrado y la solicitud pasa directamente
-                a revisión.
+                {adminMode ? <ClipboardCheck size={15} /> : <ShieldCheck size={15} />}{' '}
+                {adminMode
+                  ? 'Se crea sin cobro y queda pendiente de revisión por operaciones.'
+                  : 'El pago queda registrado y la solicitud pasa directamente a revisión.'}
               </p>
             </section>
           )}
@@ -1098,7 +1151,14 @@ export function ClientRequestForm({
               </Button>
             ) : (
               <Button type="submit" disabled={sending}>
-                <CreditCard size={16} /> {sending ? 'Registrando pago…' : 'Confirmar y pagar'}
+                {adminMode ? <ClipboardCheck size={16} /> : <CreditCard size={16} />}{' '}
+                {sending
+                  ? adminMode
+                    ? 'Creando solicitud…'
+                    : 'Registrando pago…'
+                  : adminMode
+                    ? 'Crear solicitud sin cobro'
+                    : 'Confirmar y pagar'}
               </Button>
             )}
           </div>

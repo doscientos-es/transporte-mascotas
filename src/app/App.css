@@ -3409,6 +3409,15 @@
   font-size: 23px;
 }
 
+.request-form-kicker,
+.request-step-eyebrow {
+  color: #b51e27;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .request-form-heading p {
   color: #686868;
 }
@@ -3457,6 +3466,64 @@
   border-color: #bdff7b;
   background: #bdff7b;
   color: #182119;
+}
+
+.request-step-panel {
+  background: linear-gradient(145deg, #fafcf9 0%, #f4f7f2 100%);
+}
+
+.request-step-hero h3 {
+  margin-top: 3px;
+}
+
+.request-form-block {
+  padding: 18px;
+  border: 1px solid #e4e9e1;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 78%);
+}
+
+.request-form-block + .request-form-block {
+  margin-top: 12px;
+}
+
+.request-billing-block {
+  border-color: #dfe7d9;
+  background: #fff;
+}
+
+.request-form-block-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.request-form-block-heading h4 {
+  margin: 0;
+  color: #243024;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.request-form-block-heading p {
+  margin: 3px 0 0;
+  color: #768075;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.request-form-block-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eff8e9;
+  color: #557246;
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .request-review-grid {
@@ -3624,6 +3691,10 @@
 
   .request-form-heading {
     flex-direction: column;
+  }
+
+  .request-form-block {
+    padding: 14px;
   }
 
   .request-form-heading button {

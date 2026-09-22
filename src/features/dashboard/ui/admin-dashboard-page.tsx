@@ -4,7 +4,12 @@ import { CalendarDays, CheckCircle2, FilePlus2, Plus, Printer } from 'lucide-rea
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import type { ClientInvoice, DashboardNavigation, UserProfile } from '@/shared/types'
+import {
+  createAdminTransportRequest,
+  ClientRequestForm,
+  type RequestFormValues,
+} from '@/features/client-portal'
+import type { ClientInvoice, DashboardNavigation, UpcomingRoute, UserProfile } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { SectionBoundary } from '@/shared/ui/section-boundary'
 
@@ -114,6 +119,7 @@ export function AdminDashboardPage({
   const [printingManifest, setPrintingManifest] = useState(false)
   const [clientCreateRequestId, setClientCreateRequestId] = useState(0)
   const [templateCreateRequestId, setTemplateCreateRequestId] = useState(0)
+  const [creatingTransport, setCreatingTransport] = useState(false)
   const navigate = useNavigate()
   const {
     section,
@@ -158,6 +164,23 @@ export function AdminDashboardPage({
     !isTransporter && ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
   const routesLoading = dashboard.routesLoading
   const setSelectedRoute = dashboard.setSelectedRoute
+  const requestRoutes: UpcomingRoute[] = visibleRoutes
+    .filter(
+      (route) => route.status === 'activa' && route.date >= new Date().toISOString().slice(0, 10),
+    )
+    .map((route) => {
+      const template = dashboard.routeTemplates.find((item) => item.id === route.templateId)
+      const stops = route.stops ?? []
+      return {
+        id: route.id,
+        serviceDate: route.date,
+        routeDirection: route.direction ?? 'normal',
+        templateName: template?.name ?? 'Ruta programada',
+        templateColor: template?.color ?? '',
+        localities: stops.map((stop) => stop.locality),
+        stops,
+      }
+    })
 
   useEffect(() => {
     if ((section !== 'rutas' && section !== 'furgoneta') || !routeId) return
@@ -227,6 +250,12 @@ export function AdminDashboardPage({
     void navigate(`${navigation.hrefForSection('cartas')}?carta=${encodeURIComponent(letterId)}`)
   }
 
+  async function createManualTransport(values: RequestFormValues) {
+    await createAdminTransportRequest(values)
+    setCreatingTransport(false)
+    dashboard.toast('Solicitud creada sin cobro y pendiente de revisión.')
+  }
+
   return (
     <>
       <DashboardLayout
@@ -261,6 +290,10 @@ export function AdminDashboardPage({
           ) : !isTransporter && section === 'plantillas' ? (
             <Button onClick={() => setTemplateCreateRequestId((current) => current + 1)}>
               <Plus /> Nueva plantilla
+            </Button>
+          ) : !isTransporter && section === 'solicitudes' && !creatingTransport ? (
+            <Button onClick={() => setCreatingTransport(true)}>
+              <FilePlus2 /> Nuevo transporte
             </Button>
           ) : undefined
         }
@@ -380,7 +413,21 @@ export function AdminDashboardPage({
                 }
               />
             )}
-            {!isTransporter && section === 'solicitudes' && (
+            {!isTransporter && section === 'solicitudes' && creatingTransport && (
+              <ClientRequestForm
+                adminMode
+                routes={requestRoutes}
+                savedPets={[]}
+                contactName=""
+                contactPhone=""
+                contactEmail=""
+                onSubmit={createManualTransport}
+                onCancel={() => setCreatingTransport(false)}
+                onSavePets={async () => undefined}
+                boxCatalog={dashboard.boxCatalog}
+              />
+            )}
+            {!isTransporter && section === 'solicitudes' && !creatingTransport && (
               <>
                 <PaymentRequestsPage
                   transportista={false}

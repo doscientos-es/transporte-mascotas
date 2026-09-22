@@ -1,5 +1,6 @@
 export {
   confirmTransportRequest,
+  createAdminTransportRequest,
   createTransportRequest,
   loadTransportRequests,
   loadClientPets,

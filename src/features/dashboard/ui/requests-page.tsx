@@ -152,7 +152,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
           <div className="table-heading">
             <div>
               <h3>Solicitudes de transporte pendientes</h3>
-              <p>{pending.length} solicitudes pagadas pendientes de asignar</p>
+              <p>{pending.length} solicitudes pendientes de asignar</p>
             </div>
             <StatusBadge status="por_verificar">{pending.length} pendientes</StatusBadge>
           </div>
@@ -225,9 +225,11 @@ export function RequestsPage({ routes, onNotify }: Props) {
                     </span>
                     <span>
                       <b>Pago</b>
-                      {request.paidAt
-                        ? `Registrado el ${new Date(request.paidAt).toLocaleDateString('es-ES')}`
-                        : 'Pendiente de confirmar'}
+                      {request.paymentReference === 'admin_manual'
+                        ? 'Alta manual · sin cobro'
+                        : request.paidAt
+                          ? `Registrado el ${new Date(request.paidAt).toLocaleDateString('es-ES')}`
+                          : 'Pendiente de confirmar'}
                     </span>
                     {request.notes && (
                       <span>

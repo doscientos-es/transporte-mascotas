@@ -195,7 +195,68 @@ export async function createTransportRequest(
 ) {
   const database = requireSupabase()
   const { animals, ...request } = input
-  const { data, error } = await database.rpc('submit_transport_request', {
+  const rpcArgs = {
+    p_contact_name: request.contactName,
+    p_contact_phone: request.contactPhone,
+    p_contact_email: request.contactEmail,
+    p_billing_payer: request.billingPayer,
+    p_billing_client: request.billingClient,
+    p_daily_route_id: request.dailyRouteId,
+    p_origin: request.origin,
+    p_destination: request.destination,
+    p_desired_date: request.desiredDate,
+    p_notes: request.notes,
+    p_animals: animals.map(
+      ({
+        ordinal,
+        name,
+        species,
+        breed,
+        weightKg,
+        lengthCm,
+        heightCm,
+        widthCm,
+        requestedBoxCategory,
+        clientPetId,
+      }) => ({
+        ordinal,
+        name,
+        species,
+        breed,
+        weight_kg: weightKg,
+        length_cm: lengthCm,
+        height_cm: heightCm,
+        width_cm: widthCm,
+        requested_box_category: requestedBoxCategory ?? 'pequeno',
+        client_pet_id: clientPetId ?? null,
+      }),
+    ),
+  }
+  const { data, error } = await database.rpc('submit_transport_request', rpcArgs)
+  if (error)
+    throwRequestError(
+      error,
+      'No se ha podido enviar la solicitud. Comprueba tu conexión y vuelve a intentarlo.',
+    )
+  return data as string
+}
+
+export async function createAdminTransportRequest(
+  input: Omit<
+    TransportRequest,
+    | 'id'
+    | 'requesterId'
+    | 'status'
+    | 'amountCents'
+    | 'paymentReference'
+    | 'createdAt'
+    | 'adminNote'
+    | 'paidAt'
+  >,
+) {
+  const database = requireSupabase()
+  const { animals, ...request } = input
+  const { data, error } = await database.rpc('submit_transport_request_admin', {
     p_contact_name: request.contactName,
     p_contact_phone: request.contactPhone,
     p_contact_email: request.contactEmail,
@@ -235,7 +296,7 @@ export async function createTransportRequest(
   if (error)
     throwRequestError(
       error,
-      'No se ha podido enviar la solicitud. Comprueba tu conexión y vuelve a intentarlo.',
+      'No se ha podido crear la solicitud manual. Comprueba los datos y vuelve a intentarlo.',
     )
   return data as string
 }
