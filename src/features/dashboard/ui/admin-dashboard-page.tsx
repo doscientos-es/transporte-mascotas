@@ -291,8 +291,8 @@ export function AdminDashboardPage({
             <Button onClick={() => setTemplateCreateRequestId((current) => current + 1)}>
               <Plus /> Nueva plantilla
             </Button>
-          ) : !isTransporter && section === 'solicitudes' && !creatingTransport ? (
-            <Button onClick={() => setCreatingTransport(true)}>
+          ) : profile.role === 'admin' && section === 'solicitudes' && !creatingTransport ? (
+            <Button disabled={!requestRoutes.length} onClick={() => setCreatingTransport(true)}>
               <FilePlus2 /> Nuevo transporte
             </Button>
           ) : undefined
@@ -413,7 +413,7 @@ export function AdminDashboardPage({
                 }
               />
             )}
-            {!isTransporter && section === 'solicitudes' && creatingTransport && (
+            {profile.role === 'admin' && section === 'solicitudes' && creatingTransport && (
               <ClientRequestForm
                 adminMode
                 routes={requestRoutes}

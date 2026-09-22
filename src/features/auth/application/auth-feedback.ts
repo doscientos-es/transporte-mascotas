@@ -85,3 +85,66 @@ export function getAuthFeedback(error: AuthFailure, mode: 'login' | 'signup'): A
         message: 'No hemos podido crear la cuenta. Revisa los datos e inténtalo de nuevo.',
       }
 }
+
+export function getPasswordRecoveryFeedback(error: AuthFailure): AuthFeedback {
+  const code = error.code?.toLowerCase() ?? ''
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (/rate limit|too many requests|over_.*rate_limit/.test(`${code} ${message}`)) {
+    return {
+      tone: 'error',
+      message:
+        'Hemos recibido demasiadas solicitudes. Espera unos minutos antes de volver a intentarlo.',
+    }
+  }
+
+  if (code === 'email_address_invalid' || /invalid email|email address.*invalid/.test(message)) {
+    return { tone: 'error', message: 'Escribe un correo electrónico válido.' }
+  }
+
+  if (error.status !== undefined && error.status >= 500) {
+    return {
+      tone: 'error',
+      message:
+        'El servicio de acceso no está disponible temporalmente. Prueba de nuevo en unos minutos.',
+    }
+  }
+
+  return {
+    tone: 'error',
+    message: 'No hemos podido enviar el enlace. Revisa el correo e inténtalo de nuevo.',
+  }
+}
+
+export function getPasswordResetFeedback(error: AuthFailure): AuthFeedback {
+  const code = error.code?.toLowerCase() ?? ''
+  const message = error.message?.toLowerCase() ?? ''
+
+  if (/password.*(weak|short|least|breached)|weak password/.test(message)) {
+    return {
+      tone: 'error',
+      message: 'La contraseña no cumple los requisitos de seguridad. Prueba con otra distinta.',
+    }
+  }
+
+  if (/expired|invalid|otp|token|session/.test(`${code} ${message}`)) {
+    return {
+      tone: 'error',
+      message: 'Este enlace ha caducado o ya no es válido. Solicita uno nuevo para continuar.',
+    }
+  }
+
+  if (error.status !== undefined && error.status >= 500) {
+    return {
+      tone: 'error',
+      message:
+        'El servicio de acceso no está disponible temporalmente. Prueba de nuevo en unos minutos.',
+    }
+  }
+
+  return {
+    tone: 'error',
+    message:
+      'No hemos podido cambiar la contraseña. Solicita un enlace nuevo e inténtalo de nuevo.',
+  }
+}

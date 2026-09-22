@@ -1447,6 +1447,27 @@
   text-underline-offset: 3px;
 }
 
+.auth-flow-link {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  color: #686868;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  text-underline-offset: 3px;
+}
+
+.auth-flow-link:hover {
+  color: var(--accent);
+}
+
+.auth-state-card {
+  text-align: center;
+}
+
 .date-field {
   display: grid;
   gap: 7px;

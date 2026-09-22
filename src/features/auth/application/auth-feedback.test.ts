@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAuthFeedback } from './auth-feedback'
+import {
+  getAuthFeedback,
+  getPasswordRecoveryFeedback,
+  getPasswordResetFeedback,
+} from './auth-feedback'
 
 describe('getAuthFeedback', () => {
   it('offers a direct login action when the account already exists', () => {
@@ -49,6 +53,15 @@ describe('getAuthFeedback', () => {
     )
     expect(getAuthFeedback({}, 'signup').message).toBe(
       'No hemos podido crear la cuenta. Revisa los datos e inténtalo de nuevo.',
+    )
+  })
+
+  it('explains recovery and reset failures without exposing account details', () => {
+    expect(getPasswordRecoveryFeedback({ message: 'Too many requests' }).message).toBe(
+      'Hemos recibido demasiadas solicitudes. Espera unos minutos antes de volver a intentarlo.',
+    )
+    expect(getPasswordResetFeedback({ message: 'Token has expired' }).message).toBe(
+      'Este enlace ha caducado o ya no es válido. Solicita uno nuevo para continuar.',
     )
   })
 })

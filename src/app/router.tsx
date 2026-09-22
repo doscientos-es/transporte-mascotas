@@ -46,6 +46,16 @@ const router = createBrowserRouter([
             lazy: () => import('./router/login-route'),
             HydrateFallback: LoadingRoute,
           },
+          {
+            path: ROUTER_PATHS.passwordRecovery,
+            lazy: () => import('./router/password-recovery-route'),
+            HydrateFallback: LoadingRoute,
+          },
+          {
+            path: ROUTER_PATHS.passwordReset,
+            lazy: () => import('./router/password-reset-route'),
+            HydrateFallback: LoadingRoute,
+          },
         ],
       },
       {

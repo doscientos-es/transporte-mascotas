@@ -2,6 +2,7 @@ import { Button } from '@doscientos/ui'
 import { CheckCircle2, PawPrint, type LucideIcon } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
+import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import { BrandLogo } from '@/shared/ui/brand-logo'
 
 import { getAuthFeedback, type AuthFeedback } from '../application/auth-feedback'
@@ -63,6 +64,8 @@ export function LoginPage({ audience }: Props) {
   const screenClassName = isClient
     ? 'login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px]'
     : 'login-screen [background:radial-gradient(circle_at_top_right,#dfead8,transparent_38%),#f7f8f5]'
+  const accessPath = isClient ? AUTH_PATHS.staffAccess : AUTH_PATHS.clientAccess
+  const recoveryPath = `${AUTH_PATHS.passwordRecovery}${isClient ? '' : '?audience=staff'}`
 
   return (
     <main className={screenClassName}>
@@ -175,6 +178,11 @@ export function LoginPage({ audience }: Props) {
             {sending ? 'Procesando…' : mode === 'login' ? 'Entrar' : 'Crear mi cuenta'}
           </Button>
         </form>
+        {mode === 'login' && (
+          <a className="auth-flow-link" href={recoveryPath}>
+            ¿Has olvidado tu contraseña?
+          </a>
+        )}
         <button
           type="button"
           className="auth-switch"
@@ -189,7 +197,7 @@ export function LoginPage({ audience }: Props) {
         </button>
         <a
           className="mt-[22px] flex min-h-11 items-center justify-center text-center text-xs text-[#686868] no-underline hover:text-[var(--accent)] hover:underline hover:underline-offset-[3px]"
-          href={isClient ? '/admin' : '/cliente/acceso'}
+          href={accessPath}
         >
           {isClient
             ? '¿Trabajas con nosotros? Acceso profesional'

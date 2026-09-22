@@ -1,3 +1,5 @@
-export { authenticate } from './application/authenticate'
+export { authenticate, requestPasswordReset, updatePassword } from './application/authenticate'
 export { useAuthSession } from './application/use-auth-session'
 export { LoginPage } from './ui/login-page'
+export { PasswordRecoveryPage } from './ui/password-recovery-page'
+export { PasswordResetPage } from './ui/password-reset-page'

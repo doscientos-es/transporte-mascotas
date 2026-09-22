@@ -3,6 +3,7 @@ import './styles/responsive.css'
 import { Component, useEffect, useState, type ReactNode } from 'react'
 
 import { useAuthSession } from '@/features/auth'
+import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import { isSupabaseConfigured } from '@/shared/infrastructure/supabase'
 import { PwaInstallPrompt } from '@/shared/ui/pwa-install-prompt'
 
@@ -22,7 +23,9 @@ function App() {
 function AuthenticatedApp() {
   const { session, ready, profile, profileReady, authError, profileError, retry, signOut } =
     useAuthSession()
-  if (!ready || (session && !profileReady))
+  const isPasswordResetRoute =
+    window.location.pathname.replace(/\/+$/, '') === AUTH_PATHS.passwordReset
+  if (!ready || (session && !profileReady && !isPasswordResetRoute))
     return (
       <output className="loading-screen" aria-live="polite">
         Cargando sesión segura…
@@ -37,11 +40,15 @@ function AuthenticatedApp() {
   if (authError) return <AppState message={authError} onRetry={retry} />
   if (!profile)
     return session ? (
-      <AppState
-        message={profileError || 'No se ha podido cargar tu perfil.'}
-        onRetry={retry}
-        onSignOut={signOut}
-      />
+      isPasswordResetRoute ? (
+        <AppRouter session={session} profile={profile} />
+      ) : (
+        <AppState
+          message={profileError || 'No se ha podido cargar tu perfil.'}
+          onRetry={retry}
+          onSignOut={signOut}
+        />
+      )
     ) : (
       <AppRouter session={session} profile={profile} />
     )

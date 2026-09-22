@@ -1,3 +1,4 @@
+import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import type { NavSection } from '@/shared/types'
 
 export const dashboardPaths: Record<NavSection, string> = {
@@ -16,8 +17,10 @@ export const dashboardPaths: Record<NavSection, string> = {
 }
 
 export const APP_PATHS = {
-  home: '/',
-  staffAccess: '/admin',
+  home: AUTH_PATHS.clientAccess,
+  staffAccess: AUTH_PATHS.staffAccess,
+  passwordRecovery: AUTH_PATHS.passwordRecovery,
+  passwordReset: AUTH_PATHS.passwordReset,
   clientHome: dashboardPaths['mis-transportes'],
   staffHome: dashboardPaths.cartas,
   transporterHome: dashboardPaths.rutas,
@@ -35,6 +38,8 @@ const routePath = (path: string) => path.slice(1)
 
 export const ROUTER_PATHS = {
   staffAccess: `${routePath(APP_PATHS.staffAccess)}/*`,
+  passwordRecovery: routePath(APP_PATHS.passwordRecovery),
+  passwordReset: routePath(APP_PATHS.passwordReset),
   clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
   clientUpcomingDetail: `${routePath(dashboardPaths['proximas-rutas'])}/:routeId`,
   clientTransports: routePath(dashboardPaths['mis-transportes']),
