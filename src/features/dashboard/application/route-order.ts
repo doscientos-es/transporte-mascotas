@@ -9,8 +9,6 @@ export function sortRoutesByDate(
   direction: RouteSortDirection = DEFAULT_ROUTE_SORT_DIRECTION,
 ) {
   return routes.toSorted((left, right) =>
-    direction === 'asc'
-      ? left.date.localeCompare(right.date)
-      : right.date.localeCompare(left.date),
+    direction === 'asc' ? left.date.localeCompare(right.date) : right.date.localeCompare(left.date),
   )
 }

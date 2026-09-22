@@ -453,7 +453,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
-      ;[next[index], next[target]] = [next[target], next[index]]
+    ;[next[index], next[target]] = [next[target], next[index]]
     setMovingStop(true)
     try {
       setOperationError('')
@@ -469,7 +469,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= plannedStops.length) return
     const next = [...plannedStops]
-      ;[next[index], next[target]] = [next[target], next[index]]
+    ;[next[index], next[target]] = [next[target], next[index]]
     try {
       setPlannedStops(await calculateDrivingTimes(next))
     } catch {

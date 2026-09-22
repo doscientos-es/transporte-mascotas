@@ -37,7 +37,7 @@ function AuthenticatedApp() {
         Configura Supabase para acceder a la aplicación.
       </div>
     )
-  if (authError) return <AppState message={authError} onRetry={retry} />
+  if (authError && !isPasswordResetRoute) return <AppState message={authError} onRetry={retry} />
   if (!profile)
     return session ? (
       isPasswordResetRoute ? (
