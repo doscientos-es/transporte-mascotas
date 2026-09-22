@@ -202,7 +202,7 @@ export function DashboardLayout({
         </div>
       </aside>
       <main className="min-w-0">
-        <header className="mx-auto flex w-full max-w-[1440px] items-center gap-2.5 px-[clamp(20px,4vw,52px)] pt-6 max-[850px]:px-[18px] max-[850px]:pt-[17px]">
+        <header className="kache-dashboard-header mx-auto flex w-full max-w-[1200px] items-center gap-2.5 px-6 pt-7 max-[850px]:px-[18px] max-[850px]:pt-[17px]">
           <h1 className="m-0 text-[25px] tracking-[-0.04em] text-[#171717] max-[850px]:text-[21px]">
             {pageTitle}
           </h1>
@@ -210,7 +210,7 @@ export function DashboardLayout({
         </header>
         <div
           data-dashboard-content
-          className="mx-auto max-w-[1440px] px-[clamp(20px,4vw,52px)] pt-3 pb-14 max-[850px]:px-4 max-[850px]:pt-[22px] max-[850px]:pb-9"
+          className="kache-dashboard-content mx-auto max-w-[1200px] px-6 pt-4 pb-14 max-[850px]:px-4 max-[850px]:pt-[22px] max-[850px]:pb-9"
         >
           {children}
         </div>

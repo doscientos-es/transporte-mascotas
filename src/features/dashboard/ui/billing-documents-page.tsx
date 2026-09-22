@@ -40,7 +40,7 @@ const pageCopy: Record<
 > = {
   'payment-requests': {
     status: 'solicitud_pago',
-    title: 'Solicitudes de pago',
+    title: 'Pagos pendientes',
     description: 'Pendientes de cobro y revisión.',
     emptyTitle: 'No hay solicitudes de pago disponibles',
     emptyDescription: 'Las solicitudes aparecerán automáticamente al crear una carta de porte.',
@@ -48,7 +48,7 @@ const pageCopy: Record<
   },
   invoices: {
     status: 'emitida',
-    title: 'Facturas',
+    title: 'Documentos emitidos',
     description: 'Documentos emitidos y listos para consultar.',
     emptyTitle: 'No hay facturas disponibles',
     emptyDescription: 'Las facturas aparecerán automáticamente al confirmar los cobros.',

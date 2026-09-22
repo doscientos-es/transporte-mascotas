@@ -3855,12 +3855,49 @@
 }
 
 /* Invoice and request handling polish */
+.kache-dashboard-header {
+  min-height: 66px;
+  border-bottom: 1px solid #ececec;
+}
+
+.kache-dashboard-content {
+  width: 100%;
+}
+
+.kache-dashboard-content > * + * {
+  margin-top: 18px;
+}
+
+.kache-dashboard-content .page-header,
+.kache-dashboard-content .invoice-page-heading,
+.kache-dashboard-content .route-catalog,
+.kache-dashboard-content .clients-workspace {
+  width: 100%;
+  max-width: none;
+}
+
+.kache-dashboard-content [data-slot='card'],
+.kache-dashboard-content .table-card,
+.kache-dashboard-content .invoice-filter-surface {
+  border-color: #e5e5e5;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgb(23 23 23 / 3%);
+}
+
+.kache-dashboard-content .page-header {
+  margin-bottom: 0;
+}
+
+.kache-dashboard-content .page-header [data-slot='page-header-description'] {
+  max-width: 720px;
+}
+
 .invoice-page-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
-  max-width: 1080px;
+  max-width: none;
   margin-bottom: 14px;
   padding: 2px 2px 0;
 }
