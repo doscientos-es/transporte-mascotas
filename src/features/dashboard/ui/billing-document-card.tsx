@@ -93,31 +93,31 @@ export function BillingDocumentCard({
               <span className="invoice-status invoice-pending">Pendiente de cobro</span>
             )}
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="invoice-download-button invoice-card-header-download"
-            disabled={downloading}
-            onClick={onDownload}
-          >
-            <Download size={15} />{' '}
-            {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-          </Button>
-        </div>
-        <div className="invoice-card-actions">
-          <Button
-            size="sm"
-            variant="outline"
-            className="invoice-preview-button"
-            onClick={onPreview}
-          >
-            <Eye size={15} /> {isIssued ? 'Ver factura' : 'Ver solicitud'}
-          </Button>
-          {!transportista && !isIssued && onManualPayment && (
-            <Button size="sm" variant="outline" onClick={onManualPayment}>
-              <CheckCircle2 size={15} /> Registrar cobro
+          <div className="invoice-card-actions">
+            <Button
+              size="sm"
+              variant="outline"
+              className="invoice-preview-button"
+              onClick={onPreview}
+            >
+              <Eye size={15} /> {isIssued ? 'Ver factura' : 'Ver solicitud'}
             </Button>
-          )}
+            <Button
+              size="sm"
+              variant="outline"
+              className="invoice-download-button"
+              disabled={downloading}
+              onClick={onDownload}
+            >
+              <Download size={15} />{' '}
+              {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+            </Button>
+            {!transportista && !isIssued && onManualPayment && (
+              <Button size="sm" variant="outline" onClick={onManualPayment}>
+                <CheckCircle2 size={15} /> Registrar cobro
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

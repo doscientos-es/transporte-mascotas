@@ -1582,10 +1582,10 @@
 }
 
 .invoice-card-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  gap: 24px;
   min-width: 0;
 }
 
@@ -1679,14 +1679,9 @@
 
 .invoice-card-financial {
   display: grid;
+  min-width: 112px;
   justify-items: end;
   gap: 7px;
-  flex: 0 0 auto;
-}
-
-.invoice-card-header-download {
-  flex: 0 0 auto;
-  white-space: nowrap;
 }
 
 .invoice-amount {
@@ -1732,16 +1727,11 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-  border-top: 1px solid #ededed;
-  padding-top: 13px;
+  min-width: 0;
 }
 
 .invoice-card-actions button {
   white-space: nowrap;
-}
-
-.invoice-card-actions .invoice-download-button {
-  flex: 0 0 auto;
 }
 
 .invoice-empty [data-slot='card-content'] {
@@ -1808,9 +1798,13 @@
   }
 
   .invoice-card-main {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 14px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 16px;
+  }
+
+  .invoice-card-identity {
+    grid-column: 1 / -1;
   }
 
   .invoice-card-financial {
@@ -1819,12 +1813,15 @@
     justify-items: start;
   }
 
-  .invoice-card-header-download {
-    align-self: flex-start;
+  .invoice-amount {
+    justify-items: start;
   }
 
   .invoice-card-actions {
-    justify-content: stretch;
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    border-top: 1px solid #ededed;
+    padding-top: 13px;
   }
 
   .invoice-card-actions button {
