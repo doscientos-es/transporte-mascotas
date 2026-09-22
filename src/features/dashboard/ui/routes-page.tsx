@@ -49,6 +49,7 @@ import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn } from '../application/route-closure'
+import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
@@ -122,14 +123,18 @@ export function RoutesCatalogPage({
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? ''
   const statusFilter = readEnumParam(searchParams.get('estado'), routeStatusFilters, 'todos')
-  const direction = readEnumParam(searchParams.get('direccion'), sortDirections, 'asc')
+  const direction = readEnumParam(
+    searchParams.get('direccion'),
+    sortDirections,
+    DEFAULT_ROUTE_SORT_DIRECTION,
+  )
   const requestedPage = readPageParam(searchParams.get('pagina'))
   const today = isoToday()
   const templateName = (route: DailyRoute) =>
     templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
   const filteredRoutes = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
-    return [...routes]
+    const matchingRoutes = [...routes]
       .filter((route) => statusFilter === 'todos' || route.status === statusFilter)
       .filter((route) => {
         if (!normalizedQuery) return true
@@ -140,11 +145,7 @@ export function RoutesCatalogPage({
           (value) => value.toLocaleLowerCase().includes(normalizedQuery),
         )
       })
-      .sort((left, right) =>
-        direction === 'asc'
-          ? left.date.localeCompare(right.date)
-          : right.date.localeCompare(left.date),
-      )
+    return sortRoutesByDate(matchingRoutes, direction)
   }, [direction, query, routes, statusFilter, templates])
   const routePagination = paginate(filteredRoutes, requestedPage, ROUTE_LIST_PAGE_SIZE)
   const countLabel = `${filteredRoutes.length} ${filteredRoutes.length === 1 ? 'ruta' : 'rutas'}`
@@ -452,7 +453,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     setMovingStop(true)
     try {
       setOperationError('')
@@ -468,7 +469,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= plannedStops.length) return
     const next = [...plannedStops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     try {
       setPlannedStops(await calculateDrivingTimes(next))
     } catch {
