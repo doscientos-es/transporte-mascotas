@@ -28,6 +28,15 @@ describe('isValidCyberpacNotification', () => {
     ).toBe(true)
   })
 
+  it('accepts Redsys terminal numbers padded with leading zeroes', () => {
+    expect(
+      isValidCyberpacNotification({
+        ...validNotification,
+        notification: { ...validNotification.notification, Ds_Terminal: '001' },
+      }),
+    ).toBe(true)
+  })
+
   it.each([
     ['the signature version', { signatureVersion: 'SHA1' }],
     [
