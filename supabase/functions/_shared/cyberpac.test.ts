@@ -4,6 +4,7 @@ import {
   cyberpacSignature,
   decodeMerchantParameters,
   encodeMerchantParameters,
+  readCyberpacNotification,
   safeEqual,
 } from './cyberpac.ts'
 
@@ -57,5 +58,22 @@ describe('Cyberpac helpers', () => {
     expect(safeEqual('abc', 'abc')).toBe(true)
     expect(safeEqual('abc', 'abd')).toBe(false)
     expect(safeEqual('abc', 'abcd')).toBe(false)
+  })
+
+  it('reads Redsys urlencoded notifications without a content type header', async () => {
+    const request = new Request('https://example.test/webhook', {
+      method: 'POST',
+      body: new URLSearchParams({
+        Ds_SignatureVersion: 'HMAC_SHA512_V2',
+        Ds_MerchantParameters: 'encoded-parameters',
+        Ds_Signature: 'signature',
+      }).toString(),
+    })
+
+    await expect(readCyberpacNotification(request)).resolves.toEqual({
+      signatureVersion: 'HMAC_SHA512_V2',
+      parameters: 'encoded-parameters',
+      signature: 'signature',
+    })
   })
 })

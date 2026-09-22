@@ -2,6 +2,7 @@ import { dispatchBillingNotifications } from '../_shared/billing-notifications.t
 import {
   cyberpacSignature,
   decodeMerchantParameters,
+  readCyberpacNotification,
   safeEqual,
   type CyberpacSignatureVersion,
 } from '../_shared/cyberpac.ts'
@@ -26,10 +27,7 @@ type TransportPayment = {
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return new Response('Método no permitido.', { status: 405 })
   try {
-    const body = await request.formData()
-    const signatureVersion = String(body.get('Ds_SignatureVersion') ?? '')
-    const parameters = String(body.get('Ds_MerchantParameters') ?? '')
-    const signature = String(body.get('Ds_Signature') ?? '')
+    const { signatureVersion, parameters, signature } = await readCyberpacNotification(request)
     const notification = decodeMerchantParameters(parameters)
     const order = notification.Ds_Order
     const secret = Deno.env.get('CAIXABANK_CYBERPAC_SECRET')
@@ -183,16 +181,23 @@ async function processTransportPayment(
       ),
     })
   if (paid) {
-    const issuer = issuerSnapshot()
-    await rest('rpc/auto_finalize_paid_transport', {
-      method: 'POST',
-      body: JSON.stringify({
-        p_request_id: payment.id,
-        p_paid_at: new Date().toISOString(),
-        p_gateway_response: gatewayResponse,
-        p_issuer_snapshot: issuer,
-      }),
-    })
+    try {
+      const issuer = issuerSnapshot()
+      await rest('rpc/auto_finalize_paid_transport', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_request_id: payment.id,
+          p_paid_at: new Date().toISOString(),
+          p_gateway_response: gatewayResponse,
+          p_issuer_snapshot: issuer,
+        }),
+      })
+    } catch (error) {
+      console.error(
+        'Transport payment recorded but finalization deferred',
+        error instanceof Error ? error.message : 'unknown error',
+      )
+    }
   }
   return new Response('OK')
 }

@@ -228,6 +228,34 @@ export function decodeMerchantParameters(value: string) {
   return JSON.parse(decoder.decode(decodeBase64(value))) as Record<string, string>
 }
 
+export async function readCyberpacNotification(request: Request) {
+  const contentType = request.headers.get('content-type')?.toLowerCase() ?? ''
+  const fields = new URLSearchParams()
+
+  if (contentType.includes('multipart/form-data')) {
+    const form = await request.formData()
+    for (const [name, value] of form.entries()) {
+      if (typeof value === 'string') fields.set(name, value)
+    }
+  } else {
+    const body = await request.text()
+    if (contentType.includes('application/json')) {
+      const payload = JSON.parse(body) as Record<string, unknown>
+      for (const [name, value] of Object.entries(payload)) {
+        if (typeof value === 'string') fields.set(name, value)
+      }
+    } else {
+      for (const [name, value] of new URLSearchParams(body)) fields.set(name, value)
+    }
+  }
+
+  return {
+    signatureVersion: fields.get('Ds_SignatureVersion') ?? '',
+    parameters: fields.get('Ds_MerchantParameters') ?? '',
+    signature: fields.get('Ds_Signature') ?? '',
+  }
+}
+
 export function safeEqual(left: string, right: string) {
   if (left.length !== right.length) return false
   let result = 0
