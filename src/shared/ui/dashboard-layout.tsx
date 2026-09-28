@@ -47,6 +47,12 @@ const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
   'mis-mascotas': 'Mascotas',
 }
 
+const mobilePrimarySections: Partial<Record<AppRole, readonly NavSection[]>> = {
+  admin: ['cartas', 'rutas', 'solicitudes', 'clientes', 'facturas'],
+  transportista: ['rutas', 'facturas'],
+  user: ['proximas-rutas', 'mis-transportes', 'mis-mascotas'],
+}
+
 const transporterSections = new Set<NavSection>(['rutas', 'facturas'])
 
 type Props = {
@@ -132,16 +138,58 @@ export function DashboardLayout({
     ))
 
   const renderMobileNavigation = () =>
-    visibleItems.map(([id, label, Icon]) => (
-      <MobileNavigationItem
-        key={id}
-        href={hrefForSection(id)}
-        icon={<Icon />}
-        label={mobileNavigationLabels[id] ?? label.split(' ')[0]}
-        active={section === id}
-        onClick={(event) => handleNavigation(event, id)}
-      />
-    ))
+    visibleItems
+      .filter(([id]) => (mobilePrimarySections[profileRole] ?? []).includes(id))
+      .map(([id, label, Icon]) => (
+        <MobileNavigationItem
+          key={id}
+          href={hrefForSection(id)}
+          icon={<Icon />}
+          label={mobileNavigationLabels[id] ?? label.split(' ')[0]}
+          active={section === id}
+          onClick={(event) => handleNavigation(event, id)}
+        />
+      ))
+
+  const renderAccountMenu = (placement: 'top start' | 'bottom end') => (
+    <PopoverTrigger>
+      <Button
+        type="button"
+        className="flex min-h-[52px] w-full cursor-pointer items-center gap-2.5 rounded-[10px] bg-transparent p-2 text-left text-inherit transition-colors hover:bg-[#303030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:bg-[#303030]"
+        aria-label="Abrir menú de perfil"
+      >
+        <Avatar className="grid size-9 shrink-0 place-items-center rounded-full bg-[#303030] text-xs font-bold text-white">
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+        <span className="min-w-0 flex-1">
+          <strong className="block truncate text-[13px] text-[#f1f6ef]">{displayName}</strong>
+          <span className="mt-0.5 flex items-center gap-[5px] text-[#bdbdbd]">
+            <ShieldCheck size={13} /> {roleLabel}
+          </span>
+        </span>
+        <span className="text-xs text-[#bdbdbd]">Cuenta</span>
+      </Button>
+      <PopoverContent
+        placement={placement}
+        className="min-w-[220px] rounded-xl border-[#4a4a4a] bg-[#171717] p-2 text-white shadow-[0_14px_30px_rgb(0_0_0_/_42%)]"
+      >
+        <div className="grid gap-0.5 border-b border-[#3b3b3b] px-2 pt-1 pb-2.5">
+          <span className="text-[10px] font-[750] tracking-[0.1em] text-[#bdbdbd] uppercase">
+            Cuenta activa
+          </span>
+          <strong className="text-[13px] text-[#f1f6ef]">{displayName}</strong>
+          <span className="text-xs text-[#bdbdbd]">{roleLabel}</span>
+        </div>
+        <button
+          type="button"
+          className="mt-1.5 flex min-h-[42px] w-full items-center gap-2 rounded-md bg-transparent px-[9px] text-left text-sm text-white hover:bg-[#3b2022] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[highlighted]:bg-[#3b2022]"
+          onClick={onSignOut}
+        >
+          <LogOut size={16} /> Cambiar de cuenta / cerrar sesión
+        </button>
+      </PopoverContent>
+    </PopoverTrigger>
+  )
 
   return (
     <div className="kache-dashboard-layout grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7]">
@@ -162,43 +210,7 @@ export function DashboardLayout({
         </div>
         <nav className="grid gap-1">{renderDesktopNavigation()}</nav>
         <div className="mt-auto grid gap-3 border-t border-[#3b3b3b] px-2.5 pt-4 pb-1 text-xs">
-          <div className="relative">
-            <PopoverTrigger>
-              <Button
-                type="button"
-                className="flex min-h-[52px] w-full cursor-pointer items-center gap-2.5 rounded-[10px] bg-transparent p-2 text-left text-inherit transition-colors hover:bg-[#303030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:bg-[#303030]"
-                aria-label="Abrir menú de perfil"
-              >
-                <Avatar className="grid size-9 shrink-0 place-items-center rounded-full bg-[#171717] text-xs font-bold text-white">
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-                <span className="min-w-0">
-                  <strong className="block text-[13px] text-[#f1f6ef]">{displayName}</strong>
-                  <span className="mt-0.5 flex items-center gap-[5px] text-[#bdbdbd]">
-                    <ShieldCheck size={13} /> {roleLabel}
-                  </span>
-                </span>
-              </Button>
-              <PopoverContent
-                placement="top start"
-                className="min-w-[196px] rounded-xl border-[#4a4a4a] bg-[#171717] p-2 shadow-[0_14px_30px_rgb(0_0_0_/_42%)]"
-              >
-                <div className="grid gap-0.5 border-b border-[#3b3b3b] px-2 pt-1 pb-2.5">
-                  <span className="text-[10px] font-[750] tracking-[0.1em] text-[#bdbdbd] uppercase">
-                    Cuenta
-                  </span>
-                  <strong className="text-[13px] text-[#f1f6ef]">{displayName}</strong>
-                </div>
-                <button
-                  type="button"
-                  className="mt-1.5 flex min-h-[38px] w-full items-center gap-2 rounded-md bg-transparent px-[9px] text-left text-xs text-white hover:bg-[#3b2022] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[highlighted]:bg-[#3b2022]"
-                  onClick={onSignOut}
-                >
-                  <LogOut size={15} /> Cerrar sesión
-                </button>
-              </PopoverContent>
-            </PopoverTrigger>
-          </div>
+          <div className="relative">{renderAccountMenu('top start')}</div>
         </div>
       </aside>
       <main className="min-w-0">
@@ -220,6 +232,7 @@ export function DashboardLayout({
         aria-label="Navegación móvil"
         className="kache-dashboard-mobile-navigation fixed right-0 bottom-0 left-0 hidden border-[#dedede] bg-white text-[#171717]"
       >
+        <div className="kache-mobile-account">{renderAccountMenu('top start')}</div>
         {renderMobileNavigation()}
       </MobileNavigation>
     </div>

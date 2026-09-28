@@ -11,6 +11,57 @@
 
   .kache-dashboard-mobile-navigation {
     display: block;
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    box-shadow: 0 -8px 24px rgb(23 23 23 / 8%);
+  }
+
+  .kache-mobile-account {
+    flex: 0 0 70px;
+    width: 70px;
+    border-right: 1px solid #e5e5e5;
+    padding-right: 8px;
+    color: #171717;
+  }
+
+  .kache-mobile-account [data-slot='button'] {
+    min-height: 52px;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px;
+    color: #171717;
+  }
+
+  .kache-mobile-account [data-slot='button'] > span:nth-child(2) {
+    display: none;
+  }
+
+  .kache-mobile-account [data-slot='button'] > span:last-child {
+    color: #525252;
+    font-size: 10px;
+  }
+
+  .kache-dashboard-mobile-navigation [data-slot='mobile-navigation-item'] {
+    min-width: 68px;
+    flex: 1 0 68px;
+  }
+
+  .kache-dashboard-header {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    min-height: 58px;
+    background: rgb(247 247 247 / 94%);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #ececec;
+    padding-bottom: 10px;
   }
 
   .settings-pricing-grid {
