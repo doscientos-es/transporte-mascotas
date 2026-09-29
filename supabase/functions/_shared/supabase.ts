@@ -55,5 +55,5 @@ export async function requireUser(request: Request) {
     headers: { apikey: key, Authorization: authorization },
   })
   if (!userResponse.ok) throw new Error('No autenticado.')
-  return (await userResponse.json()) as { id: string }
+  return (await userResponse.json()) as { id: string; email?: string }
 }
