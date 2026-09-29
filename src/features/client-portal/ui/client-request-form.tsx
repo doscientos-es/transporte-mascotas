@@ -20,6 +20,7 @@ import {
   Check,
   ClipboardCheck,
   CreditCard,
+  MapPin,
   PawPrint,
   Plus,
   ShieldCheck,
@@ -41,11 +42,13 @@ import type {
   ClientPet,
   InvoiceClientInput,
   InvoicePayer,
+  RouteStop,
   TransportRequestAnimal,
   UpcomingRoute,
 } from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
+import { transportLocationMapsUrl } from '../application/route-maps'
 
 export type RequestFormValues = {
   contactName: string
@@ -182,6 +185,19 @@ function FormSelect({
         </SelectList>
       </SelectContent>
     </Select>
+  )
+}
+
+function StopMapLink({ stop }: { stop: RouteStop }) {
+  return (
+    <a
+      className="text-accent mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold hover:underline"
+      href={transportLocationMapsUrl(stop.locality, stop.latitude, stop.longitude)}
+      target="_blank"
+      rel="noreferrer"
+    >
+      <MapPin size={14} /> Abrir en Google Maps
+    </a>
   )
 }
 
@@ -412,6 +428,14 @@ export function ClientRequestForm({
   const selectedRoute = routes.find((route) => route.id === values.dailyRouteId)
   const requestTotal = transportAnimalsTotalCents(values.animals, boxCatalog) / 100
   const routeStops = selectedRoute?.localities ?? []
+  const pickupStopIndex =
+    selectedRoute?.stops.findIndex((stop) => stop.locality === values.origin) ?? -1
+  const pickupStop = pickupStopIndex >= 0 ? selectedRoute?.stops[pickupStopIndex] : undefined
+  const deliveryStop = values.destination
+    ? selectedRoute?.stops
+        .slice(pickupStopIndex + 1)
+        .find((stop) => stop.locality === values.destination)
+    : undefined
   const destinationStops = values.origin
     ? routeStops.slice(routeStops.indexOf(values.origin) + 1)
     : []
@@ -864,6 +888,7 @@ export function ClientRequestForm({
                     options={routeStops.slice(0, -1).map((stop) => ({ id: stop, label: stop }))}
                     disabled={!selectedRoute}
                   />
+                  {pickupStop && <StopMapLink stop={pickupStop} />}
                 </Field>
                 <Field>
                   <FieldLabel>Entrega</FieldLabel>
@@ -877,6 +902,7 @@ export function ClientRequestForm({
                     options={destinationStops.map((stop) => ({ id: stop, label: stop }))}
                     disabled={!values.origin}
                   />
+                  {deliveryStop && <StopMapLink stop={deliveryStop} />}
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="request-desired-date">Fecha de salida</FieldLabel>
