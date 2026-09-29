@@ -92,10 +92,17 @@ export function transportBoxPriceCents(
   return item.amountCents
 }
 
-export function transportBoxOptions(minimum: Exclude<TransportBoxCategory, 'paso_rueda'>) {
+export const WHEEL_ARCH_BOX_MAX_WEIGHT_KG = 35
+
+export function transportBoxOptions(
+  minimum: Exclude<TransportBoxCategory, 'paso_rueda'>,
+  weightKg = 0,
+) {
   const minimumRank = transportBoxCategoryRank(minimum)
-  return transportBoxCategories.filter(
-    (category) => category === 'paso_rueda' || transportBoxCategoryRank(category) >= minimumRank,
+  return transportBoxCategories.filter((category) =>
+    category === 'paso_rueda'
+      ? weightKg <= WHEEL_ARCH_BOX_MAX_WEIGHT_KG
+      : transportBoxCategoryRank(category) >= minimumRank,
   )
 }
 
@@ -112,8 +119,7 @@ export function requestedTransportBoxCategory(
   const requestedCategory = animal.requestedBoxCategory
   if (
     requestedCategory &&
-    (requestedCategory === 'paso_rueda' ||
-      transportBoxCategoryRank(requestedCategory) >= transportBoxCategoryRank(minimumCategory))
+    transportBoxOptions(minimumCategory, animal.weightKg).includes(requestedCategory)
   ) {
     return requestedCategory
   }

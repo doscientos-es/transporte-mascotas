@@ -51,6 +51,11 @@ export type RequestFormValues = {
   contactName: string
   contactPhone: string
   contactEmail: string
+  senderNif: string
+  recipientName: string
+  recipientNif: string
+  recipientPhone: string
+  recipientEmail: string
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   origin: string
@@ -60,6 +65,16 @@ export type RequestFormValues = {
   notes: string
   animals: TransportRequestAnimal[]
 }
+
+type PartyField =
+  | 'contactName'
+  | 'contactPhone'
+  | 'contactEmail'
+  | 'senderNif'
+  | 'recipientName'
+  | 'recipientNif'
+  | 'recipientPhone'
+  | 'recipientEmail'
 
 const steps = ['Contacto', 'Trayecto', 'Mascotas', 'Revisar']
 const currency = (amount: number) =>
@@ -75,15 +90,36 @@ const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   widthCm: 0,
 })
 
-const invoiceClient = (fullName = '', email = '', phone = ''): InvoiceClientInput => ({
+const invoiceClient = (fullName = '', email = '', phone = '', nif = ''): InvoiceClientInput => ({
   fullName,
-  nif: '',
+  nif,
   email,
   phone,
   address: '',
   city: '',
   postalCode: '',
 })
+
+const hasMeasurements = (animal: TransportRequestAnimal) =>
+  animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
+
+function payerIdentity(values: RequestFormValues): Partial<InvoiceClientInput> {
+  if (values.billingPayer === 'remitente')
+    return {
+      fullName: values.contactName,
+      nif: values.senderNif,
+      email: values.contactEmail,
+      phone: values.contactPhone,
+    }
+  if (values.billingPayer === 'destinatario')
+    return {
+      fullName: values.recipientName,
+      nif: values.recipientNif,
+      email: values.recipientEmail,
+      phone: values.recipientPhone,
+    }
+  return {}
+}
 
 const initialValues = (
   contactName: string,
@@ -94,6 +130,11 @@ const initialValues = (
   contactName,
   contactPhone,
   contactEmail,
+  senderNif: '',
+  recipientName: '',
+  recipientNif: '',
+  recipientPhone: '',
+  recipientEmail: '',
   billingPayer: 'remitente',
   billingClient: invoiceClient(contactName, contactEmail, contactPhone),
   origin: '',
@@ -232,11 +273,11 @@ export function ClientRequestForm({
   }
 
   function selectBillingPayer(billingPayer: InvoicePayer) {
-    const billingClient =
-      billingPayer === 'remitente'
-        ? invoiceClient(values.contactName, values.contactEmail, values.contactPhone)
-        : invoiceClient()
-    setValues((current) => ({ ...current, billingPayer, billingClient }))
+    setValues((current) => ({
+      ...current,
+      billingPayer,
+      billingClient: { ...invoiceClient(), ...payerIdentity({ ...current, billingPayer }) },
+    }))
   }
 
   function updateBillingClient(field: keyof InvoiceClientInput, value: string) {
@@ -246,28 +287,30 @@ export function ClientRequestForm({
     }))
   }
 
-  function updateContact(field: 'contactName' | 'contactPhone' | 'contactEmail', value: string) {
-    setValues((current) => ({
-      ...current,
-      [field]: value,
-      billingClient:
-        current.billingPayer === 'remitente'
-          ? {
-              ...current.billingClient,
-              ...(field === 'contactName' ? { fullName: value } : {}),
-              ...(field === 'contactPhone' ? { phone: value } : {}),
-              ...(field === 'contactEmail' ? { email: value } : {}),
-            }
-          : current.billingClient,
-    }))
+  function updateContact(field: PartyField, value: string) {
+    setValues((current) => {
+      const next = { ...current, [field]: value }
+      return { ...next, billingClient: { ...current.billingClient, ...payerIdentity(next) } }
+    })
   }
 
   function validateCurrentStep() {
     if (step === 0) {
-      if (!values.contactName.trim() || !values.contactPhone.trim() || !values.contactEmail.trim())
-        return 'Completa los datos de contacto para poder avisarte.'
+      const requiredPartyFields: Array<[string, string]> = [
+        ['nombre de quien envía', values.contactName],
+        ['DNI/NIE de quien envía', values.senderNif],
+        ['teléfono de quien envía', values.contactPhone],
+        ['correo de quien envía', values.contactEmail],
+        ['nombre de quien recibe', values.recipientName],
+        ['DNI/NIE de quien recibe', values.recipientNif],
+        ['teléfono de quien recibe', values.recipientPhone],
+      ]
+      const missingPartyField = requiredPartyFields.find(([, value]) => !value.trim())
+      if (missingPartyField) return `Completa el ${missingPartyField[0]}.`
       if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
         return 'Escribe un correo electrónico válido.'
+      if (values.recipientEmail.trim() && !/^\S+@\S+\.\S+$/.test(values.recipientEmail))
+        return 'Escribe un correo válido para quien recibe.'
       const requiredFiscalFields: Array<[string, string]> = [
         ['nombre o razón social', values.billingClient.fullName],
         ['NIF/CIF', values.billingClient.nif],
@@ -297,12 +340,11 @@ export function ClientRequestForm({
         (animal) =>
           !animal.name.trim() ||
           !animal.species.trim() ||
-          animal.weightKg <= 0 ||
-          animal.lengthCm <= 0 ||
-          animal.heightCm <= 0 ||
-          animal.widthCm <= 0,
+          !animal.breed.trim() ||
+          !hasMeasurements(animal),
       )
-      if (incompleteAnimal) return 'Completa el nombre, especie, peso y medidas de cada mascota.'
+      if (incompleteAnimal)
+        return 'Completa el nombre, especie, raza, peso y medidas de cada mascota.'
     }
     return ''
   }
@@ -323,15 +365,7 @@ export function ClientRequestForm({
     try {
       const normalizedValues = {
         ...values,
-        billingClient:
-          values.billingPayer === 'remitente'
-            ? {
-                ...values.billingClient,
-                fullName: values.contactName,
-                email: values.contactEmail,
-                phone: values.contactPhone,
-              }
-            : values.billingClient,
+        billingClient: { ...values.billingClient, ...payerIdentity(values) },
         animals: values.animals.map((animal) => {
           const minimumCategory = minimumTransportBoxCategory(animal)
           const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
@@ -552,7 +586,7 @@ export function ClientRequestForm({
                 <div className="request-form-block-heading">
                   <span className="request-form-block-icon">01</span>
                   <div>
-                    <h4>Cómo contactarle</h4>
+                    <h4>Quién envía la mascota</h4>
                     <p>La confirmación y cualquier incidencia llegarán a estos datos.</p>
                   </div>
                 </div>
@@ -564,7 +598,18 @@ export function ClientRequestForm({
                       value={values.contactName}
                       onChange={(event) => updateContact('contactName', event.target.value)}
                       autoComplete="name"
-                      placeholder="Tu nombre completo"
+                      placeholder="Nombre completo"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-sender-nif">DNI/NIE</FieldLabel>
+                    <Input
+                      id="request-sender-nif"
+                      value={values.senderNif}
+                      onChange={(event) => updateContact('senderNif', event.target.value)}
+                      placeholder="12345678Z"
                       className="min-h-11"
                       required
                     />
@@ -583,7 +628,7 @@ export function ClientRequestForm({
                       required
                     />
                   </Field>
-                  <Field className="sm:col-span-2">
+                  <Field>
                     <FieldLabel htmlFor="request-contact-email">Correo electrónico</FieldLabel>
                     <Input
                       id="request-contact-email"
@@ -603,9 +648,66 @@ export function ClientRequestForm({
                   </Field>
                 </div>
               </div>
-              <div className="request-form-block request-billing-block">
+              <div className="request-form-block">
                 <div className="request-form-block-heading">
                   <span className="request-form-block-icon">02</span>
+                  <div>
+                    <h4>Quién recibe la mascota</h4>
+                    <p>Persona que recogerá la mascota en destino.</p>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-name">Nombre y apellidos</FieldLabel>
+                    <Input
+                      id="request-recipient-name"
+                      value={values.recipientName}
+                      onChange={(event) => updateContact('recipientName', event.target.value)}
+                      placeholder="Nombre completo"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-nif">DNI/NIE</FieldLabel>
+                    <Input
+                      id="request-recipient-nif"
+                      value={values.recipientNif}
+                      onChange={(event) => updateContact('recipientNif', event.target.value)}
+                      placeholder="12345678Z"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-phone">Teléfono</FieldLabel>
+                    <Input
+                      id="request-recipient-phone"
+                      type="tel"
+                      value={values.recipientPhone}
+                      onChange={(event) => updateContact('recipientPhone', event.target.value)}
+                      inputMode="tel"
+                      placeholder="600 000 000"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-email">Correo electrónico</FieldLabel>
+                    <Input
+                      id="request-recipient-email"
+                      type="email"
+                      value={values.recipientEmail}
+                      onChange={(event) => updateContact('recipientEmail', event.target.value)}
+                      placeholder="Opcional"
+                      className="min-h-11"
+                    />
+                  </Field>
+                </div>
+              </div>
+              <div className="request-form-block request-billing-block">
+                <div className="request-form-block-heading">
+                  <span className="request-form-block-icon">03</span>
                   <div>
                     <h4>Datos para la factura</h4>
                     <p className="text-muted-foreground mt-1 text-sm">
@@ -895,8 +997,9 @@ export function ClientRequestForm({
                         id={`animal-${animal.ordinal}-breed`}
                         value={animal.breed}
                         onChange={(event) => updateAnimal(index, { breed: event.target.value })}
-                        placeholder="Opcional"
+                        placeholder="Mestiza, Labrador…"
                         className="min-h-11"
+                        required
                       />
                     </Field>
                     <Field>
@@ -963,13 +1066,20 @@ export function ClientRequestForm({
                     </Field>
                   </div>
                   {(() => {
+                    const measured = hasMeasurements(animal)
                     const minimumCategory = minimumTransportBoxCategory(animal)
                     const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
                     return (
                       <div className="mt-3 grid gap-3">
                         <p className="text-muted-foreground text-xs">
-                          Recomendación automática: {transportBoxCategoryLabel(minimumCategory)} ·{' '}
-                          {boxCatalog[minimumCategory].dimensions}
+                          {measured ? (
+                            <>
+                              Recomendación automática: {transportBoxCategoryLabel(minimumCategory)}{' '}
+                              · {boxCatalog[minimumCategory].dimensions}
+                            </>
+                          ) : (
+                            'Indica el peso y las medidas para elegir la categoría de box.'
+                          )}
                         </p>
                         <Field>
                           <FieldLabel htmlFor={`animal-${animal.ordinal}-box-category`}>
@@ -979,6 +1089,7 @@ export function ClientRequestForm({
                             id={`animal-${animal.ordinal}-box-category`}
                             className="bg-background min-h-11 rounded-md border px-3 text-sm"
                             value={requestedCategory}
+                            disabled={!measured}
                             onChange={(event) =>
                               updateAnimal(index, {
                                 requestedBoxCategory: event.target
@@ -986,22 +1097,24 @@ export function ClientRequestForm({
                               })
                             }
                           >
-                            {transportBoxOptions(minimumCategory).map((category) => (
-                              <option value={category} key={category}>
-                                {transportBoxCategoryLabel(category)} ·{' '}
-                                {currency(
-                                  transportBoxPriceCents(
-                                    category,
-                                    { weightKg: animal.weightKg, minimumCategory },
-                                    boxCatalog,
-                                  ) / 100,
-                                )}
-                                {transportBoxCategoryRank(category) >
-                                transportBoxCategoryRank(minimumCategory)
-                                  ? ' · extra por comodidad'
-                                  : ''}
-                              </option>
-                            ))}
+                            {transportBoxOptions(minimumCategory, animal.weightKg).map(
+                              (category) => (
+                                <option value={category} key={category}>
+                                  {transportBoxCategoryLabel(category)} ·{' '}
+                                  {currency(
+                                    transportBoxPriceCents(
+                                      category,
+                                      { weightKg: animal.weightKg, minimumCategory },
+                                      boxCatalog,
+                                    ) / 100,
+                                  )}
+                                  {transportBoxCategoryRank(category) >
+                                  transportBoxCategoryRank(minimumCategory)
+                                    ? ' · extra por comodidad'
+                                    : ''}
+                                </option>
+                              ),
+                            )}
                           </select>
                         </Field>
                       </div>
@@ -1044,10 +1157,18 @@ export function ClientRequestForm({
               </div>
               <div className="request-review-grid">
                 <div>
-                  <span>Contacto</span>
+                  <span>Envía</span>
                   <strong>{values.contactName}</strong>
                   <small>
-                    {values.contactPhone} · {values.contactEmail}
+                    {values.senderNif} · {values.contactPhone} · {values.contactEmail}
+                  </small>
+                </div>
+                <div>
+                  <span>Recibe</span>
+                  <strong>{values.recipientName}</strong>
+                  <small>
+                    {values.recipientNif} · {values.recipientPhone}
+                    {values.recipientEmail ? ` · ${values.recipientEmail}` : ''}
                   </small>
                 </div>
                 <div>

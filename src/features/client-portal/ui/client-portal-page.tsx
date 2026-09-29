@@ -34,7 +34,7 @@ import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
-import { formatDate, googleMapsDirectionsUrl, mapsEmbedUrl } from '../application/route-maps'
+import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
 import { isConfirmedTransport } from '../application/transport-calendar'
 import {
@@ -596,25 +596,20 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             )
                             .join(' · ')}
                         </small>
-                        {typeof request.originLatitude === 'number' &&
-                          typeof request.originLongitude === 'number' &&
-                          typeof request.destinationLatitude === 'number' &&
-                          typeof request.destinationLongitude === 'number' && (
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <TransportLocationMap
-                                label="Recogida"
-                                location={request.origin}
-                                latitude={request.originLatitude}
-                                longitude={request.originLongitude}
-                              />
-                              <TransportLocationMap
-                                label="Entrega"
-                                location={request.destination}
-                                latitude={request.destinationLatitude}
-                                longitude={request.destinationLongitude}
-                              />
-                            </div>
-                          )}
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <TransportLocationMap
+                            label="Recogida"
+                            location={request.origin}
+                            latitude={request.originLatitude}
+                            longitude={request.originLongitude}
+                          />
+                          <TransportLocationMap
+                            label="Entrega"
+                            location={request.destination}
+                            latitude={request.destinationLatitude}
+                            longitude={request.destinationLongitude}
+                          />
+                        </div>
                       </div>
                       <div className="invoice-amount">
                         <strong>{formatCurrency(request.amountCents)}</strong>
@@ -724,21 +719,23 @@ function TransportLocationMap({
 }: {
   label: string
   location: string
-  latitude: number
-  longitude: number
+  latitude?: number
+  longitude?: number
 }) {
   return (
     <section className="border-border bg-card overflow-hidden rounded-lg border">
-      <iframe
-        className="h-36 w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        src={mapsEmbedUrl(latitude, longitude)}
-        title={`Mapa de ${label.toLocaleLowerCase()} en ${location}`}
-      />
+      {typeof latitude === 'number' && typeof longitude === 'number' && (
+        <iframe
+          className="h-36 w-full border-0"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          src={mapsEmbedUrl(latitude, longitude)}
+          title={`Mapa de ${label.toLocaleLowerCase()} en ${location}`}
+        />
+      )}
       <a
         className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
-        href={googleMapsDirectionsUrl(latitude, longitude)}
+        href={transportLocationMapsUrl(location, latitude, longitude)}
         target="_blank"
         rel="noreferrer"
       >

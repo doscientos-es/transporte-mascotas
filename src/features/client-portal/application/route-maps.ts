@@ -20,6 +20,13 @@ export function googleMapsDirectionsUrl(latitude: number, longitude: number) {
   return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
 }
 
+/** Directions to the exact stop when coordinates are known, otherwise to the locality. */
+export function transportLocationMapsUrl(location: string, latitude?: number, longitude?: number) {
+  if (typeof latitude === 'number' && typeof longitude === 'number')
+    return googleMapsDirectionsUrl(latitude, longitude)
+  return `https://www.google.com/maps/dir/?${new URLSearchParams({ api: '1', destination: location })}`
+}
+
 type GeoStop = RouteStop & { latitude: number; longitude: number }
 
 function stopsWithCoordinates(stops: RouteStop[]): GeoStop[] {

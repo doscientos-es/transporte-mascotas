@@ -1437,7 +1437,7 @@ function AnimalsSection({
                         )
                       }
                     >
-                      {transportBoxOptions(minimumCategory).map((category) => (
+                      {transportBoxOptions(minimumCategory, animal.weightKg).map((category) => (
                         <option value={category} key={category}>
                           {transportBoxCategoryLabel(category)} ·{' '}
                           {euros(

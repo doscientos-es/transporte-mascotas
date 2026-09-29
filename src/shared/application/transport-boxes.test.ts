@@ -26,6 +26,20 @@ describe('transport box categories', () => {
     expect(transportBoxOptions('mediano')).toEqual(['mediano', 'grande', 'paso_rueda'])
   })
 
+  it('hides the wheel-arch box for animals heavier than 35 kg', () => {
+    expect(transportBoxOptions('mediano', 35)).toContain('paso_rueda')
+    expect(transportBoxOptions('mediano', 35.5)).toEqual(['mediano', 'grande'])
+    expect(
+      requestedTransportBoxCategory({
+        weightKg: 40,
+        lengthCm: 40,
+        heightCm: 30,
+        widthCm: 45,
+        requestedBoxCategory: 'paso_rueda',
+      }),
+    ).toBe('mediano')
+  })
+
   it('uses the large tariff for heavy animals', () => {
     expect(
       transportBoxPriceCents(

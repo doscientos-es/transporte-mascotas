@@ -1,10 +1,18 @@
 import { Button } from '@doscientos/ui'
-import { CalendarPlus, CheckCircle2, Download, FileText, PawPrint, RefreshCw } from 'lucide-react'
+import {
+  CalendarPlus,
+  CheckCircle2,
+  Download,
+  FileText,
+  MapPin,
+  PawPrint,
+  RefreshCw,
+} from 'lucide-react'
 import { useState } from 'react'
 
 import type { TransportRequest } from '@/shared/types'
 
-import { formatDate } from '../application/route-maps'
+import { formatDate, transportLocationMapsUrl } from '../application/route-maps'
 import {
   googleCalendarUrl,
   isConfirmedTransport,
@@ -120,6 +128,30 @@ export function PaymentSuccessPanel({
           <Button type="button" variant="outline" onClick={downloadCalendar}>
             <Download size={16} /> Apple / Outlook (.ics)
           </Button>
+          <a
+            className="payment-success-link"
+            href={transportLocationMapsUrl(
+              request.origin,
+              request.originLatitude,
+              request.originLongitude,
+            )}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin size={16} /> Recogida · {request.origin}
+          </a>
+          <a
+            className="payment-success-link"
+            href={transportLocationMapsUrl(
+              request.destination,
+              request.destinationLatitude,
+              request.destinationLongitude,
+            )}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MapPin size={16} /> Entrega · {request.destination}
+          </a>
         </div>
       )}
       {request && !confirmed && (

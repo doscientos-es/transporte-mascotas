@@ -265,11 +265,13 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                   disabled={Boolean(busy)}
                                   aria-label={`Box de ${animal.name || animal.species}`}
                                 >
-                                  {transportBoxOptions(minimumCategory).map((category) => (
-                                    <option value={category} key={category}>
-                                      {transportBoxCategoryLabel(category)}
-                                    </option>
-                                  ))}
+                                  {transportBoxOptions(minimumCategory, animal.weightKg).map(
+                                    (category) => (
+                                      <option value={category} key={category}>
+                                        {transportBoxCategoryLabel(category)}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
                               )}
                             </span>
@@ -543,11 +545,13 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                     disabled={Boolean(busy)}
                                     aria-label={`Box de ${animal.name || animal.species}`}
                                   >
-                                    {transportBoxOptions(minimumCategory).map((category) => (
-                                      <option value={category} key={category}>
-                                        {transportBoxCategoryLabel(category)}
-                                      </option>
-                                    ))}
+                                    {transportBoxOptions(minimumCategory, animal.weightKg).map(
+                                      (category) => (
+                                        <option value={category} key={category}>
+                                          {transportBoxCategoryLabel(category)}
+                                        </option>
+                                      ),
+                                    )}
                                   </select>
                                 )}
                               </label>

@@ -321,6 +321,11 @@ export interface TransportRequest {
   contactName: string
   contactPhone: string
   contactEmail: string
+  senderNif: string
+  recipientName: string
+  recipientNif: string
+  recipientPhone: string
+  recipientEmail: string
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   origin: string

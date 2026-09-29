@@ -16,6 +16,11 @@ type RequestRow = {
   contact_name: string
   contact_phone: string
   contact_email: string
+  sender_nif: string
+  recipient_name: string
+  recipient_nif: string
+  recipient_phone: string
+  recipient_email: string
   billing_payer: TransportRequest['billingPayer']
   billing_client: TransportRequest['billingClient']
   origin_text: string
@@ -63,6 +68,11 @@ function mapRequest(row: RequestRow): TransportRequest {
     contactName: row.contact_name,
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
+    senderNif: row.sender_nif,
+    recipientName: row.recipient_name,
+    recipientNif: row.recipient_nif,
+    recipientPhone: row.recipient_phone,
+    recipientEmail: row.recipient_email,
     billingPayer: row.billing_payer,
     billingClient: row.billing_client,
     origin: row.origin_text,
@@ -222,6 +232,11 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
     p_contact_name: request.contactName,
     p_contact_phone: request.contactPhone,
     p_contact_email: request.contactEmail,
+    p_sender_nif: request.senderNif,
+    p_recipient_name: request.recipientName,
+    p_recipient_nif: request.recipientNif,
+    p_recipient_phone: request.recipientPhone,
+    p_recipient_email: request.recipientEmail,
     p_billing_payer: request.billingPayer,
     p_billing_client: request.billingClient,
     p_daily_route_id: request.dailyRouteId,
