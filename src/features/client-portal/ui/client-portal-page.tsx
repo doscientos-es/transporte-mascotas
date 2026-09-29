@@ -36,6 +36,7 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { formatDate, googleMapsDirectionsUrl, mapsEmbedUrl } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
+import { isConfirmedTransport } from '../application/transport-calendar'
 import {
   createTransportRequest,
   loadClientPets,
@@ -46,7 +47,6 @@ import {
   saveClientPets,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
-import { isConfirmedTransport } from '../application/transport-calendar'
 import { PaymentSuccessPanel } from './payment-success-panel'
 import { saveFile } from './save-file'
 import { submitPaymentForm } from './submit-payment-form'
@@ -563,12 +563,13 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 requests.map((request) => (
                   <Card
                     key={request.id}
-                    className={`invoice-card client-transport-card ${request.status === 'por_verificar'
+                    className={`invoice-card client-transport-card ${
+                      request.status === 'por_verificar'
                         ? '!border-l-[#ca8a04]'
                         : request.status === 'confirmada' || request.status === 'en_ruta'
                           ? '!border-l-[#171717]'
                           : ''
-                      }`}
+                    }`}
                   >
                     <CardContent>
                       <div className="invoice-icon">
@@ -588,9 +589,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             .map((animal) =>
                               transportBoxCategoryLabel(
                                 animal.assignedBoxCategory ??
-                                animal.requestedBoxCategory ??
-                                animal.minimumBoxCategory ??
-                                'pequeno',
+                                  animal.requestedBoxCategory ??
+                                  animal.minimumBoxCategory ??
+                                  'pequeno',
                               ),
                             )
                             .join(' · ')}

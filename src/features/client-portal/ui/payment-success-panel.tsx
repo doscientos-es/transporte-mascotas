@@ -101,7 +101,11 @@ export function PaymentSuccessPanel({
 
       {request && (
         <div className="payment-success-actions">
-          <Button type="button" disabled={!confirmed || downloading} onClick={() => void downloadInvoice()}>
+          <Button
+            type="button"
+            disabled={!confirmed || downloading}
+            onClick={() => void downloadInvoice()}
+          >
             {downloading ? <RefreshCw className="is-spinning" size={16} /> : <FileText size={16} />}
             {downloading ? 'Descargando…' : 'Descargar factura'}
           </Button>
