@@ -15,10 +15,29 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 
 Antes de abrir cobros configurad los datos fiscales no secretos que aparecerán congelados en cada factura: `INVOICE_ISSUER_NAME`, `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`. No se emite una factura si falta alguno.
 
-Los avisos transaccionales están desactivados y la facturación no depende de
-WhatsApp. Si se necesita probar la integración manualmente, configurad
+Los avisos transaccionales por WhatsApp están desactivados y la facturación no
+depende de WhatsApp. Si se necesita probar la integración manualmente, configurad
 `META_WHATSAPP_ACCESS_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID` y las plantillas
 únicamente en Edge Functions.
+
+### Confirmaciones de pago por email (Resend)
+
+Mientras Meta no apruebe WhatsApp, la confirmación de pago se envía por email con
+Resend. Se envía cuando Cyberpac confirma el pago de una solicitud de transporte
+(a `contact_email`) o de una solicitud de pago, y cuando administración registra
+un cobro manual (al email de los datos fiscales). Si no hay email válido no se
+envía nada. Un fallo de envío sólo se registra en los logs: nunca bloquea el pago
+ni la emisión de la factura. Cada envío usa la factura emitida como clave de
+idempotencia para evitar duplicados.
+
+| Secreto             | Uso                                                                  |
+| ------------------- | -------------------------------------------------------------------- |
+| `RESEND_API_KEY`    | API key de Resend con permiso de envío                               |
+| `RESEND_FROM_EMAIL` | Remitente de un dominio verificado, p. ej. `Kache Envíos <avisos@…>` |
+| `RESEND_REPLY_TO`   | Opcional. Dirección a la que llegan las respuestas del cliente       |
+
+Tras configurar los secretos, redesplegad `caixabank-webhook` y
+`confirm-manual-invoice-payment`.
 
 ### Número de avisos y número principal (modelo de dos números)
 
@@ -57,7 +76,7 @@ notificación para clientes ni requiere configurar `send-daily-route-closure-not
 
 La página **Ajustes → Pruebas de WhatsApp** es la única operación que puede
 contactar con Meta. Las cartas, reservas, pagos, facturas y cierres de ruta no
-se despachan automáticamente.
+se despachan automáticamente por WhatsApp.
 
 Las solicitudes de transporte usan `transport-payment`: el importe se calcula en la base
 de datos según el tamaño de cada box y se guarda en la solicitud antes de generar el

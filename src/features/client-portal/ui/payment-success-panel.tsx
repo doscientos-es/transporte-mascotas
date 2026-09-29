@@ -3,6 +3,7 @@ import {
   CalendarPlus,
   CheckCircle2,
   Download,
+  FileDown,
   FileText,
   MapPin,
   PawPrint,
@@ -25,30 +26,34 @@ type Props = {
   confirming: boolean
   formatCurrency: (cents: number) => string
   onDownloadInvoice: (requestId: string) => Promise<void>
+  onDownloadCarriageLetter: (requestId: string) => Promise<void>
   onClose: () => void
 }
+
+type DocumentKind = 'invoice' | 'letter'
 
 export function PaymentSuccessPanel({
   request,
   confirming,
   formatCurrency,
   onDownloadInvoice,
+  onDownloadCarriageLetter,
   onClose,
 }: Props) {
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState<DocumentKind | null>(null)
   const [invoiceError, setInvoiceError] = useState('')
   const confirmed = request ? isConfirmedTransport(request.status) : false
 
-  async function downloadInvoice() {
+  async function downloadDocument(kind: DocumentKind) {
     if (!request || downloading) return
-    setDownloading(true)
+    setDownloading(kind)
     setInvoiceError('')
     try {
-      await onDownloadInvoice(request.id)
+      await (kind === 'invoice' ? onDownloadInvoice : onDownloadCarriageLetter)(request.id)
     } catch (reason) {
       setInvoiceError(reason instanceof Error ? reason.message : 'No se ha podido descargar.')
     } finally {
-      setDownloading(false)
+      setDownloading(null)
     }
   }
 
@@ -111,11 +116,27 @@ export function PaymentSuccessPanel({
         <div className="payment-success-actions">
           <Button
             type="button"
-            disabled={!confirmed || downloading}
-            onClick={() => void downloadInvoice()}
+            disabled={!confirmed || Boolean(downloading)}
+            onClick={() => void downloadDocument('invoice')}
           >
-            {downloading ? <RefreshCw className="is-spinning" size={16} /> : <FileText size={16} />}
-            {downloading ? 'Descargando…' : 'Descargar factura'}
+            {downloading === 'invoice' ? (
+              <RefreshCw className="is-spinning" size={16} />
+            ) : (
+              <FileText size={16} />
+            )}
+            {downloading === 'invoice' ? 'Descargando…' : 'Descargar factura'}
+          </Button>
+          <Button
+            type="button"
+            disabled={!confirmed || Boolean(downloading)}
+            onClick={() => void downloadDocument('letter')}
+          >
+            {downloading === 'letter' ? (
+              <RefreshCw className="is-spinning" size={16} />
+            ) : (
+              <FileDown size={16} />
+            )}
+            {downloading === 'letter' ? 'Descargando…' : 'Descargar carta de porte'}
           </Button>
           <a
             className="payment-success-link"
@@ -156,8 +177,8 @@ export function PaymentSuccessPanel({
       )}
       {request && !confirmed && (
         <p className="payment-success-hint">
-          La factura estará disponible en cuanto confirmemos la reserva. También podrás descargarla
-          desde Mis transportes.
+          La factura y la carta de porte estarán disponibles en cuanto confirmemos la reserva.
+          También podrás descargarlas desde Mis transportes.
         </p>
       )}
       {invoiceError && (

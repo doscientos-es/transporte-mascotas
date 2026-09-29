@@ -1,5 +1,6 @@
 import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import { sendInvoicePaymentConfirmation } from '../_shared/payment-confirmation-email.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 const paymentMethods = new Set(['Transferencia', 'Bizum', 'Tarjeta'])
@@ -65,6 +66,14 @@ Deno.serve(async (request) => {
     } catch (error) {
       console.error(
         'Invoice notification deferred',
+        error instanceof Error ? error.message : 'unknown error',
+      )
+    }
+    try {
+      await sendInvoicePaymentConfirmation(invoice.id, issuedInvoiceId)
+    } catch (error) {
+      console.error(
+        'Payment confirmation email not sent',
         error instanceof Error ? error.message : 'unknown error',
       )
     }

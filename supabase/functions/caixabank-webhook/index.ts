@@ -8,6 +8,10 @@ import {
 } from '../_shared/cyberpac.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import {
+  sendInvoicePaymentConfirmation,
+  sendTransportPaymentConfirmation,
+} from '../_shared/payment-confirmation-email.ts'
+import {
   isSuccessfulCyberpacPayment,
   isValidCyberpacNotification,
 } from '../_shared/payment-validation.ts'
@@ -112,7 +116,7 @@ Deno.serve(async (request) => {
       return new Response('OK')
     }
     const paidAt = new Date().toISOString()
-    await rest('rpc/confirm_invoice_payment', {
+    const issuedResponse = await rest('rpc/confirm_invoice_payment', {
       method: 'POST',
       body: JSON.stringify({
         p_payment_id: payment.id,
@@ -121,12 +125,21 @@ Deno.serve(async (request) => {
         p_issuer_snapshot: issuerSnapshot(),
       }),
     })
+    const issuedInvoiceId = (await issuedResponse.json()) as string
     await persistIssuedInvoiceDocument(payment.invoice_id)
     try {
       await dispatchBillingNotifications(payment.invoice_id, 'factura_emitida')
     } catch (error) {
       console.error(
         'Invoice notification deferred',
+        error instanceof Error ? error.message : 'unknown error',
+      )
+    }
+    try {
+      await sendInvoicePaymentConfirmation(payment.invoice_id, issuedInvoiceId)
+    } catch (error) {
+      console.error(
+        'Payment confirmation email not sent',
         error instanceof Error ? error.message : 'unknown error',
       )
     }
@@ -181,9 +194,10 @@ async function processTransportPayment(
       ),
     })
   if (paid) {
+    let issuedInvoiceId: string | null = null
     try {
       const issuer = issuerSnapshot()
-      await rest('rpc/auto_finalize_paid_transport', {
+      const finalizeResponse = await rest('rpc/auto_finalize_paid_transport', {
         method: 'POST',
         body: JSON.stringify({
           p_request_id: payment.id,
@@ -192,11 +206,22 @@ async function processTransportPayment(
           p_issuer_snapshot: issuer,
         }),
       })
+      issuedInvoiceId = (await finalizeResponse.json()) as string | null
     } catch (error) {
       console.error(
         'Transport payment recorded but finalization deferred',
         error instanceof Error ? error.message : 'unknown error',
       )
+    }
+    if (issuedInvoiceId) {
+      try {
+        await sendTransportPaymentConfirmation(payment.id, issuedInvoiceId)
+      } catch (error) {
+        console.error(
+          'Payment confirmation email not sent',
+          error instanceof Error ? error.message : 'unknown error',
+        )
+      }
     }
   }
   return new Response('OK')

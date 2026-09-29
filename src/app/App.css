@@ -3488,6 +3488,21 @@
   background: #3b3636;
 }
 
+.client-transport-documents {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.client-transport-documents span {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .client-transport-documents {
+    grid-template-columns: repeat(2, max-content);
+  }
+}
 @media (max-width: 560px) {
   .client-transport-card > [data-slot='card-content'] {
     grid-template-columns: auto minmax(0, 1fr);

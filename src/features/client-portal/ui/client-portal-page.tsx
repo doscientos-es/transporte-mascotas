@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   CreditCard,
+  FileDown,
   FilePlus2,
   FileText,
   Navigation,
@@ -34,12 +35,14 @@ import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
+import { carriageLetterFileName, createCarriageLetterPdf } from '../application/carriage-letter-pdf'
 import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
 import { isConfirmedTransport } from '../application/transport-calendar'
 import {
   createTransportRequest,
   loadClientPets,
+  loadTransportCarriageLetter,
   loadTransportInvoice,
   loadTransportRequests,
   loadUpcomingRoutes,
@@ -85,6 +88,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [accountPromptDismissed, setAccountPromptDismissed] = useState(false)
   const [payingRequestId, setPayingRequestId] = useState<string | null>(null)
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null)
+  const [downloadingLetterId, setDownloadingLetterId] = useState<string | null>(null)
   const [paymentSuccess, setPaymentSuccess] = useState<{
     requestId: string | null
     attempts: number
@@ -188,6 +192,26 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   async function downloadInvoice(requestId: string) {
     const { file, fileName } = await loadTransportInvoice(requestId)
     saveFile(file, fileName)
+  }
+
+  async function downloadCarriageLetter(requestId: string) {
+    const letter = await loadTransportCarriageLetter(requestId)
+    saveFile(await createCarriageLetterPdf(letter), carriageLetterFileName(letter))
+  }
+
+  async function downloadRequestCarriageLetter(requestId: string) {
+    if (downloadingLetterId) return
+    setError('')
+    setDownloadingLetterId(requestId)
+    try {
+      await downloadCarriageLetter(requestId)
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : 'No se ha podido descargar la carta de porte.',
+      )
+    } finally {
+      setDownloadingLetterId(null)
+    }
   }
 
   async function downloadRequestInvoice(requestId: string) {
@@ -425,6 +449,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           confirming={confirmingPayment}
           formatCurrency={formatCurrency}
           onDownloadInvoice={downloadInvoice}
+          onDownloadCarriageLetter={downloadCarriageLetter}
           onClose={() => setPaymentSuccess(null)}
         />
       )}
@@ -619,16 +644,40 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             <CheckCircle2 size={13} /> Pago registrado
                           </small>
                         )}
-                        {isConfirmedTransport(request.status) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={Boolean(downloadingInvoiceId)}
-                            onClick={() => void downloadRequestInvoice(request.id)}
-                          >
-                            <FileText size={15} />{' '}
-                            {downloadingInvoiceId === request.id ? 'Descargando…' : 'Factura'}
-                          </Button>
+                        {(request.paidAt || isConfirmedTransport(request.status)) && (
+                          <div className="client-transport-documents">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                !isConfirmedTransport(request.status) ||
+                                Boolean(downloadingInvoiceId)
+                              }
+                              onClick={() => void downloadRequestInvoice(request.id)}
+                            >
+                              <FileText size={15} />{' '}
+                              {downloadingInvoiceId === request.id
+                                ? 'Descargando…'
+                                : 'Descargar factura'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                !isConfirmedTransport(request.status) ||
+                                Boolean(downloadingLetterId)
+                              }
+                              onClick={() => void downloadRequestCarriageLetter(request.id)}
+                            >
+                              <FileDown size={15} />{' '}
+                              {downloadingLetterId === request.id
+                                ? 'Descargando…'
+                                : 'Descargar carta de porte'}
+                            </Button>
+                            {!isConfirmedTransport(request.status) && (
+                              <span>Disponibles en cuanto confirmemos el pago</span>
+                            )}
+                          </div>
                         )}
                         {request.status === 'pago_pendiente' && (
                           <Button

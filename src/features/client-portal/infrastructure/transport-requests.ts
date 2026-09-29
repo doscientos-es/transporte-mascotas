@@ -348,6 +348,51 @@ export async function loadTransportInvoice(requestId: string) {
   return { file, fileName: fileName || 'factura.pdf' }
 }
 
+export type TransportCarriageLetter = {
+  id: string
+  service_date: string
+  sender_name: string
+  sender_nif: string
+  sender_phone: string
+  sender_email: string
+  sender_address: string
+  sender_postal_code: string
+  sender_city: string
+  sender_province: string
+  recipient_name: string
+  recipient_nif: string
+  recipient_phone: string
+  recipient_email: string
+  recipient_address: string
+  recipient_postal_code: string
+  recipient_city: string
+  recipient_province: string
+  origin_text: string
+  destination_text: string
+  origin_point: string
+  destination_point: string
+  accompanying_documents: string[] | null
+  animals: Array<{
+    ordinal: number
+    species: string
+    breed: string
+    identification: string
+    weight_kg: number | null
+    length_cm: number | null
+    height_cm: number | null
+    width_cm: number | null
+  }>
+}
+
+export async function loadTransportCarriageLetter(requestId: string) {
+  const { data, error } = await requireSupabase().rpc('get_transport_request_carriage_letter', {
+    p_request_id: requestId,
+  })
+  if (error) throwRequestError(error, 'No se ha podido obtener la carta de porte.')
+  if (!data) throw new Error('La carta de porte todavía no está disponible.')
+  return data as TransportCarriageLetter
+}
+
 export async function confirmTransportRequest(
   requestId: string,
   dailyRouteId: string,

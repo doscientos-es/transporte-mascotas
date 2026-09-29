@@ -1,0 +1,73 @@
+create or replace function public.get_transport_request_carriage_letter(p_request_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_letter_id text;
+  v_result jsonb;
+begin
+  select request.letter_id
+    into v_letter_id
+    from public.transport_requests request
+   where request.id = p_request_id
+     and (request.requester_id = (select auth.uid()) or public.is_admin());
+
+  if not found then
+    raise exception 'Solicitud no encontrada.';
+  end if;
+  if v_letter_id is null then
+    raise exception 'La carta de porte estará disponible en cuanto confirmemos el pago.';
+  end if;
+
+  select jsonb_build_object(
+    'id', letter.id,
+    'service_date', letter.service_date,
+    'sender_name', letter.sender_name,
+    'sender_nif', letter.sender_nif,
+    'sender_phone', letter.sender_phone,
+    'sender_email', letter.sender_email,
+    'sender_address', letter.sender_address,
+    'sender_postal_code', letter.sender_postal_code,
+    'sender_city', letter.sender_city,
+    'sender_province', letter.sender_province,
+    'recipient_name', letter.recipient_name,
+    'recipient_nif', letter.recipient_nif,
+    'recipient_phone', letter.recipient_phone,
+    'recipient_email', letter.recipient_email,
+    'recipient_address', letter.recipient_address,
+    'recipient_postal_code', letter.recipient_postal_code,
+    'recipient_city', letter.recipient_city,
+    'recipient_province', letter.recipient_province,
+    'origin_text', letter.origin_text,
+    'destination_text', letter.destination_text,
+    'origin_point', letter.origin_point,
+    'destination_point', letter.destination_point,
+    'accompanying_documents', letter.accompanying_documents,
+    'animals', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'ordinal', animal.ordinal,
+        'species', animal.species,
+        'breed', animal.breed,
+        'identification', animal.identification,
+        'weight_kg', animal.weight_kg,
+        'length_cm', animal.length_cm,
+        'height_cm', animal.height_cm,
+        'width_cm', animal.width_cm
+      ) order by animal.ordinal)
+      from public.animals animal
+      where animal.letter_id = letter.id
+    ), '[]'::jsonb)
+  )
+    into v_result
+    from public.carriage_letters letter
+   where letter.id = v_letter_id;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.get_transport_request_carriage_letter(uuid) from public, anon, authenticated;
+grant execute on function public.get_transport_request_carriage_letter(uuid) to authenticated;

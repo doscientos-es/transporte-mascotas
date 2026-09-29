@@ -13,14 +13,20 @@ import {
 import {
   ChevronRight,
   Eye,
+  FileDown,
   FilePenLine,
   PawPrint,
   ReceiptText,
   Search,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
+import {
+  carriageLetterFileName,
+  createCarriageLetterPdf,
+  letterToCarriageLetter,
+} from '@/features/client-portal'
 import { paginate } from '@/shared/lib/pagination'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Letter } from '@/shared/types'
@@ -29,6 +35,8 @@ import { Stat } from '@/shared/ui/stat'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
+
+import { downloadBlob } from './billing-document-export'
 
 type Props = {
   letters: Letter[]
@@ -130,6 +138,17 @@ export function LettersPage({
     [letters],
   )
   const letterPagination = paginate(letters, requestedPage, pageSize)
+  const [downloadError, setDownloadError] = useState('')
+
+  async function downloadLetterPdf(letter: Letter) {
+    setDownloadError('')
+    try {
+      const document = letterToCarriageLetter(letter)
+      downloadBlob(await createCarriageLetterPdf(document), carriageLetterFileName(document))
+    } catch {
+      setDownloadError('No se ha podido generar el PDF de la carta de porte.')
+    }
+  }
 
   useEffect(() => {
     if (requestedPage > letterPagination.pageCount) {
@@ -187,6 +206,11 @@ export function LettersPage({
               </label>
             </div>
           </div>
+          {downloadError && (
+            <p className="letter-load-error" role="alert">
+              {downloadError}
+            </p>
+          )}
           {loading ? (
             <LettersListSkeleton />
           ) : error ? (
@@ -219,6 +243,7 @@ export function LettersPage({
                         letter={letter}
                         onView={(letter) => updateParams({ carta: letter.id }, false)}
                         onEdit={onEdit}
+                        onDownload={(letter) => void downloadLetterPdf(letter)}
                         clientName={letter.billingClient.fullName}
                         onOpenClient={onOpenClient}
                         onOpenPaymentRequests={onOpenPaymentRequests}
@@ -234,6 +259,7 @@ export function LettersPage({
                     letter={letter}
                     onView={(letter) => updateParams({ carta: letter.id }, false)}
                     onEdit={onEdit}
+                    onDownload={(letter) => void downloadLetterPdf(letter)}
                     clientName={letter.billingClient.fullName}
                     onOpenClient={onOpenClient}
                     onOpenPaymentRequests={onOpenPaymentRequests}
@@ -257,6 +283,7 @@ export function LettersPage({
         <LetterDetailsDialog
           letter={viewingLetter}
           clientName={viewingLetter.billingClient.fullName}
+          onDownload={(letter) => void downloadLetterPdf(letter)}
           onClose={() => updateParams({ carta: undefined })}
           onOpenClient={onOpenClient}
           onOpenPaymentRequests={onOpenPaymentRequests}
@@ -285,6 +312,7 @@ function LetterRow({
   letter,
   onView,
   onEdit,
+  onDownload,
   clientName,
   onOpenClient,
   onOpenPaymentRequests,
@@ -292,6 +320,7 @@ function LetterRow({
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
+  onDownload: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
@@ -335,6 +364,9 @@ function LetterRow({
           <IconButton type="button" label="Editar carta" onClick={() => onEdit(letter)}>
             <FilePenLine size={17} />
           </IconButton>
+          <IconButton type="button" label="Descargar PDF" onClick={() => onDownload(letter)}>
+            <FileDown size={17} />
+          </IconButton>
           <IconButton
             type="button"
             label="Ver solicitud de pago"
@@ -361,6 +393,7 @@ function LetterCard({
   letter,
   onView,
   onEdit,
+  onDownload,
   clientName,
   onOpenClient,
   onOpenPaymentRequests,
@@ -368,6 +401,7 @@ function LetterCard({
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
+  onDownload: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
@@ -406,6 +440,9 @@ function LetterCard({
           <button type="button" onClick={() => onEdit(letter)}>
             <FilePenLine size={16} /> Editar
           </button>
+          <button type="button" onClick={() => onDownload(letter)}>
+            <FileDown size={16} /> PDF
+          </button>
           <button type="button" onClick={() => onOpenPaymentRequests(letter.id)}>
             <ReceiptText size={16} /> Solicitud
           </button>
@@ -423,12 +460,14 @@ function LetterCard({
 function LetterDetailsDialog({
   letter,
   clientName,
+  onDownload,
   onClose,
   onOpenClient,
   onOpenPaymentRequests,
 }: {
   letter: Letter
   clientName: string
+  onDownload: (letter: Letter) => void
   onClose: () => void
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
@@ -545,6 +584,9 @@ function LetterDetailsDialog({
           </div>
         </section>
         <div className="invoice-card-actions">
+          <Button size="sm" variant="outline" onClick={() => onDownload(letter)}>
+            <FileDown size={15} /> Descargar PDF
+          </Button>
           <Button size="sm" variant="outline" onClick={() => onOpenPaymentRequests(letter.id)}>
             <ReceiptText size={15} /> Ver solicitud
           </Button>

@@ -4,6 +4,7 @@ export {
   createTransportRequest,
   loadTransportRequests,
   loadClientPets,
+  loadTransportCarriageLetter,
   loadTransportInvoice,
   loadPublicUpcomingRoutes,
   loadUpcomingRoutes,
@@ -12,4 +13,7 @@ export {
   saveClientPets,
   updateTransportRequestAnimalBox,
 } from '../infrastructure/transport-requests'
-export type { TransportPaymentForm } from '../infrastructure/transport-requests'
+export type {
+  TransportCarriageLetter,
+  TransportPaymentForm,
+} from '../infrastructure/transport-requests'
