@@ -313,8 +313,51 @@ export async function payTransportRequest(requestId: string) {
   if (error) throw new Error('No se ha podido preparar el pago. Vuelve a intentarlo.')
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
-  if (!result?.paymentUrl) throw new Error('No se ha recibido el enlace de pago.')
-  const paymentUrl = new URL(result.paymentUrl)
+  return openPaymentForm(result?.paymentUrl)
+}
+
+export type ClientPaymentRequest = {
+  id: string
+  letterId: string
+  concept: string
+  totalAmount: number
+  createdAt: string
+}
+
+export async function loadMyPaymentRequests() {
+  const { data, error } = await requireSupabase().rpc('list_my_payment_requests')
+  if (error) throw error
+  return (data ?? []).map(
+    (row: {
+      id: string
+      letter_id: string
+      concept: string
+      total_amount: number | string
+      created_at: string
+    }): ClientPaymentRequest => ({
+      id: row.id,
+      letterId: row.letter_id,
+      concept: row.concept,
+      totalAmount: Number(row.total_amount),
+      createdAt: row.created_at,
+    }),
+  )
+}
+
+export async function payClientPaymentRequest(invoiceId: string) {
+  const { data, error } = await requireSupabase().functions.invoke('client-payment-request', {
+    body: { invoiceId },
+  })
+  if (error)
+    throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
+  const result = data as { paymentUrl?: string; error?: string } | null
+  if (result?.error) throw new Error(result.error)
+  return openPaymentForm(result?.paymentUrl)
+}
+
+async function openPaymentForm(url: string | undefined) {
+  if (!url) throw new Error('No se ha recibido el enlace de pago.')
+  const paymentUrl = new URL(url)
   paymentUrl.searchParams.set('format', 'json')
   const paymentResponse = await fetch(paymentUrl)
   if (!paymentResponse.ok) throw new Error('No se ha podido abrir la pasarela de pago.')
