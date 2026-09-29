@@ -44,10 +44,13 @@ import {
   loadClientPets,
   loadTransportCarriageLetter,
   loadTransportInvoice,
+  loadMyPaymentRequests,
   loadTransportRequests,
   loadUpcomingRoutes,
+  payClientPaymentRequest,
   payTransportRequest,
   saveClientPets,
+  type ClientPaymentRequest,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
 import { PaymentSuccessPanel } from './payment-success-panel'
@@ -78,6 +81,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [preselectedRouteId, setPreselectedRouteId] = useState<string>()
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
+  const [paymentRequests, setPaymentRequests] = useState<ClientPaymentRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [showForm, setShowForm] = useState(false)
@@ -107,12 +111,15 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   const refresh = useCallback(async () => {
     if (!userId) return [] as TransportRequest[]
-    const [nextRoutes, nextRequests, nextPets, nextBoxCatalog] = await Promise.all([
-      loadUpcomingRoutes(),
-      loadTransportRequests(userId),
-      loadClientPets(),
-      loadTransportBoxCatalog(),
-    ])
+    const [nextRoutes, nextRequests, nextPets, nextBoxCatalog, nextPaymentRequests] =
+      await Promise.all([
+        loadUpcomingRoutes(),
+        loadTransportRequests(userId),
+        loadClientPets(),
+        loadTransportBoxCatalog(),
+        loadMyPaymentRequests().catch(() => [] as ClientPaymentRequest[]),
+      ])
+    setPaymentRequests(nextPaymentRequests)
     setRoutes(nextRoutes)
     setRequests(nextRequests)
     setSavedPets(nextPets)
@@ -248,6 +255,18 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     setPayingRequestId(requestId)
     try {
       await completeRequestPayment(requestId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
+      setPayingRequestId(null)
+    }
+  }
+
+  async function continueClientPaymentRequest(invoiceId: string) {
+    if (payingRequestId) return
+    setError('')
+    setPayingRequestId(invoiceId)
+    try {
+      submitPaymentForm(await payClientPaymentRequest(invoiceId))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
       setPayingRequestId(null)
@@ -580,6 +599,30 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                   <FilePlus2 size={16} /> Nueva solicitud
                 </Button>
               )}
+            </div>
+          )}
+          {!showForm && paymentRequests.length > 0 && (
+            <div className="invoices-list">
+              {paymentRequests.map((paymentRequest) => (
+                <Card key={paymentRequest.id} className="invoice-card client-transport-card">
+                  <CardContent>
+                    <div className="invoice-icon">
+                      <FilePlus2 size={19} />
+                    </div>
+                    <div>
+                      <span>Solicitud de pago pendiente</span>
+                      <strong>{paymentRequest.concept}</strong>
+                      <small>{formatCurrency(paymentRequest.totalAmount * 100)}</small>
+                    </div>
+                    <Button
+                      disabled={Boolean(payingRequestId)}
+                      onClick={() => void continueClientPaymentRequest(paymentRequest.id)}
+                    >
+                      {payingRequestId === paymentRequest.id ? 'Abriendo pago…' : 'Pagar'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
           {!showForm && (

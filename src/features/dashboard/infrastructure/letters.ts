@@ -234,7 +234,6 @@ export async function sendPaymentRequestEmail(letterId: string) {
   return result?.sent === true
 }
 
-
 /** Persists the editable data without ever changing a letter's operational status. */
 export async function updateLetter(
   letter: Letter,
