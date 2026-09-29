@@ -28,6 +28,7 @@ import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
+import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 type Props = {
   letters: Letter[]
@@ -442,6 +443,13 @@ function LetterDetailsDialog({
   ]
     .filter(Boolean)
     .join(', ')
+  const contactMessage = (name: string) =>
+    [
+      `Hola${name ? ` ${name}` : ''}, te escribimos de Kache Envíos sobre el transporte ${letter.origin} → ${letter.destination} del ${formatServiceDate(letter.serviceDate)}.`,
+      letter.route ? `Ruta: ${letter.route}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
 
   return (
     <Dialog
@@ -487,6 +495,7 @@ function LetterDetailsDialog({
               phone={letter.senderPhone}
               email={letter.senderEmail}
               address={senderAddress}
+              message={contactMessage(letter.sender)}
             />
             <ContactDetails
               title="Destinatario"
@@ -494,6 +503,7 @@ function LetterDetailsDialog({
               phone={letter.recipientPhone}
               email={letter.recipientEmail}
               address={recipientAddress}
+              message={contactMessage(letter.recipient)}
             />
           </div>
         </section>
@@ -558,18 +568,21 @@ function ContactDetails({
   phone,
   email,
   address,
+  message,
 }: {
   title: string
   name: string
   phone: string
   email: string
   address: string
+  message: string
 }) {
   return (
     <article>
       <h4>{title}</h4>
       <strong>{name || 'Sin nombre indicado'}</strong>
       <span>{phone || 'Sin teléfono'}</span>
+      <WhatsAppLink phone={phone} message={message} recipient={name || title} />
       <span>{email || 'Sin email'}</span>
       <span>{address || 'Sin dirección'}</span>
     </article>

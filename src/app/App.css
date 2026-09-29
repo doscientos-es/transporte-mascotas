@@ -5085,6 +5085,22 @@
   background: #185a3a;
 }
 
+a.whatsapp-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  color: #1f6f48;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.whatsapp-link:hover {
+  color: #185a3a;
+  text-decoration: underline;
+}
+
 .whatsapp-test-page {
   max-width: 760px;
 }

@@ -22,6 +22,7 @@ type Props = {
   title: string
   description: string
   skipLabel?: string
+  busy?: boolean
   onSkip?: () => void
   onCreated?: (result: 'created' | 'confirmation_pending') => void
   children?: ReactNode
@@ -34,6 +35,7 @@ export function OptionalClientAccountCard({
   title,
   description,
   skipLabel,
+  busy = false,
   onSkip,
   onCreated,
   children,
@@ -108,11 +110,11 @@ export function OptionalClientAccountCard({
           )}
           <div className="request-form-actions">
             {onSkip && (
-              <Button type="button" variant="outline" onClick={onSkip} disabled={sending}>
+              <Button type="button" variant="outline" onClick={onSkip} disabled={sending || busy}>
                 {skipLabel ?? 'Ahora no'}
               </Button>
             )}
-            <Button type="submit" disabled={sending}>
+            <Button type="submit" disabled={sending || busy}>
               <UserPlus size={16} /> {sending ? 'Creando cuenta…' : 'Crear mi cuenta'}
             </Button>
           </div>

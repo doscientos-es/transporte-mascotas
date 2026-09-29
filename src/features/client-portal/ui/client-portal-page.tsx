@@ -76,6 +76,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [loading, setLoading] = useState(true)
   const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null)
   const [accountPromptDismissed, setAccountPromptDismissed] = useState(false)
+  const [payingRequestId, setPayingRequestId] = useState<string | null>(null)
   const userId = session?.user.id
   const guestAccountEmail = session?.user.is_anonymous ? requests[0]?.contactEmail : undefined
 
@@ -166,11 +167,14 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   async function continuePayment(requestId: string) {
+    if (payingRequestId) return
     setError('')
+    setPayingRequestId(requestId)
     try {
       await completeRequestPayment(requestId)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
+      setPayingRequestId(null)
     }
   }
 
@@ -389,13 +393,17 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               <p>Tienes una solicitud guardada pendiente de registrar el pago.</p>
               <Button
                 type="button"
+                disabled={Boolean(payingRequestId)}
                 onClick={() =>
                   pendingPaymentRequestId
                     ? setShowForm(true)
                     : unpaidRequest && void continuePayment(unpaidRequest.id)
                 }
               >
-                <CreditCard size={15} /> Continuar pago
+                <CreditCard size={15} />{' '}
+                {payingRequestId && payingRequestId === unpaidRequest?.id
+                  ? 'Abriendo pago…'
+                  : 'Continuar pago'}
               </Button>
             </div>
           )}
@@ -558,9 +566,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           <Button
                             className="client-transport-pay-button"
                             size="sm"
+                            disabled={Boolean(payingRequestId)}
                             onClick={() => void continuePayment(request.id)}
                           >
-                            <CreditCard size={15} /> Continuar pago
+                            <CreditCard size={15} />{' '}
+                            {payingRequestId === request.id ? 'Abriendo pago…' : 'Continuar pago'}
                           </Button>
                         )}
                       </div>

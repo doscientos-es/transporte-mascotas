@@ -30,6 +30,7 @@ import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Client, ClientInvoice, InvoicePayer, Letter, PaginatedResult } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
+import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import {
   CLIENT_LIST_PAGE_SIZE,
@@ -359,6 +360,11 @@ export function ClientsPage({
                   <div className="client-contact-grid">
                     <span>
                       <Phone size={15} /> {selected.phone || 'Teléfono pendiente'}
+                      <WhatsAppLink
+                        phone={selected.phone}
+                        message={`Hola ${selected.fullName}, te escribimos de Kache Envíos.`}
+                        recipient={selected.fullName}
+                      />
                     </span>
                     <span>
                       <Mail size={15} /> {selected.email || 'Email pendiente'}

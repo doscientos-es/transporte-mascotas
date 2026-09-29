@@ -104,6 +104,17 @@ export function PublicTransportRequestPage() {
         </div>
       )}
 
+      {!created && loading && !routes.length && (
+        <Card className="invoice-empty" aria-busy="true">
+          <CardContent>
+            <RefreshCw className="is-spinning" size={22} />
+            <div>
+              <h3>Cargando próximas salidas…</h3>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {!created && !loading && !routes.length && !error && (
         <Card className="invoice-empty">
           <CardContent>
@@ -139,6 +150,7 @@ export function PublicTransportRequestPage() {
           title="Solicitud guardada. ¿Quieres crear una cuenta?"
           description="Es opcional. Con una cuenta podrás seguir el transporte y guardar tus mascotas desde cualquier dispositivo."
           skipLabel={paying ? 'Abriendo pago…' : 'Continuar al pago sin cuenta'}
+          busy={paying}
           onSkip={() => void pay()}
           onCreated={setAccountResult}
         />

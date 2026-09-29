@@ -1,4 +1,17 @@
-import { Button, Card, CardContent, Pagination } from '@doscientos/ui'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
+  Card,
+  CardContent,
+  Pagination,
+} from '@doscientos/ui'
 import { ChevronRight, PawPrint, RefreshCw } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -16,6 +29,7 @@ import { paginate } from '@/shared/lib/pagination'
 import type { DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
+import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 type Props = { routes: DailyRoute[]; onNotify: (message: string) => void }
 
@@ -24,6 +38,9 @@ type Assignment = { routeId: string; pickupStopId: string; deliveryStopId: strin
 const emptyAssignment: Assignment = { routeId: '', pickupStopId: '', deliveryStopId: '', note: '' }
 const REQUEST_PAGE_SIZE = 8
 
+const pluralize = (count: number, singular: string, plural: string) =>
+  `${count} ${count === 1 ? singular : plural}`
+
 const formatDate = (value: string) =>
   new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
     day: 'numeric',
@@ -31,17 +48,30 @@ const formatDate = (value: string) =>
     year: 'numeric',
   })
 
+function requestMessage(request: TransportRequest) {
+  const trip = `${request.origin} → ${request.destination} del ${formatDate(request.desiredDate)}`
+  const greeting = `Hola ${request.contactName}, te escribimos de Kache Envíos sobre tu transporte ${trip}.`
+  const detail: Partial<Record<TransportRequest['status'], string>> = {
+    pago_pendiente: 'Te recordamos que el pago está pendiente para poder tramitar la solicitud.',
+    por_verificar: 'Hemos recibido tu solicitud y la estamos revisando.',
+    confirmada: 'Tu transporte está confirmado.',
+    en_ruta: 'Tu mascota ya está en ruta.',
+  }
+  return [greeting, detail[request.status]].filter(Boolean).join(' ')
+}
+
 export function RequestsPage({ routes, onNotify }: Props) {
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [busy, setBusy] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [rejecting, setRejecting] = useState<TransportRequest | null>(null)
   const [pendingPage, setPendingPage] = useState(1)
   const [historyPage, setHistoryPage] = useState(1)
 
   const refresh = useCallback(async () => {
-    const loaded = await loadTransportRequests()
-    setRequests(loaded)
+    setRequests(await loadTransportRequests())
   }, [])
 
   const refreshRequests = useCallback(async () => {
@@ -52,6 +82,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
       onNotify('No se han podido cargar las solicitudes.')
     } finally {
       setRefreshing(false)
+      setLoaded(true)
     }
   }, [onNotify, refresh])
 
@@ -103,6 +134,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
     try {
       await rejectTransportRequest(request.id, assignmentFor(request.id).note)
       onNotify('Solicitud rechazada.')
+      setRejecting(null)
       await refresh()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido rechazar la solicitud.')
@@ -152,11 +184,20 @@ export function RequestsPage({ routes, onNotify }: Props) {
           <div className="table-heading">
             <div>
               <h3>Solicitudes de transporte pendientes</h3>
-              <p>{pending.length} solicitudes pendientes de asignar</p>
+              <p>
+                {pluralize(pending.length, 'solicitud pendiente', 'solicitudes pendientes')} de
+                asignar
+              </p>
             </div>
-            <StatusBadge status="por_verificar">{pending.length} pendientes</StatusBadge>
+            <StatusBadge status="por_verificar">
+              {pluralize(pending.length, 'pendiente', 'pendientes')}
+            </StatusBadge>
           </div>
-          {pending.length === 0 ? (
+          {!loaded ? (
+            <p className="empty-copy" aria-busy="true">
+              Cargando solicitudes…
+            </p>
+          ) : pending.length === 0 ? (
             <p className="empty-copy">No hay solicitudes pendientes de verificar.</p>
           ) : (
             pendingPagination.items.map((request) => {
@@ -173,8 +214,13 @@ export function RequestsPage({ routes, onNotify }: Props) {
                   key={request.id}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222]">
-                    <span>
+                    <span className="flex flex-wrap items-center gap-2">
                       {request.contactName} · {request.contactPhone}
+                      <WhatsAppLink
+                        phone={request.contactPhone}
+                        message={requestMessage(request)}
+                        recipient={request.contactName}
+                      />
                     </span>
                     <span className="route-cell">
                       <b>{request.origin}</b>
@@ -209,7 +255,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                     )
                                   }
                                   disabled={Boolean(busy)}
-                                  aria-label={`Box de ${animal.name}`}
+                                  aria-label={`Box de ${animal.name || animal.species}`}
                                 >
                                   {transportBoxOptions(minimumCategory).map((category) => (
                                     <option value={category} key={category}>
@@ -271,6 +317,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       <input
                         value={assignment.note}
                         onChange={(event) => update(request.id, { note: event.target.value })}
+                        disabled={Boolean(busy)}
                         placeholder="Opcional"
                       />
                     </label>
@@ -320,13 +367,13 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       disabled={Boolean(busy)}
                       onClick={() => void confirm(request)}
                     >
-                      Confirmar
+                      {busy === request.id ? 'Guardando…' : 'Confirmar'}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       disabled={Boolean(busy)}
-                      onClick={() => void reject(request)}
+                      onClick={() => setRejecting(request)}
                     >
                       Rechazar
                     </Button>
@@ -351,10 +398,12 @@ export function RequestsPage({ routes, onNotify }: Props) {
           <div className="table-heading">
             <div>
               <h3>Histórico</h3>
-              <p>{rest.length} solicitudes ya gestionadas</p>
+              <p>
+                {pluralize(rest.length, 'solicitud ya gestionada', 'solicitudes ya gestionadas')}
+              </p>
             </div>
           </div>
-          {rest.length === 0 ? (
+          {!loaded ? null : rest.length === 0 ? (
             <p className="empty-copy">Todavía no hay solicitudes resueltas.</p>
           ) : (
             <div className="responsive-table">
@@ -374,6 +423,11 @@ export function RequestsPage({ routes, onNotify }: Props) {
                       <td>
                         <strong>{request.contactName}</strong>
                         <small>{request.contactPhone}</small>
+                        <WhatsAppLink
+                          phone={request.contactPhone}
+                          message={requestMessage(request)}
+                          recipient={request.contactName}
+                        />
                       </td>
                       <td>
                         <span className="route-cell">
@@ -407,7 +461,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                       )
                                     }
                                     disabled={Boolean(busy)}
-                                    aria-label={`Box de ${animal.name}`}
+                                    aria-label={`Box de ${animal.name || animal.species}`}
                                   >
                                     {transportBoxOptions(minimumCategory).map((category) => (
                                       <option value={category} key={category}>
@@ -442,6 +496,33 @@ export function RequestsPage({ routes, onNotify }: Props) {
           )}
         </CardContent>
       </Card>
+      <AlertDialog
+        open={rejecting !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setRejecting(null)
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="gap-1">
+            <AlertDialogTitle>Rechazar solicitud</AlertDialogTitle>
+            <AlertDialogDescription>
+              {rejecting
+                ? `¿Rechazar la solicitud de ${rejecting.contactName} (${rejecting.origin} → ${rejecting.destination})? El cliente verá la nota que hayas escrito.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(busy)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={Boolean(busy)}
+              onClick={() => rejecting && void reject(rejecting)}
+            >
+              {busy ? 'Rechazando…' : 'Rechazar solicitud'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

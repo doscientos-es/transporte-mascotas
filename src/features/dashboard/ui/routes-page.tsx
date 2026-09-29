@@ -46,6 +46,7 @@ import type {
 } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
+import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn } from '../application/route-closure'
@@ -681,6 +682,7 @@ export function RoutesPage({
                 stop={stop}
                 index={index}
                 total={stops.length}
+                routeDate={route.date}
                 arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)}
                 organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
                 moving={movingStop}
@@ -764,6 +766,7 @@ function JourneyStop({
   stop,
   index,
   total,
+  routeDate,
   arrival,
   organizing,
   moving,
@@ -777,6 +780,7 @@ function JourneyStop({
   stop: DailyRouteStop
   index: number
   total: number
+  routeDate: string
   arrival: string
   organizing: boolean
   moving: boolean
@@ -885,6 +889,7 @@ function JourneyStop({
               <ServiceCard
                 key={group.key}
                 group={group}
+                reminder={serviceReminder(group, stop, routeDate, arrival)}
                 onToggle={() => onAction(group.actions.map((action) => action.id))}
               />
             ))}
@@ -895,7 +900,37 @@ function JourneyStop({
   )
 }
 
-function ServiceCard({ group, onToggle }: { group: ServiceGroup; onToggle: () => Promise<void> }) {
+function serviceReminder(
+  group: ServiceGroup,
+  stop: DailyRouteStop,
+  routeDate: string,
+  arrival: string,
+) {
+  const action = group.actions[0]
+  const day = new Date(`${routeDate}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  return [
+    `Hola ${action.customer}, te recordamos la ${action.type} de ${group.animalLabels.join(' y ')} con Kache Envíos.`,
+    `Día: ${day}, sobre las ${arrival} (hora aproximada).`,
+    `Punto: ${[stop.locality, stop.place].filter(Boolean).join(' · ')}`,
+    stop.mapUrl ? `Mapa: ${stop.mapUrl}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function ServiceCard({
+  group,
+  reminder,
+  onToggle,
+}: {
+  group: ServiceGroup
+  reminder: string
+  onToggle: () => Promise<void>
+}) {
   const action = group.actions[0]
   const done = group.actions.every((item) => item.status === 'completada')
   const label = action.type === 'recogida' ? 'Recogida' : 'Entrega'
@@ -919,6 +954,12 @@ function ServiceCard({ group, onToggle }: { group: ServiceGroup; onToggle: () =>
         <a href={`tel:${action.phone.replaceAll(' ', '')}`}>
           <Phone size={13} /> {action.phone}
         </a>
+        <WhatsAppLink
+          phone={action.phone}
+          message={reminder}
+          label="Enviar recordatorio"
+          recipient={action.customer}
+        />
       </div>
       <Button variant={done ? 'outline' : 'default'} size="sm" onClick={() => void onToggle()}>
         {done ? 'Deshacer' : action.type === 'recogida' ? 'Recogido' : 'Entregado'}
