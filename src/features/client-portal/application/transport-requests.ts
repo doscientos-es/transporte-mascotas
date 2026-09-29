@@ -4,6 +4,7 @@ export {
   createTransportRequest,
   loadTransportRequests,
   loadClientPets,
+  loadTransportInvoice,
   loadPublicUpcomingRoutes,
   loadUpcomingRoutes,
   payTransportRequest,

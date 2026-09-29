@@ -307,6 +307,31 @@ export async function payTransportRequest(requestId: string) {
   return paymentForm as TransportPaymentForm
 }
 
+async function functionErrorMessage(error: unknown, fallback: string) {
+  const context =
+    error && typeof error === 'object' && 'context' in error ? error.context : undefined
+  if (context instanceof Response) {
+    const details = (await context.json().catch(() => null)) as { error?: string } | null
+    if (details?.error) return details.error
+  }
+  return fallback
+}
+
+export async function loadTransportInvoice(requestId: string) {
+  const database = requireSupabase()
+  const { data, error } = await database.functions.invoke('invoice-pdf', { body: { requestId } })
+  if (error) throw new Error(await functionErrorMessage(error, 'No se ha podido obtener la factura.'))
+  const { url, fileName } = (data as { url?: string; fileName?: string } | null) ?? {}
+  const token = url ? new URL(url).searchParams.get('token') : null
+  if (!token) throw new Error('La factura no ha devuelto un enlace de descarga.')
+  const { data: file, error: fileError } = await database.functions.invoke(
+    `invoice-pdf?token=${encodeURIComponent(token)}`,
+    { method: 'GET' },
+  )
+  if (fileError || !(file instanceof Blob)) throw new Error('No se ha podido descargar la factura.')
+  return { file, fileName: fileName || 'factura.pdf' }
+}
+
 export async function confirmTransportRequest(
   requestId: string,
   dailyRouteId: string,

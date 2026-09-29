@@ -10,6 +10,7 @@ type Payment = {
 }
 type Invoice = { status: string; concept: string }
 type TransportRequest = {
+  id: string
   payment_merchant_order: string
   amount_cents: number
   status: string
@@ -80,7 +81,7 @@ Deno.serve(async (request) => {
 
 async function transportPaymentPage(token: string, jsonFormat: boolean) {
   const response = await rest(
-    `transport_requests?payment_public_token=eq.${encodeURIComponent(token)}&select=payment_merchant_order,amount_cents,status,payment_expires_at`,
+    `transport_requests?payment_public_token=eq.${encodeURIComponent(token)}&select=id,payment_merchant_order,amount_cents,status,payment_expires_at`,
   )
   const [payment] = (await response.json()) as TransportRequest[]
   if (
@@ -99,8 +100,8 @@ async function transportPaymentPage(token: string, jsonFormat: boolean) {
     DS_MERCHANT_TRANSACTIONTYPE: config.transactionType,
     DS_MERCHANT_TERMINAL: config.terminal,
     DS_MERCHANT_MERCHANTURL: `${config.supabaseUrl}/functions/v1/caixabank-webhook`,
-    DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok`,
-    DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko`,
+    DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok&request=${encodeURIComponent(payment.id)}`,
+    DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko&request=${encodeURIComponent(payment.id)}`,
     DS_MERCHANT_PRODUCTDESCRIPTION: 'Transporte de mascotas',
     ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
   })

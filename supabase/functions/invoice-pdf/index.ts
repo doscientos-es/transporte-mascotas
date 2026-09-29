@@ -3,7 +3,7 @@ import {
   findCanonicalInvoiceDocument,
   persistIssuedInvoiceDocument,
 } from '../_shared/invoice-document.ts'
-import { corsHeaders, json, requireAdmin } from '../_shared/supabase.ts'
+import { corsHeaders, json, requireAdmin, requireUser, rest } from '../_shared/supabase.ts'
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -59,13 +59,43 @@ async function verifyToken(token: string) {
   return value.invoiceId
 }
 
+async function transportRequestInvoiceId(requestId: string, userId: string) {
+  const requestResponse = await rest(
+    `transport_requests?id=eq.${encodeURIComponent(requestId)}&requester_id=eq.${encodeURIComponent(userId)}&select=letter_id,status`,
+  )
+  const [transport] = (await requestResponse.json()) as Array<{
+    letter_id: string | null
+    status: string
+  }>
+  if (!transport) return null
+  if (!transport.letter_id) return ''
+  const invoiceResponse = await rest(
+    `invoice_drafts?letter_id=eq.${encodeURIComponent(transport.letter_id)}&status=eq.emitida&select=id&limit=1`,
+  )
+  const [invoice] = (await invoiceResponse.json()) as Array<{ id: string }>
+  return invoice?.id ?? ''
+}
+
 Deno.serve(async (request) => {
   try {
     const url = new URL(request.url)
     if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
     if (request.method === 'POST') {
-      const userId = await requireAdmin(request)
-      const { invoiceId } = (await request.json()) as { invoiceId?: string }
+      const body = (await request.json()) as { invoiceId?: string; requestId?: string }
+      let invoiceId = body.invoiceId
+      let userId: string
+      if (body.requestId) {
+        if (!/^[0-9a-f-]{36}$/i.test(body.requestId))
+          return json({ error: 'Solicitud no válida.' }, 400)
+        userId = (await requireUser(request)).id
+        const transportInvoiceId = await transportRequestInvoiceId(body.requestId, userId)
+        if (transportInvoiceId === null) return json({ error: 'Solicitud no encontrada.' }, 404)
+        if (!transportInvoiceId)
+          return json({ error: 'Tu factura todavía se está preparando. Inténtalo en unos minutos.' }, 409)
+        invoiceId = transportInvoiceId
+      } else {
+        userId = await requireAdmin(request)
+      }
       if (!invoiceId || !/^[0-9a-f-]{36}$/i.test(invoiceId))
         return json({ error: 'Factura no válida.' }, 400)
       const document = await persistIssuedInvoiceDocument(invoiceId, userId)
