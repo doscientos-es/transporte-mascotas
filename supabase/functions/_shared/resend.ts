@@ -1,8 +1,14 @@
+export type EmailAttachment = {
+  filename: string
+  content: Uint8Array | string
+  contentType: string
+}
 export type Email = {
   to: string
   subject: string
   html: string
   text: string
+  attachments?: EmailAttachment[]
   /** Resend deduplicates sends with the same key for 24 hours. */
   idempotencyKey?: string
 }
@@ -40,6 +46,15 @@ export async function sendEmail(email: Email) {
       html: email.html,
       text: email.text,
       ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(email.attachments?.length
+        ? {
+            attachments: email.attachments.map((attachment) => ({
+              filename: attachment.filename,
+              content: toBase64(attachment.content),
+              content_type: attachment.contentType,
+            })),
+          }
+        : {}),
     }),
   })
   if (!response.ok) {
@@ -52,6 +67,19 @@ export async function sendEmail(email: Email) {
   const result = (await response.json()) as { id?: string }
   if (!result.id) throw new EmailError('Resend no devolvió un identificador de mensaje.', true)
   return result.id
+}
+
+export function senderAddress() {
+  const from = Deno.env.get('RESEND_FROM_EMAIL') ?? ''
+  return (from.match(/<([^>]+)>/)?.[1] ?? from).trim()
+}
+
+function toBase64(content: Uint8Array | string) {
+  const bytes = typeof content === 'string' ? new TextEncoder().encode(content) : content
+  let binary = ''
+  for (let index = 0; index < bytes.length; index += 0x8000)
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000))
+  return btoa(binary)
 }
 
 export function isValidEmail(value: unknown): value is string {

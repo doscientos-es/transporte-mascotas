@@ -25,6 +25,7 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
 
@@ -201,6 +202,22 @@ function StopMapLink({ stop }: { stop: RouteStop }) {
   )
 }
 
+function ageInMonths(birthDate: string, onDate: string) {
+  const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number)
+  const [year, month, day] = onDate.split('-').map(Number)
+  return (year - birthYear) * 12 + (month - birthMonth) - (day < birthDay ? 1 : 0)
+}
+
+function petAgeNotice(birthDate: string | undefined, travelDate: string) {
+  if (!birthDate) return ''
+  const months = ageInMonths(birthDate, travelDate)
+  if (months < 2)
+    return 'El día del viaje tendrá menos de 2 meses. Para viajar debe tener al menos 2 meses; puedes continuar y lo revisaremos contigo.'
+  if (months >= 3)
+    return 'Con más de 3 meses es obligatorio que lleve microchip. Puedes continuar, pero debe tenerlo implantado el día del viaje.'
+  return ''
+}
+
 type Props = {
   routes: UpcomingRoute[]
   savedPets: ClientPet[]
@@ -357,10 +374,11 @@ export function ClientRequestForm({
           !animal.name.trim() ||
           !animal.species.trim() ||
           !animal.breed.trim() ||
+          !animal.birthDate ||
           !hasMeasurements(animal),
       )
       if (incompleteAnimal)
-        return 'Completa el nombre, especie, raza, peso y medidas de cada mascota.'
+        return 'Completa el nombre, especie, raza, fecha de nacimiento, peso y medidas de cada mascota.'
     }
     return ''
   }
@@ -1027,6 +1045,36 @@ export function ClientRequestForm({
                         className="min-h-11"
                         required
                       />
+                    </Field>
+                    <Field>
+                      <FieldLabel htmlFor={`animal-${animal.ordinal}-birth-date`}>
+                        Fecha de nacimiento
+                      </FieldLabel>
+                      <Input
+                        id={`animal-${animal.ordinal}-birth-date`}
+                        type="date"
+                        max={new Date().toISOString().slice(0, 10)}
+                        value={animal.birthDate ?? ''}
+                        onChange={(event) =>
+                          updateAnimal(index, { birthDate: event.target.value || undefined })
+                        }
+                        className="min-h-11"
+                        required
+                      />
+                      {(() => {
+                        const notice = petAgeNotice(
+                          animal.birthDate,
+                          values.desiredDate || new Date().toISOString().slice(0, 10),
+                        )
+                        return (
+                          notice && (
+                            <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900">
+                              <TriangleAlert size={14} className="mt-0.5 shrink-0" />
+                              {notice}
+                            </p>
+                          )
+                        )
+                      })()}
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`animal-${animal.ordinal}-weight`}>Peso (kg)</FieldLabel>

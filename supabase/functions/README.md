@@ -30,6 +30,22 @@ envía nada. Un fallo de envío sólo se registra en los logs: nunca bloquea el 
 ni la emisión de la factura. Cada envío usa la factura emitida como clave de
 idempotencia para evitar duplicados.
 
+El email incluye el resumen del servicio (trayecto, fecha, mascotas, importe y
+número de factura), un botón al portal (`PUBLIC_APP_URL/mis-transportes`) y otro
+para añadir el transporte a Google Calendar. Adjunta:
+
+- **Factura en PDF**: la misma copia inmutable que se guarda en `invoices`.
+- **Carta de porte en PDF**: generada en el servidor con el mismo formato que la
+  descarga del portal.
+- **Invitación `.ics`** de día completo para la fecha del transporte, con aviso
+  la tarde anterior. Se envía como `METHOD:REQUEST` con el remitente como
+  organizador, de modo que Gmail, Outlook y Apple Mail la muestran como
+  invitación y pueden añadirla automáticamente según la configuración del
+  cliente.
+
+Si un adjunto no se puede preparar, se registra en los logs y el email se envía
+con el resto.
+
 | Secreto             | Uso                                                                  |
 | ------------------- | -------------------------------------------------------------------- |
 | `RESEND_API_KEY`    | API key de Resend con permiso de envío                               |
