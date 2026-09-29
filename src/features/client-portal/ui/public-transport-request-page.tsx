@@ -83,7 +83,7 @@ export function PublicTransportRequestPage() {
   return (
     <main className="mx-auto grid w-full max-w-[960px] gap-5 px-4 py-8">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <BrandLogo />
+        <BrandLogo className="h-14.5 w-18 object-contain" />
         <a className="auth-flow-link" href={AUTH_PATHS.clientAccess}>
           ¿Ya tienes cuenta? Accede
         </a>
