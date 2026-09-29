@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   CreditCard,
   FilePlus2,
+  FileText,
   Navigation,
   PawPrint,
   RefreshCw,
@@ -38,12 +39,14 @@ import { signOut as signOutSession } from '../application/session'
 import {
   createTransportRequest,
   loadClientPets,
+  loadTransportInvoice,
   loadTransportRequests,
   loadUpcomingRoutes,
   payTransportRequest,
   saveClientPets,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
+import { isConfirmedTransport, PaymentSuccessPanel, saveFile } from './payment-success-panel'
 import { submitPaymentForm } from './submit-payment-form'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
@@ -60,10 +63,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const navigationState = routerLocation.state as {
     preselectRouteId?: string
     paymentStatus?: 'ok' | 'ko'
+    paymentRequestId?: string
   } | null
+  const searchParams = new URLSearchParams(routerLocation.search)
   const paymentStatus =
-    navigationState?.paymentStatus ??
-    (new URLSearchParams(routerLocation.search).get('payment') as 'ok' | 'ko' | null)
+    navigationState?.paymentStatus ?? (searchParams.get('payment') as 'ok' | 'ko' | null)
+  const paymentRequestId = navigationState?.paymentRequestId ?? searchParams.get('request')
   const preselectRouteId = navigationState?.preselectRouteId
   const [preselectedRouteId, setPreselectedRouteId] = useState<string>()
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
@@ -77,6 +82,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null)
   const [accountPromptDismissed, setAccountPromptDismissed] = useState(false)
   const [payingRequestId, setPayingRequestId] = useState<string | null>(null)
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null)
+  const [paymentSuccess, setPaymentSuccess] = useState<{
+    requestId: string | null
+    attempts: number
+  } | null>(null)
   const userId = session?.user.id
   const guestAccountEmail = session?.user.is_anonymous ? requests[0]?.contactEmail : undefined
 
@@ -139,17 +149,57 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (!paymentStatus || !userId) return
     void navigate(routerLocation.pathname, { replace: true, state: null })
     if (paymentStatus === 'ok') {
-      void refresh()
-        .then(() => {
-          setNotice('Pago recibido. Estamos actualizando el estado de tu solicitud.')
-        })
-        .catch(() => {
-          setError('El pago se ha recibido, pero no hemos podido actualizar el estado todavía.')
-        })
+      setShowForm(false)
+      setPaymentSuccess({ requestId: paymentRequestId || null, attempts: 0 })
+      void refresh().catch(() => {
+        setError('El pago se ha recibido, pero no hemos podido actualizar el estado todavía.')
+      })
     } else if (paymentStatus === 'ko') {
       setError('El pago no se ha completado. Puedes reintentarlo desde Mis transportes.')
     }
-  }, [navigate, paymentStatus, refresh, routerLocation.pathname, userId])
+  }, [navigate, paymentRequestId, paymentStatus, refresh, routerLocation.pathname, userId])
+
+  const successRequest = paymentSuccess
+    ? paymentSuccess.requestId
+      ? requests.find((request) => request.id === paymentSuccess.requestId)
+      : requests[0]
+    : undefined
+  const confirmingPayment = Boolean(
+    paymentSuccess &&
+    paymentSuccess.attempts < 10 &&
+    (!successRequest || !isConfirmedTransport(successRequest.status)),
+  )
+  useEffect(() => {
+    if (!confirmingPayment) return
+    const timeout = window.setTimeout(() => {
+      void refresh()
+        .catch(() => undefined)
+        .finally(() =>
+          setPaymentSuccess((current) =>
+            current ? { ...current, attempts: current.attempts + 1 } : current,
+          ),
+        )
+    }, 3000)
+    return () => window.clearTimeout(timeout)
+  }, [confirmingPayment, paymentSuccess?.attempts, refresh])
+
+  async function downloadInvoice(requestId: string) {
+    const { file, fileName } = await loadTransportInvoice(requestId)
+    saveFile(file, fileName)
+  }
+
+  async function downloadRequestInvoice(requestId: string) {
+    if (downloadingInvoiceId) return
+    setError('')
+    setDownloadingInvoiceId(requestId)
+    try {
+      await downloadInvoice(requestId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido descargar la factura.')
+    } finally {
+      setDownloadingInvoiceId(null)
+    }
+  }
   async function refreshData() {
     setLoading(true)
     setError('')
@@ -367,7 +417,17 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           </>
         ))}
 
-      {section === 'mis-transportes' && (
+      {section === 'mis-transportes' && paymentSuccess && (
+        <PaymentSuccessPanel
+          request={successRequest}
+          confirming={confirmingPayment}
+          formatCurrency={formatCurrency}
+          onDownloadInvoice={downloadInvoice}
+          onClose={() => setPaymentSuccess(null)}
+        />
+      )}
+
+      {section === 'mis-transportes' && !paymentSuccess && (
         <>
           <div className="client-portal-hero">
             <div>
@@ -501,13 +561,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 requests.map((request) => (
                   <Card
                     key={request.id}
-                    className={`invoice-card client-transport-card ${
-                      request.status === 'por_verificar'
+                    className={`invoice-card client-transport-card ${request.status === 'por_verificar'
                         ? '!border-l-[#ca8a04]'
                         : request.status === 'confirmada' || request.status === 'en_ruta'
                           ? '!border-l-[#171717]'
                           : ''
-                    }`}
+                      }`}
                   >
                     <CardContent>
                       <div className="invoice-icon">
@@ -527,9 +586,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             .map((animal) =>
                               transportBoxCategoryLabel(
                                 animal.assignedBoxCategory ??
-                                  animal.requestedBoxCategory ??
-                                  animal.minimumBoxCategory ??
-                                  'pequeno',
+                                animal.requestedBoxCategory ??
+                                animal.minimumBoxCategory ??
+                                'pequeno',
                               ),
                             )
                             .join(' · ')}
@@ -561,6 +620,17 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                           <small className="payment-state">
                             <CheckCircle2 size={13} /> Pago registrado
                           </small>
+                        )}
+                        {isConfirmedTransport(request.status) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={Boolean(downloadingInvoiceId)}
+                            onClick={() => void downloadRequestInvoice(request.id)}
+                          >
+                            <FileText size={15} />{' '}
+                            {downloadingInvoiceId === request.id ? 'Descargando…' : 'Factura'}
+                          </Button>
                         )}
                         {request.status === 'pago_pendiente' && (
                           <Button
