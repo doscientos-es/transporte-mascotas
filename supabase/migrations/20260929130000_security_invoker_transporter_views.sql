@@ -86,7 +86,14 @@ grant execute on function private.transporter_route_actions() to authenticated;
 
 create or replace view public.transporter_invoices
 with (security_invoker = true) as
-  select * from private.transporter_invoices();
+  select invoice.id,
+         invoice.letter_id,
+         invoice.payer,
+         invoice.concept,
+         invoice.total_amount::numeric(12, 2) as total_amount,
+         invoice.status,
+         invoice.created_at
+  from private.transporter_invoices() invoice;
 
 create or replace view public.transporter_route_actions
 with (security_invoker = true) as
