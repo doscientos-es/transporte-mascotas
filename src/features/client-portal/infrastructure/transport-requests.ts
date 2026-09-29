@@ -44,6 +44,7 @@ type RequestRow = {
     ordinal: number
     species: string
     breed: string
+    birth_date: string | null
     weight_kg: number
     length_cm: number
     height_cm: number
@@ -96,6 +97,7 @@ function mapRequest(row: RequestRow): TransportRequest {
       ordinal: animal.ordinal,
       species: animal.species,
       breed: animal.breed,
+      birthDate: animal.birth_date ?? '',
       weightKg: animal.weight_kg,
       lengthCm: animal.length_cm,
       heightCm: animal.height_cm,
@@ -250,6 +252,7 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
         name,
         species,
         breed,
+        birthDate,
         weightKg,
         lengthCm,
         heightCm,
@@ -261,6 +264,7 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
         name,
         species,
         breed,
+        birth_date: birthDate,
         weight_kg: weightKg,
         length_cm: lengthCm,
         height_cm: heightCm,

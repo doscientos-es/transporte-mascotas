@@ -293,7 +293,7 @@ export interface TransportRequestAnimal {
   ordinal: number
   species: string
   breed: string
-  birthDate?: string
+  birthDate: string
   weightKg: number
   lengthCm: number
   heightCm: number

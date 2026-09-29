@@ -20,6 +20,7 @@ import {
   Check,
   ClipboardCheck,
   CreditCard,
+  FileText,
   MapPin,
   PawPrint,
   Plus,
@@ -88,6 +89,7 @@ const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
   name: '',
   species: '',
   breed: '',
+  birthDate: '',
   weightKg: 0,
   lengthCm: 0,
   heightCm: 0,
@@ -208,7 +210,7 @@ function ageInMonths(birthDate: string, onDate: string) {
   return (year - birthYear) * 12 + (month - birthMonth) - (day < birthDay ? 1 : 0)
 }
 
-function petAgeNotice(birthDate: string | undefined, travelDate: string) {
+function petAgeNotice(birthDate: string, travelDate: string) {
   if (!birthDate) return ''
   const months = ageInMonths(birthDate, travelDate)
   if (months < 2)
@@ -216,6 +218,67 @@ function petAgeNotice(birthDate: string | undefined, travelDate: string) {
   if (months >= 3)
     return 'Con más de 3 meses es obligatorio que lleve microchip. Puedes continuar, pero debe tenerlo implantado el día del viaje.'
   return ''
+}
+
+function petRequiredDocuments(animal: TransportRequestAnimal, travelDate: string) {
+  if (animal.species !== 'Canina' && animal.species !== 'Felina')
+    return ['Cartilla o documentación sanitaria, si la tiene.']
+  const documents = ['Cartilla sanitaria o pasaporte con las vacunas al día.']
+  if (!animal.birthDate) documents.push('Microchip implantado si tiene 3 meses o más.')
+  else if (ageInMonths(animal.birthDate, travelDate) >= 3)
+    documents.push('Microchip implantado y registrado.')
+  return documents
+}
+
+function PetDocumentsNotice({
+  animals,
+  travelDate,
+}: {
+  animals: TransportRequestAnimal[]
+  travelDate: string
+}) {
+  const withSpecies = animals.filter((animal) => animal.species)
+  if (!withSpecies.length) return null
+  return (
+    <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs leading-5 text-sky-900">
+      <p className="flex items-center gap-1.5 font-semibold">
+        <FileText size={14} className="shrink-0" /> Documentación que debe traer el día del viaje
+      </p>
+      {withSpecies.map((animal) => (
+        <div key={animal.ordinal} className="mt-1.5">
+          {withSpecies.length > 1 && (
+            <strong>{animal.name.trim() || `Mascota ${animal.ordinal}`}</strong>
+          )}
+          <ul className="list-disc pl-5">
+            {petRequiredDocuments(animal, travelDate).map((document) => (
+              <li key={document}>{document}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SharedBoxNotice() {
+  return (
+    <p className="mt-3 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900">
+      <PawPrint size={14} className="mt-0.5 shrink-0" />
+      <span>
+        Cada mascota viaja en su propio box. Si quieres que vayan juntas en el mismo box, contacta
+        con{' '}
+        <a
+          className="font-bold underline"
+          href={`https://wa.me/34658604933?text=${encodeURIComponent('Hola Stella, quiero consultar la disponibilidad para que mis mascotas viajen juntas en el mismo box.')}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Stella por WhatsApp (658 60 49 33)
+        </a>{' '}
+        para consultar la disponibilidad.
+      </span>
+    </p>
+  )
 }
 
 type Props = {
@@ -261,6 +324,8 @@ export function ClientRequestForm({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)
+  const [today] = useState(() => new Date().toISOString().slice(0, 10))
+  const travelDate = values.desiredDate || today
   const [originSuggestion, setOriginSuggestion] = useState('')
   const originSuggestionRequest = useRef(0)
 
@@ -1053,19 +1118,14 @@ export function ClientRequestForm({
                       <Input
                         id={`animal-${animal.ordinal}-birth-date`}
                         type="date"
-                        max={new Date().toISOString().slice(0, 10)}
-                        value={animal.birthDate ?? ''}
-                        onChange={(event) =>
-                          updateAnimal(index, { birthDate: event.target.value || undefined })
-                        }
+                        max={today}
+                        value={animal.birthDate}
+                        onChange={(event) => updateAnimal(index, { birthDate: event.target.value })}
                         className="min-h-11"
                         required
                       />
                       {(() => {
-                        const notice = petAgeNotice(
-                          animal.birthDate,
-                          values.desiredDate || new Date().toISOString().slice(0, 10),
-                        )
+                        const notice = petAgeNotice(animal.birthDate, travelDate)
                         return (
                           notice && (
                             <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900">
@@ -1194,8 +1254,10 @@ export function ClientRequestForm({
                       </div>
                     )
                   })()}
+                  <PetDocumentsNotice animals={[animal]} travelDate={travelDate} />
                 </div>
               ))}
+              {values.animals.length > 1 && <SharedBoxNotice />}
               <Button
                 type="button"
                 variant="outline"
@@ -1283,6 +1345,8 @@ export function ClientRequestForm({
                   <small>Según el tamaño de cada box</small>
                 </div>
               </div>
+              {values.animals.length > 1 && <SharedBoxNotice />}
+              <PetDocumentsNotice animals={values.animals} travelDate={travelDate} />
               <p className="payment-note">
                 {adminMode ? <ClipboardCheck size={15} /> : <ShieldCheck size={15} />}{' '}
                 {adminMode

@@ -307,6 +307,10 @@ export function LetterForm({
       setError('Selecciona al menos un documento que acompañe al animal.')
       return
     }
+    if (draft.animals.some((animal) => !animal.birthDate || animal.birthDate > todayIso())) {
+      setError('Indica una fecha de nacimiento válida para cada mascota.')
+      return
+    }
     setError('')
     setSaving(true)
     try {
@@ -1361,6 +1365,16 @@ function AnimalsSection({
                     value={animal.breed}
                     onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
                     placeholder="Opcional · Ej. Labrador, Mestizo…"
+                  />
+                </Label>
+                <Label className="col-span-2">
+                  Fecha de nacimiento
+                  <Input
+                    type="date"
+                    max={todayIso()}
+                    value={animal.birthDate}
+                    onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
+                    required
                   />
                 </Label>
                 <Label className="col-span-2">
