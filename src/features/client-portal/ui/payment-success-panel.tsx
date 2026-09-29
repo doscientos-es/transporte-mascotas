@@ -5,7 +5,12 @@ import { useState } from 'react'
 import type { TransportRequest } from '@/shared/types'
 
 import { formatDate } from '../application/route-maps'
-import { googleCalendarUrl, transportCalendarIcs } from '../application/transport-calendar'
+import {
+  googleCalendarUrl,
+  isConfirmedTransport,
+  transportCalendarIcs,
+} from '../application/transport-calendar'
+import { saveFile } from './save-file'
 
 type Props = {
   request?: TransportRequest
@@ -13,20 +18,6 @@ type Props = {
   formatCurrency: (cents: number) => string
   onDownloadInvoice: (requestId: string) => Promise<void>
   onClose: () => void
-}
-
-export const isConfirmedTransport = (status: TransportRequest['status']) =>
-  status === 'confirmada' || status === 'en_ruta' || status === 'entregada'
-
-export function saveFile(file: Blob, fileName: string) {
-  const url = URL.createObjectURL(file)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = fileName
-  document.body.append(link)
-  link.click()
-  link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export function PaymentSuccessPanel({
@@ -110,7 +101,7 @@ export function PaymentSuccessPanel({
 
       {request && (
         <div className="payment-success-actions">
-          <Button type="button" disabled={!confirmed || downloading} onClick={downloadInvoice}>
+          <Button type="button" disabled={!confirmed || downloading} onClick={() => void downloadInvoice()}>
             {downloading ? <RefreshCw className="is-spinning" size={16} /> : <FileText size={16} />}
             {downloading ? 'Descargando…' : 'Descargar factura'}
           </Button>

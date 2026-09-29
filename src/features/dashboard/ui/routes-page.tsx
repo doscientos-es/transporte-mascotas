@@ -455,7 +455,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= stops.length) return
     const next = [...stops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     setMovingStop(true)
     try {
       setOperationError('')
@@ -471,7 +471,7 @@ export function RoutesPage({
     const target = index + direction
     if (target < 0 || target >= plannedStops.length) return
     const next = [...plannedStops]
-    ;[next[index], next[target]] = [next[target], next[index]]
+      ;[next[index], next[target]] = [next[target], next[index]]
     try {
       setPlannedStops(await calculateDrivingTimes(next))
     } catch {
@@ -628,8 +628,6 @@ export function RoutesPage({
                           variant="outline"
                           size="sm"
                           disabled={!canClose}
-                          title={closeUnavailableReason}
-                          aria-describedby={canClose ? undefined : `close-hint-${route.id}`}
                           onClick={() => setCloseConfirmationOpen(true)}
                         >
                           <Lock /> Cerrar itinerario
@@ -647,7 +645,7 @@ export function RoutesPage({
             </p>
           )}
           {canManage && !itineraryClosed && !canClose && (
-            <p className="availability-hint" id={`close-hint-${route.id}`}>
+            <p className="availability-hint">
               <Lock size={13} /> {closeUnavailableReason}
             </p>
           )}

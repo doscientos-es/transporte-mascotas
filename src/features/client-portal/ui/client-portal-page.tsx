@@ -46,7 +46,9 @@ import {
   saveClientPets,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
-import { isConfirmedTransport, PaymentSuccessPanel, saveFile } from './payment-success-panel'
+import { isConfirmedTransport } from '../application/transport-calendar'
+import { PaymentSuccessPanel } from './payment-success-panel'
+import { saveFile } from './save-file'
 import { submitPaymentForm } from './submit-payment-form'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
@@ -561,13 +563,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 requests.map((request) => (
                   <Card
                     key={request.id}
-                    className={`invoice-card client-transport-card ${
-                      request.status === 'por_verificar'
+                    className={`invoice-card client-transport-card ${request.status === 'por_verificar'
                         ? '!border-l-[#ca8a04]'
                         : request.status === 'confirmada' || request.status === 'en_ruta'
                           ? '!border-l-[#171717]'
                           : ''
-                    }`}
+                      }`}
                   >
                     <CardContent>
                       <div className="invoice-icon">
@@ -587,9 +588,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                             .map((animal) =>
                               transportBoxCategoryLabel(
                                 animal.assignedBoxCategory ??
-                                  animal.requestedBoxCategory ??
-                                  animal.minimumBoxCategory ??
-                                  'pequeno',
+                                animal.requestedBoxCategory ??
+                                animal.minimumBoxCategory ??
+                                'pequeno',
                               ),
                             )
                             .join(' · ')}

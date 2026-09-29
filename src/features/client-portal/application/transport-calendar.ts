@@ -5,6 +5,9 @@ type CalendarRequest = Pick<
   'id' | 'origin' | 'destination' | 'desiredDate' | 'animals'
 >
 
+export const isConfirmedTransport = (status: TransportRequest['status']) =>
+  status === 'confirmada' || status === 'en_ruta' || status === 'entregada'
+
 const compactDate = (value: string) => value.replaceAll('-', '')
 
 function nextDay(value: string) {
