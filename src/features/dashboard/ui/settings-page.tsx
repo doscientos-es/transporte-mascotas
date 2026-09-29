@@ -109,7 +109,9 @@ export function SettingsPage({
       await onInvite(inviteEmail)
       setInviteEmail('')
     } catch (reason) {
-      setInviteError(reason instanceof Error ? reason.message : 'No se ha podido crear la invitación.')
+      setInviteError(
+        reason instanceof Error ? reason.message : 'No se ha podido crear la invitación.',
+      )
     } finally {
       setInviting(false)
     }

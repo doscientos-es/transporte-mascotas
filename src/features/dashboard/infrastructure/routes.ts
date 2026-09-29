@@ -224,12 +224,10 @@ export async function loadPendingStaffInvitations() {
     .is('accepted_at', null)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return (data ?? []).map(
-    (invitation): StaffInvitation => ({
-      email: invitation.email,
-      createdAt: invitation.created_at,
-    }),
-  )
+  return (data ?? []).map((invitation): StaffInvitation => ({
+    email: invitation.email,
+    createdAt: invitation.created_at,
+  }))
 }
 
 export async function createStaffInvitation(email: string) {
