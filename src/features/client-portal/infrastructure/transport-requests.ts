@@ -320,7 +320,8 @@ async function functionErrorMessage(error: unknown, fallback: string) {
 export async function loadTransportInvoice(requestId: string) {
   const database = requireSupabase()
   const { data, error } = await database.functions.invoke('invoice-pdf', { body: { requestId } })
-  if (error) throw new Error(await functionErrorMessage(error, 'No se ha podido obtener la factura.'))
+  if (error)
+    throw new Error(await functionErrorMessage(error, 'No se ha podido obtener la factura.'))
   const { url, fileName } = (data as { url?: string; fileName?: string } | null) ?? {}
   const token = url ? new URL(url).searchParams.get('token') : null
   if (!token) throw new Error('La factura no ha devuelto un enlace de descarga.')

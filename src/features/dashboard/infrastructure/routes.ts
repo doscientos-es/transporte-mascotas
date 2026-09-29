@@ -7,6 +7,7 @@ import type {
   RouteDirection,
   RouteTemplate,
   ServiceAction,
+  StaffInvitation,
   Transporter,
 } from '@/shared/types'
 
@@ -214,6 +215,45 @@ export async function loadTransporters() {
     id: profile.id,
     displayName: profile.display_name,
   }))
+}
+
+export async function loadPendingStaffInvitations() {
+  const { data, error } = await requireSupabase()
+    .from('staff_invitations')
+    .select('email,created_at')
+    .is('accepted_at', null)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(
+    (invitation): StaffInvitation => ({
+      email: invitation.email,
+      createdAt: invitation.created_at,
+    }),
+  )
+}
+
+export async function createStaffInvitation(email: string) {
+  const { data, error } = await requireSupabase()
+    .from('staff_invitations')
+    .insert({ email: email.trim().toLocaleLowerCase() })
+    .select('email,created_at,accepted_at')
+    .single()
+  if (error?.code === '23505') throw new Error('Este correo ya tiene una invitación.')
+  if (error?.code === '23514') throw new Error('Introduce un correo electrónico válido.')
+  if (error) throw error
+  return {
+    invitation: { email: data.email, createdAt: data.created_at } satisfies StaffInvitation,
+    accepted: data.accepted_at !== null,
+  }
+}
+
+export async function deleteStaffInvitation(email: string) {
+  const { error } = await requireSupabase()
+    .from('staff_invitations')
+    .delete()
+    .eq('email', email)
+    .is('accepted_at', null)
+  if (error) throw error
 }
 
 export async function promoteTransporterToAdmin(profileId: string) {

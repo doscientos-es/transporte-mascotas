@@ -33,7 +33,10 @@ const escapeIcs = (value: string) =>
     .replaceAll('\n', '\\n')
 
 export function transportCalendarIcs(request: CalendarRequest, now = new Date()) {
-  const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const stamp = now
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',

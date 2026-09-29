@@ -63,6 +63,11 @@ export interface Transporter {
   displayName: string
 }
 
+export interface StaffInvitation {
+  email: string
+  createdAt: string
+}
+
 export interface Animal {
   id: string
   species: string

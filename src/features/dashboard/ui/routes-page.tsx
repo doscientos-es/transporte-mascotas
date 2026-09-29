@@ -49,7 +49,7 @@ import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { calculateDrivingTimes } from '../application/driving-times'
-import { canCloseRouteOn } from '../application/route-closure'
+import { canCloseRouteOn, routeCloseUnavailableReason } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { StopFormDialog } from './operation-dialogs'
 
@@ -428,6 +428,7 @@ export function RoutesPage({
   const direction = route.direction ?? 'normal'
   const itineraryClosed = route.status === 'cerrada'
   const canClose = canManage && !itineraryClosed && canCloseRouteOn(route.date)
+  const closeUnavailableReason = canClose ? undefined : routeCloseUnavailableReason(route.date)
   const servicesByStop = useMemo(
     () => groupedServices(route, stops, letters),
     [route, stops, letters],
@@ -622,10 +623,13 @@ export function RoutesPage({
                           </Button>
                         </>
                       )}
-                      {canClose && (
+                      {!itineraryClosed && (
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={!canClose}
+                          title={closeUnavailableReason}
+                          aria-describedby={canClose ? undefined : `close-hint-${route.id}`}
                           onClick={() => setCloseConfirmationOpen(true)}
                         >
                           <Lock /> Cerrar itinerario
@@ -640,6 +644,11 @@ export function RoutesPage({
           {operationError && (
             <p className="form-error route-operation-error" role="alert">
               {operationError}
+            </p>
+          )}
+          {canManage && !itineraryClosed && !canClose && (
+            <p className="availability-hint" id={`close-hint-${route.id}`}>
+              <Lock size={13} /> {closeUnavailableReason}
             </p>
           )}
           {itineraryClosed && (

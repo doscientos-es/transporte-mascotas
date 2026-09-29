@@ -91,7 +91,10 @@ Deno.serve(async (request) => {
         const transportInvoiceId = await transportRequestInvoiceId(body.requestId, userId)
         if (transportInvoiceId === null) return json({ error: 'Solicitud no encontrada.' }, 404)
         if (!transportInvoiceId)
-          return json({ error: 'Tu factura todavía se está preparando. Inténtalo en unos minutos.' }, 409)
+          return json(
+            { error: 'Tu factura todavía se está preparando. Inténtalo en unos minutos.' },
+            409,
+          )
         invoiceId = transportInvoiceId
       } else {
         userId = await requireAdmin(request)
