@@ -48,6 +48,9 @@ const formatDate = (value: string) =>
     year: 'numeric',
   })
 
+const formatAmount = (cents: number) =>
+  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
+
 function requestMessage(request: TransportRequest) {
   const trip = `${request.origin} → ${request.destination} del ${formatDate(request.desiredDate)}`
   const greeting = `Hola ${request.contactName}, te escribimos de Kache Envíos sobre tu transporte ${trip}.`
@@ -69,6 +72,7 @@ export function RequestsPage({ routes, onNotify }: Props) {
   const [rejecting, setRejecting] = useState<TransportRequest | null>(null)
   const [pendingPage, setPendingPage] = useState(1)
   const [historyPage, setHistoryPage] = useState(1)
+  const [awaitingPage, setAwaitingPage] = useState(1)
 
   const refresh = useCallback(async () => {
     setRequests(await loadTransportRequests())
@@ -161,10 +165,14 @@ export function RequestsPage({ routes, onNotify }: Props) {
   }
 
   const pending = requests.filter((request) => request.status === 'por_verificar')
-  const rest = requests.filter((request) => request.status !== 'por_verificar')
+  const awaitingPayment = requests.filter((request) => request.status === 'pago_pendiente')
+  const rest = requests.filter(
+    (request) => request.status !== 'por_verificar' && request.status !== 'pago_pendiente',
+  )
   const availableRoutesFor = (request: TransportRequest) =>
     routes.filter((route) => route.status === 'activa' && route.date === request.desiredDate)
   const pendingPagination = paginate(pending, pendingPage, REQUEST_PAGE_SIZE)
+  const awaitingPagination = paginate(awaitingPayment, awaitingPage, REQUEST_PAGE_SIZE)
   const historyPagination = paginate(rest, historyPage, REQUEST_PAGE_SIZE)
 
   return (
@@ -389,6 +397,78 @@ export function RequestsPage({ routes, onNotify }: Props) {
               ariaLabel="Paginación de solicitudes pendientes"
               onPageChange={setPendingPage}
               summary={`Mostrando ${pendingPagination.firstRecord}–${pendingPagination.lastRecord} de ${pending.length}`}
+            />
+          )}
+        </CardContent>
+      </Card>
+      <Card className="table-card">
+        <CardContent>
+          <div className="table-heading">
+            <div>
+              <h3>Pendientes de pago</h3>
+              <p>
+                {pluralize(
+                  awaitingPayment.length,
+                  'solicitud esperando el pago del cliente',
+                  'solicitudes esperando el pago del cliente',
+                )}
+              </p>
+            </div>
+            <StatusBadge status="pago_pendiente">{awaitingPayment.length} sin pagar</StatusBadge>
+          </div>
+          {!loaded ? null : awaitingPayment.length === 0 ? (
+            <p className="empty-copy">No hay solicitudes pendientes de pago.</p>
+          ) : (
+            <div className="responsive-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Trayecto</th>
+                    <th>Mascotas</th>
+                    <th>Fecha</th>
+                    <th>Importe</th>
+                    <th>Creada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {awaitingPagination.items.map((request) => (
+                    <tr key={request.id}>
+                      <td>
+                        <strong>{request.contactName}</strong>
+                        <small>{request.contactPhone}</small>
+                        <WhatsAppLink
+                          phone={request.contactPhone}
+                          message={requestMessage(request)}
+                          recipient={request.contactName}
+                        />
+                      </td>
+                      <td>
+                        <span className="route-cell">
+                          <b>{request.origin}</b>
+                          <ChevronRight size={14} />
+                          <b>{request.destination}</b>
+                        </span>
+                      </td>
+                      <td>
+                        {request.animals.map((animal) => animal.name || animal.species).join(', ')}
+                      </td>
+                      <td>{formatDate(request.desiredDate)}</td>
+                      <td>{formatAmount(request.amountCents)}</td>
+                      <td>{new Date(request.createdAt).toLocaleDateString('es-ES')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {awaitingPayment.length > 0 && (
+            <Pagination
+              page={awaitingPagination.page}
+              pageCount={awaitingPagination.pageCount}
+              ariaLabel="Paginación de solicitudes pendientes de pago"
+              onPageChange={setAwaitingPage}
+              summary={`Mostrando ${awaitingPagination.firstRecord}–${awaitingPagination.lastRecord} de ${awaitingPayment.length}`}
             />
           )}
         </CardContent>
