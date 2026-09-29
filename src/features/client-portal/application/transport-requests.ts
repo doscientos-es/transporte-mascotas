@@ -11,6 +11,7 @@ export {
   payTransportRequest,
   rejectTransportRequest,
   saveClientPets,
+  setTransportRequestAnimalSharedBox,
   updateTransportRequestAnimalBox,
 } from '../infrastructure/transport-requests'
 export type {

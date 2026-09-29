@@ -1308,7 +1308,7 @@ function AnimalsSection({
     >
       <div className="grid gap-3">
         {animals.map((animal, index) => {
-          const minimumCategory = minimumTransportBoxCategory(animal)
+          const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
           const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
           const hasMeasurements =
             animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0

@@ -466,7 +466,7 @@ export function ClientRequestForm({
         ...values,
         billingClient: { ...values.billingClient, ...payerIdentity(values) },
         animals: values.animals.map((animal) => {
-          const minimumCategory = minimumTransportBoxCategory(animal)
+          const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
           const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
           return {
             ...animal,
@@ -1201,7 +1201,7 @@ export function ClientRequestForm({
                   </div>
                   {(() => {
                     const measured = hasMeasurements(animal)
-                    const minimumCategory = minimumTransportBoxCategory(animal)
+                    const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
                     const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
                     return (
                       <div className="mt-3 grid gap-3">

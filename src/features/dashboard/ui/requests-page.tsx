@@ -19,6 +19,7 @@ import {
   confirmTransportRequest,
   loadTransportRequests,
   rejectTransportRequest,
+  setTransportRequestAnimalSharedBox,
   updateTransportRequestAnimalBox,
 } from '@/features/client-portal'
 import {
@@ -50,6 +51,51 @@ const formatDate = (value: string) =>
 
 const formatAmount = (cents: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
+
+/** Lets the admin put a pet in the same box as another pet of the request. Hidden with one pet. */
+function SharedBoxSelect({
+  request,
+  animal,
+  disabled,
+  onChange,
+}: {
+  request: TransportRequest
+  animal: TransportRequest['animals'][number]
+  disabled: boolean
+  onChange: (
+    request: TransportRequest,
+    animalId: string,
+    partnerAnimalId: string | null,
+  ) => Promise<void>
+}) {
+  const editable = request.status === 'por_verificar' || request.status === 'pago_pendiente'
+  const others = request.animals.filter((other) => other.id && other.id !== animal.id)
+  if (!animal.id || others.length === 0) return null
+  const sharing = animal.sharedBoxGroup
+    ? others.find((other) => other.sharedBoxGroup === animal.sharedBoxGroup)
+    : undefined
+  if (!editable) {
+    return sharing ? (
+      <span className="text-xs">Comparte box con {sharing.name || sharing.species}</span>
+    ) : null
+  }
+  const label = `Compartir box de ${animal.name || animal.species}`
+  return (
+    <select
+      value={sharing?.id ?? ''}
+      onChange={(event) => void onChange(request, animal.id ?? '', event.target.value || null)}
+      disabled={disabled}
+      aria-label={label}
+    >
+      <option value="">Box propio</option>
+      {others.map((other) => (
+        <option value={other.id} key={other.id}>
+          Comparte con {other.name || other.species}
+        </option>
+      ))}
+    </select>
+  )
+}
 
 function requestMessage(request: TransportRequest) {
   const trip = `${request.origin} → ${request.destination} del ${formatDate(request.desiredDate)}`
@@ -159,6 +205,23 @@ export function RequestsPage({ routes, onNotify }: Props) {
       await refresh()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido cambiar el box.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function changeSharedBox(
+    request: TransportRequest,
+    animalId: string,
+    partnerAnimalId: string | null,
+  ) {
+    setBusy(request.id)
+    try {
+      await setTransportRequestAnimalSharedBox(animalId, partnerAnimalId)
+      onNotify(partnerAnimalId ? 'Mascotas en el mismo box.' : 'Mascota en su propio box.')
+      await refresh()
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : 'No se ha podido compartir el box.')
     } finally {
       setBusy('')
     }
@@ -274,6 +337,12 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                   )}
                                 </select>
                               )}
+                              <SharedBoxSelect
+                                request={request}
+                                animal={animal}
+                                disabled={Boolean(busy)}
+                                onChange={changeSharedBox}
+                              />
                             </span>
                           )
                         })}
@@ -554,6 +623,12 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                     )}
                                   </select>
                                 )}
+                                <SharedBoxSelect
+                                  request={request}
+                                  animal={animal}
+                                  disabled={Boolean(busy)}
+                                  onChange={changeSharedBox}
+                                />
                               </label>
                             )
                           })}

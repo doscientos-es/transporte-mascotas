@@ -9,7 +9,9 @@ import { requireSupabase } from './supabase'
 export async function loadTransportBoxCatalog(): Promise<TransportBoxCatalog> {
   const { data, error } = await requireSupabase()
     .from('transport_box_catalog')
-    .select('category, label, amount_cents, large_amount_cents, dimensions, sort_order')
+    .select(
+      'category, label, amount_cents, large_amount_cents, dimensions, max_length_cm, max_height_cm, max_width_cm, sort_order',
+    )
   if (error) throw error
   const catalog = { ...defaultTransportBoxCatalog }
   for (const row of data ?? []) {
@@ -22,6 +24,9 @@ export async function loadTransportBoxCatalog(): Promise<TransportBoxCatalog> {
         largeAmountCents:
           row.large_amount_cents === null ? undefined : Number(row.large_amount_cents),
         dimensions: row.dimensions,
+        maxLengthCm: row.max_length_cm === null ? undefined : Number(row.max_length_cm),
+        maxHeightCm: row.max_height_cm === null ? undefined : Number(row.max_height_cm),
+        maxWidthCm: row.max_width_cm === null ? undefined : Number(row.max_width_cm),
         sortOrder: Number(row.sort_order),
       }
     }
@@ -30,19 +35,25 @@ export async function loadTransportBoxCatalog(): Promise<TransportBoxCatalog> {
 }
 
 export async function saveTransportBoxCatalog(catalog: TransportBoxCatalog) {
-  const prices = Object.fromEntries(
-    transportBoxCategories.flatMap((category) => {
+  const items = Object.fromEntries(
+    transportBoxCategories.map((category) => {
       const item = catalog[category]
       return [
-        [category, Math.round(item.amountCents)],
-        ...(item.largeAmountCents === undefined
-          ? []
-          : [[`${category}_grande`, Math.round(item.largeAmountCents)]]),
+        category,
+        {
+          amount_cents: Math.round(item.amountCents),
+          large_amount_cents:
+            item.largeAmountCents === undefined ? undefined : Math.round(item.largeAmountCents),
+          dimensions: item.dimensions,
+          max_length_cm: item.maxLengthCm,
+          max_height_cm: item.maxHeightCm,
+          max_width_cm: item.maxWidthCm,
+        },
       ]
     }),
   )
   const { error } = await requireSupabase().rpc('update_transport_box_catalog', {
-    p_prices: prices,
+    p_items: items,
   })
   if (error) throw error
 }

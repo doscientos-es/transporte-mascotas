@@ -53,6 +53,7 @@ type RequestRow = {
     minimum_box_category: TransportRequestAnimal['minimumBoxCategory']
     requested_box_category: TransportBoxCategory
     assigned_box_category: TransportBoxCategory
+    shared_box_group: string | null
     client_pet_id: string | null
   }>
 }
@@ -106,6 +107,7 @@ function mapRequest(row: RequestRow): TransportRequest {
       minimumBoxCategory: animal.minimum_box_category,
       requestedBoxCategory: animal.requested_box_category,
       assignedBoxCategory: animal.assigned_box_category,
+      sharedBoxGroup: animal.shared_box_group ?? undefined,
       clientPetId: animal.client_pet_id ?? undefined,
     })),
   }
@@ -385,6 +387,8 @@ export type TransportCarriageLetter = {
     length_cm: number | null
     height_cm: number | null
     width_cm: number | null
+    /** Pets with the same number travel in one box. */
+    shared_box?: number | null
   }>
 }
 
@@ -433,4 +437,16 @@ export async function updateTransportRequestAnimalBox(
     p_category: category,
   })
   if (error) throwRequestError(error, 'No se ha podido cambiar la categoría del box.')
+}
+
+/** Puts the animal in the same box as `partnerAnimalId`, or in its own box when null. */
+export async function setTransportRequestAnimalSharedBox(
+  animalId: string,
+  partnerAnimalId: string | null,
+) {
+  const { error } = await requireSupabase().rpc('set_transport_request_animal_shared_box', {
+    p_animal_id: animalId,
+    p_partner_animal_id: partnerAnimalId,
+  })
+  if (error) throwRequestError(error, 'No se ha podido compartir el box.')
 }

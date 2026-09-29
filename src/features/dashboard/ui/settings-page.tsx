@@ -30,6 +30,8 @@ import {
   transportBoxCategories,
   transportBoxCategoryLabel,
   type TransportBoxCatalog,
+  type TransportBoxCatalogItem,
+  type TransportBoxCategory,
 } from '@/shared/application/transport-boxes'
 import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import type { StaffInvitation, Transporter } from '@/shared/types'
@@ -44,6 +46,12 @@ type Props = {
   boxCatalog: TransportBoxCatalog
   onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
 }
+
+const sizeFields = [
+  { key: 'maxLengthCm', label: 'Largo máx. (cm)' },
+  { key: 'maxWidthCm', label: 'Ancho máx. (cm)' },
+  { key: 'maxHeightCm', label: 'Alto máx. (cm)' },
+] as const
 
 function initialsFor(name: string) {
   return (
@@ -128,10 +136,22 @@ export function SettingsPage({
     }
   }
 
+  function updateDraftItem(
+    category: TransportBoxCategory,
+    patch: Partial<TransportBoxCatalogItem>,
+  ) {
+    setDraftCatalog((current) => ({ ...current, [category]: { ...current[category], ...patch } }))
+  }
+
   async function savePrices() {
     if (
       transportBoxCategories.some(
         (category) =>
+          !draftCatalog[category].dimensions.trim() ||
+          sizeFields.some(({ key }) => {
+            const value = draftCatalog[category][key]
+            return value !== undefined && (!Number.isFinite(value) || value <= 0)
+          }) ||
           !Number.isFinite(draftCatalog[category].amountCents) ||
           draftCatalog[category].amountCents <= 0 ||
           (draftCatalog[category].largeAmountCents !== undefined &&
@@ -139,7 +159,7 @@ export function SettingsPage({
               draftCatalog[category].largeAmountCents <= 0)),
       )
     ) {
-      setPriceError('Introduce un importe positivo para cada categoría de box.')
+      setPriceError('Introduce importes, medidas y dimensiones válidos para cada box.')
       return
     }
     setSavingPrices(true)
@@ -299,9 +319,43 @@ export function SettingsPage({
             <div className="settings-pricing-card" key={category}>
               <div className="settings-pricing-card-heading">
                 <strong>{transportBoxCategoryLabel(category)}</strong>
-                <small>{draftCatalog[category].dimensions}</small>
               </div>
               <div className="settings-pricing-fields">
+                <label className="settings-pricing-field" htmlFor={`box-${category}-dimensions`}>
+                  Dimensiones mostradas
+                  <Input
+                    id={`box-${category}-dimensions`}
+                    type="text"
+                    maxLength={160}
+                    value={draftCatalog[category].dimensions}
+                    onChange={(event) =>
+                      updateDraftItem(category, { dimensions: event.target.value })
+                    }
+                    disabled={savingPrices}
+                  />
+                </label>
+                {sizeFields.map(({ key, label }) =>
+                  draftCatalog[category][key] === undefined ? null : (
+                    <label
+                      className="settings-pricing-field"
+                      htmlFor={`box-${category}-${key}`}
+                      key={key}
+                    >
+                      {label}
+                      <Input
+                        id={`box-${category}-${key}`}
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={draftCatalog[category][key]}
+                        onChange={(event) =>
+                          updateDraftItem(category, { [key]: Number(event.target.value) })
+                        }
+                        disabled={savingPrices}
+                      />
+                    </label>
+                  ),
+                )}
                 <label className="settings-pricing-field" htmlFor={`box-${category}-base`}>
                   Tarifa base (€)
                   <Input

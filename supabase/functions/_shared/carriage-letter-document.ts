@@ -11,6 +11,8 @@ type Animal = {
   length_cm: number | null
   height_cm: number | null
   width_cm: number | null
+  /** Pets with the same number travel in one box. */
+  shared_box?: number | null
 }
 export type CarriageLetter = {
   id: string
@@ -64,7 +66,32 @@ export async function loadCarriageLetter(letterId: string): Promise<CarriageLett
   )
   const [letter] = (await response.json()) as CarriageLetter[]
   if (!letter) return null
-  return { ...letter, animals: letter.animals.toSorted((a, b) => a.ordinal - b.ordinal) }
+  const groupsResponse = await rest(
+    `transport_requests?letter_id=eq.${encodeURIComponent(letterId)}&select=transport_request_animals(ordinal,shared_box_group)`,
+  )
+  const [request] = (await groupsResponse.json()) as Array<{
+    transport_request_animals: Array<{ ordinal: number; shared_box_group: string | null }>
+  }>
+  const groups = [
+    ...new Set(
+      (request?.transport_request_animals ?? [])
+        .map((animal) => animal.shared_box_group)
+        .filter((group): group is string => Boolean(group))
+        .toSorted(),
+    ),
+  ]
+  const sharedBox = (ordinal: number) => {
+    const group = request?.transport_request_animals.find(
+      (animal) => animal.ordinal === ordinal,
+    )?.shared_box_group
+    return group ? groups.indexOf(group) + 1 : null
+  }
+  return {
+    ...letter,
+    animals: letter.animals
+      .map((animal) => ({ ...animal, shared_box: sharedBox(animal.ordinal) }))
+      .toSorted((a, b) => a.ordinal - b.ordinal),
+  }
 }
 
 export function carriageLetterFileName(letter: Pick<CarriageLetter, 'id'>) {
@@ -228,6 +255,7 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
       animal.identification && `Identificación: ${animal.identification}`,
       animal.weight_kg ? `${animal.weight_kg} kg` : '',
       measures.every(Boolean) ? `${measures.join(' × ')} cm` : '',
+      animal.shared_box ? `Box compartido ${animal.shared_box}` : '',
     ].filter(Boolean)
     const lines = wrap(details.join('   ·   '), regular, 10, width)
     ensureSpace(lines.length * 5 + 1.5)

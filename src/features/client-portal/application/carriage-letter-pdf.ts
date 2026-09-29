@@ -183,6 +183,7 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
       animal.identification && `Identificación: ${animal.identification}`,
       animal.weight_kg ? `${animal.weight_kg} kg` : '',
       measures.every(Boolean) ? `${measures.join(' × ')} cm` : '',
+      animal.shared_box ? `Box compartido ${animal.shared_box}` : '',
     ].filter(Boolean)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)

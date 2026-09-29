@@ -8,6 +8,10 @@ export type TransportBoxCatalogItem = {
   amountCents: number
   largeAmountCents?: number
   dimensions: string
+  /** Largest pet measurements (cm) that fit; unset for the wheel-arch box. */
+  maxLengthCm?: number
+  maxHeightCm?: number
+  maxWidthCm?: number
   sortOrder: number
 }
 
@@ -26,6 +30,9 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     label: 'Box pequeño',
     amountCents: 10000,
     dimensions: '33 × 46 × 29 cm · también 33 × 36 × 29 cm',
+    maxLengthCm: 33,
+    maxHeightCm: 29,
+    maxWidthCm: 46,
     sortOrder: 1,
   },
   mediano: {
@@ -33,6 +40,9 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     label: 'Box mediano',
     amountCents: 12000,
     dimensions: '50 × 52 × 50 cm',
+    maxLengthCm: 50,
+    maxHeightCm: 50,
+    maxWidthCm: 52,
     sortOrder: 2,
   },
   grande: {
@@ -41,6 +51,9 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     amountCents: 15000,
     largeAmountCents: 18000,
     dimensions: '100 × 58 × 75 cm · 180 € desde 50 kg',
+    maxLengthCm: 100,
+    maxHeightCm: 75,
+    maxWidthCm: 58,
     sortOrder: 3,
   },
   paso_rueda: {
@@ -61,19 +74,26 @@ export function transportBoxCategoryRank(category: TransportBoxCategory) {
   return category === 'pequeno' ? 1 : category === 'mediano' ? 2 : 3
 }
 
-export function minimumTransportBoxCategory({
-  weightKg,
-  lengthCm,
-  heightCm,
-  widthCm,
-}: Pick<TransportRequestAnimal, 'weightKg' | 'lengthCm' | 'heightCm' | 'widthCm'>): Exclude<
-  TransportBoxCategory,
-  'paso_rueda'
-> {
-  if (weightKg >= 50 || lengthCm > 50 || heightCm > 50 || widthCm > 52) return 'grande'
-  if (lengthCm <= 33 && heightCm <= 29 && widthCm <= 46) return 'pequeno'
-  if (lengthCm <= 50 && heightCm <= 50 && widthCm <= 52) return 'mediano'
-  return 'grande'
+export function minimumTransportBoxCategory(
+  {
+    weightKg,
+    lengthCm,
+    heightCm,
+    widthCm,
+  }: Pick<TransportRequestAnimal, 'weightKg' | 'lengthCm' | 'heightCm' | 'widthCm'>,
+  catalog: TransportBoxCatalog = defaultTransportBoxCatalog,
+): Exclude<TransportBoxCategory, 'paso_rueda'> {
+  const fits = (category: 'pequeno' | 'mediano') => {
+    const item = catalog[category]
+    return (
+      lengthCm <= (item.maxLengthCm ?? Infinity) &&
+      heightCm <= (item.maxHeightCm ?? Infinity) &&
+      widthCm <= (item.maxWidthCm ?? Infinity)
+    )
+  }
+  if (weightKg >= 50 || !fits('mediano')) return 'grande'
+  if (fits('pequeno')) return 'pequeno'
+  return 'mediano'
 }
 
 export function transportBoxPriceCents(
@@ -127,7 +147,7 @@ export function requestedTransportBoxCategory(
 }
 
 export function transportAnimalPriceCents(animal: PricedAnimal, catalog: TransportBoxCatalog) {
-  const minimumCategory = minimumTransportBoxCategory(animal)
+  const minimumCategory = minimumTransportBoxCategory(animal, catalog)
   return transportBoxPriceCents(
     requestedTransportBoxCategory(animal, minimumCategory),
     { weightKg: animal.weightKg, minimumCategory },

@@ -22,6 +22,16 @@ describe('transport box categories', () => {
     ).toBe('grande')
   })
 
+  it('uses the box sizes configured in the catalog', () => {
+    const catalog = {
+      ...defaultTransportBoxCatalog,
+      pequeno: { ...defaultTransportBoxCatalog.pequeno, maxLengthCm: 45 },
+    }
+    const animal = { weightKg: 8, lengthCm: 40, heightCm: 28, widthCm: 40 }
+    expect(minimumTransportBoxCategory(animal)).toBe('mediano')
+    expect(minimumTransportBoxCategory(animal, catalog)).toBe('pequeno')
+  })
+
   it('only offers the minimum category or a larger comfort option', () => {
     expect(transportBoxOptions('mediano')).toEqual(['mediano', 'grande', 'paso_rueda'])
   })

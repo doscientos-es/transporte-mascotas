@@ -302,6 +302,8 @@ export interface TransportRequestAnimal {
   minimumBoxCategory?: Exclude<TransportBoxCategory, 'paso_rueda'>
   requestedBoxCategory?: TransportBoxCategory
   assignedBoxCategory?: TransportBoxCategory
+  /** Pets of the same request with the same id travel in one box. */
+  sharedBoxGroup?: string
   clientPetId?: string
 }
 

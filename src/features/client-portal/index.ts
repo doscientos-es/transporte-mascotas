@@ -7,6 +7,7 @@ export {
   loadUpcomingRoutes,
   payTransportRequest,
   rejectTransportRequest,
+  setTransportRequestAnimalSharedBox,
   updateTransportRequestAnimalBox,
 } from './application/transport-requests'
 export {
