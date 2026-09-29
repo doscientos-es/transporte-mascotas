@@ -114,11 +114,14 @@ export function PaymentSuccessPanel({
             {downloading ? <RefreshCw className="is-spinning" size={16} /> : <FileText size={16} />}
             {downloading ? 'Descargando…' : 'Descargar factura'}
           </Button>
-          <Button asChild variant="outline">
-            <a href={googleCalendarUrl(request)} target="_blank" rel="noreferrer">
-              <CalendarPlus size={16} /> Añadir a Google Calendar
-            </a>
-          </Button>
+          <a
+            className="payment-success-link"
+            href={googleCalendarUrl(request)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <CalendarPlus size={16} /> Añadir a Google Calendar
+          </a>
           <Button type="button" variant="outline" onClick={downloadCalendar}>
             <Download size={16} /> Apple / Outlook (.ics)
           </Button>
