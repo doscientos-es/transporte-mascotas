@@ -223,6 +223,18 @@ export async function saveManualLetter(
   return data
 }
 
+/** Emails the payer the payment link; returns false when the payer has no email. */
+export async function sendPaymentRequestEmail(letterId: string) {
+  const { data, error } = await requireSupabase().functions.invoke('send-payment-request-email', {
+    body: { letterId },
+  })
+  if (error) throw new Error('No se ha podido enviar el email de cobro.')
+  const result = data as { sent?: boolean; error?: string } | null
+  if (result?.error) throw new Error(result.error)
+  return result?.sent === true
+}
+
+
 /** Persists the editable data without ever changing a letter's operational status. */
 export async function updateLetter(
   letter: Letter,

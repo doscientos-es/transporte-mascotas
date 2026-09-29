@@ -12,6 +12,8 @@ export type TransportBoxCatalogItem = {
   maxLengthCm?: number
   maxHeightCm?: number
   maxWidthCm?: number
+  /** From this weight (kg) a pet no longer fits and moves to the next box. */
+  nextBoxFromKg?: number
   sortOrder: number
 }
 
@@ -33,6 +35,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     maxLengthCm: 33,
     maxHeightCm: 29,
     maxWidthCm: 46,
+    nextBoxFromKg: 50,
     sortOrder: 1,
   },
   mediano: {
@@ -43,6 +46,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     maxLengthCm: 50,
     maxHeightCm: 50,
     maxWidthCm: 52,
+    nextBoxFromKg: 50,
     sortOrder: 2,
   },
   grande: {
@@ -88,10 +92,11 @@ export function minimumTransportBoxCategory(
     return (
       lengthCm <= (item.maxLengthCm ?? Infinity) &&
       heightCm <= (item.maxHeightCm ?? Infinity) &&
-      widthCm <= (item.maxWidthCm ?? Infinity)
+      widthCm <= (item.maxWidthCm ?? Infinity) &&
+      weightKg < (item.nextBoxFromKg ?? Infinity)
     )
   }
-  if (weightKg >= 50 || !fits('mediano')) return 'grande'
+  if (!fits('mediano')) return 'grande'
   if (fits('pequeno')) return 'pequeno'
   return 'mediano'
 }

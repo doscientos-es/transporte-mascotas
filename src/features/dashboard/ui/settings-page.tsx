@@ -50,6 +50,7 @@ type Props = {
 const sizeFields = [
   { key: 'maxLengthCm', label: 'Largo máx. (cm)' },
   { key: 'maxWidthCm', label: 'Ancho máx. (cm)' },
+  { key: 'nextBoxFromKg', label: 'Pasa al siguiente desde (kg)' },
   { key: 'maxHeightCm', label: 'Alto máx. (cm)' },
 ] as const
 

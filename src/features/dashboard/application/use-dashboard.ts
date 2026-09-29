@@ -40,6 +40,7 @@ import {
   invalidateLettersCache,
   loadLetters,
   saveManualLetter,
+  sendPaymentRequestEmail,
   updateLetter,
 } from '../infrastructure/letters'
 import {
@@ -782,7 +783,15 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
-      toast(`Carta creada y solicitud de pago vinculada a ${routeTemplate.name}.`)
+      let emailNote = ''
+      try {
+        emailNote = (await sendPaymentRequestEmail(savedLetter.id))
+          ? ' Enlace de pago enviado por email.'
+          : ' El pagador no tiene email: no se ha enviado el enlace de pago.'
+      } catch (emailError) {
+        emailNote = ` ${emailError instanceof Error ? emailError.message : 'No se ha podido enviar el email de cobro.'}`
+      }
+      toast(`Carta creada y solicitud de pago vinculada a ${routeTemplate.name}.${emailNote}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
       toast(message)

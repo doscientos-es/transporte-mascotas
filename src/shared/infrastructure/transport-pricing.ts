@@ -10,7 +10,7 @@ export async function loadTransportBoxCatalog(): Promise<TransportBoxCatalog> {
   const { data, error } = await requireSupabase()
     .from('transport_box_catalog')
     .select(
-      'category, label, amount_cents, large_amount_cents, dimensions, max_length_cm, max_height_cm, max_width_cm, sort_order',
+      'category, label, amount_cents, large_amount_cents, dimensions, max_length_cm, max_height_cm, max_width_cm, next_box_from_kg, sort_order',
     )
   if (error) throw error
   const catalog = { ...defaultTransportBoxCatalog }
@@ -27,6 +27,7 @@ export async function loadTransportBoxCatalog(): Promise<TransportBoxCatalog> {
         maxLengthCm: row.max_length_cm === null ? undefined : Number(row.max_length_cm),
         maxHeightCm: row.max_height_cm === null ? undefined : Number(row.max_height_cm),
         maxWidthCm: row.max_width_cm === null ? undefined : Number(row.max_width_cm),
+        nextBoxFromKg: row.next_box_from_kg === null ? undefined : Number(row.next_box_from_kg),
         sortOrder: Number(row.sort_order),
       }
     }
@@ -48,6 +49,7 @@ export async function saveTransportBoxCatalog(catalog: TransportBoxCatalog) {
           max_length_cm: item.maxLengthCm,
           max_height_cm: item.maxHeightCm,
           max_width_cm: item.maxWidthCm,
+          next_box_from_kg: item.nextBoxFromKg,
         },
       ]
     }),
