@@ -4973,6 +4973,45 @@
   gap: 20px;
 }
 
+.settings-invitations {
+  display: grid;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.team-invite-form {
+  display: flex;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.team-invite-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.team-invitation-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-invitation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid #ececec;
+  border-radius: 10px;
+  color: #454545;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+
 .settings-pricing-heading {
   max-width: 620px;
 }

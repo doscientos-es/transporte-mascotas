@@ -16,25 +16,31 @@ import {
   ArrowUpRight,
   CircleDollarSign,
   Crown,
+  MailPlus,
   MessageCircle,
   Search,
   ShieldCheck,
   UserRound,
   UsersRound,
+  X,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 
 import {
   transportBoxCategories,
   transportBoxCategoryLabel,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
-import type { Transporter } from '@/shared/types'
+import { AUTH_PATHS } from '@/shared/constants/auth-paths'
+import type { StaffInvitation, Transporter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 type Props = {
   transporters: Transporter[]
   onPromote: (transporterId: string) => Promise<void>
+  invitations: StaffInvitation[]
+  onInvite: (email: string) => Promise<void>
+  onRevokeInvitation: (email: string) => Promise<void>
   boxCatalog: TransportBoxCatalog
   onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
 }
@@ -51,8 +57,20 @@ function initialsFor(name: string) {
   )
 }
 
-export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCatalog }: Props) {
+export function SettingsPage({
+  transporters,
+  onPromote,
+  invitations,
+  onInvite,
+  onRevokeInvitation,
+  boxCatalog,
+  onSaveBoxCatalog,
+}: Props) {
   const [query, setQuery] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteError, setInviteError] = useState('')
+  const [revokingEmail, setRevokingEmail] = useState<string | null>(null)
   const [candidate, setCandidate] = useState<Transporter | null>(null)
   const [promoting, setPromoting] = useState(false)
   const [error, setError] = useState('')
@@ -80,6 +98,31 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
       )
     } finally {
       setPromoting(false)
+    }
+  }
+
+  async function inviteMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setInviting(true)
+    setInviteError('')
+    try {
+      await onInvite(inviteEmail)
+      setInviteEmail('')
+    } catch (reason) {
+      setInviteError(reason instanceof Error ? reason.message : 'No se ha podido crear la invitación.')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  async function revokeInvitation(email: string) {
+    setRevokingEmail(email)
+    try {
+      await onRevokeInvitation(email)
+    } catch {
+      // The dashboard already reports the failure.
+    } finally {
+      setRevokingEmail(null)
     }
   }
 
@@ -192,9 +235,56 @@ export function SettingsPage({ transporters, onPromote, boxCatalog, onSaveBoxCat
             <p>
               {query
                 ? 'Prueba con otro nombre.'
-                : 'Los nuevos registros profesionales aparecerán aquí automáticamente.'}
+                : 'Los profesionales invitados aparecerán aquí al confirmar su correo.'}
             </p>
           </div>
+        )}
+      </section>
+      <section className="settings-support settings-invitations">
+        <div>
+          <h2>Invitar transportista</h2>
+          <p>
+            Solo los correos invitados obtienen acceso profesional. Tras invitarle, la persona debe
+            crear su cuenta en <strong>{AUTH_PATHS.staffAccess}</strong> y confirmar su correo.
+          </p>
+        </div>
+        <form className="team-invite-form" onSubmit={(event) => void inviteMember(event)}>
+          <Input
+            type="email"
+            value={inviteEmail}
+            onChange={(event) => setInviteEmail(event.target.value)}
+            placeholder="correo@ejemplo.com"
+            aria-label="Correo del transportista"
+            autoComplete="off"
+            required
+            disabled={inviting}
+          />
+          <Button type="submit" disabled={inviting}>
+            <MailPlus size={16} /> {inviting ? 'Invitando…' : 'Invitar'}
+          </Button>
+        </form>
+        {inviteError && (
+          <p className="form-error" role="alert">
+            {inviteError}
+          </p>
+        )}
+        {invitations.length > 0 && (
+          <ul className="team-invitation-list" aria-label="Invitaciones pendientes">
+            {invitations.map((invitation) => (
+              <li key={invitation.email}>
+                <span>{invitation.email}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={revokingEmail === invitation.email}
+                  onClick={() => void revokeInvitation(invitation.email)}
+                  aria-label={`Retirar invitación de ${invitation.email}`}
+                >
+                  <X size={14} /> Retirar
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
       <section className="settings-support settings-pricing">

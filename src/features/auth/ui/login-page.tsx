@@ -60,7 +60,9 @@ export function LoginPage({ audience }: Props) {
         : 'Crea tu acceso de transportista'
   const description = isClient
     ? 'Consulta tus solicitudes, tus mascotas y cada actualización del transporte.'
-    : 'Accede a las rutas y tareas que tengas asignadas.'
+    : mode === 'signup'
+      ? 'Usa el correo con el que te ha invitado un administrador. Sin invitación no tendrás acceso profesional.'
+      : 'Accede a las rutas y tareas que tengas asignadas.'
   const screenClassName = isClient
     ? 'login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px]'
     : 'login-screen [background:radial-gradient(circle_at_top_right,#dfead8,transparent_38%),#f7f8f5]'
@@ -147,7 +149,7 @@ export function LoginPage({ audience }: Props) {
               Usa al menos 8 caracteres.{' '}
               {isClient
                 ? 'Tus datos solo se usarán para gestionar tus transportes.'
-                : 'Tu cuenta verá únicamente las rutas que se te asignen.'}
+                : 'Tendrás acceso profesional al confirmar tu correo si tienes una invitación.'}
             </p>
           )}
           {feedback && (

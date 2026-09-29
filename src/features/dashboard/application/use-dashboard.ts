@@ -25,6 +25,7 @@ import {
   type RouteDirection,
   type RouteTemplate,
   type ServiceAction,
+  type StaffInvitation,
   type Transporter,
 } from '@/shared/types'
 
@@ -50,6 +51,9 @@ import {
   deleteRouteTemplate,
   loadDailyRoutes,
   loadRouteTemplates,
+  createStaffInvitation,
+  deleteStaffInvitation,
+  loadPendingStaffInvitations,
   loadTransporters,
   promoteTransporterToAdmin,
   reassignVanBox,
@@ -190,6 +194,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [transporters, setTransporters] = useState<Transporter[]>([])
+  const [staffInvitations, setStaffInvitations] = useState<StaffInvitation[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
   const [routesLoading, setRoutesLoading] = useState(Boolean(session))
@@ -247,6 +252,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!session) {
       setRouteTemplates([])
       setTransporters([])
+      setStaffInvitations([])
       setDailyRoutes([])
       setSelectedTemplate(null)
       setSelectedRoute(null)
@@ -294,6 +300,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         .catch(() => {
           if (active) toast('No se ha podido cargar el equipo de transporte.')
         })
+      loadPendingStaffInvitations()
+        .then((loadedInvitations) => {
+          if (active) setStaffInvitations(loadedInvitations)
+        })
+        .catch(() => {
+          if (active) toast('No se han podido cargar las invitaciones del equipo.')
+        })
       loadTransportBoxCatalog()
         .then((loadedCatalog) => {
           if (active) setBoxCatalog(loadedCatalog)
@@ -323,6 +336,28 @@ export function useDashboard(session: Session | null, role: AppRole) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido actualizar el rol.'
       toast(message)
+      throw error
+    }
+  }
+
+  async function inviteStaffMember(email: string) {
+    const { invitation, accepted } = await createStaffInvitation(email)
+    if (accepted) {
+      setTransporters(await loadTransporters())
+      toast(`${invitation.email} ya tenía cuenta y ahora es transportista.`)
+      return
+    }
+    setStaffInvitations((current) => [invitation, ...current])
+    toast(`Invitación creada para ${invitation.email}.`)
+  }
+
+  async function revokeStaffInvitation(email: string) {
+    try {
+      await deleteStaffInvitation(email)
+      setStaffInvitations((current) => current.filter((item) => item.email !== email))
+      toast(`Invitación de ${email} retirada.`)
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'No se ha podido retirar la invitación.')
       throw error
     }
   }
@@ -984,6 +1019,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     ensureLetters,
     routeTemplates,
     transporters,
+    staffInvitations,
     boxCatalog,
     dailyRoutes,
     routesLoading,
@@ -1003,6 +1039,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast,
     signOut,
     promoteTransporter,
+    inviteStaffMember,
+    revokeStaffInvitation,
     updateBoxCatalog,
     updateActions,
     updateRouteStops,
