@@ -129,7 +129,7 @@ export function DashboardLayout({
       >
         <Icon size={18} />
         <span>{label}</span>
-        {id === 'cartas' && (
+        {id === 'cartas' && pendingLetters > 0 && (
           <b className="ml-auto grid size-5 place-items-center rounded-full bg-white/20 text-[11px]">
             {pendingLetters}
           </b>

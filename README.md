@@ -20,6 +20,10 @@ facturación.
 2. Copia `.env.example` a `.env.local` y completa las variables públicas de Supabase:
    `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`.
 
+El formulario público de transporte usa sesiones anónimas de Supabase al enviar la solicitud.
+En proyectos alojados, activa **Authentication → Settings → Allow anonymous sign-ins** además de
+aplicar las migraciones.
+
 3. Arranca el servidor de desarrollo:
 
    ```text

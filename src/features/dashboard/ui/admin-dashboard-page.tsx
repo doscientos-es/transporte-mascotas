@@ -307,6 +307,7 @@ export function AdminDashboardPage({
               <LetterCreatePage
                 routes={dashboard.dailyRoutes}
                 templates={dashboard.routeTemplates}
+                boxCatalog={dashboard.boxCatalog}
                 onClose={() => navigateToSection('cartas')}
                 onCreate={async (draft) => {
                   await dashboard.createLetter(draft)
@@ -467,6 +468,7 @@ export function AdminDashboardPage({
             <LetterFormDialog
               routes={dashboard.dailyRoutes}
               templates={dashboard.routeTemplates}
+              boxCatalog={dashboard.boxCatalog}
               letter={dashboard.editingLetter}
               routeId={editingRouteId}
               onClose={() => dashboard.setEditingLetter(null)}

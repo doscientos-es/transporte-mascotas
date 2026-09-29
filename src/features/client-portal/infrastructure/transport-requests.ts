@@ -5,6 +5,7 @@ import type {
   TransportRequestAnimal,
   TransportBoxCategory,
   UpcomingRoute,
+  RouteStop,
 } from '@/shared/types'
 
 import { throwRequestError } from './request-errors'
@@ -177,6 +178,29 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
     templateColor: row.template_color,
     localities: row.localities ?? [],
     stops: row.stops ?? [],
+  }))
+}
+
+type PublicUpcomingRouteRow = Omit<UpcomingRouteRow, 'stops'> & {
+  stops: Array<Pick<RouteStop, 'id' | 'locality' | 'latitude' | 'longitude'>> | null
+}
+
+export async function loadPublicUpcomingRoutes(): Promise<UpcomingRoute[]> {
+  const { data, error } = await requireSupabase().rpc('list_public_transport_routes')
+  if (error) throwRequestError(error, 'No se han podido cargar las próximas salidas.')
+  return ((data ?? []) as PublicUpcomingRouteRow[]).map((row) => ({
+    id: row.id,
+    serviceDate: row.service_date,
+    routeDirection: row.route_direction,
+    templateName: row.template_name,
+    templateColor: row.template_color,
+    localities: row.localities ?? [],
+    stops: (row.stops ?? []).map((stop) => ({
+      ...stop,
+      place: '',
+      mapUrl: '',
+      minutes: 0,
+    })),
   }))
 }
 

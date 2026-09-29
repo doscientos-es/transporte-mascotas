@@ -34,7 +34,7 @@ type LetterRow = {
   billing_client: unknown
   signed_at: string | null
   imported_at: string
-  route_templates: Array<{ name: string }> | null
+  route_templates: { name: string } | Array<{ name: string }> | null
   animals: Array<{
     id: string
     species: string
@@ -117,7 +117,7 @@ async function fetchLetters(): Promise<Letter[]> {
     billingPayer: letter.billing_payer ?? 'remitente',
     billingClient: invoiceClientFrom(letter.billing_client),
     signedAt: letter.signed_at ?? undefined,
-    route: letter.route_templates?.[0]?.name ?? 'Sin ruta',
+    route: routeTemplateName(letter.route_templates) ?? 'Sin ruta',
     serviceDate: letter.service_date,
     status: letter.status,
     importedAt: new Date(letter.imported_at).toLocaleString('es-ES'),
@@ -301,4 +301,8 @@ export async function updateLetter(
     .eq('letter_id', letter.id)
     .not('id', 'in', `(${animalIds.join(',')})`)
   if (removedAnimalsError) throw removedAnimalsError
+}
+
+function routeTemplateName(template: LetterRow['route_templates']) {
+  return (Array.isArray(template) ? template[0] : template)?.name
 }

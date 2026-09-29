@@ -98,3 +98,37 @@ export function transportBoxOptions(minimum: Exclude<TransportBoxCategory, 'paso
     (category) => category === 'paso_rueda' || transportBoxCategoryRank(category) >= minimumRank,
   )
 }
+
+type PricedAnimal = Pick<
+  TransportRequestAnimal,
+  'weightKg' | 'lengthCm' | 'heightCm' | 'widthCm' | 'requestedBoxCategory'
+>
+
+/** The requested box, falling back to the minimum when it no longer fits the measurements. */
+export function requestedTransportBoxCategory(
+  animal: PricedAnimal,
+  minimumCategory = minimumTransportBoxCategory(animal),
+): TransportBoxCategory {
+  const requestedCategory = animal.requestedBoxCategory
+  if (
+    requestedCategory &&
+    (requestedCategory === 'paso_rueda' ||
+      transportBoxCategoryRank(requestedCategory) >= transportBoxCategoryRank(minimumCategory))
+  ) {
+    return requestedCategory
+  }
+  return minimumCategory
+}
+
+export function transportAnimalPriceCents(animal: PricedAnimal, catalog: TransportBoxCatalog) {
+  const minimumCategory = minimumTransportBoxCategory(animal)
+  return transportBoxPriceCents(
+    requestedTransportBoxCategory(animal, minimumCategory),
+    { weightKg: animal.weightKg, minimumCategory },
+    catalog,
+  )
+}
+
+export function transportAnimalsTotalCents(animals: PricedAnimal[], catalog: TransportBoxCatalog) {
+  return animals.reduce((total, animal) => total + transportAnimalPriceCents(animal, catalog), 0)
+}

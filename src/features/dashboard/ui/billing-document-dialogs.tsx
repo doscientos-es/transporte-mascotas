@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { ClientInvoice, ManualPaymentMethod } from '@/shared/types'
 
-import { prepareInvoiceDocument } from '../application/invoice-preview'
+import { loadInvoiceDocumentBlob, prepareInvoiceDocument } from '../application/invoice-preview'
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 import { downloadBlob } from './billing-document-export'
@@ -40,11 +40,8 @@ export function InvoicePreviewDialog({
       .then(async (preparedDocument) => {
         if (!preparedDocument) return
         if (active) setSourceUrl(preparedDocument.url)
-        const response = await fetch(preparedDocument.url)
-        if (!response.ok) throw new Error('No se ha podido descargar la factura.')
-        if (active) {
-          setDocument({ blob: await response.blob(), fileName: preparedDocument.fileName })
-        }
+        const blob = await loadInvoiceDocumentBlob(preparedDocument.url)
+        if (active) setDocument({ blob, fileName: preparedDocument.fileName })
       })
       .catch(() => {
         if (active) setError('No se ha podido preparar la vista previa de la factura.')
@@ -108,7 +105,8 @@ export function InvoicePreviewDialog({
 
 function openBlob(blob: Blob) {
   const url = URL.createObjectURL(blob)
-  window.open(url, '_blank', 'noopener,noreferrer')
+  const openedWindow = window.open(url, '_blank')
+  if (openedWindow) openedWindow.opener = null
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 

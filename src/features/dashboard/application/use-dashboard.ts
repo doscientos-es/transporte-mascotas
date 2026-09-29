@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   defaultTransportBoxCatalog,
+  transportAnimalsTotalCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
@@ -712,8 +713,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
         recipientProvince: draft.recipientProvince.trim(),
         origin: draft.origin.trim(),
         destination: draft.destination.trim(),
-        originPoint: draft.originPoint.trim(),
-        destinationPoint: draft.destinationPoint.trim(),
+        originPoint: draft.originPoint.trim() || draft.senderAddress.trim(),
+        destinationPoint: draft.destinationPoint.trim() || draft.recipientAddress.trim(),
         accompanyingDocuments: draft.accompanyingDocuments,
         billingPayer: draft.billingPayer,
         billingClient: billingClientForDraft(draft),
@@ -734,7 +735,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         routeActions,
         reference,
         draft.signatureConfirmed,
-        draft.billingTotal,
+        transportAnimalsTotalCents(draft.animals, boxCatalog) / 100,
       )
       const savedLetter = { ...letter, id: savedId ?? letter.id }
       const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
@@ -791,8 +792,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
         recipientProvince: draft.recipientProvince.trim(),
         origin: draft.origin.trim(),
         destination: draft.destination.trim(),
-        originPoint: draft.originPoint.trim(),
-        destinationPoint: draft.destinationPoint.trim(),
+        originPoint: draft.originPoint.trim() || draft.senderAddress.trim(),
+        destinationPoint: draft.destinationPoint.trim() || draft.recipientAddress.trim(),
         accompanyingDocuments: draft.accompanyingDocuments,
         billingPayer: draft.billingPayer,
         billingClient: billingClientForDraft(draft),

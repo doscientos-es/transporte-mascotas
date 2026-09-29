@@ -23,9 +23,10 @@ function App() {
 function AuthenticatedApp() {
   const { session, ready, profile, profileReady, authError, profileError, retry, signOut } =
     useAuthSession()
-  const isPasswordResetRoute =
-    window.location.pathname.replace(/\/+$/, '') === AUTH_PATHS.passwordReset
-  if (!ready || (session && !profileReady && !isPasswordResetRoute))
+  const pathname = window.location.pathname.replace(/\/+$/, '')
+  const isSessionOptionalRoute =
+    pathname === AUTH_PATHS.passwordReset || pathname === AUTH_PATHS.publicTransportRequest
+  if (!ready || (session && !profileReady && !isSessionOptionalRoute))
     return (
       <output className="loading-screen" aria-live="polite">
         Cargando sesión segura…
@@ -37,10 +38,10 @@ function AuthenticatedApp() {
         Configura Supabase para acceder a la aplicación.
       </div>
     )
-  if (authError && !isPasswordResetRoute) return <AppState message={authError} onRetry={retry} />
+  if (authError && !isSessionOptionalRoute) return <AppState message={authError} onRetry={retry} />
   if (!profile)
     return session ? (
-      isPasswordResetRoute ? (
+      isSessionOptionalRoute ? (
         <AppRouter session={session} profile={profile} />
       ) : (
         <AppState

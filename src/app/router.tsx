@@ -24,6 +24,7 @@ type DashboardRouteContext = AuthenticatedRouteContext & { navigation: Dashboard
 
 const AuthContext = createContext<AuthState>({ session: null, profile: null })
 const clientPortalRoute = () => import('./router/client-portal-route')
+const publicTransportRequestRoute = () => import('./router/public-transport-request-route')
 const staffDashboardRoute = () => import('./router/staff-dashboard-route')
 
 const router = createBrowserRouter([
@@ -54,6 +55,11 @@ const router = createBrowserRouter([
           {
             path: ROUTER_PATHS.passwordReset,
             lazy: () => import('./router/password-reset-route'),
+            HydrateFallback: LoadingRoute,
+          },
+          {
+            path: ROUTER_PATHS.publicTransportRequest,
+            lazy: publicTransportRequestRoute,
             HydrateFallback: LoadingRoute,
           },
         ],

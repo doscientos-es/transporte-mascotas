@@ -139,10 +139,9 @@ export interface LetterDraft {
   destinationPoint: string
   accompanyingDocuments: AccompanyingDocument[]
   billingPayer: InvoicePayer
-  billingTotal: number
   otherPayer: InvoiceClientInput
   signatureConfirmed: boolean
-  animals: Array<Omit<Animal, 'id'>>
+  animals: Array<Omit<Animal, 'id'> & { requestedBoxCategory?: TransportBoxCategory }>
 }
 
 export interface Client {

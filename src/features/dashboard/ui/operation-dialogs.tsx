@@ -28,6 +28,16 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import {
+  minimumTransportBoxCategory,
+  requestedTransportBoxCategory,
+  transportAnimalsTotalCents,
+  transportBoxCategoryLabel,
+  transportBoxCategoryRank,
+  transportBoxOptions,
+  transportBoxPriceCents,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
 import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
 import type {
   AccompanyingDocument,
@@ -39,11 +49,12 @@ import type {
   LetterDraft,
   RouteDirection,
   RouteTemplate,
+  TransportBoxCategory,
   Transporter,
 } from '@/shared/types'
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
-import { animalSizeLabel, sizeForMeasurements } from '../application/animal-size'
+import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -92,8 +103,18 @@ const emptyInvoiceClient = (): InvoiceClientInput => ({
   city: '',
   postalCode: '',
 })
+const euros = (cents: number) =>
+  (cents / 100).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+const speciesOptions: Array<[string, string]> = [
+  ['Canina', 'Perro'],
+  ['Felina', 'Gato'],
+  ['Ave', 'Ave'],
+  ['Roedor', 'Roedor'],
+  ['Reptil', 'Reptil'],
+  ['Otra', 'Otra'],
+]
 const emptyAnimal = () => ({
-  species: 'Canina',
+  species: '',
   breed: '',
   birthDate: '',
   weightKg: 0,
@@ -127,7 +148,6 @@ const emptyLetter: LetterDraft = {
   recipientProvince: '',
   accompanyingDocuments: [],
   billingPayer: 'remitente',
-  billingTotal: 0,
   otherPayer: emptyInvoiceClient(),
   signatureConfirmed: true,
   animals: [emptyAnimal()],
@@ -138,9 +158,51 @@ const todayIso = () => {
   return today.toISOString().slice(0, 10)
 }
 
+const letterLabelStyles =
+  '[&_label]:grid [&_label]:gap-1.5 [&_label]:text-xs [&_label]:font-semibold [&_label]:text-[#454545] [&_input]:h-10'
+const letterFieldGrid = `grid gap-3 sm:grid-cols-2 ${letterLabelStyles}`
+const letterSelect =
+  'border-border bg-background text-foreground focus-visible:ring-ring/50 h-10 w-full min-w-0 rounded-lg border px-2.5 text-sm font-normal outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50'
+
+function LetterFormSection({
+  step,
+  icon,
+  title,
+  description,
+  action,
+  children,
+}: {
+  step: number
+  icon: ReactNode
+  title: string
+  description: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="border-border bg-card rounded-xl border p-4 sm:p-5">
+      <header className="mb-4 flex items-start gap-3">
+        <span className="text-accent grid size-8 shrink-0 place-items-center rounded-full bg-[#fff0f1]">
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-foreground m-0 text-sm font-semibold">
+            <span className="text-muted-foreground mr-1.5 font-normal">{step}.</span>
+            {title}
+          </h3>
+          <p className="text-muted-foreground mt-0.5 mb-0 text-xs">{description}</p>
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  )
+}
+
 export type LetterFormProps = {
   routes: DailyRoute[]
   templates: RouteTemplate[]
+  boxCatalog: TransportBoxCatalog
   onClose: () => void
   onCreate: (draft: LetterDraft) => Promise<void>
   onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>
@@ -151,6 +213,7 @@ export type LetterFormProps = {
 export function LetterForm({
   routes,
   templates,
+  boxCatalog,
   onClose,
   onCreate,
   onAddStop,
@@ -186,7 +249,6 @@ export function LetterForm({
           destinationPoint: letter.destinationPoint,
           accompanyingDocuments: letter.accompanyingDocuments,
           billingPayer: letter.billingPayer,
-          billingTotal: 0,
           otherPayer:
             letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
           signatureConfirmed: false,
@@ -288,18 +350,22 @@ export function LetterForm({
         (_, index) => current.animals[index] ?? emptyAnimal(),
       ),
     }))
+  const routeOptions = useMemo(
+    () => letterRouteOptions(routes, { keepRouteId: routeId }),
+    [routes, routeId],
+  )
   const form = (
     <form
       className={
         fullPage
-          ? 'space-y-3 pb-2.5'
-          : 'max-h-[min(69vh,620px)] space-y-3 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]'
+          ? 'space-y-4 pb-2.5'
+          : 'max-h-[min(69vh,620px)] space-y-4 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]'
       }
       onSubmit={(event) => void submit(event)}
     >
       <TripSection
         draft={draft}
-        routes={routes}
+        routes={routeOptions}
         templates={templates}
         selectedRoute={selectedRoute}
         stops={stops}
@@ -309,24 +375,11 @@ export function LetterForm({
         lockReference={isEditing}
       />
       <ContactsSection draft={draft} update={update} />
-      <Label
-        className="mb-3 grid max-w-[185px] gap-1.5 text-xs font-bold text-[#454545]"
-        htmlFor="animal-count"
-      >
-        Número de animales
-        <Input
-          id="animal-count"
-          type="number"
-          min="1"
-          max="12"
-          value={draft.animals.length}
-          onChange={(event) => updateAnimalCount(Number(event.target.value))}
-          required
-        />
-      </Label>
       <AnimalsSection
         animals={draft.animals}
+        boxCatalog={boxCatalog}
         updateAnimal={updateAnimal}
+        onCountChange={updateAnimalCount}
         onAdd={() => updateAnimalCount(draft.animals.length + 1)}
         onRemove={(index) =>
           setDraft((current) => ({
@@ -343,6 +396,7 @@ export function LetterForm({
       />
       <BillingAndSignatureSection
         draft={draft}
+        totalCents={transportAnimalsTotalCents(draft.animals, boxCatalog)}
         update={update}
         isEditing={isEditing}
         onOtherPayerChange={(field, value) =>
@@ -357,7 +411,7 @@ export function LetterForm({
           {error}
         </p>
       )}
-      <div className="bg-card sticky bottom-0 flex justify-end gap-[9px] pt-[9px] shadow-[0_-8px_14px_#fff] max-sm:[&_button]:flex-1">
+      <div className="bg-card border-border sticky bottom-0 flex justify-end gap-2 border-t pt-3 max-sm:[&_button]:flex-1">
         <Button type="submit" disabled={saving}>
           <ShieldCheck />{' '}
           {saving
@@ -414,72 +468,84 @@ function TripSection({
   onAddStop: (field: 'origin' | 'destination') => void
   lockReference: boolean
 }) {
-  const template = templates.find((item) => item.id === selectedRoute?.templateId)
   const itineraryClosed = Boolean(selectedRoute?.closedAt)
+  const today = madridIsoDate()
+  const upcomingRoutes = routes.filter((route) => route.date >= today)
+  const recentRoutes = routes.filter((route) => route.date < today)
+  const stopPlaceholder = selectedRoute ? 'Selecciona una parada…' : 'Elige primero una ruta'
   const selectStop = (field: 'origin' | 'destination', value: string) =>
     value === '__new-stop__' ? onAddStop(field) : update(field, value)
+  const routeOption = (route: DailyRoute) => {
+    const date = new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })
+    const name =
+      templates.find((item) => item.id === route.templateId)?.name ?? 'Ruta sin plantilla'
+    const direction = route.direction === 'inversa' ? ' · sentido inverso' : ''
+    return (
+      <option value={route.id} key={route.id}>
+        {`${date} · ${name}${direction}`}
+      </option>
+    )
+  }
   return (
-    <section className="border-border bg-card rounded-xl border p-[18px]">
-      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-        <MapPin size={17} />
-        <div>
-          <h3>¿Dónde se realiza el servicio?</h3>
-          <p>Selecciona la ruta y los dos puntos del trayecto.</p>
-        </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+    <LetterFormSection
+      step={1}
+      icon={<MapPin size={16} />}
+      title="Trayecto"
+      description="Elige la ruta diaria y las paradas de recogida y entrega."
+    >
+      <div className={letterFieldGrid}>
         <Label className="sm:col-span-2">
           Ruta diaria
           <select
+            className={letterSelect}
             value={draft.routeId}
             onChange={(event) => onRouteChange(event.target.value)}
             required
           >
-            <option value="">Selecciona una ruta…</option>
-            {routes.map((route) => (
-              <option value={route.id} key={route.id}>
-                {templates.find((item) => item.id === route.templateId)?.name ??
-                  'Ruta sin plantilla'}{' '}
-                ·{' '}
-                {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'long',
-                })}
-              </option>
-            ))}
+            <option value="">
+              {routes.length ? 'Selecciona una ruta…' : 'No hay rutas disponibles'}
+            </option>
+            {upcomingRoutes.length > 0 && (
+              <optgroup label="Próximas salidas">{upcomingRoutes.map(routeOption)}</optgroup>
+            )}
+            {recentRoutes.length > 0 && (
+              <optgroup label="Últimos días">{recentRoutes.map(routeOption)}</optgroup>
+            )}
           </select>
         </Label>
-        <Label>
-          Número de carta
-          <Input
-            value={draft.reference}
-            onChange={(event) => update('reference', event.target.value)}
-            placeholder="Se asigna automáticamente"
-            disabled={lockReference}
-          />
-        </Label>
-        <p className="text-muted-foreground mb-0 self-end text-[11px] max-sm:-mt-[5px]">
-          {lockReference
-            ? 'La referencia no se puede cambiar una vez creada.'
-            : 'Puedes dejarlo vacío si no tienes una referencia.'}
-        </p>
-      </div>
-      {selectedRoute && (
-        <output className="[&_strong]:text-accent my-[13px] grid gap-[3px] rounded-[9px] border border-[#f0cdd0] bg-[#fffafa] p-3 text-xs text-[#4d4d4d] [&_span]:text-[11px] [&_span]:leading-[1.45]">
-          <strong>{template?.name}</strong>
-          <span>Paradas de esta ruta: {stops.join(' · ')}</span>
-        </output>
-      )}
-      <div className="grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
+        {selectedRoute && (
+          <ol
+            className="m-0 flex list-none flex-wrap items-center gap-1.5 rounded-lg border border-[#f0cdd0] bg-[#fffafa] p-2.5 sm:col-span-2"
+            aria-label="Paradas de la ruta"
+          >
+            {stops.map((stop, index) => (
+              <li
+                className="bg-card inline-flex items-center gap-1 rounded-full border border-[#f0cdd0] px-2 py-0.5 text-[11px] text-[#4d4d4d]"
+                key={stop}
+              >
+                <span className="text-accent font-semibold">{index + 1}</span>
+                {stop}
+              </li>
+            ))}
+            {itineraryClosed && (
+              <li className="text-muted-foreground text-[11px]">Itinerario cerrado</li>
+            )}
+          </ol>
+        )}
         <Label>
           Origen
           <select
+            className={letterSelect}
             value={draft.origin}
             onChange={(event) => selectStop('origin', event.target.value)}
             disabled={!selectedRoute}
             required
           >
-            <option value="">Selecciona una parada…</option>
+            <option value="">{stopPlaceholder}</option>
             {stops.map((stop) => (
               <option value={stop} key={stop}>
                 {stop}
@@ -491,12 +557,13 @@ function TripSection({
         <Label>
           Destino
           <select
+            className={letterSelect}
             value={draft.destination}
             onChange={(event) => selectStop('destination', event.target.value)}
             disabled={!selectedRoute}
             required
           >
-            <option value="">Selecciona una parada…</option>
+            <option value="">{stopPlaceholder}</option>
             {stops.map((stop) => (
               <option value={stop} key={stop}>
                 {stop}
@@ -505,8 +572,22 @@ function TripSection({
             {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
           </select>
         </Label>
+        <Label className="sm:col-span-2">
+          Número de carta
+          <Input
+            value={draft.reference}
+            onChange={(event) => update('reference', event.target.value)}
+            placeholder="Ej. 2026-0142 (opcional, se asigna automáticamente)"
+            disabled={lockReference}
+          />
+          <span className="text-muted-foreground text-[11px] font-normal">
+            {lockReference
+              ? 'La referencia no se puede cambiar una vez creada.'
+              : 'Déjalo vacío si no tienes una referencia propia.'}
+          </span>
+        </Label>
       </div>
-    </section>
+    </LetterFormSection>
   )
 }
 
@@ -949,34 +1030,41 @@ function ContactsSection({ draft, update }: { draft: LetterDraft; update: Letter
       value,
     )
   return (
-    <section className="border-border bg-card rounded-xl border p-[18px]">
-      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-        <UserRound size={17} />
-        <div>
-          <h3>Remitente y destinatario</h3>
-          <p>Completa los datos de las dos personas para la recogida, la entrega y la factura.</p>
-        </div>
-      </div>
-      <div className="grid gap-[18px] sm:grid-cols-2">
-        <ContactDetails title="Remitente" person="sender" draft={draft} onChange={updatePerson} />
+    <LetterFormSection
+      step={2}
+      icon={<UserRound size={16} />}
+      title="Remitente y destinatario"
+      description="Datos de contacto para la recogida, la entrega y la factura."
+    >
+      <div className="grid gap-3">
+        <ContactDetails
+          title="Remitente"
+          subtitle="Quien entrega la mascota"
+          person="sender"
+          draft={draft}
+          onChange={updatePerson}
+        />
         <ContactDetails
           title="Destinatario"
+          subtitle="Quien recibe la mascota"
           person="recipient"
           draft={draft}
           onChange={updatePerson}
         />
       </div>
-    </section>
+    </LetterFormSection>
   )
 }
 
 function ContactDetails({
   title,
+  subtitle,
   person,
   draft,
   onChange,
 }: {
   title: string
+  subtitle: string
   person: 'sender' | 'recipient'
   draft: LetterDraft
   onChange: (
@@ -1043,198 +1131,239 @@ function ContactDetails({
   }
 
   return (
-    <fieldset className="grid min-w-0 content-start gap-2.5 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
-      <legend className="text-foreground mb-[11px] text-[13px] font-bold sm:col-span-2">
-        {title}
+    <fieldset className="m-0 min-w-0 rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4">
+      <legend className="float-left mb-3 flex w-full items-baseline gap-2 p-0">
+        <strong className="text-foreground text-[13px]">{title}</strong>
+        <span className="text-muted-foreground text-[11px]">{subtitle}</span>
       </legend>
-      <Label>
-        Nombre y apellidos
-        <Input
-          value={value('Name')}
-          onChange={(event) => onChange(person, 'Name', event.target.value)}
-          autoComplete="name"
-          required
-        />
-      </Label>
-      <Label>
-        Teléfono
-        <Input
-          type="tel"
-          value={value('Phone')}
-          onChange={(event) => onChange(person, 'Phone', event.target.value)}
-          autoComplete="tel"
-          inputMode="tel"
-          required
-        />
-      </Label>
-      <Label>
-        DNI / NIF
-        <Input
-          value={value('Nif')}
-          onChange={(event) => onChange(person, 'Nif', event.target.value)}
-          required
-        />
-      </Label>
-      <Label>
-        Email (opcional)
-        <Input
-          type="email"
-          value={value('Email')}
-          onChange={(event) => onChange(person, 'Email', event.target.value)}
-          autoComplete="email"
-        />
-      </Label>
-      <div className="relative sm:col-span-2" aria-busy={lookingUpAddress}>
-        <Label>
-          Dirección
+      <div className={`clear-both grid gap-3 sm:grid-cols-6 ${letterLabelStyles}`}>
+        <Label className="sm:col-span-3">
+          Nombre y apellidos
           <Input
-            value={address}
-            onChange={(event) => updateAddress(event.target.value)}
-            placeholder="Ej. Calle Mayor 12, Madrid"
-            autoComplete="street-address"
+            value={value('Name')}
+            onChange={(event) => onChange(person, 'Name', event.target.value)}
+            placeholder="Ej. María García López"
+            autoComplete="name"
             required
           />
         </Label>
-        {lookingUpAddress && (
-          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-            Buscando la dirección…
-          </output>
-        )}
-        {addressLookupState === 'empty' && (
-          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-            No hemos encontrado esa dirección. Puedes completar los campos manualmente.
-          </output>
-        )}
-        {addressLookupState === 'failed' && (
-          <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-            No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
-          </output>
-        )}
-        {addressSuggestions.length > 0 && (
-          <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
-            {addressSuggestions.map((suggestion) => (
-              <button
-                type="button"
-                key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.postalCode}`}
-                onClick={() => selectAddress(suggestion)}
-              >
-                <strong>
-                  {suggestion.street}
-                  {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
-                </strong>
-                <span>
-                  {[suggestion.locality, suggestion.postalCode, suggestion.province]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        <Label className="sm:col-span-3">
+          Teléfono
+          <Input
+            type="tel"
+            value={value('Phone')}
+            onChange={(event) => onChange(person, 'Phone', event.target.value)}
+            placeholder="Ej. 612 345 678"
+            autoComplete="tel"
+            inputMode="tel"
+            required
+          />
+        </Label>
+        <Label className="sm:col-span-3">
+          DNI / NIF
+          <Input
+            value={value('Nif')}
+            onChange={(event) => onChange(person, 'Nif', event.target.value)}
+            placeholder="Ej. 12345678Z"
+            required
+          />
+        </Label>
+        <Label className="sm:col-span-3">
+          Email (opcional)
+          <Input
+            type="email"
+            value={value('Email')}
+            onChange={(event) => onChange(person, 'Email', event.target.value)}
+            placeholder="nombre@correo.com"
+            autoComplete="email"
+          />
+        </Label>
+        <div className="relative sm:col-span-6" aria-busy={lookingUpAddress}>
+          <Label>
+            Dirección
+            <Input
+              value={address}
+              onChange={(event) => updateAddress(event.target.value)}
+              placeholder="Ej. Calle Mayor 12, Madrid"
+              autoComplete="street-address"
+              required
+            />
+          </Label>
+          {lookingUpAddress && (
+            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+              Buscando la dirección…
+            </output>
+          )}
+          {addressLookupState === 'empty' && (
+            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+              No hemos encontrado esa dirección. Puedes completar los campos manualmente.
+            </output>
+          )}
+          {addressLookupState === 'failed' && (
+            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+              No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
+            </output>
+          )}
+          {addressSuggestions.length > 0 && (
+            <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
+              {addressSuggestions.map((suggestion) => (
+                <button
+                  type="button"
+                  key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.postalCode}`}
+                  onClick={() => selectAddress(suggestion)}
+                >
+                  <strong>
+                    {suggestion.street}
+                    {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
+                  </strong>
+                  <span>
+                    {[suggestion.locality, suggestion.postalCode, suggestion.province]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <Label className="sm:col-span-2">
+          Código postal
+          <Input
+            value={value('PostalCode')}
+            onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
+            placeholder="Ej. 28013"
+            autoComplete="postal-code"
+            inputMode="numeric"
+            required
+          />
+        </Label>
+        <Label className="sm:col-span-2">
+          Municipio
+          <Input
+            value={value('City')}
+            onChange={(event) => onChange(person, 'City', event.target.value)}
+            placeholder="Ej. Madrid"
+            autoComplete="address-level2"
+            required
+          />
+        </Label>
+        <Label className="sm:col-span-2">
+          Provincia
+          <Input
+            value={value('Province')}
+            onChange={(event) => onChange(person, 'Province', event.target.value)}
+            placeholder="Ej. Madrid"
+            autoComplete="address-level1"
+            required
+          />
+        </Label>
       </div>
-      <Label>
-        Código postal
-        <Input
-          value={value('PostalCode')}
-          onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
-          autoComplete="postal-code"
-          inputMode="numeric"
-          required
-        />
-      </Label>
-      <Label>
-        Municipio
-        <Input
-          value={value('City')}
-          onChange={(event) => onChange(person, 'City', event.target.value)}
-          autoComplete="address-level2"
-          required
-        />
-      </Label>
-      <Label className="sm:col-span-2">
-        Provincia
-        <Input
-          value={value('Province')}
-          onChange={(event) => onChange(person, 'Province', event.target.value)}
-          autoComplete="address-level1"
-          required
-        />
-      </Label>
     </fieldset>
   )
 }
 
 function AnimalsSection({
   animals,
+  boxCatalog,
   updateAnimal,
+  onCountChange,
   onAdd,
   onRemove,
 }: {
   animals: LetterDraft['animals']
+  boxCatalog: TransportBoxCatalog
   updateAnimal: <K extends keyof LetterDraft['animals'][number]>(
     index: number,
     field: K,
     value: LetterDraft['animals'][number][K],
   ) => void
+  onCountChange: (count: number) => void
   onAdd: () => void
   onRemove: (index: number) => void
 }) {
   return (
-    <section className="border-border bg-card rounded-xl border p-[18px]">
-      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-        <PawPrint size={17} />
-        <div>
-          <h3>Mascotas que viajan</h3>
-          <p>El peso y las medidas calculan automáticamente el tamaño para asignar el box.</p>
-        </div>
-      </div>
-      <div className="grid gap-2.5">
+    <LetterFormSection
+      step={3}
+      icon={<PawPrint size={16} />}
+      title="Mascotas que viajan"
+      description="El peso y las medidas recomiendan el box y calculan el precio, igual que en el portal del cliente."
+      action={
+        <Label className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs font-semibold">
+          Nº animales
+          <Input
+            className="h-9 w-16 text-center"
+            type="number"
+            min="1"
+            max="12"
+            value={animals.length}
+            onChange={(event) => onCountChange(Number(event.target.value))}
+            aria-label="Número de animales"
+          />
+        </Label>
+      }
+    >
+      <div className="grid gap-3">
         {animals.map((animal, index) => {
-          const calculatedSize = sizeForMeasurements(animal)
+          const minimumCategory = minimumTransportBoxCategory(animal)
+          const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
+          const hasMeasurements =
+            animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
           return (
             <article
-              className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+              className="rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4"
               key={index}
             >
-              <div className="[&_button]:text-accent mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222] [&_button]:min-h-7 [&_button]:px-[7px] [&_button]:text-[11px]">
-                <strong>Animal {index + 1}</strong>
+              <div className="mb-3 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <strong className="text-foreground text-[13px]">Animal {index + 1}</strong>
+                  {hasMeasurements && (
+                    <span className="border-border bg-card text-muted-foreground rounded-full border px-2 py-0.5 text-[11px] font-semibold">
+                      {transportBoxCategoryLabel(requestedCategory)}
+                    </span>
+                  )}
+                </div>
                 {animals.length > 1 && (
-                  <Button variant="ghost" size="sm" type="button" onClick={() => onRemove(index)}>
-                    <Trash2 size={16} /> Quitar
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="text-accent h-7 px-2 text-[11px]"
+                    onClick={() => onRemove(index)}
+                  >
+                    <Trash2 size={14} /> Quitar
                   </Button>
                 )}
               </div>
-              <div className="mb-3 grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
-                <Label>
+              <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${letterLabelStyles}`}>
+                <Label className="col-span-2">
                   Especie
                   <select
+                    className={letterSelect}
                     value={animal.species}
                     onChange={(event) => updateAnimal(index, 'species', event.target.value)}
                     required
                   >
-                    <option>Canina</option>
-                    <option>Felina</option>
-                    <option>Ave</option>
-                    <option>Otro</option>
+                    <option value="">Selecciona una especie</option>
+                    {animal.species &&
+                      !speciesOptions.some(([value]) => value === animal.species) && (
+                        <option value={animal.species}>{animal.species}</option>
+                      )}
+                    {speciesOptions.map(([value, label]) => (
+                      <option value={value} key={value}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 </Label>
-                <Label>
+                <Label className="col-span-2">
                   Raza
                   <Input
                     value={animal.breed}
                     onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
-                    required
+                    placeholder="Opcional · Ej. Labrador, Mestizo…"
                   />
                 </Label>
-                <Label>
-                  Fecha de nacimiento
-                  <Input
-                    type="date"
-                    value={animal.birthDate}
-                    onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
-                  />
-                </Label>
-                <Label>
+                <Label className="col-span-2">
                   Peso (kg)
                   <Input
                     type="number"
@@ -1244,6 +1373,8 @@ function AnimalsSection({
                     onChange={(event) =>
                       updateAnimal(index, 'weightKg', Number(event.target.value))
                     }
+                    placeholder="Ej. 12,5"
+                    inputMode="decimal"
                     required
                   />
                 </Label>
@@ -1257,6 +1388,8 @@ function AnimalsSection({
                     onChange={(event) =>
                       updateAnimal(index, 'lengthCm', Number(event.target.value))
                     }
+                    placeholder="Ej. 70"
+                    inputMode="numeric"
                     required
                   />
                 </Label>
@@ -1270,10 +1403,12 @@ function AnimalsSection({
                     onChange={(event) =>
                       updateAnimal(index, 'heightCm', Number(event.target.value))
                     }
+                    placeholder="Ej. 55"
+                    inputMode="numeric"
                     required
                   />
                 </Label>
-                <Label>
+                <Label className="col-span-2">
                   Ancho (cm)
                   <Input
                     type="number"
@@ -1281,20 +1416,51 @@ function AnimalsSection({
                     step="1"
                     value={animal.widthCm || ''}
                     onChange={(event) => updateAnimal(index, 'widthCm', Number(event.target.value))}
+                    placeholder="Ej. 30"
+                    inputMode="numeric"
                     required
                   />
                 </Label>
               </div>
-              <fieldset className="min-w-0 border-0 p-0">
-                <legend className="grid gap-1.5 text-xs font-bold text-[#454545]">
-                  Tamaño calculado
-                </legend>
-                <div className="mt-[7px] flex gap-[7px]">
-                  <span className="border-border bg-card grid min-h-9 flex-1 place-items-center rounded-[7px] border text-[11px] font-bold text-[#555]">
-                    {animalSizeLabel(calculatedSize)}
-                  </span>
+              {hasMeasurements && (
+                <div className={`mt-3 grid gap-1.5 ${letterLabelStyles}`}>
+                  <Label>
+                    Categoría de box
+                    <select
+                      className={letterSelect}
+                      value={requestedCategory}
+                      onChange={(event) =>
+                        updateAnimal(
+                          index,
+                          'requestedBoxCategory',
+                          event.target.value as TransportBoxCategory,
+                        )
+                      }
+                    >
+                      {transportBoxOptions(minimumCategory).map((category) => (
+                        <option value={category} key={category}>
+                          {transportBoxCategoryLabel(category)} ·{' '}
+                          {euros(
+                            transportBoxPriceCents(
+                              category,
+                              { weightKg: animal.weightKg, minimumCategory },
+                              boxCatalog,
+                            ),
+                          )}
+                          {transportBoxCategoryRank(category) >
+                          transportBoxCategoryRank(minimumCategory)
+                            ? ' · extra por comodidad'
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Label>
+                  <p className="text-muted-foreground m-0 text-[11px]">
+                    Recomendación automática: {transportBoxCategoryLabel(minimumCategory)} ·{' '}
+                    {boxCatalog[minimumCategory].dimensions}
+                  </p>
                 </div>
-              </fieldset>
+              )}
             </article>
           )
         })}
@@ -1302,13 +1468,13 @@ function AnimalsSection({
       <Button
         variant="outline"
         type="button"
-        className="mt-[11px] min-h-[38px] w-full border-dashed text-[#9d1921]"
+        className="text-accent mt-3 h-10 w-full border-dashed"
         onClick={onAdd}
         disabled={animals.length >= 12}
       >
-        <Plus size={17} /> Añadir otro animal
+        <Plus size={16} /> Añadir otro animal
       </Button>
-    </section>
+    </LetterFormSection>
   )
 }
 
@@ -1336,15 +1502,13 @@ function DocumentsSection({
         : [...documents, document],
     )
   return (
-    <section className="border-border bg-card rounded-xl border p-[18px]">
-      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-        <FilePenLine size={17} />
-        <div>
-          <h3>Documentación que acompaña</h3>
-          <p>Marca todo lo que viaja con los animales.</p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <LetterFormSection
+      step={4}
+      icon={<FilePenLine size={16} />}
+      title="Documentación que acompaña"
+      description="Marca todo lo que viaja con los animales (mínimo uno)."
+    >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {accompanyingDocumentOptions.map(([value, label]) => (
           <label className="relative block cursor-pointer" key={value}>
             <input
@@ -1353,23 +1517,25 @@ function DocumentsSection({
               checked={documents.includes(value)}
               onChange={() => toggle(value)}
             />
-            <span className="border-border bg-card peer-checked:border-accent grid min-h-[38px] place-items-center rounded-lg border p-1.5 text-center text-[11px] font-bold text-[#555] peer-checked:bg-[#fff0f1] peer-checked:text-[#9d1921]">
+            <span className="border-border bg-card peer-checked:border-accent peer-focus-visible:ring-ring/50 grid h-10 place-items-center rounded-lg border p-1.5 text-center text-xs font-semibold text-[#555] transition-colors peer-checked:bg-[#fff0f1] peer-checked:text-[#9d1921] peer-focus-visible:ring-3 hover:bg-[#fafafa]">
               {label}
             </span>
           </label>
         ))}
       </div>
-    </section>
+    </LetterFormSection>
   )
 }
 
 function BillingAndSignatureSection({
   draft,
+  totalCents,
   update,
   isEditing,
   onOtherPayerChange,
 }: {
   draft: LetterDraft
+  totalCents: number
   update: LetterUpdate
   isEditing: boolean
   onOtherPayerChange: (field: keyof InvoiceClientInput, value: string) => void
@@ -1380,15 +1546,13 @@ function BillingAndSignatureSection({
     manual: ['Empresa u otro', 'Indicar datos fiscales'],
   }
   return (
-    <section className="border-border bg-card rounded-xl border p-[18px]">
-      <div className="text-accent [&_p]:text-muted-foreground mb-[15px] flex items-start gap-[9px] [&_h3]:m-0 [&_h3]:text-sm [&_p]:mt-[3px] [&_p]:text-xs">
-        <CreditCard size={17} />
-        <div>
-          <h3>¿Quién paga el servicio?</h3>
-          <p>Al guardar, se creará una solicitud de pago para la persona elegida.</p>
-        </div>
-      </div>
-      <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-[70px] [&_button]:gap-1 [&_button]:rounded-[9px] [&_button]:border [&_button]:p-2.5 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:text-xs">
+    <LetterFormSection
+      step={5}
+      icon={<CreditCard size={16} />}
+      title="¿Quién paga el servicio?"
+      description="Al guardar, se creará una solicitud de pago para la persona elegida."
+    >
+      <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-16 [&_button]:gap-1 [&_button]:rounded-lg [&_button]:border [&_button]:p-3 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button]:transition-colors [&_button:hover]:bg-[#fafafa] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:truncate [&_strong]:text-xs">
         {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (
           <button
             type="button"
@@ -1403,12 +1567,15 @@ function BillingAndSignatureSection({
         ))}
       </div>
       {draft.billingPayer === 'manual' && (
-        <div className="client-form invoice-client-form">
-          <Label className="form-span">
+        <div
+          className={`mt-3 rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4 ${letterFieldGrid}`}
+        >
+          <Label className="sm:col-span-2">
             Nombre o razón social
             <Input
               value={draft.otherPayer.fullName}
               onChange={(event) => onOtherPayerChange('fullName', event.target.value)}
+              placeholder="Ej. Clínica Veterinaria Sol, S.L."
               required
             />
           </Label>
@@ -1417,6 +1584,7 @@ function BillingAndSignatureSection({
             <Input
               value={draft.otherPayer.nif}
               onChange={(event) => onOtherPayerChange('nif', event.target.value)}
+              placeholder="Ej. B12345678"
               required
             />
           </Label>
@@ -1426,6 +1594,7 @@ function BillingAndSignatureSection({
               type="email"
               value={draft.otherPayer.email}
               onChange={(event) => onOtherPayerChange('email', event.target.value)}
+              placeholder="facturacion@empresa.com"
               required
             />
           </Label>
@@ -1435,14 +1604,8 @@ function BillingAndSignatureSection({
               type="tel"
               value={draft.otherPayer.phone}
               onChange={(event) => onOtherPayerChange('phone', event.target.value)}
-              required
-            />
-          </Label>
-          <Label className="form-span">
-            Dirección fiscal
-            <Input
-              value={draft.otherPayer.address}
-              onChange={(event) => onOtherPayerChange('address', event.target.value)}
+              placeholder="Ej. 912 345 678"
+              inputMode="tel"
               required
             />
           </Label>
@@ -1451,6 +1614,17 @@ function BillingAndSignatureSection({
             <Input
               value={draft.otherPayer.postalCode}
               onChange={(event) => onOtherPayerChange('postalCode', event.target.value)}
+              placeholder="Ej. 28013"
+              inputMode="numeric"
+              required
+            />
+          </Label>
+          <Label>
+            Dirección fiscal
+            <Input
+              value={draft.otherPayer.address}
+              onChange={(event) => onOtherPayerChange('address', event.target.value)}
+              placeholder="Ej. Calle Mayor 12, 2º B"
               required
             />
           </Label>
@@ -1459,25 +1633,28 @@ function BillingAndSignatureSection({
             <Input
               value={draft.otherPayer.city}
               onChange={(event) => onOtherPayerChange('city', event.target.value)}
+              placeholder="Ej. Madrid"
               required
             />
           </Label>
         </div>
       )}
       {!isEditing && (
-        <Label className="date-field mt-4">
-          Importe a cobrar (IVA incluido)
-          <Input
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={draft.billingTotal || ''}
-            onChange={(event) => update('billingTotal', Number(event.target.value))}
-            required
-          />
-        </Label>
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-[#e2e2e2] bg-[#fafafa] px-3 py-2.5">
+          <div>
+            <span className="text-muted-foreground block text-xs font-semibold">
+              Importe a cobrar (IVA incluido)
+            </span>
+            <span className="text-muted-foreground text-[11px]">
+              Calculado según el box de cada mascota
+            </span>
+          </div>
+          <strong className="text-foreground text-lg" aria-live="polite">
+            {euros(totalCents)}
+          </strong>
+        </div>
       )}
-    </section>
+    </LetterFormSection>
   )
 }
 

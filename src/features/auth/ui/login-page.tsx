@@ -183,6 +183,11 @@ export function LoginPage({ audience }: Props) {
             ¿Has olvidado tu contraseña?
           </a>
         )}
+        {isClient && (
+          <a className="auth-flow-link" href={AUTH_PATHS.publicTransportRequest}>
+            Solicitar un transporte sin cuenta
+          </a>
+        )}
         <button
           type="button"
           className="auth-switch"

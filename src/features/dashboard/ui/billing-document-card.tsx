@@ -85,11 +85,7 @@ export function BillingDocumentCard({
                 {new Date(issued?.issuedAt ?? invoice.createdAt).toLocaleDateString('es-ES')}
               </span>
             </div>
-            {isIssued ? (
-              <span className="invoice-status invoice-paid">
-                <CheckCircle2 size={15} /> Emitida
-              </span>
-            ) : (
+            {!isIssued && (
               <span className="invoice-status invoice-pending">Pendiente de cobro</span>
             )}
           </div>

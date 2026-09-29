@@ -23,3 +23,14 @@ export async function prepareInvoiceDocument(invoiceId: string) {
   if (!url) throw new Error('La factura no ha devuelto un enlace de descarga.')
   return { url, fileName: fileName ?? '' }
 }
+
+export async function loadInvoiceDocumentBlob(url: string) {
+  const token = new URL(url).searchParams.get('token')
+  if (!supabase || !token) throw new Error('El enlace de la factura no es válido.')
+  const { data, error } = await supabase.functions.invoke(
+    `invoice-pdf?token=${encodeURIComponent(token)}`,
+    { method: 'GET' },
+  )
+  if (error || !(data instanceof Blob)) throw new Error('No se ha podido descargar la factura.')
+  return data
+}

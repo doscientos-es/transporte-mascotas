@@ -90,6 +90,18 @@ export async function findCanonicalInvoiceDocument(
   return document?.issued_invoice_id === invoice.id ? document : null
 }
 
+async function loadBrandLogo(pdf: PDFDocument) {
+  const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+  if (!appUrl) return null
+  try {
+    const response = await fetch(`${appUrl}/icon-512.png`)
+    if (!response.ok) return null
+    return await pdf.embedPng(new Uint8Array(await response.arrayBuffer()))
+  } catch {
+    return null
+  }
+}
+
 async function renderInvoice(invoice: IssuedInvoice) {
   const snapshot = invoice.fiscal_snapshot
   const issuer = snapshot.issuer ?? {}
@@ -153,7 +165,12 @@ async function renderInvoice(invoice: IssuedInvoice) {
     color = ink,
     gap = 14,
   ) => values.forEach((value, index) => draw(value, x, y - index * gap, size, emphasis, color))
+  const logo = await loadBrandLogo(pdf)
   const drawLogo = (x: number, y: number) => {
+    if (logo) {
+      page.drawImage(logo, { x: x - 21, y: y - 21, width: 42, height: 42 })
+      return
+    }
     page.drawEllipse({ x, y, width: 42, height: 42, color: white })
     draw('K', x + 13, y + 12, 20, true, coral)
   }

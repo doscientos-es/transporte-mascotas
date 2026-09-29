@@ -29,6 +29,8 @@ import { useRef, useState, type FormEvent } from 'react'
 
 import {
   minimumTransportBoxCategory,
+  requestedTransportBoxCategory,
+  transportAnimalsTotalCents,
   transportBoxCategoryLabel,
   transportBoxCategoryRank,
   transportBoxOptions,
@@ -82,24 +84,6 @@ const invoiceClient = (fullName = '', email = '', phone = ''): InvoiceClientInpu
   city: '',
   postalCode: '',
 })
-
-function requestedCategoryFor(
-  animal: TransportRequestAnimal,
-  minimumCategory: Exclude<
-    TransportRequestAnimal['requestedBoxCategory'],
-    undefined | 'paso_rueda'
-  >,
-) {
-  const requestedCategory = animal.requestedBoxCategory
-  if (
-    requestedCategory &&
-    (requestedCategory === 'paso_rueda' ||
-      transportBoxCategoryRank(requestedCategory) >= transportBoxCategoryRank(minimumCategory))
-  ) {
-    return requestedCategory
-  }
-  return minimumCategory
-}
 
 const initialValues = (
   contactName: string,
@@ -350,7 +334,7 @@ export function ClientRequestForm({
             : values.billingClient,
         animals: values.animals.map((animal) => {
           const minimumCategory = minimumTransportBoxCategory(animal)
-          const requestedCategory = requestedCategoryFor(animal, minimumCategory)
+          const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
           return {
             ...animal,
             minimumBoxCategory: minimumCategory,
@@ -392,19 +376,7 @@ export function ClientRequestForm({
   }
 
   const selectedRoute = routes.find((route) => route.id === values.dailyRouteId)
-  const requestTotal = values.animals.reduce((total, animal) => {
-    const minimumCategory = minimumTransportBoxCategory(animal)
-    const requestedCategory = requestedCategoryFor(animal, minimumCategory)
-    return (
-      total +
-      transportBoxPriceCents(
-        requestedCategory,
-        { weightKg: animal.weightKg, minimumCategory },
-        boxCatalog,
-      ) /
-        100
-    )
-  }, 0)
+  const requestTotal = transportAnimalsTotalCents(values.animals, boxCatalog) / 100
   const routeStops = selectedRoute?.localities ?? []
   const destinationStops = values.origin
     ? routeStops.slice(routeStops.indexOf(values.origin) + 1)
@@ -992,7 +964,7 @@ export function ClientRequestForm({
                   </div>
                   {(() => {
                     const minimumCategory = minimumTransportBoxCategory(animal)
-                    const requestedCategory = requestedCategoryFor(animal, minimumCategory)
+                    const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
                     return (
                       <div className="mt-3 grid gap-3">
                         <p className="text-muted-foreground text-xs">

@@ -12,8 +12,9 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
+import { OptionalClientAccountCard } from '@/features/auth'
 import {
   defaultTransportBoxCatalog,
   transportBoxCategoryLabel,
@@ -41,9 +42,9 @@ import {
   loadUpcomingRoutes,
   payTransportRequest,
   saveClientPets,
-  type TransportPaymentForm,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
+import { submitPaymentForm } from './submit-payment-form'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
 type Props = { session: Session | null; profile: UserProfile; navigation: DashboardNavigation }
@@ -51,26 +52,11 @@ type Props = { session: Session | null; profile: UserProfile; navigation: Dashbo
 const formatCurrency = (cents: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 
-function submitPaymentForm(payment: TransportPaymentForm) {
-  const form = document.createElement('form')
-  form.method = 'post'
-  form.action = payment.endpoint
-  form.hidden = true
-  for (const [name, value] of Object.entries(payment.fields)) {
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = name
-    input.value = value
-    form.append(input)
-  }
-  document.body.append(form)
-  form.submit()
-}
-
 export function ClientPortalPage({ session, profile, navigation }: Props) {
   const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
     navigation
   const routerLocation = useLocation()
+  const navigate = useNavigate()
   const navigationState = routerLocation.state as {
     preselectRouteId?: string
     paymentStatus?: 'ok' | 'ko'
@@ -79,6 +65,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     navigationState?.paymentStatus ??
     (new URLSearchParams(routerLocation.search).get('payment') as 'ok' | 'ko' | null)
   const preselectRouteId = navigationState?.preselectRouteId
+  const [preselectedRouteId, setPreselectedRouteId] = useState<string>()
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [savedPets, setSavedPets] = useState<ClientPet[]>([])
@@ -88,7 +75,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [pendingPaymentRequestId, setPendingPaymentRequestId] = useState<string | null>(null)
+  const [accountPromptDismissed, setAccountPromptDismissed] = useState(false)
   const userId = session?.user.id
+  const guestAccountEmail = session?.user.is_anonymous ? requests[0]?.contactEmail : undefined
 
   async function signOut() {
     if (!session) return
@@ -111,14 +100,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     setRequests(nextRequests)
     setSavedPets(nextPets)
     setBoxCatalog(nextBoxCatalog)
-    setPendingPaymentRequestId((current) => {
-      const currentIsPending = nextRequests.some(
-        (request) => request.id === current && request.status === 'pago_pendiente',
-      )
-      return currentIsPending
+    setPendingPaymentRequestId((current) =>
+      nextRequests.some((request) => request.id === current && request.status === 'pago_pendiente')
         ? current
-        : (nextRequests.find((request) => request.status === 'pago_pendiente')?.id ?? null)
-    })
+        : null,
+    )
     setError('')
     return nextRequests
   }, [userId])
@@ -139,9 +125,18 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     return () => window.clearTimeout(timeout)
   }, [notice])
   useEffect(() => {
-    if (preselectRouteId) setShowForm(true)
-  }, [preselectRouteId])
+    if (!preselectRouteId) return
+    setPreselectedRouteId(preselectRouteId)
+    setPendingPaymentRequestId(null)
+    setShowForm(true)
+    void navigate(
+      { pathname: routerLocation.pathname, search: routerLocation.search },
+      { replace: true, state: null },
+    )
+  }, [navigate, preselectRouteId, routerLocation.pathname, routerLocation.search])
   useEffect(() => {
+    if (!paymentStatus || !userId) return
+    void navigate(routerLocation.pathname, { replace: true, state: null })
     if (paymentStatus === 'ok') {
       void refresh()
         .then(() => {
@@ -153,7 +148,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     } else if (paymentStatus === 'ko') {
       setError('El pago no se ha completado. Puedes reintentarlo desde Mis transportes.')
     }
-  }, [paymentStatus, refresh])
+  }, [navigate, paymentStatus, refresh, routerLocation.pathname, userId])
   async function refreshData() {
     setLoading(true)
     setError('')
@@ -219,6 +214,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     setNotice('Mascota guardada. La próxima vez podrás elegirla y revisar sus datos.')
   }
 
+  function openNewRequestForm() {
+    setPreselectedRouteId(undefined)
+    setShowForm(true)
+  }
+
+  const unpaidRequest = requests.find((request) => request.status === 'pago_pendiente')
   const awaitingReview = requests.filter(
     (request) => request.status === 'por_verificar' || request.status === 'pago_pendiente',
   ).length
@@ -263,6 +264,17 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         (routeId ? (
           (() => {
             const route = routes.find((item) => item.id === routeId)
+            if (!route && loading)
+              return (
+                <Card className="invoice-empty" aria-busy="true">
+                  <CardContent>
+                    <RefreshCw className="is-spinning" size={22} />
+                    <div>
+                      <h3>Cargando ruta…</h3>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
             return route ? (
               <UpcomingRouteDetail
                 route={route}
@@ -310,15 +322,28 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                       </div>
                       <div className="invoice-amount flex flex-col items-end gap-2">
                         <strong>{formatDate(route.serviceDate)}</strong>
-                        <Button
-                          size="sm"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            navigateToRequestForm(route.id)
-                          }}
-                        >
-                          <FilePlus2 size={14} /> Seleccionar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            aria-label={`Ver detalles de ${route.templateName || 'la ruta'} del ${formatDate(route.serviceDate)}`}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              navigateToUpcomingRoute(route.id)
+                            }}
+                          >
+                            Detalles
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              navigateToRequestForm(route.id)
+                            }}
+                          >
+                            <FilePlus2 size={14} /> Seleccionar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -347,7 +372,10 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 Elige una salida programada, registra el pago y sigue cada actualización desde aquí.
               </p>
             </div>
-            <Button disabled={!routes.length} onClick={() => setShowForm((current) => !current)}>
+            <Button
+              disabled={!routes.length}
+              onClick={() => (showForm ? setShowForm(false) : openNewRequestForm())}
+            >
               <FilePlus2 /> {showForm ? 'Cerrar solicitud' : 'Solicitar transporte'}
             </Button>
           </div>
@@ -356,13 +384,38 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               No hay salidas publicadas por ahora. Te avisaremos cuando haya una disponible.
             </p>
           )}
-          {pendingPaymentRequestId && !showForm && (
+          {!showForm && (pendingPaymentRequestId || unpaidRequest) && (
             <div className="inline-feedback is-warning" aria-live="polite">
               <p>Tienes una solicitud guardada pendiente de registrar el pago.</p>
-              <Button type="button" onClick={() => setShowForm(true)}>
-                Continuar
+              <Button
+                type="button"
+                onClick={() =>
+                  pendingPaymentRequestId
+                    ? setShowForm(true)
+                    : unpaidRequest && void continuePayment(unpaidRequest.id)
+                }
+              >
+                <CreditCard size={15} /> Continuar pago
               </Button>
             </div>
+          )}
+          {!showForm && guestAccountEmail && !accountPromptDismissed && (
+            <OptionalClientAccountCard
+              displayName={profile.displayName}
+              email={guestAccountEmail}
+              phone={profile.phone}
+              title="Guarda tus transportes en una cuenta"
+              description="Es opcional. Ahora mismo solo puedes ver tus solicitudes desde este navegador."
+              onSkip={() => setAccountPromptDismissed(true)}
+              onCreated={(result) => {
+                setAccountPromptDismissed(true)
+                setNotice(
+                  result === 'created'
+                    ? 'Cuenta creada. Ya puedes acceder desde cualquier dispositivo.'
+                    : 'Te hemos enviado un correo para confirmar tu cuenta.',
+                )
+              }}
+            />
           )}
           {!showForm && (
             <div className="client-overview" aria-label="Resumen de tus transportes">
@@ -395,8 +448,14 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               </Card>
             </div>
           )}
-          {showForm && (
+          {showForm && loading && !routes.length && (
+            <p className="availability-hint" aria-busy="true">
+              Cargando salidas disponibles…
+            </p>
+          )}
+          {showForm && (!loading || routes.length > 0) && (
             <ClientRequestForm
+              key={preselectedRouteId ?? 'new'}
               routes={routes}
               savedPets={savedPets}
               contactName={profile.displayName}
@@ -408,7 +467,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
               boxCatalog={boxCatalog}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
-              initialRouteId={preselectRouteId}
+              initialRouteId={preselectedRouteId}
             />
           )}
           {!showForm && (
@@ -422,7 +481,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 </p>
               </div>
               {requests.length > 0 && (
-                <Button variant="outline" onClick={() => setShowForm(true)}>
+                <Button variant="outline" disabled={!routes.length} onClick={openNewRequestForm}>
                   <FilePlus2 size={16} /> Nueva solicitud
                 </Button>
               )}
@@ -518,7 +577,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                         Elige una salida publicada y las necesidades de tu mascota; podrás seguirlo
                         todo desde aquí.
                       </p>
-                      <Button disabled={!routes.length} onClick={() => setShowForm(true)}>
+                      <Button disabled={!routes.length} onClick={openNewRequestForm}>
                         <FilePlus2 size={16} /> Crear solicitud
                       </Button>
                     </div>
@@ -549,9 +608,10 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                       aquí.
                     </p>
                     <Button
+                      disabled={!routes.length}
                       onClick={() => {
                         navigateToSection('mis-transportes')
-                        setShowForm(true)
+                        openNewRequestForm()
                       }}
                     >
                       <FilePlus2 size={16} /> Solicitar transporte

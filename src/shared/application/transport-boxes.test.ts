@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   defaultTransportBoxCatalog,
   minimumTransportBoxCategory,
+  requestedTransportBoxCategory,
+  transportAnimalsTotalCents,
   transportBoxOptions,
   transportBoxPriceCents,
 } from './transport-boxes'
@@ -32,5 +34,30 @@ describe('transport box categories', () => {
         defaultTransportBoxCatalog,
       ),
     ).toBe(18000)
+  })
+
+  it('falls back to the minimum box when the requested one is too small', () => {
+    expect(
+      requestedTransportBoxCategory({
+        weightKg: 8,
+        lengthCm: 40,
+        heightCm: 30,
+        widthCm: 45,
+        requestedBoxCategory: 'pequeno',
+      }),
+    ).toBe('mediano')
+  })
+
+  it('adds up the price of every animal with the requested boxes', () => {
+    expect(
+      transportAnimalsTotalCents(
+        [
+          { weightKg: 8, lengthCm: 30, heightCm: 28, widthCm: 40 },
+          { weightKg: 8, lengthCm: 30, heightCm: 28, widthCm: 40, requestedBoxCategory: 'grande' },
+          { weightKg: 55, lengthCm: 90, heightCm: 70, widthCm: 50 },
+        ],
+        defaultTransportBoxCatalog,
+      ),
+    ).toBe(10000 + 15000 + 18000)
   })
 })
