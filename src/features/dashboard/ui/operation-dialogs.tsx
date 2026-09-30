@@ -1457,7 +1457,7 @@ function AnimalsSection({
                           {euros(
                             transportBoxPriceCents(
                               category,
-                              { weightKg: animal.weightKg, minimumCategory },
+                              { weightKg: animal.weightKg },
                               boxCatalog,
                             ),
                           )}

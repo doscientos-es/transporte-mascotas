@@ -200,7 +200,8 @@ export function TemplatesPage({
         <div className="stop-index">{index + 1}</div>
         <div>
           <strong>{stop.locality}</strong>
-          <p>{stop.place}</p>
+          {stop.alias && <span className="stop-alias">{stop.alias}</span>}
+          {stop.place && stop.place !== stop.alias && <p>{stop.place}</p>}
         </div>
         <span className="duration">{stop.minutes ? `${stop.minutes} min` : 'Final'}</span>
         <a

@@ -12,7 +12,7 @@ export type TransportBoxCatalogItem = {
   maxLengthCm?: number
   maxHeightCm?: number
   maxWidthCm?: number
-  /** From this weight (kg) a pet no longer fits and moves to the next box. */
+  /** Heaviest pet (kg, inclusive) the box admits; above it the pet moves to the next box. */
   nextBoxFromKg?: number
   sortOrder: number
 }
@@ -35,7 +35,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     maxLengthCm: 33,
     maxHeightCm: 29,
     maxWidthCm: 46,
-    nextBoxFromKg: 50,
+    nextBoxFromKg: 2.5,
     sortOrder: 1,
   },
   mediano: {
@@ -46,7 +46,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     maxLengthCm: 50,
     maxHeightCm: 50,
     maxWidthCm: 52,
-    nextBoxFromKg: 50,
+    nextBoxFromKg: 13,
     sortOrder: 2,
   },
   grande: {
@@ -54,7 +54,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     label: 'Box grande',
     amountCents: 15000,
     largeAmountCents: 18000,
-    dimensions: '100 × 58 × 75 cm · 180 € desde 50 kg',
+    dimensions: '100 × 58 × 75 cm · 180 € a partir de 40 kg',
     maxLengthCm: 100,
     maxHeightCm: 75,
     maxWidthCm: 58,
@@ -63,8 +63,8 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
   paso_rueda: {
     category: 'paso_rueda',
     label: 'Box paso de rueda',
-    amountCents: 12000,
-    largeAmountCents: 15000,
+    amountCents: 15000,
+    largeAmountCents: 18000,
     dimensions: '100 × 36/58 × 36 × 75 cm · según tamaño',
     sortOrder: 4,
   },
@@ -93,7 +93,7 @@ export function minimumTransportBoxCategory(
       lengthCm <= (item.maxLengthCm ?? Infinity) &&
       heightCm <= (item.maxHeightCm ?? Infinity) &&
       widthCm <= (item.maxWidthCm ?? Infinity) &&
-      weightKg < (item.nextBoxFromKg ?? Infinity)
+      weightKg <= (item.nextBoxFromKg ?? Infinity)
     )
   }
   if (!fits('mediano')) return 'grande'
@@ -103,21 +103,21 @@ export function minimumTransportBoxCategory(
 
 export function transportBoxPriceCents(
   category: TransportBoxCategory,
-  animal: Pick<TransportRequestAnimal, 'weightKg'> & {
-    minimumCategory: Exclude<TransportBoxCategory, 'paso_rueda'>
-  },
+  animal: Pick<TransportRequestAnimal, 'weightKg'>,
   catalog: TransportBoxCatalog,
 ) {
   const item = catalog[category]
   if (
-    (category === 'grande' && animal.weightKg >= 50) ||
-    (category === 'paso_rueda' && animal.minimumCategory === 'grande')
+    (category === 'grande' || category === 'paso_rueda') &&
+    animal.weightKg > HEAVY_TARIFF_OVER_KG
   )
     return item.largeAmountCents ?? item.amountCents
   return item.amountCents
 }
 
-export const WHEEL_ARCH_BOX_MAX_WEIGHT_KG = 35
+/** Above this weight (kg) the large tariff applies. */
+export const HEAVY_TARIFF_OVER_KG = 40
+export const WHEEL_ARCH_BOX_MAX_WEIGHT_KG = 40
 
 export function transportBoxOptions(
   minimum: Exclude<TransportBoxCategory, 'paso_rueda'>,
@@ -155,7 +155,7 @@ export function transportAnimalPriceCents(animal: PricedAnimal, catalog: Transpo
   const minimumCategory = minimumTransportBoxCategory(animal, catalog)
   return transportBoxPriceCents(
     requestedTransportBoxCategory(animal, minimumCategory),
-    { weightKg: animal.weightKg, minimumCategory },
+    { weightKg: animal.weightKg },
     catalog,
   )
 }

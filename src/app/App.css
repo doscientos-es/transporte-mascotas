@@ -592,6 +592,18 @@
   color: #3c5285;
 }
 
+.stop-alias {
+  display: inline-block;
+  margin-left: 8px;
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: #fff3d6;
+  color: #7a5200;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .journey-times {
   margin-top: 7px;
   color: #667361;

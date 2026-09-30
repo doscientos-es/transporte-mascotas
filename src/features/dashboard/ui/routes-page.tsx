@@ -808,8 +808,9 @@ function JourneyStop({
             <div className="journey-title">
               <h4>{stop.locality}</h4>
               <span className={`stop-kind stop-kind-${stop.kind}`}>{kindLabels[stop.kind]}</span>
+              {stop.alias && <span className="stop-alias">{stop.alias}</span>}
             </div>
-            <p>{stop.place}</p>
+            {stop.place && stop.place !== stop.alias && <p>{stop.place}</p>}
             <div className="journey-times">
               <span className="arrival-time">
                 Llegada aprox.: <strong>{arrival}</strong>

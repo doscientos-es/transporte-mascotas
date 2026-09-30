@@ -1238,7 +1238,7 @@ export function ClientRequestForm({
                                   {currency(
                                     transportBoxPriceCents(
                                       category,
-                                      { weightKg: animal.weightKg, minimumCategory },
+                                      { weightKg: animal.weightKg },
                                       boxCatalog,
                                     ) / 100,
                                   )}
