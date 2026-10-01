@@ -329,7 +329,14 @@ export async function closeDailyRoute(routeId: string) {
     p_daily_route_id: routeId,
   })
   if (error) throw error
-  return data as { closedAt?: string } | null
+  const result = data as { closedAt?: string; notificationsQueued?: number } | null
+  if (result?.notificationsQueued) {
+    // Customer emails must never undo or block the closure; failed rows stay queued for retry.
+    await requireSupabase()
+      .functions.invoke('send-daily-route-closure-notifications', { body: { routeId } })
+      .catch(() => null)
+  }
+  return result
 }
 
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {

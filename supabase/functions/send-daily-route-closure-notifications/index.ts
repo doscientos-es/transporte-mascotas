@@ -1,5 +1,6 @@
+import { EmailError, isEmailConfigured, isValidEmail, sendEmail } from '../_shared/resend.ts'
+import { routeClosureEmail } from '../_shared/route-closure-template.ts'
 import { json, requireAdmin, rest } from '../_shared/supabase.ts'
-import { sendWhatsAppTemplate, type WhatsAppTemplateParameter } from '../_shared/whatsapp.ts'
 
 type Notification = {
   id: string
@@ -9,7 +10,7 @@ type Notification = {
 }
 type DailyRoute = {
   service_date: string
-  route_templates: Array<{ name: string }> | null
+  route_templates: { name: string } | null
   daily_route_stops: Array<{ locality: string; sequence: number }>
 }
 
@@ -71,27 +72,30 @@ async function loadRoute(routeId: string) {
 }
 
 function send(notification: Notification, route: DailyRoute) {
-  const template = 'META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE'
-  return sendWhatsAppTemplate(
-    notification.recipient,
-    template,
-    messageParameters(notification, route),
-  )
-}
-
-function messageParameters(
-  notification: Notification,
-  route: DailyRoute,
-): WhatsAppTemplateParameter[] {
-  const itinerary = route.daily_route_stops
-    .toSorted((left, right) => left.sequence - right.sequence)
-    .map((stop) => stop.locality)
-    .join(' · ')
-  return [
-    { type: 'text', text: notification.recipient_name || 'cliente' },
-    { type: 'text', text: new Date(`${route.service_date}T12:00:00`).toLocaleDateString('es-ES') },
-    { type: 'text', text: `${route.route_templates?.[0]?.name ?? 'Ruta'}: ${itinerary}` },
-  ]
+  if (!isEmailConfigured())
+    throw new EmailError('El envío de emails todavía no está configurado.', true)
+  if (!isValidEmail(notification.recipient))
+    throw new Error('El email del destinatario no es válido.')
+  const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+  const email = routeClosureEmail({
+    name: notification.recipient_name,
+    date: new Date(`${route.service_date}T12:00:00Z`).toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    }),
+    routeName: route.route_templates?.name ?? 'Ruta',
+    stops: route.daily_route_stops
+      .toSorted((left, right) => left.sequence - right.sequence)
+      .map((stop) => stop.locality),
+    portalUrl: appUrl ? `${appUrl}/mis-transportes` : null,
+  })
+  return sendEmail({
+    to: notification.recipient.trim(),
+    ...email,
+    idempotencyKey: `route-closure/${notification.id}`,
+  })
 }
 
 async function update(notificationId: string, values: Record<string, unknown>) {
@@ -104,5 +108,5 @@ async function update(notificationId: string, values: Record<string, unknown>) {
 function safeMessage(error: unknown) {
   return error instanceof Error
     ? error.message.slice(0, 500)
-    : 'Error desconocido al enviar WhatsApp.'
+    : 'Error desconocido al enviar el email.'
 }

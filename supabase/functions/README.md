@@ -87,8 +87,19 @@ Las plantillas de Meta sólo se usan desde las pruebas explícitas de administra
 
 ### Cierre de itinerario diario
 
-Cerrar una ruta el día anterior sólo fija las paradas y los tiempos. No deja una
-notificación para clientes ni requiere configurar `send-daily-route-closure-notifications`.
+Cerrar una ruta el día anterior fija las paradas y los tiempos y encola un email
+de recordatorio (Resend) para cada remitente y destinatario con email válido de
+las cartas de la ruta. Tras cerrar, el panel invoca
+`send-daily-route-closure-notifications`; si un envío falla queda en `fallida` y
+se reintenta al volver a invocar la función. Desplegad esa función y la
+migración `20261001120000_route_closure_email_notifications.sql`.
+
+### Emails de autenticación (recuperar contraseña)
+
+Supabase Auth envía por el SMTP de Resend (`smtp.resend.com`, usuario `resend`,
+contraseña = `RESEND_API_KEY`) con las plantillas de `supabase/templates`
+(`recovery.html`, `confirmation.html`). Para aplicarlo en el proyecto alojado
+ejecutad `supabase config push` con `RESEND_API_KEY` definido en el entorno.
 
 La página **Ajustes → Pruebas de WhatsApp** es la única operación que puede
 contactar con Meta. Las cartas, reservas, pagos, facturas y cierres de ruta no

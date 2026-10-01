@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Confirma tu email · Kache Envíos</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background: #faf6f1;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #1c1c1a;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">
+      Confirma tu email para activar tu cuenta de Kache Envíos.
+    </div>
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background: #faf6f1"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 12px">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            style="max-width: 600px; background: #ffffff; border-radius: 14px; overflow: hidden"
+          >
+            <tr>
+              <td style="background: #1c1c1a; padding: 26px 32px">
+                <div
+                  style="font-size: 20px; font-weight: bold; letter-spacing: 1px; color: #ffffff"
+                >
+                  KACHE ENVÍOS
+                </div>
+                <div style="font-size: 12px; color: #d8d3ce; margin-top: 4px">
+                  Transporte de mascotas
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px 32px 8px">
+                <div
+                  style="
+                    display: inline-block;
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                    background: #fde8e8;
+                    color: #f54245;
+                    font-size: 12px;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                  "
+                >
+                  CONFIRMA TU EMAIL
+                </div>
+                <p style="margin: 22px 0 8px; font-size: 16px">Te damos la bienvenida,</p>
+                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #3a3835">
+                  Confirma tu dirección de email para activar tu cuenta y gestionar tus transportes.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 22px 32px 6px">
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="
+                    display: inline-block;
+                    padding: 12px 22px;
+                    border-radius: 8px;
+                    font-weight: bold;
+                    font-size: 14px;
+                    text-decoration: none;
+                    background: #f54245;
+                    color: #ffffff;
+                  "
+                  >Confirmar mi email</a
+                >
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 32px 0">
+                <p style="margin: 0; font-size: 12px; line-height: 1.6; color: #6b6661">
+                  Si el botón no funciona, copia este enlace en tu navegador:<br /><span
+                    style="word-break: break-all"
+                    >{{ .ConfirmationURL }}</span
+                  >
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 32px 32px">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #3a3835">
+                  Si no has creado una cuenta, ignora este email.
+                </p>
+                <p style="margin: 14px 0 0; font-size: 14px; font-weight: bold">
+                  Equipo de Kache Envíos
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
