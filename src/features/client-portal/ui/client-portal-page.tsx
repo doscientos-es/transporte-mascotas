@@ -6,10 +6,7 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   CreditCard,
-  FileDown,
   FilePlus2,
-  FileText,
-  Navigation,
   PawPrint,
   RefreshCw,
 } from 'lucide-react'
@@ -33,10 +30,9 @@ import {
 } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { PageIntro } from '@/shared/ui/page-intro'
-import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { carriageLetterFileName, createCarriageLetterPdf } from '../application/carriage-letter-pdf'
-import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
+import { formatDate } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
 import { isConfirmedTransport } from '../application/transport-calendar'
 import {
@@ -53,9 +49,11 @@ import {
   type ClientPaymentRequest,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
+import { ClientTransportCard } from './client-transport-card'
 import { PaymentSuccessPanel } from './payment-success-panel'
 import { saveFile } from './save-file'
 import { submitPaymentForm } from './submit-payment-form'
+import { UpcomingRouteCard } from './upcoming-route-card'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
 type Props = { session: Session | null; profile: UserProfile; navigation: DashboardNavigation }
@@ -397,58 +395,30 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           })()
         ) : (
           <>
-            <PageIntro text="Consulta las próximas salidas antes de solicitar tu transporte." />
-            <div className="invoices-list">
+            <section className="upcoming-routes-page" aria-label="Próximas rutas disponibles">
+              <div className="upcoming-routes-intro">
+                <p>
+                  Encuentra una salida que te venga bien y solicita el transporte de tu mascota.
+                </p>
+                <span className="upcoming-routes-count">
+                  <CalendarDays size={15} aria-hidden="true" />
+                  {routes.length}{' '}
+                  {routes.length === 1 ? 'salida disponible' : 'salidas disponibles'}
+                </span>
+              </div>
               {routes.length ? (
-                routes.map((route) => (
-                  <Card
-                    key={route.id}
-                    className="invoice-card cursor-pointer"
-                    onClick={() => navigateToUpcomingRoute(route.id)}
-                  >
-                    <CardContent>
-                      <div className="invoice-icon">
-                        <CalendarDays size={19} />
-                      </div>
-                      <div>
-                        <span>
-                          {route.routeDirection === 'inversa'
-                            ? 'Sentido inverso'
-                            : 'Sentido habitual'}
-                        </span>
-                        <strong>{route.templateName || 'Ruta programada'}</strong>
-                        <small>{route.localities.join(' · ') || 'Paradas por definir'}</small>
-                      </div>
-                      <div className="invoice-amount flex flex-col items-end gap-2">
-                        <strong>{formatDate(route.serviceDate)}</strong>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            aria-label={`Ver detalles de ${route.templateName || 'la ruta'} del ${formatDate(route.serviceDate)}`}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              navigateToUpcomingRoute(route.id)
-                            }}
-                          >
-                            Detalles
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              navigateToRequestForm(route.id)
-                            }}
-                          >
-                            <FilePlus2 size={14} /> Seleccionar
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                <ul className="upcoming-routes-list">
+                  {routes.map((route) => (
+                    <UpcomingRouteCard
+                      key={route.id}
+                      route={route}
+                      onDetails={navigateToUpcomingRoute}
+                      onSelect={navigateToRequestForm}
+                    />
+                  ))}
+                </ul>
               ) : (
-                <Card className="invoice-empty">
+                <Card className="upcoming-route-empty">
                   <CardContent>
                     <CalendarDays size={22} />
                     <div>
@@ -458,7 +428,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                   </CardContent>
                 </Card>
               )}
-            </div>
+            </section>
           </>
         ))}
 
@@ -629,113 +599,19 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
             <div className="invoices-list">
               {requests.length ? (
                 requests.map((request) => (
-                  <Card
+                  <ClientTransportCard
                     key={request.id}
-                    className={`invoice-card client-transport-card ${
-                      request.status === 'por_verificar'
-                        ? '!border-l-[#ca8a04]'
-                        : request.status === 'confirmada' || request.status === 'en_ruta'
-                          ? '!border-l-[#171717]'
-                          : ''
-                    }`}
-                  >
-                    <CardContent>
-                      <div className="invoice-icon">
-                        <PawPrint size={19} />
-                      </div>
-                      <div>
-                        <span>
-                          {request.animals.length} mascota{request.animals.length === 1 ? '' : 's'}{' '}
-                          · {formatDate(request.desiredDate)}
-                        </span>
-                        <strong>
-                          {request.origin} → {request.destination}
-                        </strong>
-                        <small>{request.adminNote || clientStatusHint(request.status)}</small>
-                        <small>
-                          {request.animals
-                            .map((animal) =>
-                              transportBoxCategoryLabel(
-                                animal.assignedBoxCategory ??
-                                  animal.requestedBoxCategory ??
-                                  animal.minimumBoxCategory ??
-                                  'pequeno',
-                              ),
-                            )
-                            .join(' · ')}
-                        </small>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <TransportLocationMap
-                            label="Recogida"
-                            location={request.origin}
-                            latitude={request.originLatitude}
-                            longitude={request.originLongitude}
-                          />
-                          <TransportLocationMap
-                            label="Entrega"
-                            location={request.destination}
-                            latitude={request.destinationLatitude}
-                            longitude={request.destinationLongitude}
-                          />
-                        </div>
-                      </div>
-                      <div className="invoice-amount">
-                        <strong>{formatCurrency(request.amountCents)}</strong>
-                        <StatusBadge status={request.status} />
-                        {request.paidAt && (
-                          <small className="payment-state">
-                            <CheckCircle2 size={13} /> Pago registrado
-                          </small>
-                        )}
-                        {(request.paidAt || isConfirmedTransport(request.status)) && (
-                          <div className="client-transport-documents">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={
-                                !isConfirmedTransport(request.status) ||
-                                Boolean(downloadingInvoiceId)
-                              }
-                              onClick={() => void downloadRequestInvoice(request.id)}
-                            >
-                              <FileText size={15} />{' '}
-                              {downloadingInvoiceId === request.id
-                                ? 'Descargando…'
-                                : 'Descargar factura'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={
-                                !isConfirmedTransport(request.status) ||
-                                Boolean(downloadingLetterId)
-                              }
-                              onClick={() => void downloadRequestCarriageLetter(request.id)}
-                            >
-                              <FileDown size={15} />{' '}
-                              {downloadingLetterId === request.id
-                                ? 'Descargando…'
-                                : 'Descargar carta de porte'}
-                            </Button>
-                            {!isConfirmedTransport(request.status) && (
-                              <span>Disponibles en cuanto confirmemos el pago</span>
-                            )}
-                          </div>
-                        )}
-                        {request.status === 'pago_pendiente' && (
-                          <Button
-                            className="client-transport-pay-button"
-                            size="sm"
-                            disabled={Boolean(payingRequestId)}
-                            onClick={() => void continuePayment(request.id)}
-                          >
-                            <CreditCard size={15} />{' '}
-                            {payingRequestId === request.id ? 'Abriendo pago…' : 'Continuar pago'}
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+                    request={request}
+                    formatCurrency={formatCurrency}
+                    payingRequestId={payingRequestId}
+                    downloadingInvoiceId={downloadingInvoiceId}
+                    downloadingLetterId={downloadingLetterId}
+                    onContinuePayment={(requestId) => void continuePayment(requestId)}
+                    onDownloadInvoice={(requestId) => void downloadRequestInvoice(requestId)}
+                    onDownloadCarriageLetter={(requestId) =>
+                      void downloadRequestCarriageLetter(requestId)
+                    }
+                  />
                 ))
               ) : (
                 <Card className="invoice-empty">
@@ -803,40 +679,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   )
 }
 
-function TransportLocationMap({
-  label,
-  location,
-  latitude,
-  longitude,
-}: {
-  label: string
-  location: string
-  latitude?: number
-  longitude?: number
-}) {
-  return (
-    <section className="border-border bg-card overflow-hidden rounded-lg border">
-      {typeof latitude === 'number' && typeof longitude === 'number' && (
-        <iframe
-          className="h-36 w-full border-0"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          src={mapsEmbedUrl(latitude, longitude)}
-          title={`Mapa de ${label.toLocaleLowerCase()} en ${location}`}
-        />
-      )}
-      <a
-        className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
-        href={transportLocationMapsUrl(location, latitude, longitude)}
-        target="_blank"
-        rel="noreferrer"
-      >
-        <Navigation size={14} /> Cómo llegar a {label.toLocaleLowerCase()} · {location}
-      </a>
-    </section>
-  )
-}
-
 function PetCard({ pet }: { pet: TransportRequestAnimal & { requestDate: string } }) {
   return (
     <Card className="invoice-card client-transport-card">
@@ -866,15 +708,4 @@ function PetCard({ pet }: { pet: TransportRequestAnimal & { requestDate: string 
       </CardContent>
     </Card>
   )
-}
-
-function clientStatusHint(status: TransportRequest['status']) {
-  if (status === 'por_verificar')
-    return 'Pago registrado. Estamos comprobando la disponibilidad de ruta.'
-  if (status === 'confirmada')
-    return 'Tu transporte está confirmado. Te avisaremos con los detalles.'
-  if (status === 'en_ruta') return 'El transporte ya está en ruta.'
-  if (status === 'rechazada')
-    return 'No hemos podido asignar esta solicitud. Puedes contactar con nosotros para revisarla.'
-  return 'Estamos esperando la confirmación del pago.'
 }

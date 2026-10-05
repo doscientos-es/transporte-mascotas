@@ -157,6 +157,100 @@
   }
 }
 
+@media (max-width: 850px) {
+  .upcoming-routes-intro {
+    display: grid;
+    justify-items: start;
+    gap: 10px;
+  }
+
+  .upcoming-route-card .upcoming-route-card-content {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 16px;
+    padding: 18px 18px 18px 22px;
+  }
+
+  .upcoming-route-date {
+    min-height: 96px;
+  }
+
+  .upcoming-route-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .upcoming-routes-intro p {
+    max-width: 100%;
+  }
+
+  .upcoming-route-card .upcoming-route-card-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 15px 14px 15px 18px;
+  }
+
+  .upcoming-route-date {
+    display: flex;
+    width: max-content;
+    min-height: 0;
+    align-items: center;
+    justify-items: initial;
+    gap: 7px;
+    border-radius: 12px;
+    padding: 6px 10px;
+  }
+
+  .upcoming-route-date time strong {
+    font-size: 20px;
+  }
+
+  .upcoming-route-date time span {
+    font-size: 11px;
+  }
+
+  .upcoming-route-date small {
+    font-size: 10px;
+  }
+
+  .upcoming-route-summary {
+    gap: 7px;
+  }
+
+  .upcoming-route-summary h2 {
+    font-size: 17px;
+  }
+
+  .upcoming-route-stops {
+    gap: 5px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .upcoming-route-actions {
+    gap: 7px;
+  }
+
+  .upcoming-route-actions [data-slot='button'] {
+    min-height: 42px;
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: 11px;
+    white-space: normal;
+  }
+
+  .upcoming-route-details-label,
+  .upcoming-route-request-label {
+    display: none;
+  }
+
+  .upcoming-route-details-label-compact,
+  .upcoming-route-request-label-compact {
+    display: inline;
+  }
+}
+
 @media (max-width: 390px) {
   .letter-card-heading,
   .letter-card-footer {
@@ -167,5 +261,97 @@
   .letter-card-heading > div,
   .letter-card-footer > div {
     width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .client-transport-request-card > [data-slot='card-content'] {
+    padding: 15px;
+  }
+
+  .client-transport-request-header {
+    display: grid;
+    gap: 15px;
+  }
+
+  .client-transport-request-overview {
+    gap: 10px;
+  }
+
+  .client-transport-request-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .client-transport-request-copy {
+    gap: 7px;
+  }
+
+  .client-transport-request-route {
+    gap: 5px;
+    font-size: 17px;
+  }
+
+  .client-transport-request-route svg {
+    width: 14px;
+  }
+
+  .client-transport-request-note {
+    font-size: 12px;
+  }
+
+  .client-transport-request-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
+    gap: 8px 12px;
+    min-width: 0;
+    padding: 12px 0 0;
+    border-top: 1px solid #ece8e6;
+    border-left: 0;
+  }
+
+  .client-transport-request-price {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 18px !important;
+  }
+
+  .client-transport-request-status {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .client-transport-payment-state,
+  .client-transport-request-summary .client-transport-pay-button {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .client-transport-request-summary .client-transport-pay-button {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .client-transport-locations {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+    margin-top: 15px;
+  }
+
+  .client-transport-location-map {
+    height: 118px;
+  }
+
+  .client-transport-document-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .client-transport-document-actions [data-slot='button'] {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
   }
 }
