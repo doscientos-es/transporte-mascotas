@@ -16,9 +16,7 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 Antes de abrir cobros configurad los datos fiscales no secretos que aparecerán congelados en cada factura: `INVOICE_ISSUER_NAME`, `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`. No se emite una factura si falta alguno.
 
 Los avisos transaccionales por WhatsApp están desactivados y la facturación no
-depende de WhatsApp. Si se necesita probar la integración manualmente, configurad
-`META_WHATSAPP_ACCESS_TOKEN`, `META_WHATSAPP_PHONE_NUMBER_ID` y las plantillas
-únicamente en Edge Functions.
+depende de WhatsApp.
 
 ### Confirmaciones de pago por email (Resend)
 
@@ -101,9 +99,11 @@ contraseña = `RESEND_API_KEY`) con las plantillas de `supabase/templates`
 (`recovery.html`, `confirmation.html`). Para aplicarlo en el proyecto alojado
 ejecutad `supabase config push` con `RESEND_API_KEY` definido en el entorno.
 
-La página **Ajustes → Pruebas de WhatsApp** es la única operación que puede
-contactar con Meta. Las cartas, reservas, pagos, facturas y cierres de ruta no
-se despachan automáticamente por WhatsApp.
+La página **Ajustes → Prueba de email** usa la Edge Function `send-test-email` y el cliente
+compartido de Resend para enviar un mensaje real a la dirección asociada a la cuenta
+administradora. Desplegad esa función con `verify_jwt = true`; las credenciales de Resend
+se mantienen únicamente en el servidor. Las cartas, reservas, pagos, facturas y cierres de
+ruta no se despachan automáticamente por WhatsApp.
 
 Las solicitudes de transporte usan `transport-payment`: el importe se calcula en la base
 de datos según el tamaño de cada box y se guarda en la solicitud antes de generar el

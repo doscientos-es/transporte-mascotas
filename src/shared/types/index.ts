@@ -31,7 +31,7 @@ export type NavSection =
   | 'facturas'
   | 'solicitudes'
   | 'ajustes'
-  | 'whatsapp-test'
+  | 'email-test'
   | 'proximas-rutas'
   | 'mis-transportes'
   | 'mis-mascotas'

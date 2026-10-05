@@ -16,8 +16,8 @@ import {
   ArrowUpRight,
   CircleDollarSign,
   Crown,
+  Mail,
   MailPlus,
-  MessageCircle,
   Search,
   ShieldCheck,
   UserRound,
@@ -414,13 +414,13 @@ export function SettingsPage({
           </Button>
         </div>
       </section>
-      <section className="settings-support settings-whatsapp">
+      <section className="settings-support">
         <div>
-          <h2>Pruebas de WhatsApp</h2>
-          <p>Envía los mensajes de confirmación y recordatorio a un número de prueba.</p>
+          <h2>Prueba de email</h2>
+          <p>Comprueba que los emails se envían correctamente a tu correo de administrador.</p>
         </div>
-        <a href="/ajustes/whatsapp">
-          <MessageCircle size={16} /> Abrir pruebas
+        <a href="/ajustes/email">
+          <Mail size={16} /> Enviar prueba
         </a>
       </section>
       <section className="settings-support">

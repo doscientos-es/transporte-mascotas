@@ -7,6 +7,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuItem,
   IconButton,
   Pagination,
 } from '@doscientos/ui'
@@ -15,6 +17,7 @@ import {
   Eye,
   FileDown,
   FilePenLine,
+  MoreHorizontal,
   PawPrint,
   ReceiptText,
   Search,
@@ -361,31 +364,65 @@ function LetterRow({
           <IconButton type="button" label="Ver detalles" onClick={() => onView(letter)}>
             <Eye size={17} />
           </IconButton>
-          <IconButton type="button" label="Editar carta" onClick={() => onEdit(letter)}>
-            <FilePenLine size={17} />
-          </IconButton>
-          <IconButton type="button" label="Descargar PDF" onClick={() => onDownload(letter)}>
-            <FileDown size={17} />
-          </IconButton>
-          <IconButton
-            type="button"
-            label="Ver solicitud de pago"
-            onClick={() => onOpenPaymentRequests(letter.id)}
-          >
-            <ReceiptText size={17} />
-          </IconButton>
-          {clientName && (
-            <IconButton
-              type="button"
-              label="Buscar cliente"
-              onClick={() => onOpenClient(clientName)}
-            >
-              <UserRound size={17} />
-            </IconButton>
-          )}
+          <LetterActionsMenu
+            letter={letter}
+            clientName={clientName}
+            onEdit={onEdit}
+            onDownload={onDownload}
+            onOpenClient={onOpenClient}
+            onOpenPaymentRequests={onOpenPaymentRequests}
+          />
         </div>
       </td>
     </tr>
+  )
+}
+
+function LetterActionsMenu({
+  letter,
+  clientName,
+  onEdit,
+  onDownload,
+  onOpenClient,
+  onOpenPaymentRequests,
+}: {
+  letter: Letter
+  clientName: string
+  onEdit: (letter: Letter) => void
+  onDownload: (letter: Letter) => void
+  onOpenClient: (clientName: string) => void
+  onOpenPaymentRequests: (letterId: string) => void
+}) {
+  return (
+    <DropdownMenu
+      trigger={
+        <Button
+          className="letter-row-menu-trigger"
+          variant="outline"
+          size="icon"
+          aria-label={`Más acciones de ${letter.id}`}
+        >
+          <MoreHorizontal size={17} />
+        </Button>
+      }
+      placement="bottom end"
+      className="min-w-48"
+    >
+      <DropdownMenuItem onAction={() => onEdit(letter)}>
+        <FilePenLine size={16} /> Editar carta
+      </DropdownMenuItem>
+      <DropdownMenuItem onAction={() => onDownload(letter)}>
+        <FileDown size={16} /> Descargar PDF
+      </DropdownMenuItem>
+      <DropdownMenuItem onAction={() => onOpenPaymentRequests(letter.id)}>
+        <ReceiptText size={16} /> Ver solicitud de pago
+      </DropdownMenuItem>
+      {clientName && (
+        <DropdownMenuItem onAction={() => onOpenClient(clientName)}>
+          <UserRound size={16} /> Buscar cliente
+        </DropdownMenuItem>
+      )}
+    </DropdownMenu>
   )
 }
 
@@ -434,23 +471,17 @@ function LetterCard({
       <div className="letter-card-footer">
         <span>{letter.route}</span>
         <div>
-          <button type="button" onClick={() => onView(letter)}>
-            <Eye size={16} /> Ver
+          <button className="letter-card-view-button" type="button" onClick={() => onView(letter)}>
+            <Eye size={16} /> Ver detalles
           </button>
-          <button type="button" onClick={() => onEdit(letter)}>
-            <FilePenLine size={16} /> Editar
-          </button>
-          <button type="button" onClick={() => onDownload(letter)}>
-            <FileDown size={16} /> PDF
-          </button>
-          <button type="button" onClick={() => onOpenPaymentRequests(letter.id)}>
-            <ReceiptText size={16} /> Solicitud
-          </button>
-          {clientName && (
-            <button type="button" onClick={() => onOpenClient(clientName)}>
-              <UserRound size={16} /> Cliente
-            </button>
-          )}
+          <LetterActionsMenu
+            letter={letter}
+            clientName={clientName}
+            onEdit={onEdit}
+            onDownload={onDownload}
+            onOpenClient={onOpenClient}
+            onOpenPaymentRequests={onOpenPaymentRequests}
+          />
         </div>
       </div>
     </article>

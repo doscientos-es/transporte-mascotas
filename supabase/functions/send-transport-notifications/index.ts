@@ -20,13 +20,10 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     const body = (await request.json()) as {
-      action?: 'dispatch' | 'test'
+      action?: 'dispatch'
       requestId?: string
-      kind?: NotificationKind
-      phone?: string
     }
     if (!(body.action === 'dispatch' && isCronRequest(request))) await requireAdmin(request)
-    if (body.action === 'test') return await sendTest(body.phone, body.kind)
     if (body.requestId && !isUuid(body.requestId))
       return json({ error: 'Solicitud no válida.' }, 400)
     const result = await dispatch(body.requestId)
@@ -38,23 +35,6 @@ Deno.serve(async (request) => {
     )
   }
 })
-
-async function sendTest(phone?: string, kind?: NotificationKind) {
-  if (!phone || (kind !== 'confirmacion' && kind !== 'recordatorio_ruta'))
-    return json({ error: 'Indica un teléfono y el mensaje de prueba.' }, 400)
-  const messageId = await send(kind, phone, {
-    id: 'test',
-    contact_name: 'Cliente de prueba',
-    origin_text: 'Madrid',
-    destination_text: 'Valencia',
-    origin_latitude: 40.4168,
-    origin_longitude: -3.7038,
-    destination_latitude: 39.4699,
-    destination_longitude: -0.3763,
-    desired_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  })
-  return json({ sent: 1, messageId })
-}
 
 async function dispatch(requestId?: string) {
   const response = await rest('rpc/claim_transport_request_notifications', {

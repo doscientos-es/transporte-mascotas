@@ -5,15 +5,15 @@
 Kache Envíos usa dos números separados. El número principal del transportista
 permanece en su app de WhatsApp Business para la conversación humana, sin
 migrarlo ni tocarlo. El número dedicado y la integración con Cloud API se
-conservan únicamente para pruebas explícitas de administración. Los clientes no
+conservan en el servidor, pero ya no hay una pantalla de prueba manual de WhatsApp
+en Ajustes. Los clientes no
 reciben comunicaciones automáticas sobre su transporte ni su pago; si escriben
 al número de avisos, la autorespuesta puede redirigirlos al teléfono principal.
 
 Los avisos transaccionales están desactivados: crear una carta, confirmar una
 reserva, solicitar un pago, emitir una factura o cerrar una ruta no genera ni
 envía WhatsApp. Las reservas creadas desde el portal tampoco generan avisos al
-confirmarse. El área de pruebas de administración sigue disponible para validar
-la integración de Meta de forma explícita.
+confirmarse. La prueba disponible en Ajustes es ahora la de email con Resend.
 
 ## Eventos automáticos
 
@@ -75,17 +75,15 @@ no se deben configurar cron ni secretos para despacharlas. La aplicación no
 intenta despachar avisos y las migraciones cancelan cualquier cola histórica
 pendiente.
 
-Las pruebas explícitas desde **Ajustes → Pruebas de WhatsApp** son la única
-operación que puede contactar con Meta.
+La interfaz no permite enviar pruebas manuales de WhatsApp. La prueba de correo en
+**Ajustes → Prueba de email** contacta con Resend y no con Meta.
 
 ## Puesta en marcha y prueba
 
 1. Aplicar todas las migraciones y desplegar las funciones de Edge.
-2. Si se desea probar Meta, configurar sus secretos y plantillas sólo en Edge
-   Functions.
-3. Usar **Ajustes → Pruebas de WhatsApp** únicamente si se desea validar Meta con
-   un teléfono controlado.
-4. En el entorno de pruebas de CaixaBank, validar pago correcto, rechazado,
+2. Para comprobar el correo, desplegar `send-test-email`, configurar Resend sólo
+   como secreto de Edge Functions y usar **Ajustes → Prueba de email**.
+3. En el entorno de pruebas de CaixaBank, validar pago correcto, rechazado,
    reintento del webhook y generación administrativa de factura sin WhatsApp.
 
 No registrar tokens, secretos, teléfonos completos ni enlaces de pago en logs.

@@ -39,11 +39,16 @@ export async function rest(path: string, init: RequestInit = {}) {
 }
 
 export async function requireAdmin(request: Request) {
+  const user = await requireAdminUser(request)
+  return user.id
+}
+
+export async function requireAdminUser(request: Request) {
   const user = await requireUser(request)
   const profileResponse = await rest(`profiles?id=eq.${encodeURIComponent(user.id)}&select=role`)
   const [profile] = (await profileResponse.json()) as Array<{ role: string }>
   if (profile?.role !== 'admin') throw new Error('No tienes permisos para generar pagos.')
-  return user.id
+  return user
 }
 
 export async function requireUser(request: Request) {

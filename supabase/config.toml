@@ -435,6 +435,9 @@ verify_jwt = true
 [functions.send-transport-notifications]
 verify_jwt = false
 
+[functions.send-test-email]
+verify_jwt = true
+
 [functions.send-carriage-letter-notifications]
 verify_jwt = false
 

@@ -146,7 +146,7 @@ const router = createBrowserRouter([
                 HydrateFallback: LoadingRoute,
               },
               {
-                path: ROUTER_PATHS.adminWhatsApp,
+                path: ROUTER_PATHS.adminEmailTest,
                 lazy: staffDashboardRoute,
                 HydrateFallback: LoadingRoute,
               },

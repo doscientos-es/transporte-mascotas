@@ -81,9 +81,9 @@ const SettingsPage = lazyWithRetry(
   () => import('./settings-page'),
   ({ SettingsPage: page }) => page,
 )
-const WhatsAppTestPage = lazyWithRetry(
-  () => import('./whatsapp-test-page'),
-  ({ WhatsAppTestPage: page }) => page,
+const EmailTestPage = lazyWithRetry(
+  () => import('./email-test-page'),
+  ({ EmailTestPage: page }) => page,
 )
 const TemplatesPage = lazyWithRetry(
   () => import('./templates-page'),
@@ -266,8 +266,8 @@ export function AdminDashboardPage({
         title={
           isCreatingLetter
             ? 'Nueva carta de porte'
-            : section === 'whatsapp-test'
-              ? 'Pruebas de WhatsApp'
+            : section === 'email-test'
+              ? 'Prueba de email'
               : undefined
         }
         headerAction={
@@ -451,8 +451,8 @@ export function AdminDashboardPage({
                 onSaveBoxCatalog={dashboard.updateBoxCatalog}
               />
             )}
-            {profile.role === 'admin' && section === 'whatsapp-test' && (
-              <WhatsAppTestPage onBack={() => navigateToSection('ajustes')} />
+            {profile.role === 'admin' && section === 'email-test' && (
+              <EmailTestPage onBack={() => navigateToSection('ajustes')} />
             )}
             {section === 'facturas' && (
               <InvoicesPage
