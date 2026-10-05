@@ -3545,6 +3545,11 @@
   max-width: 830px;
 }
 
+.client-request-form-shell {
+  max-width: 830px;
+  padding: 20px;
+}
+
 .request-form {
   max-height: none;
   overflow: visible;

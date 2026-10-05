@@ -72,6 +72,9 @@ describe('ClientRequestForm contact details', () => {
 
     expect(markup).toContain('La factura utilizará los datos de quien')
     expect(markup).toContain('No hace falta volver a rellenar estos datos.')
+    expect(markup).toContain('class="client-request-form-shell"')
+    expect(markup).toContain('border-input bg-background min-h-11 rounded-md border')
+    expect(markup).not.toContain('table-card client-request-card')
     expect(markup).not.toContain('id="request-billing-name"')
     expect(markup).not.toContain('id="request-billing-address"')
   })
