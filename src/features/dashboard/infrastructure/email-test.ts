@@ -14,16 +14,11 @@ export async function sendEmailTest() {
 }
 
 async function functionError(error: unknown) {
-  const response =
-    error &&
-    typeof error === 'object' &&
-    'context' in error &&
-    error.context &&
-    typeof error.context === 'object' &&
-    'json' in error.context &&
-    typeof error.context.json === 'function'
-      ? (error.context as Response)
-      : null
+  const context = error && typeof error === 'object' && 'context' in error ? error.context : null
+  if (context instanceof Error)
+    return `No se ha podido contactar con la función de email: ${context.message}`
+
+  const response = context instanceof Response ? context : null
   const details = response
     ? ((await response
         .clone()

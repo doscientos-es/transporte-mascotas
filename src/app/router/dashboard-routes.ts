@@ -10,7 +10,6 @@ export const dashboardPaths: Record<NavSection, string> = {
   facturas: '/facturas',
   solicitudes: '/solicitudes',
   ajustes: '/ajustes',
-  'email-test': '/ajustes/email',
   'proximas-rutas': '/proximas-rutas',
   'mis-transportes': '/mis-transportes',
   'mis-mascotas': '/mis-mascotas',
@@ -57,7 +56,7 @@ export const ROUTER_PATHS = {
   adminTemplates: routePath(dashboardPaths.plantillas),
   adminRequests: routePath(dashboardPaths.solicitudes),
   adminSettings: routePath(dashboardPaths.ajustes),
-  adminEmailTest: routePath(dashboardPaths['email-test']),
+  adminEmailTestLegacy: routePath(`${dashboardPaths.ajustes}/email`),
   notFound: '*',
 } as const
 
@@ -79,8 +78,8 @@ export function dashboardLocationForPath(
   if (path === dashboardPaths.clientes) return { section: 'clientes' }
   if (path === dashboardPaths.facturas) return { section: 'facturas' }
   if (path === dashboardPaths.solicitudes) return { section: 'solicitudes' }
+  if (path === `${dashboardPaths.ajustes}/email`) return { section: 'ajustes' }
   if (path === dashboardPaths.ajustes) return { section: 'ajustes' }
-  if (path === dashboardPaths['email-test']) return { section: 'email-test' }
   if (path === dashboardPaths['proximas-rutas']) return { section: 'proximas-rutas' }
   if (path === dashboardPaths['mis-transportes']) return { section: 'mis-transportes' }
   if (path === dashboardPaths['mis-mascotas']) return { section: 'mis-mascotas' }

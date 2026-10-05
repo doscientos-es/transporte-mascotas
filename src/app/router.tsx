@@ -15,7 +15,12 @@ import {
 
 import { isClientRole, type DashboardNavigation, type UserProfile } from '@/shared/types'
 
-import { APP_PATHS, DEFAULT_DASHBOARD_SECTIONS, ROUTER_PATHS } from './router/dashboard-routes'
+import {
+  APP_PATHS,
+  dashboardPaths,
+  DEFAULT_DASHBOARD_SECTIONS,
+  ROUTER_PATHS,
+} from './router/dashboard-routes'
 import { useDashboardNavigation } from './router/use-dashboard-navigation'
 
 type AuthState = { session: Session | null; profile: UserProfile | null }
@@ -146,9 +151,8 @@ const router = createBrowserRouter([
                 HydrateFallback: LoadingRoute,
               },
               {
-                path: ROUTER_PATHS.adminEmailTest,
-                lazy: staffDashboardRoute,
-                HydrateFallback: LoadingRoute,
+                path: ROUTER_PATHS.adminEmailTestLegacy,
+                element: <Navigate to={dashboardPaths.ajustes} replace />,
               },
             ],
           },

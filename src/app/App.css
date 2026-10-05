@@ -5286,24 +5286,6 @@ a.whatsapp-link:hover {
   text-decoration: underline;
 }
 
-.email-test-page {
-  max-width: 760px;
-}
-
-.settings-back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 18px;
-  border: 0;
-  background: transparent;
-  color: #426842;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
 .email-test-note {
   margin: 0;
   color: #687364;
@@ -5311,10 +5293,8 @@ a.whatsapp-link:hover {
   line-height: 1.5;
 }
 
-.email-test-card [data-slot='card-content'] {
-  display: grid;
-  gap: 20px;
-  padding: 22px;
+.settings-support .email-test-note {
+  margin-top: 14px;
 }
 
 .email-test-feedback {
@@ -5331,10 +5311,6 @@ a.whatsapp-link:hover {
 
 .email-test-feedback.is-error {
   color: #a0232a;
-}
-
-.email-test-note {
-  margin-top: 14px;
 }
 
 .team-settings-heading {

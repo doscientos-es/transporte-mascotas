@@ -14,10 +14,12 @@ import {
 } from '@doscientos/ui'
 import {
   ArrowUpRight,
+  CircleAlert,
   CircleDollarSign,
+  CheckCircle2,
   Crown,
-  Mail,
   MailPlus,
+  Send,
   Search,
   ShieldCheck,
   UserRound,
@@ -36,6 +38,8 @@ import {
 import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import type { StaffInvitation, Transporter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
+
+import { sendEmailTest } from '../application/email-test'
 
 type Props = {
   transporters: Transporter[]
@@ -86,6 +90,11 @@ export function SettingsPage({
   const [draftCatalog, setDraftCatalog] = useState(boxCatalog)
   const [savingPrices, setSavingPrices] = useState(false)
   const [priceError, setPriceError] = useState('')
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
+  const [testEmailFeedback, setTestEmailFeedback] = useState<{
+    type: 'error' | 'success'
+    message: string
+  } | null>(null)
   useEffect(() => setDraftCatalog(boxCatalog), [boxCatalog])
   const matchingTransporters = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
@@ -173,6 +182,22 @@ export function SettingsPage({
       )
     } finally {
       setSavingPrices(false)
+    }
+  }
+
+  async function sendTestEmail() {
+    setSendingTestEmail(true)
+    setTestEmailFeedback(null)
+    try {
+      const { email } = await sendEmailTest()
+      setTestEmailFeedback({ type: 'success', message: `Email de prueba enviado a ${email}.` })
+    } catch (reason) {
+      setTestEmailFeedback({
+        type: 'error',
+        message: reason instanceof Error ? reason.message : 'No se ha podido enviar el email.',
+      })
+    } finally {
+      setSendingTestEmail(false)
     }
   }
 
@@ -417,11 +442,30 @@ export function SettingsPage({
       <section className="settings-support">
         <div>
           <h2>Prueba de email</h2>
-          <p>Comprueba que los emails se envían correctamente a tu correo de administrador.</p>
+          <p>
+            Envía un correo real a la dirección de administrador, con el mismo proveedor y la
+            configuración que los emails operativos.
+          </p>
+          {testEmailFeedback && (
+            <p
+              className={`email-test-feedback is-${testEmailFeedback.type}`}
+              role={testEmailFeedback.type === 'error' ? 'alert' : 'status'}
+            >
+              {testEmailFeedback.type === 'success' ? (
+                <CheckCircle2 size={16} />
+              ) : (
+                <CircleAlert size={16} />
+              )}
+              {testEmailFeedback.message}
+            </p>
+          )}
+          <p className="email-test-note">
+            Si no lo recibes, revisa la carpeta de spam y la configuración del remitente en Resend.
+          </p>
         </div>
-        <a href="/ajustes/email">
-          <Mail size={16} /> Enviar prueba
-        </a>
+        <Button disabled={sendingTestEmail} onClick={() => void sendTestEmail()}>
+          <Send size={16} /> {sendingTestEmail ? 'Enviando…' : 'Enviar prueba de email'}
+        </Button>
       </section>
       <section className="settings-support">
         <div>

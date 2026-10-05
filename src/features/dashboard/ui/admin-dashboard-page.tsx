@@ -81,10 +81,6 @@ const SettingsPage = lazyWithRetry(
   () => import('./settings-page'),
   ({ SettingsPage: page }) => page,
 )
-const EmailTestPage = lazyWithRetry(
-  () => import('./email-test-page'),
-  ({ EmailTestPage: page }) => page,
-)
 const TemplatesPage = lazyWithRetry(
   () => import('./templates-page'),
   ({ TemplatesPage: page }) => page,
@@ -263,13 +259,7 @@ export function AdminDashboardPage({
         pendingLetters={pendingLetters}
         profileRole={profile.role}
         displayName={profile.displayName}
-        title={
-          isCreatingLetter
-            ? 'Nueva carta de porte'
-            : section === 'email-test'
-              ? 'Prueba de email'
-              : undefined
-        }
+        title={isCreatingLetter ? 'Nueva carta de porte' : undefined}
         headerAction={
           !isTransporter && section === 'rutas' ? (
             <Button onClick={() => dashboard.setShowNewRoute(true)}>
@@ -450,9 +440,6 @@ export function AdminDashboardPage({
                 boxCatalog={dashboard.boxCatalog}
                 onSaveBoxCatalog={dashboard.updateBoxCatalog}
               />
-            )}
-            {profile.role === 'admin' && section === 'email-test' && (
-              <EmailTestPage onBack={() => navigateToSection('ajustes')} />
             )}
             {section === 'facturas' && (
               <InvoicesPage

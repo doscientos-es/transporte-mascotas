@@ -15,7 +15,6 @@ const labels: Record<NavSection, string> = {
   facturas: 'Facturas',
   solicitudes: 'Solicitudes',
   ajustes: 'Ajustes',
-  'email-test': 'Prueba de email',
   'proximas-rutas': 'Próximas rutas',
   'mis-transportes': 'Mis transportes',
   'mis-mascotas': 'Mis mascotas',

@@ -46,4 +46,12 @@ describe('sendEmailTest', () => {
       'No se ha podido enviar el email de prueba. (HTTP 404)',
     )
   })
+
+  it('surfaces connection failures when the Edge Function cannot be reached', async () => {
+    invoke.mockResolvedValue({ data: null, error: { context: new TypeError('Failed to fetch') } })
+
+    await expect(sendEmailTest()).rejects.toThrow(
+      'No se ha podido contactar con la función de email: Failed to fetch',
+    )
+  })
 })
