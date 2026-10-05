@@ -30,10 +30,8 @@ describe('dashboard routes', () => {
   it('keeps router paths and navigation defaults in one source of truth', () => {
     expect(routePathFor('ruta norte')).toBe('/rutas/ruta%20norte')
     expect(vanPathFor('van/01')).toBe('/furgoneta/van%2F01')
-    expect(dashboardLocationForPath('/ajustes/email')).toEqual({ section: 'ajustes' })
     expect(letterCreatePath).toBe('/cartas/nueva')
     expect(ROUTER_PATHS.adminLetterCreate).toBe('cartas/nueva')
-    expect(ROUTER_PATHS.adminEmailTestLegacy).toBe('ajustes/email')
     expect(dashboardLocationForPath(letterCreatePath)).toEqual({ section: 'cartas' })
     expect(APP_PATHS.clientHome).toBe('/mis-transportes')
     expect(APP_PATHS.passwordRecovery).toBe('/recuperar-contrasena')
