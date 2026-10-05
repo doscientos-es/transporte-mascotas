@@ -25,9 +25,10 @@ async function functionError(error: unknown) {
       ? (error.context as Response)
       : null
   const details = response
-    ? ((await response.clone().json().catch(() => null)) as
-        | { error?: unknown; message?: unknown }
-        | null)
+    ? ((await response
+        .clone()
+        .json()
+        .catch(() => null)) as { error?: unknown; message?: unknown } | null)
     : null
   if (typeof details?.error === 'string') return details.error
   if (typeof details?.message === 'string') return details.message
