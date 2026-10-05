@@ -14,8 +14,8 @@ Deno.serve(async (request) => {
     await sendEmail({
       to: email,
       subject: 'Prueba de email · Kache Envíos',
-      html: '<p>Este es un email de prueba enviado desde Ajustes de Kache Envíos.</p><p>La configuración compartida de Resend funciona correctamente.</p>',
-      text: 'Este es un email de prueba enviado desde Ajustes de Kache Envíos.\nLa configuración compartida de Resend funciona correctamente.',
+      html: '<p>Este es un email de prueba enviado desde Ajustes de Kache Envíos.</p><p>La configuración compartida funciona correctamente.</p>',
+      text: 'Este es un email de prueba enviado desde Ajustes de Kache Envíos.\nLa configuración compartida funciona correctamente.',
       idempotencyKey: `email-test/${user.id}/${crypto.randomUUID()}`,
     })
     return json({ sent: true, email })
