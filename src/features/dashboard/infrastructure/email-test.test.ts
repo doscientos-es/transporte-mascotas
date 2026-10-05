@@ -35,4 +35,15 @@ describe('sendEmailTest', () => {
 
     await expect(sendEmailTest()).rejects.toThrow('Resend rechazó el envío.')
   })
+
+  it('includes the HTTP status when the Edge Function returns a non-JSON error', async () => {
+    invoke.mockResolvedValue({
+      data: null,
+      error: { context: new Response('Not found', { status: 404 }) },
+    })
+
+    await expect(sendEmailTest()).rejects.toThrow(
+      'No se ha podido enviar el email de prueba. (HTTP 404)',
+    )
+  })
 })

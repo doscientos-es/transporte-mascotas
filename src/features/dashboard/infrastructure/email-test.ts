@@ -25,7 +25,13 @@ async function functionError(error: unknown) {
       ? (error.context as Response)
       : null
   const details = response
-    ? ((await response.json().catch(() => null)) as { error?: string } | null)
+    ? ((await response.clone().json().catch(() => null)) as
+        | { error?: unknown; message?: unknown }
+        | null)
     : null
-  return details?.error || 'No se ha podido enviar el email de prueba.'
+  if (typeof details?.error === 'string') return details.error
+  if (typeof details?.message === 'string') return details.message
+  return response?.status
+    ? `No se ha podido enviar el email de prueba. (HTTP ${response.status})`
+    : 'No se ha podido enviar el email de prueba.'
 }
