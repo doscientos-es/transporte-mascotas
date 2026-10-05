@@ -17,10 +17,18 @@ type RequestRow = {
   contact_phone: string
   contact_email: string
   sender_nif: string
+  sender_address: string
+  sender_postal_code: string
+  sender_city: string
+  sender_province: string
   recipient_name: string
   recipient_nif: string
   recipient_phone: string
   recipient_email: string
+  recipient_address: string
+  recipient_postal_code: string
+  recipient_city: string
+  recipient_province: string
   billing_payer: TransportRequest['billingPayer']
   billing_client: TransportRequest['billingClient']
   origin_text: string
@@ -71,10 +79,18 @@ function mapRequest(row: RequestRow): TransportRequest {
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
     senderNif: row.sender_nif,
+    senderAddress: row.sender_address,
+    senderPostalCode: row.sender_postal_code,
+    senderCity: row.sender_city,
+    senderProvince: row.sender_province,
     recipientName: row.recipient_name,
     recipientNif: row.recipient_nif,
     recipientPhone: row.recipient_phone,
     recipientEmail: row.recipient_email,
+    recipientAddress: row.recipient_address,
+    recipientPostalCode: row.recipient_postal_code,
+    recipientCity: row.recipient_city,
+    recipientProvince: row.recipient_province,
     billingPayer: row.billing_payer,
     billingClient: row.billing_client,
     origin: row.origin_text,
@@ -237,10 +253,18 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
     p_contact_phone: request.contactPhone,
     p_contact_email: request.contactEmail,
     p_sender_nif: request.senderNif,
+    p_sender_address: request.senderAddress,
+    p_sender_postal_code: request.senderPostalCode,
+    p_sender_city: request.senderCity,
+    p_sender_province: request.senderProvince,
     p_recipient_name: request.recipientName,
     p_recipient_nif: request.recipientNif,
     p_recipient_phone: request.recipientPhone,
     p_recipient_email: request.recipientEmail,
+    p_recipient_address: request.recipientAddress,
+    p_recipient_postal_code: request.recipientPostalCode,
+    p_recipient_city: request.recipientCity,
+    p_recipient_province: request.recipientProvince,
     p_billing_payer: request.billingPayer,
     p_billing_client: request.billingClient,
     p_daily_route_id: request.dailyRouteId,

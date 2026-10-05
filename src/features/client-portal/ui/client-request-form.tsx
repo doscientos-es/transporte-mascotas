@@ -51,6 +51,7 @@ import type {
 } from '@/shared/types'
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
+import { payerIdentity } from '../application/request-payer'
 import { transportLocationMapsUrl } from '../application/route-maps'
 
 export type RequestFormValues = {
@@ -58,10 +59,18 @@ export type RequestFormValues = {
   contactPhone: string
   contactEmail: string
   senderNif: string
+  senderAddress: string
+  senderPostalCode: string
+  senderCity: string
+  senderProvince: string
   recipientName: string
   recipientNif: string
   recipientPhone: string
   recipientEmail: string
+  recipientAddress: string
+  recipientPostalCode: string
+  recipientCity: string
+  recipientProvince: string
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   origin: string
@@ -77,10 +86,18 @@ type PartyField =
   | 'contactPhone'
   | 'contactEmail'
   | 'senderNif'
+  | 'senderAddress'
+  | 'senderPostalCode'
+  | 'senderCity'
+  | 'senderProvince'
   | 'recipientName'
   | 'recipientNif'
   | 'recipientPhone'
   | 'recipientEmail'
+  | 'recipientAddress'
+  | 'recipientPostalCode'
+  | 'recipientCity'
+  | 'recipientProvince'
 
 const steps = ['Contacto', 'Trayecto', 'Mascotas', 'Revisar']
 const currency = (amount: number) =>
@@ -110,47 +127,40 @@ const invoiceClient = (fullName = '', email = '', phone = '', nif = ''): Invoice
 const hasMeasurements = (animal: TransportRequestAnimal) =>
   animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
 
-function payerIdentity(values: RequestFormValues): Partial<InvoiceClientInput> {
-  if (values.billingPayer === 'remitente')
-    return {
-      fullName: values.contactName,
-      nif: values.senderNif,
-      email: values.contactEmail,
-      phone: values.contactPhone,
-    }
-  if (values.billingPayer === 'destinatario')
-    return {
-      fullName: values.recipientName,
-      nif: values.recipientNif,
-      email: values.recipientEmail,
-      phone: values.recipientPhone,
-    }
-  return {}
-}
-
 const initialValues = (
   contactName: string,
   contactPhone: string,
   contactEmail: string,
   preselectedRoute?: UpcomingRoute,
-): RequestFormValues => ({
-  contactName,
-  contactPhone,
-  contactEmail,
-  senderNif: '',
-  recipientName: '',
-  recipientNif: '',
-  recipientPhone: '',
-  recipientEmail: '',
-  billingPayer: 'remitente',
-  billingClient: invoiceClient(contactName, contactEmail, contactPhone),
-  origin: '',
-  destination: '',
-  desiredDate: preselectedRoute?.serviceDate ?? '',
-  dailyRouteId: preselectedRoute?.id ?? '',
-  notes: '',
-  animals: [emptyAnimal(1)],
-})
+): RequestFormValues => {
+  const values: RequestFormValues = {
+    contactName,
+    contactPhone,
+    contactEmail,
+    senderNif: '',
+    senderAddress: '',
+    senderPostalCode: '',
+    senderCity: '',
+    senderProvince: '',
+    recipientName: '',
+    recipientNif: '',
+    recipientPhone: '',
+    recipientEmail: '',
+    recipientAddress: '',
+    recipientPostalCode: '',
+    recipientCity: '',
+    recipientProvince: '',
+    billingPayer: 'remitente',
+    billingClient: invoiceClient(),
+    origin: '',
+    destination: '',
+    desiredDate: preselectedRoute?.serviceDate ?? '',
+    dailyRouteId: preselectedRoute?.id ?? '',
+    notes: '',
+    animals: [emptyAnimal(1)],
+  }
+  return { ...values, billingClient: { ...values.billingClient, ...payerIdentity(values) } }
+}
 
 function formatDepartureDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
@@ -409,28 +419,40 @@ export function ClientRequestForm({
         ['DNI/NIE de quien envía', values.senderNif],
         ['teléfono de quien envía', values.contactPhone],
         ['correo de quien envía', values.contactEmail],
+        ['dirección de quien envía', values.senderAddress],
+        ['código postal de quien envía', values.senderPostalCode],
+        ['localidad de quien envía', values.senderCity],
+        ['provincia de quien envía', values.senderProvince],
         ['nombre de quien recibe', values.recipientName],
         ['DNI/NIE de quien recibe', values.recipientNif],
         ['teléfono de quien recibe', values.recipientPhone],
+        ['correo de quien recibe', values.recipientEmail],
+        ['dirección de quien recibe', values.recipientAddress],
+        ['código postal de quien recibe', values.recipientPostalCode],
+        ['localidad de quien recibe', values.recipientCity],
+        ['provincia de quien recibe', values.recipientProvince],
       ]
       const missingPartyField = requiredPartyFields.find(([, value]) => !value.trim())
       if (missingPartyField) return `Completa el ${missingPartyField[0]}.`
       if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
         return 'Escribe un correo electrónico válido.'
-      if (values.recipientEmail.trim() && !/^\S+@\S+\.\S+$/.test(values.recipientEmail))
+      if (!/^\S+@\S+\.\S+$/.test(values.recipientEmail))
         return 'Escribe un correo válido para quien recibe.'
-      const requiredFiscalFields: Array<[string, string]> = [
-        ['nombre o razón social', values.billingClient.fullName],
-        ['NIF/CIF', values.billingClient.nif],
-        ['dirección fiscal', values.billingClient.address],
-        ['código postal', values.billingClient.postalCode],
-        ['ciudad', values.billingClient.city],
-        ['correo del pagador', values.billingClient.email],
-        ['teléfono del pagador', values.billingClient.phone],
-      ]
+      const requiredFiscalFields: Array<[string, string]> =
+        values.billingPayer === 'manual'
+          ? [
+              ['nombre o razón social', values.billingClient.fullName],
+              ['NIF/CIF', values.billingClient.nif],
+              ['dirección fiscal', values.billingClient.address],
+              ['código postal', values.billingClient.postalCode],
+              ['ciudad', values.billingClient.city],
+              ['correo del pagador', values.billingClient.email],
+              ['teléfono del pagador', values.billingClient.phone],
+            ]
+          : []
       const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
       if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
-      if (!/^\S+@\S+\.\S+$/.test(values.billingClient.email))
+      if (values.billingPayer === 'manual' && !/^\S+@\S+\.\S+$/.test(values.billingClient.email))
         return 'Escribe un correo válido para el pagador.'
     }
     if (step === 1) {
@@ -763,6 +785,51 @@ export function ClientRequestForm({
                         : 'Aquí recibirás la información de tu solicitud.'}
                     </FieldDescription>
                   </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-sender-address">Dirección completa</FieldLabel>
+                    <Input
+                      id="request-sender-address"
+                      value={values.senderAddress}
+                      onChange={(event) => updateContact('senderAddress', event.target.value)}
+                      autoComplete="street-address"
+                      placeholder="Calle, número, piso…"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-sender-postal-code">Código postal</FieldLabel>
+                    <Input
+                      id="request-sender-postal-code"
+                      value={values.senderPostalCode}
+                      onChange={(event) => updateContact('senderPostalCode', event.target.value)}
+                      autoComplete="postal-code"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-sender-city">Localidad</FieldLabel>
+                    <Input
+                      id="request-sender-city"
+                      value={values.senderCity}
+                      onChange={(event) => updateContact('senderCity', event.target.value)}
+                      autoComplete="address-level2"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-sender-province">Provincia</FieldLabel>
+                    <Input
+                      id="request-sender-province"
+                      value={values.senderProvince}
+                      onChange={(event) => updateContact('senderProvince', event.target.value)}
+                      autoComplete="address-level1"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
                 </div>
               </div>
               <div className="request-form-block">
@@ -816,8 +883,55 @@ export function ClientRequestForm({
                       type="email"
                       value={values.recipientEmail}
                       onChange={(event) => updateContact('recipientEmail', event.target.value)}
-                      placeholder="Opcional"
+                      autoComplete="email"
+                      placeholder="nombre@correo.com"
                       className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-recipient-address">Dirección completa</FieldLabel>
+                    <Input
+                      id="request-recipient-address"
+                      value={values.recipientAddress}
+                      onChange={(event) => updateContact('recipientAddress', event.target.value)}
+                      autoComplete="street-address"
+                      placeholder="Calle, número, piso…"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-postal-code">Código postal</FieldLabel>
+                    <Input
+                      id="request-recipient-postal-code"
+                      value={values.recipientPostalCode}
+                      onChange={(event) => updateContact('recipientPostalCode', event.target.value)}
+                      autoComplete="postal-code"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="request-recipient-city">Localidad</FieldLabel>
+                    <Input
+                      id="request-recipient-city"
+                      value={values.recipientCity}
+                      onChange={(event) => updateContact('recipientCity', event.target.value)}
+                      autoComplete="address-level2"
+                      className="min-h-11"
+                      required
+                    />
+                  </Field>
+                  <Field className="sm:col-span-2">
+                    <FieldLabel htmlFor="request-recipient-province">Provincia</FieldLabel>
+                    <Input
+                      id="request-recipient-province"
+                      value={values.recipientProvince}
+                      onChange={(event) => updateContact('recipientProvince', event.target.value)}
+                      autoComplete="address-level1"
+                      className="min-h-11"
+                      required
                     />
                   </Field>
                 </div>
@@ -828,8 +942,8 @@ export function ClientRequestForm({
                   <div>
                     <h4>Datos para la factura</h4>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Elige quién paga y completa sus datos fiscales. Se guardarán en el CRM para
-                      que administración pueda emitir la factura.
+                      Si paga quien envía o recibe, usaremos los datos que ya has indicado. Solo
+                      tendrás que completar estos datos si paga una empresa externa.
                     </p>
                   </div>
                 </div>
@@ -849,87 +963,118 @@ export function ClientRequestForm({
                       <option value="manual">Otra persona o empresa</option>
                     </select>
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-name">Nombre o razón social</FieldLabel>
-                    <Input
-                      id="request-billing-name"
-                      value={values.billingClient.fullName}
-                      onChange={(event) => updateBillingClient('fullName', event.target.value)}
-                      autoComplete="organization"
-                      placeholder="Nombre completo o empresa"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-nif">NIF/CIF</FieldLabel>
-                    <Input
-                      id="request-billing-nif"
-                      value={values.billingClient.nif}
-                      onChange={(event) => updateBillingClient('nif', event.target.value)}
-                      placeholder="NIF o CIF"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field className="sm:col-span-2">
-                    <FieldLabel htmlFor="request-billing-address">Dirección fiscal</FieldLabel>
-                    <Input
-                      id="request-billing-address"
-                      value={values.billingClient.address}
-                      onChange={(event) => updateBillingClient('address', event.target.value)}
-                      autoComplete="street-address"
-                      placeholder="Calle, número, piso…"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-postal-code">Código postal</FieldLabel>
-                    <Input
-                      id="request-billing-postal-code"
-                      value={values.billingClient.postalCode}
-                      onChange={(event) => updateBillingClient('postalCode', event.target.value)}
-                      autoComplete="postal-code"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-city">Ciudad</FieldLabel>
-                    <Input
-                      id="request-billing-city"
-                      value={values.billingClient.city}
-                      onChange={(event) => updateBillingClient('city', event.target.value)}
-                      autoComplete="address-level2"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-email">Correo del pagador</FieldLabel>
-                    <Input
-                      id="request-billing-email"
-                      type="email"
-                      value={values.billingClient.email}
-                      onChange={(event) => updateBillingClient('email', event.target.value)}
-                      autoComplete="email"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="request-billing-phone">Teléfono del pagador</FieldLabel>
-                    <Input
-                      id="request-billing-phone"
-                      type="tel"
-                      value={values.billingClient.phone}
-                      onChange={(event) => updateBillingClient('phone', event.target.value)}
-                      autoComplete="tel"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
+                  {values.billingPayer === 'manual' ? (
+                    <>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-name">
+                          Nombre o razón social
+                        </FieldLabel>
+                        <Input
+                          id="request-billing-name"
+                          value={values.billingClient.fullName}
+                          onChange={(event) => updateBillingClient('fullName', event.target.value)}
+                          autoComplete="organization"
+                          placeholder="Nombre completo o empresa"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-nif">NIF/CIF</FieldLabel>
+                        <Input
+                          id="request-billing-nif"
+                          value={values.billingClient.nif}
+                          onChange={(event) => updateBillingClient('nif', event.target.value)}
+                          placeholder="NIF o CIF"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor="request-billing-address">Dirección fiscal</FieldLabel>
+                        <Input
+                          id="request-billing-address"
+                          value={values.billingClient.address}
+                          onChange={(event) => updateBillingClient('address', event.target.value)}
+                          autoComplete="street-address"
+                          placeholder="Calle, número, piso…"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-postal-code">Código postal</FieldLabel>
+                        <Input
+                          id="request-billing-postal-code"
+                          value={values.billingClient.postalCode}
+                          onChange={(event) =>
+                            updateBillingClient('postalCode', event.target.value)
+                          }
+                          autoComplete="postal-code"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-city">Localidad</FieldLabel>
+                        <Input
+                          id="request-billing-city"
+                          value={values.billingClient.city}
+                          onChange={(event) => updateBillingClient('city', event.target.value)}
+                          autoComplete="address-level2"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-email">Correo del pagador</FieldLabel>
+                        <Input
+                          id="request-billing-email"
+                          type="email"
+                          value={values.billingClient.email}
+                          onChange={(event) => updateBillingClient('email', event.target.value)}
+                          autoComplete="email"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="request-billing-phone">
+                          Teléfono del pagador
+                        </FieldLabel>
+                        <Input
+                          id="request-billing-phone"
+                          type="tel"
+                          value={values.billingClient.phone}
+                          onChange={(event) => updateBillingClient('phone', event.target.value)}
+                          autoComplete="tel"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                    </>
+                  ) : (
+                    <output
+                      aria-live="polite"
+                      className="bg-muted/40 text-foreground rounded-lg border p-4 sm:col-span-2"
+                    >
+                      <p className="font-semibold">
+                        La factura utilizará los datos de quien{' '}
+                        {values.billingPayer === 'remitente' ? 'envía' : 'recibe'}.
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {values.billingClient.fullName} · {values.billingClient.nif} ·{' '}
+                        {values.billingClient.email} · {values.billingClient.phone}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {values.billingClient.address}, {values.billingClient.postalCode}{' '}
+                        {values.billingClient.city}
+                      </p>
+                      <FieldDescription className="mt-2">
+                        No hace falta volver a rellenar estos datos.
+                      </FieldDescription>
+                    </output>
+                  )}
                 </div>
               </div>
             </section>
@@ -1319,13 +1464,20 @@ export function ClientRequestForm({
                   <small>
                     {values.senderNif} · {values.contactPhone} · {values.contactEmail}
                   </small>
+                  <small>
+                    {values.senderAddress}, {values.senderPostalCode} {values.senderCity},{' '}
+                    {values.senderProvince}
+                  </small>
                 </div>
                 <div>
                   <span>Recibe</span>
                   <strong>{values.recipientName}</strong>
                   <small>
-                    {values.recipientNif} · {values.recipientPhone}
-                    {values.recipientEmail ? ` · ${values.recipientEmail}` : ''}
+                    {values.recipientNif} · {values.recipientPhone} · {values.recipientEmail}
+                  </small>
+                  <small>
+                    {values.recipientAddress}, {values.recipientPostalCode} {values.recipientCity},{' '}
+                    {values.recipientProvince}
                   </small>
                 </div>
                 <div>

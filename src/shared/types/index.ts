@@ -325,10 +325,18 @@ export interface TransportRequest {
   contactPhone: string
   contactEmail: string
   senderNif: string
+  senderAddress: string
+  senderPostalCode: string
+  senderCity: string
+  senderProvince: string
   recipientName: string
   recipientNif: string
   recipientPhone: string
   recipientEmail: string
+  recipientAddress: string
+  recipientPostalCode: string
+  recipientCity: string
+  recipientProvince: string
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   origin: string

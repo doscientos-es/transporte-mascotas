@@ -445,20 +445,20 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
       {section === 'mis-transportes' && !paymentSuccess && (
         <>
-          <div className="client-portal-hero">
-            <div>
-              <h2>El viaje de tu mascota, siempre a la vista.</h2>
-              <p>
-                Elige una salida programada, registra el pago y sigue cada actualización desde aquí.
-              </p>
+          {!showForm && (
+            <div className="client-portal-hero">
+              <div>
+                <h2>El viaje de tu mascota, siempre a la vista.</h2>
+                <p>
+                  Elige una salida programada, registra el pago y sigue cada actualización desde
+                  aquí.
+                </p>
+              </div>
+              <Button disabled={!routes.length} onClick={openNewRequestForm}>
+                <FilePlus2 /> Solicitar transporte
+              </Button>
             </div>
-            <Button
-              disabled={!routes.length}
-              onClick={() => (showForm ? setShowForm(false) : openNewRequestForm())}
-            >
-              <FilePlus2 /> {showForm ? 'Cerrar solicitud' : 'Solicitar transporte'}
-            </Button>
-          </div>
+          )}
           {!routes.length && !loading && (
             <p className="availability-hint">
               No hay salidas publicadas por ahora. Te avisaremos cuando haya una disponible.
