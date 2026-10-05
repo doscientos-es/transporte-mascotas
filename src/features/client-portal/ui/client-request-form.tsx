@@ -17,6 +17,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarDays,
   Check,
   ClipboardCheck,
   CreditCard,
@@ -150,6 +151,15 @@ const initialValues = (
   notes: '',
   animals: [emptyAnimal(1)],
 })
+
+function formatDepartureDate(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
 
 type SelectOption = { id: string; label: string }
 
@@ -988,16 +998,27 @@ export function ClientRequestForm({
                   {deliveryStop && <StopMapLink stop={deliveryStop} />}
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="request-desired-date">Fecha de salida</FieldLabel>
-                  <Input
+                  <FieldLabel id="request-desired-date-label" htmlFor="request-desired-date">
+                    Fecha de salida
+                  </FieldLabel>
+                  <output
                     id="request-desired-date"
-                    type="date"
-                    value={values.desiredDate}
-                    readOnly
-                    aria-readonly="true"
-                    className="min-h-11"
-                    required
-                  />
+                    aria-labelledby="request-desired-date-label"
+                    aria-live="polite"
+                    className="bg-muted/40 text-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5"
+                  >
+                    <CalendarDays className="text-accent size-5 shrink-0" aria-hidden="true" />
+                    <span className="grid gap-0.5">
+                      <strong className="text-sm font-semibold">
+                        {values.desiredDate
+                          ? formatDepartureDate(values.desiredDate)
+                          : 'Selecciona una salida'}
+                      </strong>
+                      <span className="text-muted-foreground text-xs">
+                        Fecha fijada por la ruta seleccionada
+                      </span>
+                    </span>
+                  </output>
                 </Field>
                 <Field className="sm:col-span-2">
                   <FieldLabel htmlFor="request-notes">Algo que debamos tener en cuenta</FieldLabel>
