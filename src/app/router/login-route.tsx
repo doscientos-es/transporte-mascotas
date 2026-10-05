@@ -4,25 +4,19 @@ import { Navigate, useLocation, useOutletContext } from 'react-router-dom'
 import { LoginRoutePage } from '@/pages/login'
 import { isClientRole, type UserProfile } from '@/shared/types'
 
-import { APP_PATHS, isStaffAccessPath } from './dashboard-routes'
+import { APP_PATHS, isStaffAccessPath, paymentReturnStateFromSearch } from './dashboard-routes'
 
 type PublicRouteContext = { session: Session | null; profile: UserProfile | null }
 
 export function Component() {
   const { session, profile } = useOutletContext<PublicRouteContext>()
   const { pathname, search } = useLocation()
-  const searchParams = new URLSearchParams(search)
-  const payment = searchParams.get('payment')
-  const paymentRequestId = searchParams.get('request') ?? undefined
+  const paymentState = paymentReturnStateFromSearch(search)
   if (session && profile)
     return (
       <Navigate
         to={isClientRole(profile.role) ? APP_PATHS.clientHome : APP_PATHS.staffHome}
-        state={
-          payment === 'ok' || payment === 'ko'
-            ? { paymentStatus: payment, paymentRequestId }
-            : undefined
-        }
+        state={paymentState}
         replace
       />
     )

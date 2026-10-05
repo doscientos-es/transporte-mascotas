@@ -52,8 +52,8 @@ Deno.serve(async (request) => {
       DS_MERCHANT_TRANSACTIONTYPE: config.transactionType,
       DS_MERCHANT_TERMINAL: config.terminal,
       DS_MERCHANT_MERCHANTURL: `${config.supabaseUrl}/functions/v1/caixabank-webhook`,
-      DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok`,
-      DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko`,
+      DS_MERCHANT_URLOK: `${config.publicAppUrl}/?payment=ok&invoice=${encodeURIComponent(payment.invoice_id)}`,
+      DS_MERCHANT_URLKO: `${config.publicAppUrl}/?payment=ko&invoice=${encodeURIComponent(payment.invoice_id)}`,
       DS_MERCHANT_PRODUCTDESCRIPTION: invoice.concept.slice(0, 125),
       ...(config.payMethods ? { DS_MERCHANT_PAYMETHODS: config.payMethods } : {}),
     })

@@ -10,6 +10,7 @@ import {
   dashboardPaths,
   isStaffAccessPath,
   letterCreatePath,
+  paymentReturnStateFromSearch,
   routePathFor,
   ROUTER_PATHS,
   vanPathFor,
@@ -55,5 +56,17 @@ describe('dashboard routes', () => {
     expect(isStaffAccessPath(APP_PATHS.staffAccess)).toBe(true)
     expect(isStaffAccessPath('/admin/acceso')).toBe(true)
     expect(isStaffAccessPath('/administracion')).toBe(false)
+  })
+
+  it('preserves the payment kind identifier when returning from the gateway', () => {
+    expect(paymentReturnStateFromSearch('?payment=ok&invoice=invoice-1')).toEqual({
+      paymentStatus: 'ok',
+      paymentInvoiceId: 'invoice-1',
+    })
+    expect(paymentReturnStateFromSearch('?payment=ko&request=request-1')).toEqual({
+      paymentStatus: 'ko',
+      paymentRequestId: 'request-1',
+    })
+    expect(paymentReturnStateFromSearch('?payment=unknown')).toBeUndefined()
   })
 })

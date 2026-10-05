@@ -70,11 +70,13 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     preselectRouteId?: string
     paymentStatus?: 'ok' | 'ko'
     paymentRequestId?: string
+    paymentInvoiceId?: string
   } | null
   const searchParams = new URLSearchParams(routerLocation.search)
   const paymentStatus =
     navigationState?.paymentStatus ?? (searchParams.get('payment') as 'ok' | 'ko' | null)
   const paymentRequestId = navigationState?.paymentRequestId ?? searchParams.get('request')
+  const paymentInvoiceId = navigationState?.paymentInvoiceId ?? searchParams.get('invoice')
   const preselectRouteId = navigationState?.preselectRouteId
   const [preselectedRouteId, setPreselectedRouteId] = useState<string>()
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
@@ -95,6 +97,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     requestId: string | null
     attempts: number
   } | null>(null)
+  const [invoicePaymentSuccess, setInvoicePaymentSuccess] = useState(false)
   const userId = session?.user.id
   const guestAccountEmail = session?.user.is_anonymous ? requests[0]?.contactEmail : undefined
 
@@ -161,14 +164,30 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     void navigate(routerLocation.pathname, { replace: true, state: null })
     if (paymentStatus === 'ok') {
       setShowForm(false)
-      setPaymentSuccess({ requestId: paymentRequestId || null, attempts: 0 })
+      if (paymentInvoiceId) {
+        setInvoicePaymentSuccess(true)
+      } else {
+        setPaymentSuccess({ requestId: paymentRequestId || null, attempts: 0 })
+      }
       void refresh().catch(() => {
         setError('El pago se ha recibido, pero no hemos podido actualizar el estado todavía.')
       })
     } else if (paymentStatus === 'ko') {
-      setError('El pago no se ha completado. Puedes reintentarlo desde Mis transportes.')
+      setError(
+        paymentInvoiceId
+          ? 'El pago de la factura no se ha completado. Puedes reintentarlo desde esta sección.'
+          : 'El pago no se ha completado. Puedes reintentarlo desde Mis transportes.',
+      )
     }
-  }, [navigate, paymentRequestId, paymentStatus, refresh, routerLocation.pathname, userId])
+  }, [
+    navigate,
+    paymentInvoiceId,
+    paymentRequestId,
+    paymentStatus,
+    refresh,
+    routerLocation.pathname,
+    userId,
+  ])
 
   const successRequest = paymentSuccess
     ? paymentSuccess.requestId
@@ -443,7 +462,29 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         />
       )}
 
-      {section === 'mis-transportes' && !paymentSuccess && (
+      {section === 'mis-transportes' && invoicePaymentSuccess && (
+        <output className="inline-feedback" aria-live="polite">
+          <p>
+            <CheckCircle2 size={16} /> Hemos recibido la respuesta del pago. Estamos actualizando el
+            estado de tu factura; puede tardar unos segundos. Comprueba el estado antes de volver a
+            iniciar el pago.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setInvoicePaymentSuccess(false)
+              void refresh().catch(() => {
+                setError('No hemos podido actualizar tus pagos. Vuelve a intentarlo.')
+              })
+            }}
+          >
+            Ver mis transportes
+          </Button>
+        </output>
+      )}
+
+      {section === 'mis-transportes' && !paymentSuccess && !invoicePaymentSuccess && (
         <>
           {!showForm && (
             <div className="client-portal-hero">

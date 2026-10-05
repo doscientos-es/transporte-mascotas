@@ -59,4 +59,28 @@ describe('DashboardLayout', () => {
     expect(mobileNavigation).not.toContain('Próximas')
     expect(mobileNavigation).not.toContain('Mis')
   })
+
+  it('keeps every administrator destination reachable on mobile', () => {
+    const markup = renderToStaticMarkup(
+      createElement(
+        DashboardLayout,
+        {
+          section: 'ajustes',
+          pendingLetters: 0,
+          profileRole: 'admin',
+          displayName: 'Admin Kache',
+          onNavigate: vi.fn(),
+          hrefForSection: (section: NavSection) => `/${section}`,
+          onSignOut: vi.fn(),
+        } as unknown as ComponentProps<typeof DashboardLayout>,
+        'Contenido',
+      ),
+    )
+
+    const mobileNavigation = markup.slice(markup.indexOf('data-slot="mobile-navigation"'))
+    expect(mobileNavigation.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(8)
+    expect(mobileNavigation).toContain('Plantillas')
+    expect(mobileNavigation).toContain('Furgoneta')
+    expect(mobileNavigation).toContain('Ajustes')
+  })
 })

@@ -64,6 +64,19 @@ export type DashboardLocation = {
   routeId?: string
 }
 
+export function paymentReturnStateFromSearch(search: string) {
+  const params = new URLSearchParams(search)
+  const paymentStatus = params.get('payment')
+  if (paymentStatus !== 'ok' && paymentStatus !== 'ko') return undefined
+  const requestId = params.get('request')
+  const invoiceId = params.get('invoice')
+  return {
+    paymentStatus,
+    ...(requestId ? { paymentRequestId: requestId } : {}),
+    ...(invoiceId ? { paymentInvoiceId: invoiceId } : {}),
+  }
+}
+
 export function dashboardLocationForPath(
   pathname: string,
   fallback: NavSection = DEFAULT_DASHBOARD_SECTIONS.staff,

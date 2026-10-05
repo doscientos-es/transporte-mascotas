@@ -31,10 +31,16 @@ Notificación server-to-server:
 
 `https://<project-ref>.supabase.co/functions/v1/caixabank-webhook`
 
-La URL de éxito es `<PUBLIC_APP_URL>/?payment=ok` y la de error es
-`<PUBLIC_APP_URL>/?payment=ko`. La notificación firmada es la fuente de verdad
-para marcar una factura como pagada; no se emite una factura sólo por volver a
-la URL de éxito.
+Las URLs de retorno incluyen el identificador del elemento pagado:
+
+- Facturas: `<PUBLIC_APP_URL>/?payment=ok&invoice=<invoice-id>` o
+  `<PUBLIC_APP_URL>/?payment=ko&invoice=<invoice-id>`.
+- Solicitudes de transporte: `<PUBLIC_APP_URL>/?payment=ok&request=<request-id>` o
+  `<PUBLIC_APP_URL>/?payment=ko&request=<request-id>`.
+
+La notificación firmada es la fuente de verdad para confirmar el pago y emitir
+la factura; volver a la URL de éxito sólo muestra el estado provisional mientras
+la aplicación actualiza los datos.
 
 ## Tarjetas de prueba
 

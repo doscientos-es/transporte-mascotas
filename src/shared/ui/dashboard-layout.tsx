@@ -47,12 +47,6 @@ const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
   'mis-mascotas': 'Mascotas',
 }
 
-const mobilePrimarySections: Partial<Record<AppRole, readonly NavSection[]>> = {
-  admin: ['cartas', 'rutas', 'solicitudes', 'clientes', 'facturas'],
-  transportista: ['rutas', 'facturas'],
-  user: ['proximas-rutas', 'mis-transportes', 'mis-mascotas'],
-}
-
 const transporterSections = new Set<NavSection>(['rutas', 'facturas'])
 
 type Props = {
@@ -138,18 +132,16 @@ export function DashboardLayout({
     ))
 
   const renderMobileNavigation = () =>
-    visibleItems
-      .filter(([id]) => (mobilePrimarySections[profileRole] ?? []).includes(id))
-      .map(([id, label, Icon]) => (
-        <MobileNavigationItem
-          key={id}
-          href={hrefForSection(id)}
-          icon={<Icon />}
-          label={mobileNavigationLabels[id] ?? label.split(' ')[0]}
-          active={section === id}
-          onClick={(event) => handleNavigation(event, id)}
-        />
-      ))
+    visibleItems.map(([id, label, Icon]) => (
+      <MobileNavigationItem
+        key={id}
+        href={hrefForSection(id)}
+        icon={<Icon />}
+        label={mobileNavigationLabels[id] ?? label.split(' ')[0]}
+        active={section === id}
+        onClick={(event) => handleNavigation(event, id)}
+      />
+    ))
 
   const renderAccountMenu = (placement: 'top start' | 'bottom end') => (
     <PopoverTrigger>
