@@ -1,5 +1,6 @@
-import type { Letter } from '@/shared/types'
+﻿import type { Letter } from '@/shared/types'
 
+import { CARRIAGE_LETTER_PAGE, drawCarriageLetter } from './carriage-letter-layout'
 import type { TransportCarriageLetter } from './transport-requests'
 
 const accompanyingDocumentLabels: Record<string, string> = {
