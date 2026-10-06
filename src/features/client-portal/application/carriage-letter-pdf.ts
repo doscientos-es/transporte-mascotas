@@ -1,6 +1,5 @@
 import type { Letter } from '@/shared/types'
 
-import { formatDate } from './route-maps'
 import type { TransportCarriageLetter } from './transport-requests'
 
 const accompanyingDocumentLabels: Record<string, string> = {
@@ -153,18 +152,17 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
   }
 
   section('Servicio')
-  row('Fecha de servicio', formatDate(letter.service_date), left, 60)
   const pickupHeight = row(
     'Recogida',
     [letter.origin_text, letter.origin_point].filter(Boolean).join(' · '),
-    75,
-    60,
+    left,
+    86,
   )
   const deliveryHeight = row(
     'Entrega',
     [letter.destination_text, letter.destination_point].filter(Boolean).join(' · '),
-    135,
-    60,
+    108,
+    86,
   )
   y += Math.max(pickupHeight, deliveryHeight) + 4
 

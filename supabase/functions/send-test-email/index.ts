@@ -1,8 +1,8 @@
 import { isEmailConfigured, isValidEmail, sendEmail } from '../_shared/resend.ts'
-import { json, requireAdminUser } from '../_shared/supabase.ts'
+import { corsHeaders, json, requireAdminUser } from '../_shared/supabase.ts'
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok')
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     const user = await requireAdminUser(request)

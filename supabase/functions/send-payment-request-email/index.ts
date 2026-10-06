@@ -1,6 +1,6 @@
 import { paymentUrl } from '../_shared/billing-notifications.ts'
 import { escapeHtml, isEmailConfigured, isValidEmail, sendEmail } from '../_shared/resend.ts'
-import { json, requireAdmin, rest } from '../_shared/supabase.ts'
+import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 type Draft = {
   id: string
@@ -10,7 +10,7 @@ type Draft = {
 }
 
 Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') return new Response('ok')
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     await requireAdmin(request)

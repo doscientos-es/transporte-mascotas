@@ -54,6 +54,7 @@ import type {
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 import { payerIdentity } from '../application/request-payer'
 import { transportLocationMapsUrl } from '../application/route-maps'
+import { deliveryOptions, pickupOptions } from '../application/route-stop-options'
 
 export type RequestFormValues = {
   contactName: string
@@ -607,9 +608,9 @@ export function ClientRequestForm({
         .slice(pickupStopIndex + 1)
         .find((stop) => stop.locality === values.destination)
     : undefined
-  const destinationStops = values.origin
-    ? routeStops.slice(routeStops.indexOf(values.origin) + 1)
-    : []
+  // Localities can repeat (several stops in one town); select option ids must be unique.
+  const originStops = pickupOptions(routeStops)
+  const destinationStops = deliveryOptions(routeStops, values.origin)
 
   function selectRoute(routeId: string) {
     const route = routes.find((item) => item.id === routeId)
@@ -1172,7 +1173,7 @@ export function ClientRequestForm({
                     setValues((current) => ({ ...current, origin, destination: '' }))
                   }
                   placeholder="Selecciona una parada"
-                  options={routeStops.slice(0, -1).map((stop) => ({ id: stop, label: stop }))}
+                  options={originStops.map((stop) => ({ id: stop, label: stop }))}
                   disabled={!selectedRoute}
                 />
                 {pickupStop && <StopMapLink stop={pickupStop} />}

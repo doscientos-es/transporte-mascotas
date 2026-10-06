@@ -104,13 +104,6 @@ export function carriageLetterFileName(letter: Pick<CarriageLetter, 'id'>) {
   return `${slug || 'carta-de-porte'}.pdf`
 }
 
-const formatDate = (value: string) =>
-  new Date(`${value}T12:00:00`).toLocaleDateString('es-ES', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-
 /** Standard PDF fonts only encode WinAnsi, so anything outside it is replaced. */
 const printable = (value: string) =>
   value.replaceAll('→', '->').replace(/[^\u0020-\u007e\u00a0-\u00ff€–—‘’“”•…]/g, '')
@@ -225,18 +218,17 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
   }
 
   section('Servicio')
-  row('Fecha de servicio', formatDate(letter.service_date), left, 60)
   const pickupHeight = row(
     'Recogida',
     [letter.origin_text, letter.origin_point].filter(Boolean).join(' · '),
-    75,
-    60,
+    left,
+    86,
   )
   const deliveryHeight = row(
     'Entrega',
     [letter.destination_text, letter.destination_point].filter(Boolean).join(' · '),
-    135,
-    60,
+    108,
+    86,
   )
   y += Math.max(pickupHeight, deliveryHeight) + 4
 
