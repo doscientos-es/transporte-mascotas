@@ -41,7 +41,7 @@ describe('dashboard routes', () => {
   })
 
   it('maps every dashboard section and safely falls back for unknown paths', () => {
-    expect(Object.entries(dashboardPaths)).toHaveLength(11)
+    expect(Object.entries(dashboardPaths)).toHaveLength(10)
     for (const [section, path] of Object.entries(dashboardPaths)) {
       expect(dashboardLocationForPath(path)).toEqual({ section })
       expect(dashboardPathFor(section as NavSection)).toBe(path)

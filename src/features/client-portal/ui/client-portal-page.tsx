@@ -16,28 +16,22 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { OptionalClientAccountCard } from '@/features/auth'
 import {
   defaultTransportBoxCatalog,
-  transportBoxCategoryLabel,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import { loadTransportBoxCatalog } from '@/shared/infrastructure/transport-pricing'
 import {
-  type ClientPet,
   type DashboardNavigation,
   type TransportRequest,
-  type TransportRequestAnimal,
   type UpcomingRoute,
   type UserProfile,
 } from '@/shared/types'
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
-import { PageIntro } from '@/shared/ui/page-intro'
 
 import { carriageLetterFileName, createCarriageLetterPdf } from '../application/carriage-letter-pdf'
-import { formatDate } from '../application/route-maps'
 import { signOut as signOutSession } from '../application/session'
 import { isConfirmedTransport } from '../application/transport-calendar'
 import {
   createTransportRequest,
-  loadClientPets,
   loadTransportCarriageLetter,
   loadTransportInvoice,
   loadMyPaymentRequests,
@@ -45,7 +39,6 @@ import {
   loadUpcomingRoutes,
   payClientPaymentRequest,
   payTransportRequest,
-  saveClientPets,
   type ClientPaymentRequest,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
@@ -82,7 +75,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [paymentRequests, setPaymentRequests] = useState<ClientPaymentRequest[]>([])
-  const [savedPets, setSavedPets] = useState<ClientPet[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [showForm, setShowForm] = useState(false)
   const [notice, setNotice] = useState('')
@@ -112,18 +104,15 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   const refresh = useCallback(async () => {
     if (!userId) return [] as TransportRequest[]
-    const [nextRoutes, nextRequests, nextPets, nextBoxCatalog, nextPaymentRequests] =
-      await Promise.all([
-        loadUpcomingRoutes(),
-        loadTransportRequests(userId),
-        loadClientPets(),
-        loadTransportBoxCatalog(),
-        loadMyPaymentRequests().catch(() => [] as ClientPaymentRequest[]),
-      ])
+    const [nextRoutes, nextRequests, nextBoxCatalog, nextPaymentRequests] = await Promise.all([
+      loadUpcomingRoutes(),
+      loadTransportRequests(userId),
+      loadTransportBoxCatalog(),
+      loadMyPaymentRequests().catch(() => [] as ClientPaymentRequest[]),
+    ])
     setPaymentRequests(nextPaymentRequests)
     setRoutes(nextRoutes)
     setRequests(nextRequests)
-    setSavedPets(nextPets)
     setBoxCatalog(nextBoxCatalog)
     setPendingPaymentRequestId((current) =>
       nextRequests.some((request) => request.id === current && request.status === 'pago_pendiente')
@@ -324,12 +313,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     }
   }
 
-  async function saveRecurringPets(animals: TransportRequestAnimal[]) {
-    await saveClientPets(animals)
-    setSavedPets(await loadClientPets())
-    setNotice('Mascota guardada. La próxima vez podrás elegirla y revisar sus datos.')
-  }
-
   function openNewRequestForm() {
     setPreselectedRouteId(undefined)
     setShowForm(true)
@@ -342,14 +325,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const confirmed = requests.filter(
     (request) => request.status === 'confirmada' || request.status === 'en_ruta',
   ).length
-
-  const pets = requests.flatMap((request) =>
-    request.animals.map((animal) => ({
-      ...animal,
-      requestId: request.id,
-      requestDate: request.desiredDate,
-    })),
-  )
 
   return (
     <DashboardLayout
@@ -582,13 +557,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
             <ClientRequestForm
               key={preselectedRouteId ?? 'new'}
               routes={routes}
-              savedPets={savedPets}
               contactName={profile.displayName}
               contactPhone={profile.phone}
               contactEmail={session?.user.email ?? ''}
               onSubmit={submitRequest}
               onCancel={() => setShowForm(false)}
-              onSavePets={saveRecurringPets}
               boxCatalog={boxCatalog}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
@@ -676,77 +649,11 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         </>
       )}
 
-      {section === 'mis-mascotas' && (
-        <>
-          <PageIntro text="Estas son las mascotas incluidas en tus solicitudes de transporte." />
-          <div className="invoices-list">
-            {pets.length ? (
-              pets.map((pet) => (
-                <PetCard key={pet.id ?? `${pet.requestId}-${pet.ordinal}`} pet={pet} />
-              ))
-            ) : (
-              <Card className="invoice-empty">
-                <CardContent>
-                  <PawPrint size={22} />
-                  <div>
-                    <h3>Aún no has añadido mascotas</h3>
-                    <p>
-                      Al crear una solicitud de transporte registraremos los datos de cada mascota
-                      aquí.
-                    </p>
-                    <Button
-                      disabled={!routes.length}
-                      onClick={() => {
-                        navigateToSection('mis-transportes')
-                        openNewRequestForm()
-                      }}
-                    >
-                      <FilePlus2 size={16} /> Solicitar transporte
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </>
-      )}
-
       {notice && (
         <output className="toast" aria-live="polite">
           <CheckCircle2 size={18} /> {notice}
         </output>
       )}
     </DashboardLayout>
-  )
-}
-
-function PetCard({ pet }: { pet: TransportRequestAnimal & { requestDate: string } }) {
-  return (
-    <Card className="invoice-card client-transport-card">
-      <CardContent>
-        <div className="invoice-icon">
-          <PawPrint size={19} />
-        </div>
-        <div>
-          <span>Mascota registrada · solicitud del {formatDate(pet.requestDate)}</span>
-          <strong>{pet.breed || pet.species}</strong>
-          <small>
-            {pet.species}
-            {pet.breed ? ` · ${pet.breed}` : ''} · {pet.weightKg} kg · {pet.lengthCm} ×{' '}
-            {pet.heightCm} × {pet.widthCm} cm
-          </small>
-        </div>
-        {pet.size && (
-          <div className="invoice-amount">
-            <span className="status">
-              Box{' '}
-              {transportBoxCategoryLabel(
-                pet.assignedBoxCategory ?? pet.requestedBoxCategory ?? pet.size ?? 'pequeno',
-              )}
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
   )
 }

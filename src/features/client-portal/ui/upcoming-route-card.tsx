@@ -1,6 +1,7 @@
 import { Button, Card, CardContent } from '@doscientos/ui'
 import { CalendarDays, FilePlus2, MapPin, Navigation } from 'lucide-react'
 
+import { routeDays, routeDaysLabel } from '@/shared/lib/route-days'
 import type { UpcomingRoute } from '@/shared/types'
 
 import { formatDate } from '../application/route-maps'
@@ -23,6 +24,7 @@ function routeDateParts(serviceDate: string) {
 export function UpcomingRouteCard({ route, onDetails, onSelect }: Props) {
   const { day, month, weekday } = routeDateParts(route.serviceDate)
   const stopCount = route.stops.length || route.localities.length
+  const multiDay = routeDays(route.serviceDate, route.endDate).length > 1
 
   return (
     <li className="upcoming-route-list-item">
@@ -32,12 +34,16 @@ export function UpcomingRouteCard({ route, onDetails, onSelect }: Props) {
             <CalendarDays size={17} aria-hidden="true" />
             <time
               dateTime={route.serviceDate}
-              aria-label={`Salida el ${formatDate(route.serviceDate)}`}
+              aria-label={
+                multiDay
+                  ? `Ruta del ${routeDaysLabel(route.serviceDate, route.endDate)}`
+                  : `Salida el ${formatDate(route.serviceDate)}`
+              }
             >
-              <strong>{day}</strong>
-              <span>{month}</span>
+              <strong>{multiDay ? routeDays(route.serviceDate, route.endDate).length : day}</strong>
+              <span>{multiDay ? 'días' : month}</span>
             </time>
-            <small>{weekday}</small>
+            <small>{multiDay ? routeDaysLabel(route.serviceDate, route.endDate) : weekday}</small>
           </div>
 
           <div className="upcoming-route-summary">

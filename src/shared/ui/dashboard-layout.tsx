@@ -38,13 +38,11 @@ const navigationItems = [
   ['ajustes', 'Ajustes', Settings],
   ['proximas-rutas', 'Próximas rutas', CalendarDays],
   ['mis-transportes', 'Mis transportes', PawPrint],
-  ['mis-mascotas', 'Mis mascotas', PawPrint],
 ] as const satisfies ReadonlyArray<readonly [NavSection, string, typeof Route]>
 
 const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
   'proximas-rutas': 'Rutas',
   'mis-transportes': 'Transportes',
-  'mis-mascotas': 'Mascotas',
 }
 
 type Props = {

@@ -1,6 +1,5 @@
 import { Button, Input } from '@doscientos/ui'
 import {
-  ArrowUpRight,
   CircleAlert,
   CircleDollarSign,
   CheckCircle2,
@@ -14,6 +13,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import {
   transportBoxCategories,
   transportBoxCategoryLabel,
+  transportBoxDimensions,
   type TransportBoxCatalog,
   type TransportBoxCatalogItem,
   type TransportBoxCategory,
@@ -98,7 +98,6 @@ export function SettingsPage({
     if (
       transportBoxCategories.some(
         (category) =>
-          !draftCatalog[category].dimensions.trim() ||
           sizeFields.some(({ key }) => {
             const value = draftCatalog[category][key]
             return value !== undefined && (!Number.isFinite(value) || value <= 0)
@@ -116,7 +115,17 @@ export function SettingsPage({
     setSavingPrices(true)
     setPriceError('')
     try {
-      await onSaveBoxCatalog(draftCatalog)
+      await onSaveBoxCatalog(
+        Object.fromEntries(
+          transportBoxCategories.map((category) => [
+            category,
+            {
+              ...draftCatalog[category],
+              dimensions: transportBoxDimensions(draftCatalog, category),
+            },
+          ]),
+        ) as TransportBoxCatalog,
+      )
     } catch (reason) {
       setPriceError(
         reason instanceof Error ? reason.message : 'No se han podido guardar las tarifas.',
@@ -208,19 +217,12 @@ export function SettingsPage({
                 <strong>{transportBoxCategoryLabel(category)}</strong>
               </div>
               <div className="settings-pricing-fields">
-                <label className="settings-pricing-field" htmlFor={`box-${category}-dimensions`}>
+                <div className="settings-pricing-field">
                   Dimensiones mostradas
-                  <Input
-                    id={`box-${category}-dimensions`}
-                    type="text"
-                    maxLength={160}
-                    value={draftCatalog[category].dimensions}
-                    onChange={(event) =>
-                      updateDraftItem(category, { dimensions: event.target.value })
-                    }
-                    disabled={savingPrices}
-                  />
-                </label>
+                  <p className="settings-pricing-readonly">
+                    {transportBoxDimensions(draftCatalog, category)}
+                  </p>
+                </div>
                 {sizeFields.map(({ key, label }) =>
                   draftCatalog[category][key] === undefined ? null : (
                     <label
@@ -327,15 +329,6 @@ export function SettingsPage({
         <Button disabled={sendingTestEmail} onClick={() => void sendTestEmail()}>
           <Send size={16} /> {sendingTestEmail ? 'Enviando…' : 'Enviar prueba de email'}
         </Button>
-      </section>
-      <section className="settings-support">
-        <div>
-          <h2>Ayuda y soporte</h2>
-          <p>Accede al espacio de soporte para consultar o gestionar incidencias.</p>
-        </div>
-        <a href="https://app.doscientos.es/p/project/6660a4cc88ca3804cdcc1b1291376536aee83f74c028dd25">
-          Abrir ayuda y soporte <ArrowUpRight size={16} />
-        </a>
       </section>
     </>
   )

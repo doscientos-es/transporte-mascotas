@@ -12,7 +12,6 @@ export const dashboardPaths: Record<NavSection, string> = {
   ajustes: '/ajustes',
   'proximas-rutas': '/proximas-rutas',
   'mis-transportes': '/mis-transportes',
-  'mis-mascotas': '/mis-mascotas',
 }
 
 export const APP_PATHS = {
@@ -42,7 +41,6 @@ export const ROUTER_PATHS = {
   clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
   clientUpcomingDetail: `${routePath(dashboardPaths['proximas-rutas'])}/:routeId`,
   clientTransports: routePath(dashboardPaths['mis-transportes']),
-  clientPets: routePath(dashboardPaths['mis-mascotas']),
   staffRoutes: routePath(dashboardPaths.rutas),
   staffRouteDetail: `${routePath(dashboardPaths.rutas)}/:routeId`,
   staffVan: routePath(dashboardPaths.furgoneta),
@@ -91,7 +89,6 @@ export function dashboardLocationForPath(
   if (path === dashboardPaths.ajustes) return { section: 'ajustes' }
   if (path === dashboardPaths['proximas-rutas']) return { section: 'proximas-rutas' }
   if (path === dashboardPaths['mis-transportes']) return { section: 'mis-transportes' }
-  if (path === dashboardPaths['mis-mascotas']) return { section: 'mis-mascotas' }
   if (path === dashboardPaths.rutas) return { section: 'rutas' }
 
   const vanMatch = path.match(/^\/furgoneta\/([^/]+)$/)

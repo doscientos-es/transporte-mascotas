@@ -1,6 +1,7 @@
 import { Button, Card, CardContent } from '@doscientos/ui'
 import { ArrowLeft, FilePlus2, MapPin, Navigation } from 'lucide-react'
 
+import { routeDays, routeDaysLabel } from '@/shared/lib/route-days'
 import type { UpcomingRoute } from '@/shared/types'
 
 import { itineraryDirectionsUrl, itineraryEmbedUrl } from '../application/route-maps'
@@ -39,6 +40,9 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
               </time>
               <div>
                 <h3>{route.templateName || 'Ruta programada'}</h3>
+                {routeDays(route.serviceDate, route.endDate).length > 1 && (
+                  <p>{routeDaysLabel(route.serviceDate, route.endDate)}</p>
+                )}
                 <div className="journey-route-badges">
                   <span className={`route-direction-badge direction-${route.routeDirection}`}>
                     {route.routeDirection === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'}

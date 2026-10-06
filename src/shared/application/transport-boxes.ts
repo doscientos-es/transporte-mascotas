@@ -12,7 +12,10 @@ export type TransportBoxCatalogItem = {
   maxLengthCm?: number
   maxHeightCm?: number
   maxWidthCm?: number
-  /** Heaviest pet (kg, inclusive) the box admits; above it the pet moves to the next box. */
+  /**
+   * Heaviest pet (kg, inclusive) the box admits; above it the pet moves to the next box.
+   * For the large box it is where the large tariff starts (heavier pets pay `largeAmountCents`).
+   */
   nextBoxFromKg?: number
   sortOrder: number
 }
@@ -58,6 +61,7 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     maxLengthCm: 100,
     maxHeightCm: 75,
     maxWidthCm: 58,
+    nextBoxFromKg: 40,
     sortOrder: 3,
   },
   paso_rueda: {
@@ -68,6 +72,30 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     nextBoxFromKg: 40,
     sortOrder: 4,
   },
+}
+
+const number = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 })
+
+/** Text shown to clients, built from the box limits and tariffs so it never drifts from them. */
+export function transportBoxDimensions(
+  catalog: TransportBoxCatalog,
+  category: TransportBoxCategory,
+) {
+  const item = catalog[category]
+  const { maxLengthCm, maxWidthCm, maxHeightCm } = item
+  const measures =
+    maxLengthCm && maxWidthCm && maxHeightCm
+      ? `${number.format(maxLengthCm)} × ${number.format(maxWidthCm)} × ${number.format(maxHeightCm)} cm`
+      : 'según tamaño'
+  const hasLargeTariff = item.largeAmountCents !== undefined
+  return [
+    measures,
+    !hasLargeTariff && item.nextBoxFromKg && `hasta ${number.format(item.nextBoxFromKg)} kg`,
+    item.largeAmountCents &&
+      `${number.format(item.largeAmountCents / 100)} €${item.nextBoxFromKg ? ` a partir de ${number.format(item.nextBoxFromKg)} kg` : ''}`,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 export function transportBoxCategoryLabel(category: TransportBoxCategory) {
@@ -107,13 +135,15 @@ export function transportBoxPriceCents(
   catalog: TransportBoxCatalog,
 ) {
   const item = catalog[category]
-  if (category === 'grande' && animal.weightKg > HEAVY_TARIFF_OVER_KG)
-    return item.largeAmountCents ?? item.amountCents
+  // The large box charges its large tariff above the weight set in Ajustes.
+  if (
+    category === 'grande' &&
+    item.largeAmountCents !== undefined &&
+    animal.weightKg > (item.nextBoxFromKg ?? Infinity)
+  )
+    return item.largeAmountCents
   return item.amountCents
 }
-
-/** Above this weight (kg) the large tariff of the large box applies. */
-export const HEAVY_TARIFF_OVER_KG = 40
 
 export function transportBoxOptions(
   minimum: Exclude<TransportBoxCategory, 'paso_rueda'>,

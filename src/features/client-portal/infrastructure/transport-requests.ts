@@ -1,7 +1,6 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type {
   AccompanyingDocument,
-  ClientPet,
   TransportRequest,
   TransportRequestAnimal,
   TransportBoxCategory,
@@ -64,7 +63,6 @@ type RequestRow = {
     requested_box_category: TransportBoxCategory
     assigned_box_category: TransportBoxCategory
     shared_box_group: string | null
-    client_pet_id: string | null
   }>
 }
 
@@ -127,55 +125,8 @@ function mapRequest(row: RequestRow): TransportRequest {
       requestedBoxCategory: animal.requested_box_category,
       assignedBoxCategory: animal.assigned_box_category,
       sharedBoxGroup: animal.shared_box_group ?? undefined,
-      clientPetId: animal.client_pet_id ?? undefined,
     })),
   }
-}
-
-type ClientPetRow = {
-  id: string
-  name: string
-  species: string
-  breed: string
-  weight_kg: number
-  length_cm: number
-  height_cm: number
-  width_cm: number
-}
-
-const mapClientPet = (pet: ClientPetRow): ClientPet => ({
-  id: pet.id,
-  name: pet.name,
-  species: pet.species,
-  breed: pet.breed,
-  weightKg: pet.weight_kg,
-  lengthCm: pet.length_cm,
-  heightCm: pet.height_cm,
-  widthCm: pet.width_cm,
-})
-
-export async function loadClientPets(): Promise<ClientPet[]> {
-  const { data, error } = await requireSupabase()
-    .from('client_pets')
-    .select('id, name, species, breed, weight_kg, length_cm, height_cm, width_cm')
-    .order('name')
-  if (error) throwRequestError(error, 'No se han podido cargar tus mascotas guardadas.')
-  return ((data ?? []) as ClientPetRow[]).map(mapClientPet)
-}
-
-export async function saveClientPets(animals: TransportRequestAnimal[]) {
-  const { error } = await requireSupabase().rpc('save_client_pets', {
-    p_pets: animals.map(({ name, species, breed, weightKg, lengthCm, heightCm, widthCm }) => ({
-      name,
-      species,
-      breed,
-      weight_kg: weightKg,
-      length_cm: lengthCm,
-      height_cm: heightCm,
-      width_cm: widthCm,
-    })),
-  })
-  if (error) throwRequestError(error, 'No se han podido guardar las mascotas. Vuelve a intentarlo.')
 }
 
 export async function loadTransportRequests(requesterId?: string) {
@@ -198,6 +149,7 @@ type UpcomingRouteRow = {
   template_color: string
   localities: string[] | null
   stops: UpcomingRoute['stops'] | null
+  end_date?: string | null
 }
 
 export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
@@ -206,6 +158,7 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
   return ((data ?? []) as UpcomingRouteRow[]).map((row) => ({
     id: row.id,
     serviceDate: row.service_date,
+    endDate: row.end_date ?? row.service_date,
     routeDirection: row.route_direction,
     templateName: row.template_name,
     templateColor: row.template_color,
@@ -224,6 +177,7 @@ export async function loadPublicUpcomingRoutes(): Promise<UpcomingRoute[]> {
   return ((data ?? []) as PublicUpcomingRouteRow[]).map((row) => ({
     id: row.id,
     serviceDate: row.service_date,
+    endDate: row.end_date ?? row.service_date,
     routeDirection: row.route_direction,
     templateName: row.template_name,
     templateColor: row.template_color,
@@ -288,7 +242,6 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
         heightCm,
         widthCm,
         requestedBoxCategory,
-        clientPetId,
       }) => ({
         ordinal,
         name,
@@ -300,7 +253,6 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
         height_cm: heightCm,
         width_cm: widthCm,
         requested_box_category: requestedBoxCategory ?? 'pequeno',
-        client_pet_id: clientPetId ?? null,
       }),
     ),
   }

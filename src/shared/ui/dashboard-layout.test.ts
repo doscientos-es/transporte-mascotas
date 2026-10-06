@@ -26,7 +26,7 @@ describe('DashboardLayout', () => {
 
     expect(markup).toContain('data-slot="mobile-navigation"')
     expect(markup).toContain('aria-label="Navegación móvil"')
-    expect(markup.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(3)
+    expect(markup.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(2)
     expect(markup).toContain('data-active="true"')
     expect(markup).toContain('flex-1')
     expect(markup).toContain('kache-dashboard-sidebar')
@@ -55,7 +55,6 @@ describe('DashboardLayout', () => {
     const mobileNavigation = markup.slice(markup.indexOf('data-slot="mobile-navigation"'))
     expect(mobileNavigation).toContain('Rutas')
     expect(mobileNavigation).toContain('Transportes')
-    expect(mobileNavigation).toContain('Mascotas')
     expect(mobileNavigation).not.toContain('Próximas')
     expect(mobileNavigation).not.toContain('Mis')
   })

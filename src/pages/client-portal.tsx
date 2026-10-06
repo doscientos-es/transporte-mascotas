@@ -10,10 +10,6 @@ type Props = { session: Session; profile: UserProfile; navigation: DashboardNavi
 const metadata: Partial<Record<NavSection, readonly [string, string]>> = {
   'proximas-rutas': ['Próximas rutas', 'Consulta las próximas salidas disponibles.'],
   'mis-transportes': ['Mis transportes', 'Sigue el estado de tus transportes de mascotas.'],
-  'mis-mascotas': [
-    'Mis mascotas',
-    'Consulta los datos de las mascotas incluidas en tus transportes.',
-  ],
 } as const
 
 export function ClientPortalRoutePage({ session, profile, navigation }: Props) {

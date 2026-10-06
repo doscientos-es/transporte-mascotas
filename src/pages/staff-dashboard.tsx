@@ -17,7 +17,6 @@ const labels: Record<NavSection, string> = {
   ajustes: 'Ajustes',
   'proximas-rutas': 'Próximas rutas',
   'mis-transportes': 'Mis transportes',
-  'mis-mascotas': 'Mis mascotas',
 }
 
 export function StaffDashboardRoutePage({ session, profile, navigation }: Props) {

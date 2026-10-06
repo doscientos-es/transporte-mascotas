@@ -33,7 +33,6 @@ export type NavSection =
   | 'ajustes'
   | 'proximas-rutas'
   | 'mis-transportes'
-  | 'mis-mascotas'
 
 export type DashboardNavigation = {
   section: NavSection
@@ -299,18 +298,6 @@ export interface TransportRequestAnimal {
   assignedBoxCategory?: TransportBoxCategory
   /** Pets of the same request with the same id travel in one box. */
   sharedBoxGroup?: string
-  clientPetId?: string
-}
-
-export interface ClientPet {
-  id: string
-  name: string
-  species: string
-  breed: string
-  weightKg: number
-  lengthCm: number
-  heightCm: number
-  widthCm: number
 }
 
 export interface TransportRequest {
@@ -356,6 +343,8 @@ export interface TransportRequest {
 export interface UpcomingRoute {
   id: string
   serviceDate: string
+  /** Day the last stop is reached; later than `serviceDate` when the route lasts several days. */
+  endDate?: string
   routeDirection: RouteDirection
   templateName: string
   templateColor: string

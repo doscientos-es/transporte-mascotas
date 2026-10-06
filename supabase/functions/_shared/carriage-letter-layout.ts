@@ -89,7 +89,7 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
     const steps = 14
     for (let i = 0; i < steps; i++) {
       const t = i / (steps - 1)
-      const fill = from.map((c, k) => Math.round(c + (to[k]! - c) * t)) as RGB
+      const fill = from.map((c, k) => Math.round(c + ((to[k] ?? c) - c) * t)) as RGB
       canvas.rect(x, y + (h / steps) * i, w, h / steps + 0.15, { fill })
     }
   }

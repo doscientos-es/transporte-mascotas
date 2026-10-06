@@ -41,9 +41,9 @@ import {
   transportBoxPriceCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
+import { routeDaysLabel } from '@/shared/lib/route-days'
 import type {
   AccompanyingDocument,
-  ClientPet,
   InvoiceClientInput,
   InvoicePayer,
   RouteStop,
@@ -363,13 +363,11 @@ function RequestDocumentsField({
 
 type Props = {
   routes: UpcomingRoute[]
-  savedPets: ClientPet[]
   contactName: string
   contactPhone: string
   contactEmail: string
   onSubmit: (values: RequestFormValues) => Promise<void>
   onCancel: () => void
-  onSavePets: (animals: TransportRequestAnimal[]) => Promise<void>
   boxCatalog: TransportBoxCatalog
   pendingPayment?: boolean
   onRetryPayment?: () => Promise<void>
@@ -379,13 +377,11 @@ type Props = {
 
 export function ClientRequestForm({
   routes,
-  savedPets,
   contactName,
   contactPhone,
   contactEmail,
   onSubmit,
   onCancel,
-  onSavePets,
   boxCatalog,
   pendingPayment = false,
   onRetryPayment,
@@ -403,7 +399,6 @@ export function ClientRequestForm({
   const [step, setStep] = useState(0)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
-  const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)
   const [today] = useState(() => new Date().toISOString().slice(0, 10))
   const travelDate = values.desiredDate || today
   const [originSuggestion, setOriginSuggestion] = useState('')
@@ -434,21 +429,6 @@ export function ClientRequestForm({
         position === index ? { ...animal, ...patch } : animal,
       ),
     }))
-  }
-
-  function selectSavedPet(index: number, petId: string) {
-    const pet = savedPets.find((item) => item.id === petId)
-    if (!pet) return updateAnimal(index, { clientPetId: undefined })
-    updateAnimal(index, {
-      clientPetId: pet.id,
-      name: pet.name,
-      species: pet.species,
-      breed: pet.breed,
-      weightKg: pet.weightKg,
-      lengthCm: pet.lengthCm,
-      heightCm: pet.heightCm,
-      widthCm: pet.widthCm,
-    })
   }
 
   function selectBillingPayer(billingPayer: InvoicePayer) {
@@ -579,32 +559,14 @@ export function ClientRequestForm({
         }),
       }
       await onSubmit(normalizedValues)
-      const newPets = normalizedValues.animals.filter((animal) => !animal.clientPetId)
       setValues(initialValues(contactName, contactPhone, contactEmail))
       setStep(0)
-      if (newPets.length && !adminMode) setPetsToSave(newPets)
-      else onCancel()
+      onCancel()
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
           : 'No hemos podido registrar la solicitud.',
-      )
-    } finally {
-      setSending(false)
-    }
-  }
-
-  async function savePets() {
-    if (!petsToSave) return
-    setSending(true)
-    setError('')
-    try {
-      await onSavePets(petsToSave)
-      onCancel()
-    } catch {
-      setError(
-        'Tu solicitud está enviada, pero no hemos podido guardar la mascota. Vuelve a intentarlo.',
       )
     } finally {
       setSending(false)
@@ -697,41 +659,6 @@ export function ClientRequestForm({
               </Button>
               <Button type="button" onClick={() => void retryPayment()} disabled={sending}>
                 <CreditCard size={16} /> {sending ? 'Registrando pago…' : 'Reintentar pago'}
-              </Button>
-            </div>
-          </section>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (petsToSave) {
-    const names = petsToSave.map((animal) => animal.name).join(' y ')
-    return (
-      <Card className="table-card client-request-card">
-        <CardContent>
-          <section className="payment-recovery">
-            <div className="text-accent [&_p]:text-muted-foreground mb-3.75 flex items-start gap-2.25 [&_h2]:m-0 [&_h2]:text-lg [&_p]:mt-1 [&_p]:text-[13px] [&_p]:leading-5">
-              <PawPrint size={17} />
-              <div>
-                <h2>Tu solicitud está enviada</h2>
-                <p>
-                  ¿Quieres guardar {names} para la próxima vez? Podrás cambiar peso y medidas
-                  siempre que lo necesites.
-                </p>
-              </div>
-            </div>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="request-form-actions">
-              <Button type="button" variant="outline" onClick={onCancel} disabled={sending}>
-                Ahora no
-              </Button>
-              <Button type="button" onClick={() => void savePets()} disabled={sending}>
-                <PawPrint size={16} /> {sending ? 'Guardando…' : 'Guardar mascota'}
               </Button>
             </div>
           </section>
@@ -1172,7 +1099,7 @@ export function ClientRequestForm({
                   placeholder="Selecciona una salida"
                   options={routes.map((route) => ({
                     id: route.id,
-                    label: `${route.templateName || 'Ruta programada'} · ${new Date(`${route.serviceDate}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} · ${route.routeDirection === 'inversa' ? 'sentido inverso' : 'sentido habitual'}`,
+                    label: `${route.templateName || 'Ruta programada'} · ${routeDaysLabel(route.serviceDate, route.endDate)} de ${route.serviceDate.slice(0, 4)} · ${route.routeDirection === 'inversa' ? 'sentido inverso' : 'sentido habitual'}`,
                   }))}
                 />
                 {originSuggestion && (
@@ -1284,24 +1211,6 @@ export function ClientRequestForm({
                   )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {savedPets.length > 0 && (
-                    <Field className="sm:col-span-2">
-                      <FieldLabel>¿Ya has viajado con nosotros?</FieldLabel>
-                      <FormSelect
-                        ariaLabel="¿Ya has viajado con nosotros?"
-                        value={animal.clientPetId ?? ''}
-                        onChange={(petId) => selectSavedPet(index, petId)}
-                        placeholder="Rellenar los datos a mano"
-                        options={savedPets.map((pet) => ({
-                          id: pet.id,
-                          label: `${pet.name} · ${pet.species}`,
-                        }))}
-                      />
-                      <FieldDescription>
-                        Al elegirla rellenamos sus datos. Puedes cambiarlos antes de continuar.
-                      </FieldDescription>
-                    </Field>
-                  )}
                   <Field>
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-name`}>Nombre</FieldLabel>
                     <Input

@@ -37,6 +37,7 @@ import {
   DEFAULT_STOP_DWELL_MINUTES,
 } from '@/shared/constants/route-defaults'
 import { paginate } from '@/shared/lib/pagination'
+import { arrivalMoment } from '@/shared/lib/route-days'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
 import type {
@@ -378,10 +379,16 @@ const mapUrlFor = (
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((address.length ? address : [stop.alias]).join(', '))}`
 }
 
+/** Arrival time, plus the day when the route is already past its first day. */
 function formatArrival(date: string, startTime: string, offsetMinutes: number) {
-  const departure = new Date(`${date}T${startTime}:00`)
-  departure.setMinutes(departure.getMinutes() + offsetMinutes)
-  return departure.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  const arrival = arrivalMoment(date, startTime, offsetMinutes)
+  if (arrival.date === date) return arrival.time
+  const day = new Date(`${arrival.date}T12:00:00`).toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
+  return `${arrival.time} (${day})`
 }
 
 // A transport is one carriage letter, however many stops or animals it has on the route.
@@ -516,7 +523,7 @@ export function RoutesPage({
     if (!stop) return undefined
     return {
       place: [stop.locality, stop.place].filter(Boolean).join(' · '),
-      time: formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
+      ...arrivalMoment(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
     }
   }
 
@@ -852,7 +859,6 @@ export function RoutesPage({
                 stop={stop}
                 index={index}
                 total={stops.length}
-                routeDate={route.date}
                 arrival={formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0)}
                 pointFor={pointFor}
                 organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
@@ -938,7 +944,6 @@ function JourneyStop({
   stop,
   index,
   total,
-  routeDate,
   arrival,
   pointFor,
   organizing,
@@ -954,7 +959,6 @@ function JourneyStop({
   stop: DailyRouteStop
   index: number
   total: number
-  routeDate: string
   arrival: string
   pointFor: (letterId: string, type: ServiceAction['type']) => ReminderPoint | undefined
   organizing: boolean
@@ -1080,7 +1084,7 @@ function JourneyStop({
               <ServiceCard
                 key={group.key}
                 group={group}
-                reminder={serviceReminder(group, routeDate, pointFor)}
+                reminder={serviceReminder(group, pointFor)}
                 onToggle={() => onAction(group.actions.map((action) => action.id))}
               />
             ))}
@@ -1093,12 +1097,10 @@ function JourneyStop({
 
 function serviceReminder(
   group: ServiceGroup,
-  routeDate: string,
   pointFor: (letterId: string, type: ServiceAction['type']) => ReminderPoint | undefined,
 ) {
   const action = group.actions[0]
   const message = transportReminderMessage({
-    date: routeDate,
     pickup: pointFor(action.letterId, 'recogida'),
     delivery: pointFor(action.letterId, 'entrega'),
   })

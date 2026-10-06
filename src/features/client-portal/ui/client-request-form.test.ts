@@ -23,13 +23,11 @@ describe('ClientRequestForm departure date', () => {
     const markup = renderToStaticMarkup(
       createElement(ClientRequestForm, {
         routes: [route],
-        savedPets: [],
         contactName: 'Ana García',
         contactPhone: '600000000',
         contactEmail: 'ana@example.test',
         onSubmit: vi.fn().mockResolvedValue(undefined),
         onCancel: vi.fn(),
-        onSavePets: vi.fn().mockResolvedValue(undefined),
         boxCatalog: defaultTransportBoxCatalog,
         initialRouteId: route.id,
       }),
@@ -48,13 +46,11 @@ describe('ClientRequestForm contact details', () => {
       const markup = renderToStaticMarkup(
         createElement(ClientRequestForm, {
           routes: [route],
-          savedPets: [],
           contactName: 'Ana García',
           contactPhone: '600000000',
           contactEmail: 'ana@example.test',
           onSubmit: vi.fn().mockResolvedValue(undefined),
           onCancel: vi.fn(),
-          onSavePets: vi.fn().mockResolvedValue(undefined),
           boxCatalog: defaultTransportBoxCatalog,
           initialRouteId,
         }),

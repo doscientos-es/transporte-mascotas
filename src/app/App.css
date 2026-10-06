@@ -5239,6 +5239,14 @@
   font-weight: 750;
 }
 
+.settings-pricing-readonly {
+  margin: 0;
+  color: #1f1f1f;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .settings-pricing-field input {
   width: 100%;
   min-width: 0;

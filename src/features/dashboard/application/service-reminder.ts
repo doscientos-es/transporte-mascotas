@@ -3,11 +3,11 @@ export type ReminderPoint = {
   place: string
   /** Approximate arrival time, e.g. "09:30". */
   time: string
+  /** Calendar day of the arrival as YYYY-MM-DD; routes can last several days. */
+  date: string
 }
 
 type ReminderInput = {
-  /** Route date as YYYY-MM-DD. */
-  date: string
   pickup?: ReminderPoint
   delivery?: ReminderPoint
 }
@@ -41,11 +41,12 @@ function formatDay(date: string) {
 }
 
 /** Standard instructions sent to everyone involved in a transport once its route is closed. */
-export function transportReminderMessage({ date, pickup, delivery }: ReminderInput) {
-  const day = formatDay(date)
+export function transportReminderMessage({ pickup, delivery }: ReminderInput) {
   const schedule = [
-    pickup && `HORA DE RECOGIDA EN ${pickup.place.toUpperCase()} (${day}, ${pickup.time})`,
-    delivery && `HORA DE ENTREGA EN ${delivery.place.toUpperCase()} (${day}, ${delivery.time})`,
+    pickup &&
+      `HORA DE RECOGIDA EN ${pickup.place.toUpperCase()} (${formatDay(pickup.date)}, ${pickup.time})`,
+    delivery &&
+      `HORA DE ENTREGA EN ${delivery.place.toUpperCase()} (${formatDay(delivery.date)}, ${delivery.time})`,
   ].filter(Boolean)
   return [schedule.join('\n'), ...RULES].filter(Boolean).join('\n\n')
 }

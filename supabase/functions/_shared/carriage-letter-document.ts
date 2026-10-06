@@ -87,15 +87,6 @@ export function carriageLetterFileName(letter: Pick<CarriageLetter, 'id'>) {
   return `${slug || 'carta-de-porte'}.pdf`
 }
 
-
-/** Standard PDF fonts only encode WinAnsi, so anything outside it is replaced. */
-const printable = (value: string) =>
-  value.replaceAll('→', '->').replace(/[^\u0020-\u007e\u00a0-\u00ff€–—‘’“”•…]/g, '')
-
-const mm = (value: number) => value * 2.834645669
-const channel = (value: RGB) => rgb(value[0] / 255, value[1] / 255, value[2] / 255)
-
-/** Server-side render of the half-sheet carriage letter, same layout as the client portal PDF. */
 /** Standard PDF fonts only encode WinAnsi, so anything outside it is replaced. */
 const printable = (value: string) =>
   value.replaceAll('→', '->').replace(/[^\u0020-\u007e\u00a0-\u00ff€–—‘’“”•…]/g, '')

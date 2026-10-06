@@ -3,7 +3,6 @@ export {
   createAdminTransportRequest,
   createTransportRequest,
   loadTransportRequests,
-  loadClientPets,
   loadTransportCarriageLetter,
   loadTransportInvoice,
   loadPublicUpcomingRoutes,
@@ -12,7 +11,6 @@ export {
   payClientPaymentRequest,
   payTransportRequest,
   rejectTransportRequest,
-  saveClientPets,
   setTransportRequestAnimalSharedBox,
   updateTransportRequestAnimalBox,
 } from '../infrastructure/transport-requests'

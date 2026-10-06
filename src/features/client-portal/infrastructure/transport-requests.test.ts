@@ -90,7 +90,6 @@ describe('transportRequestRpcArgs', () => {
           height_cm: 40,
           width_cm: 30,
           requested_box_category: 'mediano',
-          client_pet_id: null,
         },
       ],
     })
