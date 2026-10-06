@@ -221,6 +221,7 @@ export function RoutesCatalogPage({
                     <th scope="col">Fecha</th>
                     <th scope="col">Ruta</th>
                     <th scope="col">Operación</th>
+                    <th scope="col">Transportes</th>
                     <th scope="col">Estado</th>
                     <th scope="col">
                       <span className="sr-only">Acciones</span>
@@ -275,6 +276,11 @@ export function RoutesCatalogPage({
                               ? `${completed}/${services} servicios completados`
                               : 'Sin servicios'}
                           </small>
+                        </td>
+                        <td data-label="Transportes">
+                          <strong className="route-table-operation">
+                            {routeTransportCount(item)}
+                          </strong>
                         </td>
                         <td data-label="Estado">
                           <StatusBadge status={item.status} />
@@ -370,6 +376,15 @@ function formatArrival(date: string, offsetMinutes: number) {
   const departure = new Date(`${date}T08:00:00`)
   departure.setMinutes(departure.getMinutes() + offsetMinutes)
   return departure.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+}
+
+// A transport is one carriage letter, however many stops or animals it has on the route.
+function routeTransportCount(route: DailyRoute) {
+  return new Set(route.actions.map((action) => action.letterId)).size
+}
+
+function transportsLabel(count: number) {
+  return `${count} ${count === 1 ? 'transporte' : 'transportes'}`
 }
 
 function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Letter[]) {
@@ -575,6 +590,9 @@ export function RoutesPage({
                 <div className="journey-route-badges">
                   <span className={`route-direction-badge direction-${direction}`}>
                     {directionLabel(direction)}
+                  </span>
+                  <span className="route-direction-badge direction-normal">
+                    {transportsLabel(routeTransportCount(route))}
                   </span>
                   <StatusBadge status={route.status} className="self-center" />
                 </div>

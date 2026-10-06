@@ -295,7 +295,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
               const availableRoutes = availableRoutesFor(request)
               return (
                 <div
-                  className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-[13px]"
+                  className="rounded-xl border border-[#e2e2e2] bg-[#fafafa] p-3.25"
                   key={request.id}
                 >
                   <div className="mb-3 flex items-center justify-between gap-2.5 text-[13px] text-[#222]">
