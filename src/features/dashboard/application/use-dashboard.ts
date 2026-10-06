@@ -666,7 +666,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function reassignRouteBox(routeId: string, letterId: string, box: number) {
+  async function reassignRouteBox(
+    routeId: string,
+    letterId: string,
+    box: number,
+    shareBox = false,
+  ) {
     if (!session) throw new Error('Inicia sesión para cambiar el box.')
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
@@ -675,7 +680,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     )?.box
     if (currentBox === box) return
 
-    await reassignVanBox(route, letterId, box)
+    await reassignVanBox(route, letterId, box, shareBox)
     const update = (item: DailyRoute): DailyRoute =>
       item.id === routeId
         ? {

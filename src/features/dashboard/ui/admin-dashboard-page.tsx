@@ -384,8 +384,8 @@ export function AdminDashboardPage({
                   dashboard.setSelectedRoute(route)
                   navigateToVan(route.id)
                 }}
-                onReassignBox={(letterId, box) =>
-                  dashboard.reassignRouteBox(activeRoute.id, letterId, box)
+                onReassignBox={(letterId, box, shareBox) =>
+                  dashboard.reassignRouteBox(activeRoute.id, letterId, box, shareBox)
                 }
               />
             )}

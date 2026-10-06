@@ -15,7 +15,13 @@ import { statusLabels } from '@/shared/lib/status-labels'
 import type { AnimalSize, DailyRoute, Letter, RouteTemplate, ServiceAction } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
-import { boxGridSpan, boxSize, type VanAssignment, vanLanes } from '../application/van'
+import {
+  boxGridSpan,
+  boxSize,
+  isBoxCompatible,
+  type VanAssignment,
+  vanLanes,
+} from '../application/van'
 
 type BoxAnimalDetails = {
   pickup: ServiceAction
@@ -49,7 +55,7 @@ export function VanPage({
   assignments: VanAssignment[]
   canManage: boolean
   onSelectRoute: (route: DailyRoute) => void
-  onReassignBox: (letterId: string, box: number) => Promise<void>
+  onReassignBox: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
 }) {
   const [selectedBox, setSelectedBox] = useState<number | null>(null)
   const leftLanes = vanLanes.filter((lane) => lane.side === 'left')
@@ -59,6 +65,7 @@ export function VanPage({
     (total, assignment) => total + assignment.animalCount,
     0,
   )
+  const occupiedBoxCount = new Set(assignments.map((assignment) => assignment.box)).size
   const selectedAssignment = assignments.find((assignment) => assignment.box === selectedBox)
   const routeName = (item: DailyRoute) =>
     templates.find((template) => template.id === item.templateId)?.name ?? 'Ruta sin plantilla'
@@ -111,15 +118,42 @@ export function VanPage({
               showReassignmentControl,
             }
           })
+  // Letters of this route that fit the selected box and are not already in it.
+  const addableLetters: string[] =
+    selectedBox === null || !canManage
+      ? []
+      : [
+          ...new Set(
+            route.actions.filter((action) => action.type === 'recogida').map((a) => a.letterId),
+          ),
+        ].filter((letterId) => {
+          const inBox = route.actions.some(
+            (action) =>
+              action.type === 'recogida' &&
+              action.letterId === letterId &&
+              action.box === selectedBox,
+          )
+          const animals = letters.find((letter) => letter.id === letterId)?.animals ?? []
+          return (
+            !inBox &&
+            animals.length > 0 &&
+            animals.every((item) => isBoxCompatible(selectedBox, item.size))
+          )
+        })
   useEffect(() => {
     setSelectedBox(null)
   }, [route.id])
   const renderLane = (lane: (typeof vanLanes)[number]) => (
     <div className={`van-lane ${lane.id}`} key={lane.id}>
       {lane.boxes.map((box) => {
-        const assignment = assignments.find((entry) => entry.box === box)
+        const boxAssignments = assignments.filter((entry) => entry.box === box)
+        const assignment = boxAssignments.length > 0
+        const boxLabel = boxAssignments
+          .map((entry) => entry.label.replace('CARTA DE PORTE Nº ', '#'))
+          .join(' + ')
+        const boxAnimals = boxAssignments.reduce((total, entry) => total + entry.animalCount, 0)
         const description = assignment
-          ? `${assignment.label} · ${assignment.animalCount} animales`
+          ? `${boxAssignments.map((entry) => entry.label).join(' + ')} · ${boxAnimals} animales`
           : `Box ${box} libre`
         return (
           <button
@@ -135,7 +169,7 @@ export function VanPage({
             <b>{box}</b>
             {assignment && (
               <span>
-                {assignment.label.replace('CARTA DE PORTE Nº ', '#')} · {assignment.animalCount}
+                {boxLabel} · {boxAnimals}
               </span>
             )}
           </button>
@@ -170,7 +204,7 @@ export function VanPage({
           <div className="grid min-w-[94px] gap-0.5 rounded-lg border border-[#e1e1e1] bg-white px-2.5 py-2">
             <span className="text-[10px] leading-tight text-[#6b6b6b]">Boxes ocupados</span>
             <strong className="text-lg leading-none tracking-[-0.04em] text-[#171717]">
-              {assignments.length}
+              {occupiedBoxCount}
               <small className="ml-1 text-[10px] font-medium tracking-normal text-[#6b6b6b]">
                 de {totalBoxes}
               </small>
@@ -185,7 +219,7 @@ export function VanPage({
           <div className="grid min-w-[94px] gap-0.5 rounded-lg border border-[#e1e1e1] bg-white px-2.5 py-2">
             <span className="text-[10px] leading-tight text-[#6b6b6b]">Disponibilidad</span>
             <strong className="text-lg leading-none tracking-[-0.04em] text-[#171717]">
-              {totalBoxes - assignments.length}
+              {totalBoxes - occupiedBoxCount}
               <small className="ml-1 text-[10px] font-medium tracking-normal text-[#6b6b6b]">
                 libres
               </small>
@@ -257,8 +291,9 @@ export function VanPage({
           routeDate={route.date}
           animals={selectedBoxDetails}
           canManage={canManage}
-          onReassign={async (letterId, box) => {
-            await onReassignBox(letterId, box)
+          addableLetters={addableLetters}
+          onReassign={async (letterId, box, shareBox) => {
+            await onReassignBox(letterId, box, shareBox)
             setSelectedBox(null)
           }}
           onClose={() => setSelectedBox(null)}
@@ -274,6 +309,7 @@ function BoxDetailsDialog({
   routeDate,
   animals,
   canManage,
+  addableLetters,
   onReassign,
   onClose,
 }: {
@@ -282,7 +318,8 @@ function BoxDetailsDialog({
   routeDate: string
   animals: BoxAnimalDetails[]
   canManage: boolean
-  onReassign: (letterId: string, box: number) => Promise<void>
+  addableLetters: string[]
+  onReassign: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
   onClose: () => void
 }) {
   const size = boxSize(box)
@@ -392,11 +429,83 @@ function BoxDetailsDialog({
             </div>
           </div>
         )}
+        {canManage && animals.length > 0 && addableLetters.length > 0 && (
+          <AddLetterToBoxControl box={box} letters={addableLetters} onAdd={onReassign} />
+        )}
         <Button className="dialog-submit" variant="outline" onClick={onClose}>
           Cerrar detalle
         </Button>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Lets the admin put another letter's pets in this (already occupied) box. */
+function AddLetterToBoxControl({
+  box,
+  letters,
+  onAdd,
+}: {
+  box: number
+  letters: string[]
+  onAdd: (letterId: string, box: number, shareBox: boolean) => Promise<void>
+}) {
+  const [letterId, setLetterId] = useState(letters[0] ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const selected = letters.includes(letterId) ? letterId : (letters[0] ?? '')
+  async function submit() {
+    setSaving(true)
+    setError('')
+    try {
+      await onAdd(selected, box, true)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido compartir el box.')
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <section className="box-reassignment">
+      <div className="box-reassignment-copy">
+        <strong>
+          <PawPrint size={15} /> Añadir otra carta a este box
+        </strong>
+        <p>Las mascotas de la carta elegida viajarán en el box {box} junto a las actuales.</p>
+      </div>
+      <div className="box-reassignment-controls">
+        <label>
+          Carta
+          <select
+            value={selected}
+            onChange={(event) => {
+              setLetterId(event.target.value)
+              setError('')
+            }}
+            disabled={saving}
+          >
+            {letters.map((candidate) => (
+              <option key={candidate} value={candidate}>
+                {candidate}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          disabled={saving || !selected}
+          onClick={() => void submit()}
+        >
+          <PawPrint size={15} /> {saving ? 'Añadiendo…' : 'Añadir al box'}
+        </Button>
+      </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   )
 }
 

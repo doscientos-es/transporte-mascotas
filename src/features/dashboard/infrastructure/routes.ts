@@ -580,7 +580,13 @@ export async function appendLetterToDailyRoute(
   if (assignmentError) throw assignmentError
 }
 
-export async function reassignVanBox(route: DailyRoute, letterId: string, boxNumber: number) {
+/** With `shareBox`, the admin may put the letter in a box already used by another letter. */
+export async function reassignVanBox(
+  route: DailyRoute,
+  letterId: string,
+  boxNumber: number,
+  shareBox = false,
+) {
   const letterActions = route.actions.filter((action) => action.letterId === letterId)
   const pickup = letterActions.find((action) => action.type === 'recogida')
   const delivery = letterActions.find(
@@ -597,13 +603,16 @@ export async function reassignVanBox(route: DailyRoute, letterId: string, boxNum
   if (!pickupSequence || !deliverySequence)
     throw new Error('No se ha podido determinar el tramo de la ruta para esta carta.')
 
-  const { error } = await requireSupabase().rpc('assign_van_box', {
-    p_daily_route_id: route.id,
-    p_letter_id: letterId,
-    p_animal_id: pickup.animalId,
-    p_box_number: boxNumber,
-    p_pickup_sequence: pickupSequence,
-    p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
-  })
+  const { error } = await requireSupabase().rpc(
+    shareBox ? 'assign_shared_van_box' : 'assign_van_box',
+    {
+      p_daily_route_id: route.id,
+      p_letter_id: letterId,
+      p_animal_id: pickup.animalId,
+      p_box_number: boxNumber,
+      p_pickup_sequence: pickupSequence,
+      p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
+    },
+  )
   if (error) throw error
 }

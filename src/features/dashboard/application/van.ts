@@ -36,6 +36,16 @@ export function boxSize(box: number): AnimalSize {
   return 'pequeno'
 }
 
+/** A box fits an animal of its own size or a smaller one (same rule as `assign_van_box`). */
+export function isBoxCompatible(box: number, animalSize: AnimalSize): boolean {
+  const size = boxSize(box)
+  return (
+    size === animalSize ||
+    (animalSize === 'pequeno' && size !== 'pequeno') ||
+    (animalSize === 'mediano' && size === 'grande')
+  )
+}
+
 export type VanLane = { id: string; side: 'left' | 'right'; boxes: number[]; size: AnimalSize }
 
 // Physical order from the supplied FURGONETA part: the cab is at the top and

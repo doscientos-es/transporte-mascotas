@@ -4,7 +4,6 @@ import type { NavSection } from '@/shared/types'
 
 import {
   APP_PATHS,
-  DEFAULT_DASHBOARD_SECTIONS,
   dashboardLocationForPath,
   dashboardPathFor,
   dashboardPaths,
