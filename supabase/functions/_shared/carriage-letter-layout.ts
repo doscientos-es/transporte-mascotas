@@ -110,7 +110,7 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
     })
   }
   const stacked = (word: string, x: number, y: number, h: number, size: number, color: RGB) =>
-    [...word].forEach((char, i) =>
+    word.split('').forEach((char, i) =>
       canvas.text(char, x, y + (h / word.length) * (i + 0.5) + size * 0.17, {
         size,
         color,
@@ -132,7 +132,10 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
     { role: 'recipient', x: MID, colors: RECIPIENT },
   ] as const
   for (const { role, x, colors } of parties) {
-    const get = (key: string) => String(letter[`${role}_${key}` as keyof LayoutLetter] ?? '')
+    const get = (key: string): string => {
+      const value: unknown = letter[`${role}_${key}` as keyof LayoutLetter]
+      return typeof value === 'string' ? value : ''
+    }
     const w = MID - X0 - TAB
     const split = x + 53
     const rows: Array<Array<[string, string]>> = [
@@ -193,15 +196,21 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
     if (i === 3) canvas.text(fit(value || label, 7.5, MID - 66), 64.5, y + 5.5, { size: 7.5 })
     else field(63, y, MID - 63, 9.4, label, value)
     cell(MID, y, 47, 9.4)
-    plain(MID, y, 47, 9.4, labelFor(documentKeys[0]![i]!), 'right')
-    mark(152, y, TAB, 9.4, docs.has(documentKeys[0]![i]!))
+    const leftKey = documentKeys[0]?.[i]
+    const rightKey = documentKeys[1]?.[i]
+    if (leftKey) {
+      plain(MID, y, 47, 9.4, labelFor(leftKey), 'right')
+      mark(152, y, TAB, 9.4, docs.has(leftKey))
+    }
     if (i === 3) {
       cell(158, y, X1 - 158, 9.4)
       plain(158, y, X1 - 158, 9.4, '(Especificar)')
     } else {
       cell(158, y, 41, 9.4)
-      plain(158, y, 41, 9.4, labelFor(documentKeys[1]![i]!), 'right')
-      mark(199, y, X1 - 199, 9.4, docs.has(documentKeys[1]![i]!))
+      if (rightKey) {
+        plain(158, y, 41, 9.4, labelFor(rightKey), 'right')
+        mark(199, y, X1 - 199, 9.4, docs.has(rightKey))
+      }
     }
   })
 

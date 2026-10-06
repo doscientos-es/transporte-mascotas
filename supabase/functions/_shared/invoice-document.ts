@@ -168,7 +168,7 @@ async function renderInvoice(invoice: IssuedInvoice) {
   const logo = await loadBrandLogo(pdf)
   const drawLogo = (x: number, y: number) => {
     if (logo) {
-      page.drawImage(logo, { x: x - 21, y: y - 21, width: 42, height: 42 })
+      page.drawImage(logo, { x: x - 32, y: y - 32, width: 64, height: 64 })
       return
     }
     page.drawEllipse({ x, y, width: 42, height: 42, color: white })
@@ -183,9 +183,9 @@ async function renderInvoice(invoice: IssuedInvoice) {
   ].filter(Boolean)
 
   page.drawRectangle({ x: 0, y: 724, width: 595.28, height: 117.89, color: ink })
-  drawLogo(54, 761)
-  draw('KACHE ENVÍOS', 112, 786, 18, true, white)
-  draw('Transporte de mascotas', 112, 767, 10, false, white)
+  drawLogo(86, 776)
+  draw('KACHE ENVÍOS', 134, 786, 18, true, white)
+  draw('Transporte de mascotas', 134, 767, 10, false, white)
   drawRight('FACTURA', 541, 794, 21, true, coral)
   drawRight(`N.º ${number}`, 541, 774, 10, false, white)
   drawRight(date(invoice.issued_at), 541, 758, 9, false, white)
