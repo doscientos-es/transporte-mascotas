@@ -57,12 +57,12 @@ export function LoginPage({ audience }: Props) {
         : 'Acceso a operaciones'
       : isClient
         ? 'Crea el espacio de tu mascota'
-        : 'Crea tu acceso de transportista'
+        : 'Crea tu acceso de administración'
   const description = isClient
     ? 'Consulta tus solicitudes, tus mascotas y cada actualización del transporte.'
     : mode === 'signup'
       ? 'Usa el correo con el que te ha invitado un administrador. Sin invitación no tendrás acceso profesional.'
-      : 'Accede a las rutas y tareas que tengas asignadas.'
+      : 'Accede a las rutas y operaciones del equipo.'
   const screenClassName = isClient
     ? 'login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px]'
     : 'login-screen [background:radial-gradient(circle_at_top_right,#dfead8,transparent_38%),#f7f8f5]'

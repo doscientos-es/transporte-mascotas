@@ -12,9 +12,9 @@ describe('DashboardLayout', () => {
       createElement(
         DashboardLayout,
         {
-          section: 'rutas',
+          section: 'proximas-rutas',
           pendingLetters: 0,
-          profileRole: 'transportista',
+          profileRole: 'user',
           displayName: 'Ana Transportes',
           onNavigate: vi.fn(),
           hrefForSection: (section: NavSection) => `/${section}`,
@@ -26,7 +26,7 @@ describe('DashboardLayout', () => {
 
     expect(markup).toContain('data-slot="mobile-navigation"')
     expect(markup).toContain('aria-label="Navegación móvil"')
-    expect(markup.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(2)
+    expect(markup.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(3)
     expect(markup).toContain('data-active="true"')
     expect(markup).toContain('flex-1')
     expect(markup).toContain('kache-dashboard-sidebar')

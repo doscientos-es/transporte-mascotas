@@ -58,7 +58,6 @@ const pageCopy: Record<
 
 export function BillingDocumentsPage({
   mode,
-  transportista,
   onConfirmManualPayment,
   onPaymentConfirmed,
   onOpenClient,
@@ -218,16 +217,14 @@ export function BillingDocumentsPage({
       >
         <div className="invoice-filter-heading">
           <strong>Encuentra lo que necesitas</strong>
-          {!transportista && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={exporting || result.total === 0}
-              onClick={() => void exportRegister()}
-            >
-              <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={exporting || result.total === 0}
+            onClick={() => void exportRegister()}
+          >
+            <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
+          </Button>
         </div>
         <div className="invoice-filters">
           <label>
@@ -307,7 +304,6 @@ export function BillingDocumentsPage({
                 invoice={invoice}
                 mode={mode}
                 clientName={clientName}
-                transportista={transportista}
                 downloading={downloadingId === invoice.id}
                 onPreview={() => updateParams({ factura: invoice.id }, false)}
                 onDownload={() => void downloadDocument(invoice, clientName)}

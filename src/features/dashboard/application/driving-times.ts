@@ -95,10 +95,13 @@ async function coordinatesForStops(stops: DailyRouteStop[]) {
   return coordinates
 }
 
+// OSRM estimates car speeds; the van is loaded and slower, so every leg is stretched.
+const VAN_TIME_FACTOR = 1.25
+
 function minutesFor(seconds: number | null | undefined) {
   if (typeof seconds !== 'number' || !Number.isFinite(seconds))
     throw new Error('No se han podido calcular los trayectos en coche.')
-  return Math.max(1, Math.round(seconds / 60))
+  return Math.max(1, Math.round((seconds * VAN_TIME_FACTOR) / 60))
 }
 
 /** Calculates consecutive driving legs; the final stop has no following journey. */

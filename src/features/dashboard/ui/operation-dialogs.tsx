@@ -39,6 +39,7 @@ import {
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
+import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
 import type {
   AccompanyingDocument,
   DailyRoute,
@@ -50,7 +51,6 @@ import type {
   RouteDirection,
   RouteTemplate,
   TransportBoxCategory,
-  Transporter,
 } from '@/shared/types'
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
@@ -1680,23 +1680,21 @@ function BillingAndSignatureSection({
 
 export function NewRouteDirectionDialog({
   templates,
-  transporters,
   onClose,
   onCreate,
 }: {
   templates: RouteTemplate[]
-  transporters: Transporter[]
   onClose: () => void
   onCreate: (
     template: RouteTemplate,
     date: string,
-    transporterId?: string,
     direction?: RouteDirection,
     selectedStopIds?: string[],
+    startTime?: string,
   ) => Promise<void>
 }) {
   const [date, setDate] = useState('')
-  const [transporterId, setTransporterId] = useState('')
+  const [startTime, setStartTime] = useState(DEFAULT_ROUTE_START_TIME)
   const [direction, setDirection] = useState<RouteDirection>('normal')
   const [selectedTemplate, setSelectedTemplate] = useState<RouteTemplate | null>(null)
   const [selectedStopIds, setSelectedStopIds] = useState<string[]>([])
@@ -1725,12 +1723,13 @@ export function NewRouteDirectionDialog({
     const minimumDate = todayIso()
     if (!date) return setError('Selecciona la fecha de servicio.')
     if (date < minimumDate) return setError('La fecha de servicio no puede ser anterior a hoy.')
+    if (!startTime) return setError('Indica la hora de salida del origen.')
     if (!selectedTemplate) return setError('Selecciona una plantilla de ruta.')
     if (!selectedStopIds.length) return setError('Marca al menos una parada para crear la ruta.')
     setSaving(true)
     setError('')
     try {
-      await onCreate(selectedTemplate, date, transporterId || undefined, direction, selectedStopIds)
+      await onCreate(selectedTemplate, date, direction, selectedStopIds, startTime)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido crear la ruta.')
     } finally {
@@ -1757,6 +1756,16 @@ export function NewRouteDirectionDialog({
           onChange={(event) => setDate(event.target.value)}
           required
         />
+      </Label>
+      <Label className="date-field">
+        Hora de salida del origen
+        <Input
+          type="time"
+          value={startTime}
+          onChange={(event) => setStartTime(event.target.value)}
+          required
+        />
+        <small>Con esta hora se calculan las llegadas a todas las paradas.</small>
       </Label>
       <div className="direction-field">
         <span>Sentido de la ruta</span>
@@ -1786,17 +1795,6 @@ export function NewRouteDirectionDialog({
           Crearás la ruta en <strong>{directionLabel}</strong>.
         </p>
       </div>
-      <Label className="date-field">
-        Asignar a transportista (opcional)
-        <select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}>
-          <option value="">Sin asignar</option>
-          {transporters.map((transporter) => (
-            <option value={transporter.id} key={transporter.id}>
-              {transporter.displayName}
-            </option>
-          ))}
-        </select>
-      </Label>
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -2059,17 +2057,14 @@ export function InvoiceDialog({
 
 export function NewRouteDialog({
   templates,
-  transporters,
   onClose,
   onCreate,
 }: {
   templates: RouteTemplate[]
-  transporters: Transporter[]
   onClose: () => void
-  onCreate: (template: RouteTemplate, date: string, transporterId?: string) => void
+  onCreate: (template: RouteTemplate, date: string) => void
 }) {
   const [date, setDate] = useState('')
-  const [transporterId, setTransporterId] = useState('')
   return (
     <OperationDialog
       title="Crear ruta diaria"
@@ -2087,24 +2082,13 @@ export function NewRouteDialog({
           required
         />
       </Label>
-      <Label className="date-field">
-        Asignar a transportista (opcional)
-        <select value={transporterId} onChange={(event) => setTransporterId(event.target.value)}>
-          <option value="">Sin asignar</option>
-          {transporters.map((transporter) => (
-            <option value={transporter.id} key={transporter.id}>
-              {transporter.displayName}
-            </option>
-          ))}
-        </select>
-      </Label>
       <div className="dialog-options">
         {templates.map((template) => (
           <button
             type="button"
             key={template.id}
             disabled={!date || date < todayIso()}
-            onClick={() => onCreate(template, date, transporterId || undefined)}
+            onClick={() => onCreate(template, date)}
           >
             <span className="template-dot" style={{ background: template.color }} />
             <span>

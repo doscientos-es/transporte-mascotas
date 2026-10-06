@@ -8,7 +8,6 @@ import type {
   RouteTemplate,
   ServiceAction,
   StaffInvitation,
-  Transporter,
 } from '@/shared/types'
 
 type StoredStop = {
@@ -33,9 +32,9 @@ type DailyRouteRow = {
   id: string
   route_template_id: string | null
   service_date: string
+  start_time: string
   status: DailyRoute['status']
   closed_at: string | null
-  transporter_id: string | null
   route_direction: RouteDirection
   daily_route_stops: Array<
     StoredStop & { stop_kind: 'parada' | 'recogida' | 'entrega'; dwell_minutes: number }
@@ -203,20 +202,6 @@ export async function loadRouteTemplates() {
   return ((data ?? []) as TemplateRow[]).map(mapTemplate)
 }
 
-export async function loadTransporters() {
-  const { data, error } = await requireSupabase()
-    .from('profiles')
-    .select('id,display_name')
-    .eq('role', 'transportista')
-    .eq('active', true)
-    .order('display_name')
-  if (error) throw error
-  return (data ?? []).map((profile): Transporter => ({
-    id: profile.id,
-    displayName: profile.display_name,
-  }))
-}
-
 export async function loadPendingStaffInvitations() {
   const { data, error } = await requireSupabase()
     .from('staff_invitations')
@@ -254,18 +239,6 @@ export async function deleteStaffInvitation(email: string) {
   if (error) throw error
 }
 
-export async function promoteTransporterToAdmin(profileId: string) {
-  const { data, error } = await requireSupabase()
-    .from('profiles')
-    .update({ role: 'admin' })
-    .eq('id', profileId)
-    .eq('role', 'transportista')
-    .select('id')
-    .maybeSingle()
-  if (error) throw error
-  if (!data) throw new Error('Este perfil ya no es un transportista activo.')
-}
-
 export async function loadDailyRoutes() {
   const database = requireSupabase()
   const [{ data: routes, error: routesError }, { data: actions, error: actionsError }] =
@@ -273,7 +246,7 @@ export async function loadDailyRoutes() {
       database
         .from('daily_routes')
         .select(
-          'id,route_template_id,service_date,status,closed_at,transporter_id,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
+          'id,route_template_id,service_date,start_time,status,closed_at,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
         )
         .order('service_date'),
       database
@@ -300,9 +273,9 @@ export async function loadDailyRoutes() {
       id: route.id,
       templateId: route.route_template_id ?? '',
       date: route.service_date,
+      startTime: route.start_time?.slice(0, 5),
       status: route.status,
       closedAt: route.closed_at ?? undefined,
-      transporterId: route.transporter_id ?? undefined,
       direction: route.route_direction,
       stops,
       actions: (actionsByRoute.get(route.id) ?? []).map((action) => ({
@@ -322,6 +295,14 @@ export async function loadDailyRoutes() {
       })),
     }
   })
+}
+
+export async function updateDailyRouteStartTime(routeId: string, startTime: string) {
+  const { error } = await requireSupabase()
+    .from('daily_routes')
+    .update({ start_time: startTime })
+    .eq('id', routeId)
+  if (error) throw error
 }
 
 export async function closeDailyRoute(routeId: string) {
@@ -345,8 +326,8 @@ export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate,
     id: route.id,
     route_template_id: template.id,
     service_date: route.date,
+    start_time: route.startTime ?? '08:00',
     status: route.status,
-    transporter_id: route.transporterId ?? null,
     route_direction: route.direction ?? 'normal',
     created_by: userId,
   })

@@ -54,7 +54,12 @@ import type {
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 import { payerIdentity } from '../application/request-payer'
 import { transportLocationMapsUrl } from '../application/route-maps'
-import { deliveryOptions, pickupOptions } from '../application/route-stop-options'
+import {
+  deliveryOptions,
+  pickupOptions,
+  routeSelectionError,
+  suggestedPartyCities,
+} from '../application/route-stop-options'
 
 export type RequestFormValues = {
   contactName: string
@@ -102,7 +107,7 @@ type PartyField =
   | 'recipientCity'
   | 'recipientProvince'
 
-const steps = ['Contacto', 'Trayecto', 'Mascotas', 'Revisar']
+const steps = ['Trayecto', 'Contacto', 'Mascotas', 'Revisar']
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
 const emptyAnimal = (ordinal: number): TransportRequestAnimal => ({
@@ -395,7 +400,7 @@ export function ClientRequestForm({
       routes.find((route) => route.id === initialRouteId),
     ),
   )
-  const [step, setStep] = useState(() => (initialRouteId ? 1 : 0))
+  const [step, setStep] = useState(0)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [petsToSave, setPetsToSave] = useState<TransportRequestAnimal[] | null>(null)
@@ -403,6 +408,7 @@ export function ClientRequestForm({
   const travelDate = values.desiredDate || today
   const [originSuggestion, setOriginSuggestion] = useState('')
   const originSuggestionRequest = useRef(0)
+  const suggestedCities = useRef({ senderCity: '', recipientCity: '' })
 
   async function retryPayment() {
     if (!onRetryPayment) return
@@ -467,8 +473,12 @@ export function ClientRequestForm({
     })
   }
 
+  function validateRoute() {
+    return routeSelectionError(routes, values)
+  }
+
   function validateCurrentStep() {
-    if (step === 0) {
+    if (step === 1) {
       const requiredPartyFields: Array<[string, string]> = [
         ['nombre de quien envía', values.contactName],
         ['DNI/NIE de quien envía', values.senderNif],
@@ -510,16 +520,7 @@ export function ClientRequestForm({
       if (values.billingPayer === 'manual' && !/^\S+@\S+\.\S+$/.test(values.billingClient.email))
         return 'Escribe un correo válido para el pagador.'
     }
-    if (step === 1) {
-      if (!values.dailyRouteId || !values.origin || !values.destination || !values.desiredDate)
-        return 'Selecciona una ruta, una recogida y una entrega para continuar.'
-      const route = routes.find((item) => item.id === values.dailyRouteId)
-      if (!route || route.serviceDate !== values.desiredDate)
-        return 'La ruta seleccionada ya no está disponible. Elige otra ruta.'
-      const pickupIndex = route.localities.indexOf(values.origin)
-      if (pickupIndex < 0 || !route.localities.slice(pickupIndex + 1).includes(values.destination))
-        return 'Elige una entrega posterior a la recogida dentro de la ruta.'
-    }
+    if (step === 0) return validateRoute()
     if (step === 2) {
       const incompleteAnimal = values.animals.some(
         (animal) =>
@@ -541,12 +542,21 @@ export function ClientRequestForm({
     const message = validateCurrentStep()
     if (message) return setError(message)
     setError('')
+    // Al salir de Trayecto, la localidad de recogida y la de entrega sirven de punto
+    // de partida para quien envía y quien recibe (solo si siguen vacías).
+    if (step === 0) {
+      const cities = suggestedPartyCities(values, suggestedCities.current, values)
+      suggestedCities.current = { senderCity: values.origin, recipientCity: values.destination }
+      setValues((current) => ({ ...current, ...cities }))
+    }
     setStep((current) => Math.min(current + 1, steps.length - 1))
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const message = validateCurrentStep()
+    // Pulsar Intro en un paso intermedio avanza de paso; solo el último envía la solicitud.
+    if (step < steps.length - 1) return next()
+    const message = validateCurrentStep() || validateRoute()
     if (message) return setError(message)
     setSending(true)
     setError('')
@@ -752,7 +762,10 @@ export function ClientRequestForm({
           </Button>
         </div>
         <ol className="request-steps" aria-label="Progreso de solicitud">
-          {(adminMode ? ['Cliente', ...steps.slice(1)] : steps).map((label, index) => (
+          {(adminMode
+            ? steps.map((label) => (label === 'Contacto' ? 'Cliente' : label))
+            : steps
+          ).map((label, index) => (
             <li
               key={label}
               className={index === step ? 'is-current' : index < step ? 'is-complete' : ''}
@@ -763,7 +776,7 @@ export function ClientRequestForm({
           ))}
         </ol>
 
-        {step === 0 && (
+        {step === 1 && (
           <section className="request-step-panel border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
             <div className="request-step-hero mb-5 flex items-start gap-3">
               <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
@@ -1134,7 +1147,7 @@ export function ClientRequestForm({
           </section>
         )}
 
-        {step === 1 && (
+        {step === 0 && (
           <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
             <div className="mb-5 flex items-start gap-3">
               <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">

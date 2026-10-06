@@ -47,8 +47,6 @@ const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
   'mis-mascotas': 'Mascotas',
 }
 
-const transporterSections = new Set<NavSection>(['rutas', 'facturas'])
-
 type Props = {
   section: NavSection
   pendingLetters: number
@@ -74,12 +72,9 @@ export function DashboardLayout({
   headerAction,
   children,
 }: Props) {
-  const visibleItems =
-    profileRole === 'transportista'
-      ? navigationItems.filter(([id]) => transporterSections.has(id))
-      : isClientRole(profileRole)
-        ? navigationItems.filter(([id]) => clientSections.has(id))
-        : navigationItems.filter(([id]) => !clientSections.has(id))
+  const visibleItems = isClientRole(profileRole)
+    ? navigationItems.filter(([id]) => clientSections.has(id))
+    : navigationItems.filter(([id]) => !clientSections.has(id))
   const pageTitle = title ?? visibleItems.find(([id]) => id === section)?.[1] ?? 'Rutas'
   const initials =
     displayName
@@ -89,12 +84,7 @@ export function DashboardLayout({
       .map((part) => part[0])
       .join('')
       .toUpperCase() || 'US'
-  const roleLabel =
-    profileRole === 'admin'
-      ? 'Administración'
-      : isClientRole(profileRole)
-        ? 'Cliente'
-        : 'Transportista'
+  const roleLabel = profileRole === 'admin' ? 'Administración' : 'Cliente'
   const handleNavigation = (event: MouseEvent<Element>, target: NavSection) => {
     if (
       event.defaultPrevented ||

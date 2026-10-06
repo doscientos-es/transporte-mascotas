@@ -13,7 +13,7 @@ export type LetterStatus =
   | 'en_ruta'
   | 'entregada'
   | 'cancelada'
-export type AppRole = 'admin' | 'transportista' | 'user'
+export type AppRole = 'admin' | 'user'
 export type AccompanyingDocument =
   | 'cartilla_sanitaria'
   | 'microchip'
@@ -55,11 +55,6 @@ export interface UserProfile {
   displayName: string
   phone: string
   role: AppRole
-}
-
-export interface Transporter {
-  id: string
-  displayName: string
 }
 
 export interface StaffInvitation {
@@ -269,9 +264,10 @@ export interface DailyRoute {
   id: string
   templateId: string
   date: string
+  /** Departure time from the origin as `HH:MM`; defaults to 08:00. */
+  startTime?: string
   status: 'activa' | 'cerrada'
   closedAt?: string
-  transporterId?: string
   direction?: RouteDirection
   actions: ServiceAction[]
   stops?: DailyRouteStop[]

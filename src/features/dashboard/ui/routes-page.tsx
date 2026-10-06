@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Clock3,
+  FileSpreadsheet,
   Lock,
   MapPin,
   PackageOpen,
@@ -31,7 +32,10 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { DEFAULT_STOP_DWELL_MINUTES } from '@/shared/constants/route-defaults'
+import {
+  DEFAULT_ROUTE_START_TIME,
+  DEFAULT_STOP_DWELL_MINUTES,
+} from '@/shared/constants/route-defaults'
 import { paginate } from '@/shared/lib/pagination'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
@@ -51,6 +55,7 @@ import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 import { calculateDrivingTimes } from '../application/driving-times'
 import { canCloseRouteOn, routeCloseUnavailableReason } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
+import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
@@ -61,6 +66,7 @@ type Props = {
   onBack: () => void
   onAction: (ids: string[]) => Promise<void>
   onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>
+  onUpdateStartTime?: (routeId: string, startTime: string) => Promise<void>
   onSuggestStop: (
     routeId: string,
     stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
@@ -372,8 +378,8 @@ const mapUrlFor = (
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((address.length ? address : [stop.alias]).join(', '))}`
 }
 
-function formatArrival(date: string, offsetMinutes: number) {
-  const departure = new Date(`${date}T08:00:00`)
+function formatArrival(date: string, startTime: string, offsetMinutes: number) {
+  const departure = new Date(`${date}T${startTime}:00`)
   departure.setMinutes(departure.getMinutes() + offsetMinutes)
   return departure.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
 }
@@ -414,6 +420,50 @@ function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Le
   return groupsByStop
 }
 
+const DRIVER_SHEET_HEADER = [
+  'LOCALIDAD',
+  'RECOGIDA/ENTREGA',
+  'NOMBRE',
+  'BOX',
+  'TIPO MASCOTA',
+  'TELÉFONO',
+  'HORA',
+  'ESTADO',
+]
+
+// One row per animal, in stop order; ESTADO stays empty for the driver to fill in by hand.
+function driverSheetRows(
+  route: DailyRoute,
+  stops: DailyRouteStop[],
+  letters: Letter[],
+  arrival: (stop: DailyRouteStop) => string,
+) {
+  return stops.flatMap((stop) =>
+    route.actions
+      .filter((action) =>
+        action.stopId ? action.stopId === stop.id : action.stop === stop.locality,
+      )
+      .map((action) => {
+        const breed =
+          letters
+            .find((letter) => letter.id === action.letterId)
+            ?.animals.find((animal) => animal.id === action.animalId)?.breed ??
+          action.animalLabel?.split(' · ')[0] ??
+          ''
+        return [
+          stop.locality.toUpperCase(),
+          action.type === 'recogida' ? 'Recogida' : 'Entrega',
+          action.customer,
+          action.box ?? '',
+          breed,
+          action.phone,
+          arrival(stop),
+          '',
+        ]
+      }),
+  )
+}
+
 export function RoutesPage({
   route,
   template,
@@ -422,6 +472,7 @@ export function RoutesPage({
   onBack,
   onAction,
   onUpdateStops,
+  onUpdateStartTime,
   onSuggestStop,
   onAddStop,
   onRemoveStop,
@@ -441,6 +492,7 @@ export function RoutesPage({
   const [operationError, setOperationError] = useState('')
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
+  const startTime = route.startTime ?? DEFAULT_ROUTE_START_TIME
   const itineraryClosed = route.status === 'cerrada'
   const canClose = canManage && !itineraryClosed && canCloseRouteOn(route.date)
   const closeUnavailableReason = canClose ? undefined : routeCloseUnavailableReason(route.date)
@@ -456,6 +508,17 @@ export function RoutesPage({
     arrivalByStop.set(stop.id, elapsedMinutes)
     elapsedMinutes += stop.dwellMinutes + (index < stops.length - 1 ? stop.minutes : 0)
   })
+  const pointFor = (letterId: string, type: ServiceAction['type']): ReminderPoint | undefined => {
+    const action = route.actions.find((item) => item.letterId === letterId && item.type === type)
+    const stop = action
+      ? stops.find((item) => item.id === (action.stopId ?? '') || item.locality === action.stop)
+      : undefined
+    if (!stop) return undefined
+    return {
+      place: [stop.locality, stop.place].filter(Boolean).join(' · '),
+      time: formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
+    }
+  }
 
   useEffect(() => {
     setOrganizing(false)
@@ -506,6 +569,28 @@ export function RoutesPage({
       } catch (error) {
         reportOperationError(error, 'No se ha podido actualizar el tiempo de espera.')
       }
+    }
+  }
+  async function setTravelMinutes(index: number, value: string) {
+    const minutes = Math.max(1, Number(value) || 1)
+    const next = stops.map((stop, stopIndex) => (stopIndex === index ? { ...stop, minutes } : stop))
+    if (plannedStops) setPlannedStops(next)
+    else {
+      try {
+        setOperationError('')
+        await onUpdateStops(route.id, next, false)
+      } catch (error) {
+        reportOperationError(error, 'No se ha podido actualizar el tiempo de trayecto.')
+      }
+    }
+  }
+  async function changeStartTime(value: string) {
+    if (!value || !onUpdateStartTime) return
+    try {
+      setOperationError('')
+      await onUpdateStartTime(route.id, value)
+    } catch (error) {
+      reportOperationError(error, 'No se ha podido actualizar la hora de salida.')
     }
   }
   async function acceptPlan() {
@@ -561,6 +646,47 @@ export function RoutesPage({
       setClosingRoute(false)
     }
   }
+  async function downloadDriverSheet() {
+    const rows = driverSheetRows(route, stops, letters, (stop) =>
+      formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
+    )
+    // Loaded on demand: exceljs is large and only needed when exporting.
+    const { Workbook } = await import('exceljs')
+    const workbook = new Workbook()
+    const sheet = workbook.addWorksheet(`Ruta ${template.name}`.slice(0, 31), {
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToHeight: 0 },
+    })
+    sheet.addRow(DRIVER_SHEET_HEADER).font = { bold: true }
+    rows.forEach((row) => sheet.addRow(row))
+    sheet.columns.forEach((column, index) => {
+      const longest = Math.max(
+        ...[DRIVER_SHEET_HEADER, ...rows].map((row) => String(row[index]).length),
+      )
+      column.width = Math.min(40, longest + 3)
+    })
+    sheet.eachRow((row) =>
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        }
+      }),
+    )
+    const buffer = await workbook.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ruta-${template.name}-${route.date}.xlsx`.replace(/\s+/g, '-').toLowerCase()
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  }
   async function updateServices(actionIds: string[]) {
     try {
       setOperationError('')
@@ -597,6 +723,21 @@ export function RoutesPage({
                   <StatusBadge status={route.status} className="self-center" />
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <Clock3 size={16} />
+                Salida del origen
+                {canManage && !itineraryClosed && onUpdateStartTime ? (
+                  <input
+                    type="time"
+                    aria-label="Hora de salida del origen"
+                    className="rounded-md border px-2 py-1"
+                    value={startTime}
+                    onChange={(event) => void changeStartTime(event.target.value)}
+                  />
+                ) : (
+                  <strong>{startTime}</strong>
+                )}
+              </label>
               <div className="route-total">
                 <Clock3 size={16} />
                 <span>Estimación total</span>
@@ -609,6 +750,10 @@ export function RoutesPage({
             <div className="journey-actions">
               {(onOpenVan || canManage) && (
                 <div className="journey-action-buttons" aria-label="Acciones de la ruta">
+                  <Button variant="outline" size="sm" onClick={() => void downloadDriverSheet()}>
+                    <FileSpreadsheet /> Descargar Excel
+                  </Button>
+
                   {onOpenVan && (
                     <Button
                       className="journey-view-van"
@@ -695,8 +840,8 @@ export function RoutesPage({
           {organizing && !plannedStops && (
             <div className="itinerary-toolbar">
               <span>
-                <Clock3 size={15} /> Los trayectos se recalculan en coche al cambiar el orden.
-                Ajusta los minutos de espera.
+                <Clock3 size={15} /> Los trayectos se calculan en coche por defecto y se recalculan
+                al cambiar el orden. Puedes ajustar a mano los minutos de espera y de trayecto.
               </span>
             </div>
           )}
@@ -708,12 +853,14 @@ export function RoutesPage({
                 index={index}
                 total={stops.length}
                 routeDate={route.date}
-                arrival={formatArrival(route.date, arrivalByStop.get(stop.id) ?? 0)}
+                arrival={formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0)}
+                pointFor={pointFor}
                 organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
                 moving={movingStop}
                 services={servicesByStop.get(stop.id) ?? []}
                 onMove={plannedStops ? movePlannedStop : moveStop}
                 onDwellChange={setDwellMinutes}
+                onTravelChange={setTravelMinutes}
                 onEdit={itineraryClosed || plannedStops ? undefined : () => setEditingStop(stop)}
                 onDelete={itineraryClosed || plannedStops ? undefined : () => setDeletingStop(stop)}
                 onAction={updateServices}
@@ -793,11 +940,13 @@ function JourneyStop({
   total,
   routeDate,
   arrival,
+  pointFor,
   organizing,
   moving,
   services,
   onMove,
   onDwellChange,
+  onTravelChange,
   onEdit,
   onDelete,
   onAction,
@@ -807,11 +956,13 @@ function JourneyStop({
   total: number
   routeDate: string
   arrival: string
+  pointFor: (letterId: string, type: ServiceAction['type']) => ReminderPoint | undefined
   organizing: boolean
   moving: boolean
   services: ServiceGroup[]
   onMove: (index: number, direction: -1 | 1) => Promise<void>
   onDwellChange: (index: number, value: string) => Promise<void>
+  onTravelChange: (index: number, value: string) => Promise<void>
   onEdit?: () => void
   onDelete?: () => void
   onAction: (ids: string[]) => Promise<void>
@@ -861,6 +1012,20 @@ function JourneyStop({
               />
               <span>min</span>
             </label>
+            {index < total - 1 && (
+              <label>
+                Trayecto a la siguiente{' '}
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={stop.minutes}
+                  onChange={(event) => void onTravelChange(index, event.target.value)}
+                />
+                <span>min</span>
+              </label>
+            )}
             <div className="stop-move-actions">
               <Button
                 variant="outline"
@@ -915,7 +1080,7 @@ function JourneyStop({
               <ServiceCard
                 key={group.key}
                 group={group}
-                reminder={serviceReminder(group, stop, routeDate, arrival)}
+                reminder={serviceReminder(group, routeDate, pointFor)}
                 onToggle={() => onAction(group.actions.map((action) => action.id))}
               />
             ))}
@@ -928,24 +1093,16 @@ function JourneyStop({
 
 function serviceReminder(
   group: ServiceGroup,
-  stop: DailyRouteStop,
   routeDate: string,
-  arrival: string,
+  pointFor: (letterId: string, type: ServiceAction['type']) => ReminderPoint | undefined,
 ) {
   const action = group.actions[0]
-  const day = new Date(`${routeDate}T12:00:00`).toLocaleDateString('es-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
+  const message = transportReminderMessage({
+    date: routeDate,
+    pickup: pointFor(action.letterId, 'recogida'),
+    delivery: pointFor(action.letterId, 'entrega'),
   })
-  return [
-    `Hola ${action.customer}, te recordamos la ${action.type} de ${group.animalLabels.join(' y ')} con Kache Envíos.`,
-    `Día: ${day}, sobre las ${arrival} (hora aproximada).`,
-    `Punto: ${[stop.locality, stop.place].filter(Boolean).join(' · ')}`,
-    stop.mapUrl ? `Mapa: ${stop.mapUrl}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n')
+  return `Hola ${action.customer}, te escribimos de Kache Envíos sobre el transporte de ${group.animalLabels.join(' y ')}.\n\n${message}`
 }
 
 function ServiceCard({

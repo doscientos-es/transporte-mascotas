@@ -12,7 +12,6 @@ export function BillingDocumentCard({
   invoice,
   mode,
   clientName,
-  transportista,
   downloading,
   onPreview,
   onDownload,
@@ -23,7 +22,6 @@ export function BillingDocumentCard({
   invoice: ClientInvoice
   mode: BillingDocumentMode
   clientName: string
-  transportista: boolean
   downloading: boolean
   onPreview: () => void
   onDownload: () => void
@@ -108,7 +106,7 @@ export function BillingDocumentCard({
               <Download size={15} />{' '}
               {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
             </Button>
-            {!transportista && !isIssued && onManualPayment && (
+            {!isIssued && onManualPayment && (
               <Button size="sm" variant="outline" onClick={onManualPayment}>
                 <CheckCircle2 size={15} /> Registrar cobro
               </Button>

@@ -43,40 +43,27 @@ describe('ClientRequestForm departure date', () => {
 })
 
 describe('ClientRequestForm contact details', () => {
-  it('collects complete addresses for both parties and reuses the selected payer details', () => {
-    const markup = renderToStaticMarkup(
-      createElement(ClientRequestForm, {
-        routes: [route],
-        savedPets: [],
-        contactName: 'Ana García',
-        contactPhone: '600000000',
-        contactEmail: 'ana@example.test',
-        onSubmit: vi.fn().mockResolvedValue(undefined),
-        onCancel: vi.fn(),
-        onSavePets: vi.fn().mockResolvedValue(undefined),
-        boxCatalog: defaultTransportBoxCatalog,
-      }),
-    )
+  it('starts on the route step, before the contact details, even with a preselected route', () => {
+    for (const initialRouteId of [undefined, route.id]) {
+      const markup = renderToStaticMarkup(
+        createElement(ClientRequestForm, {
+          routes: [route],
+          savedPets: [],
+          contactName: 'Ana García',
+          contactPhone: '600000000',
+          contactEmail: 'ana@example.test',
+          onSubmit: vi.fn().mockResolvedValue(undefined),
+          onCancel: vi.fn(),
+          onSavePets: vi.fn().mockResolvedValue(undefined),
+          boxCatalog: defaultTransportBoxCatalog,
+          initialRouteId,
+        }),
+      )
 
-    for (const id of [
-      'request-sender-address',
-      'request-sender-postal-code',
-      'request-sender-city',
-      'request-sender-province',
-      'request-recipient-address',
-      'request-recipient-postal-code',
-      'request-recipient-city',
-      'request-recipient-province',
-    ])
-      expect(markup).toContain(`id="${id}"`)
-
-    expect(markup).toContain('La factura utilizará los datos de quien')
-    expect(markup).toContain('No hace falta volver a rellenar estos datos.')
-    expect(markup).toContain('class="client-request-form-shell"')
-    expect(markup).toContain('border-input bg-background min-h-11 rounded-md border')
-    expect(markup).not.toContain('table-card client-request-card')
-    expect(markup).not.toContain('id="request-billing-name"')
-    expect(markup).not.toContain('id="request-billing-address"')
+      expect(markup.indexOf('Trayecto')).toBeLessThan(markup.indexOf('Contacto'))
+      expect(markup).toContain('class="client-request-form-shell"')
+      expect(markup).not.toContain('id="request-sender-address"')
+    }
   })
 
   it('copies the selected sender or recipient identity and address into invoice data', () => {

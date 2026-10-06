@@ -88,7 +88,7 @@ const router = createBrowserRouter([
       },
       {
         Component: StaffRouteGuard,
-        errorElement: <RouteErrorBoundary returnTo={APP_PATHS.transporterHome} />,
+        errorElement: <RouteErrorBoundary returnTo={APP_PATHS.staffHome} />,
         children: [
           {
             path: ROUTER_PATHS.staffRoutes,
@@ -208,7 +208,7 @@ function StaffRouteGuard() {
 function AdminRouteGuard() {
   const auth = useAuth()
   const context = useOutletContext<DashboardRouteContext>()
-  if (auth.profile?.role !== 'admin') return <Navigate to={APP_PATHS.transporterHome} replace />
+  if (auth.profile?.role !== 'admin') return <Navigate to={APP_PATHS.clientHome} replace />
   return <Outlet context={context} />
 }
 

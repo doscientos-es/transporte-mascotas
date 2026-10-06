@@ -1,4 +1,4 @@
-import { Button } from '@doscientos/ui'
+﻿import { Button } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
 import { CalendarDays, CheckCircle2, FilePlus2, Plus, Printer } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
@@ -36,11 +36,11 @@ function lazyWithRetry<T extends Record<string, unknown>, P>(
       if (!sessionStorage.getItem(reloadKey)) {
         sessionStorage.setItem(reloadKey, '1')
         window.location.reload()
-        throw new Error('Actualizando la aplicación…')
+        throw new Error('Actualizando la aplicaciÃ³nâ€¦')
       }
       sessionStorage.removeItem(reloadKey)
     }
-    throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la sección.')
+    throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la secciÃ³n.')
   })
 }
 
@@ -127,12 +127,8 @@ export function AdminDashboardPage({
     replaceWithSection,
     isCreatingLetter,
   } = navigation
-  const isTransporter = profile.role === 'transportista'
   const ensureLetters = dashboard.ensureLetters
-  const visibleRoutes =
-    isTransporter && session
-      ? dashboard.dailyRoutes.filter((route) => route.transporterId === session.user.id)
-      : dashboard.dailyRoutes
+  const visibleRoutes = dashboard.dailyRoutes
   const selectedVisibleRoute = visibleRoutes.find(
     (route) => route.id === dashboard.selectedRoute?.id,
   )
@@ -153,11 +149,8 @@ export function AdminDashboardPage({
             dashboard.editingLetter?.route,
       )?.id)
     : undefined
-  const pendingLetters = isTransporter
-    ? 0
-    : dashboard.letters.filter((letter) => letter.status === 'pendiente').length
-  const sectionNeedsLetters =
-    !isTransporter && ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
+  const pendingLetters = dashboard.letters.filter((letter) => letter.status === 'pendiente').length
+  const sectionNeedsLetters = ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
   const routesLoading = dashboard.routesLoading
   const setSelectedRoute = dashboard.setSelectedRoute
   const requestRoutes: UpcomingRoute[] = visibleRoutes
@@ -192,16 +185,16 @@ export function AdminDashboardPage({
   async function createRouteAndNavigate(
     template: Parameters<typeof dashboard.createDailyRoute>[0],
     date: string,
-    transporterId?: string,
-    direction: Parameters<typeof dashboard.createDailyRoute>[3] = 'normal',
-    selectedStopIds: Parameters<typeof dashboard.createDailyRoute>[4] = [],
+    direction: Parameters<typeof dashboard.createDailyRoute>[2] = 'normal',
+    selectedStopIds: Parameters<typeof dashboard.createDailyRoute>[3] = [],
+    startTime?: string,
   ) {
     const route = await dashboard.createDailyRoute(
       template,
       date,
-      transporterId,
       direction,
       selectedStopIds,
+      startTime,
     )
     if (route) navigateToRoute(route.id)
   }
@@ -249,7 +242,7 @@ export function AdminDashboardPage({
   async function createManualTransport(values: RequestFormValues) {
     await createAdminTransportRequest(values)
     setCreatingTransport(false)
-    dashboard.toast('Solicitud creada sin cobro y pendiente de revisión.')
+    dashboard.toast('Solicitud creada sin cobro y pendiente de revisiÃ³n.')
   }
 
   return (
@@ -261,23 +254,23 @@ export function AdminDashboardPage({
         displayName={profile.displayName}
         title={isCreatingLetter ? 'Nueva carta de porte' : undefined}
         headerAction={
-          !isTransporter && section === 'rutas' ? (
+          section === 'rutas' ? (
             <Button onClick={() => dashboard.setShowNewRoute(true)}>
               <CalendarDays /> Crear ruta
             </Button>
-          ) : !isTransporter && section === 'furgoneta' && activeRoute ? (
+          ) : section === 'furgoneta' && activeRoute ? (
             <Button disabled={printingManifest} onClick={() => void printVanManifest()}>
-              <Printer /> {printingManifest ? 'Preparando PDF…' : 'Imprimir tramo'}
+              <Printer /> {printingManifest ? 'Preparando PDFâ€¦' : 'Imprimir tramo'}
             </Button>
-          ) : !isTransporter && !isCreatingLetter && section === 'cartas' ? (
+          ) : !isCreatingLetter && section === 'cartas' ? (
             <Button onClick={navigateToLetterCreate}>
               <FilePlus2 /> Nueva carta
             </Button>
-          ) : !isTransporter && section === 'clientes' ? (
+          ) : section === 'clientes' ? (
             <Button onClick={() => setClientCreateRequestId((current) => current + 1)}>
               <Plus /> Nuevo cliente
             </Button>
-          ) : !isTransporter && section === 'plantillas' ? (
+          ) : section === 'plantillas' ? (
             <Button onClick={() => setTemplateCreateRequestId((current) => current + 1)}>
               <Plus /> Nueva plantilla
             </Button>
@@ -306,7 +299,6 @@ export function AdminDashboardPage({
                 onAddStop={dashboard.addLetterRouteStop}
               />
             ) : (
-              !isTransporter &&
               section === 'cartas' && (
                 <LettersPage
                   letters={dashboard.letters}
@@ -319,7 +311,7 @@ export function AdminDashboardPage({
                 />
               )
             )}
-            {!isTransporter && section === 'clientes' && (
+            {section === 'clientes' && (
               <ClientsPage
                 letters={dashboard.letters}
                 createRequestId={clientCreateRequestId}
@@ -329,7 +321,7 @@ export function AdminDashboardPage({
                 onOpenLetter={openLetter}
               />
             )}
-            {!isTransporter && section === 'plantillas' && (
+            {section === 'plantillas' && (
               <TemplatesPage
                 templates={dashboard.routeTemplates}
                 selected={dashboard.selectedTemplate}
@@ -351,23 +343,20 @@ export function AdminDashboardPage({
                   template={activeTemplate}
                   letters={dashboard.letters}
                   onBack={() => navigateToSection('rutas')}
-                  onOpenVan={
-                    isTransporter
-                      ? undefined
-                      : (route) => {
-                          dashboard.setSelectedRoute(route)
-                          navigateToVan(route.id)
-                        }
-                  }
+                  onOpenVan={(route) => {
+                    dashboard.setSelectedRoute(route)
+                    navigateToVan(route.id)
+                  }}
                   onAction={dashboard.updateActions}
                   onUpdateStops={dashboard.updateRouteStops}
+                  onUpdateStartTime={dashboard.updateRouteStartTime}
                   onSuggestStop={dashboard.suggestRouteStop}
                   onAddStop={dashboard.addRouteStop}
                   onRemoveStop={dashboard.removeRouteStop}
                   onUpdateService={dashboard.updateRouteService}
                   onRemoveService={dashboard.removeRouteService}
                   onCloseRoute={dashboard.closeRoute}
-                  canManage={!isTransporter}
+                  canManage
                 />
               ) : (
                 <RoutesCatalogPage
@@ -377,17 +366,13 @@ export function AdminDashboardPage({
                     dashboard.setSelectedRoute(route)
                     navigateToRoute(route.id)
                   }}
-                  onOpenVan={
-                    isTransporter
-                      ? undefined
-                      : (route) => {
-                          dashboard.setSelectedRoute(route)
-                          navigateToVan(route.id)
-                        }
-                  }
+                  onOpenVan={(route) => {
+                    dashboard.setSelectedRoute(route)
+                    navigateToVan(route.id)
+                  }}
                 />
               ))}
-            {!isTransporter && section === 'furgoneta' && activeRoute && (
+            {section === 'furgoneta' && activeRoute && (
               <VanPage
                 route={activeRoute}
                 routes={visibleRoutes}
@@ -418,10 +403,9 @@ export function AdminDashboardPage({
                 boxCatalog={dashboard.boxCatalog}
               />
             )}
-            {!isTransporter && section === 'solicitudes' && !creatingTransport && (
+            {section === 'solicitudes' && !creatingTransport && (
               <>
                 <PaymentRequestsPage
-                  transportista={false}
                   onConfirmManualPayment={dashboard.confirmManualPayment}
                   onPaymentConfirmed={openBillingDocument}
                   onOpenClient={openClient}
@@ -436,8 +420,6 @@ export function AdminDashboardPage({
             )}
             {profile.role === 'admin' && section === 'ajustes' && (
               <SettingsPage
-                transporters={dashboard.transporters}
-                onPromote={dashboard.promoteTransporter}
                 invitations={dashboard.staffInvitations}
                 onInvite={dashboard.inviteStaffMember}
                 onRevokeInvitation={dashboard.revokeStaffInvitation}
@@ -447,10 +429,9 @@ export function AdminDashboardPage({
             )}
             {section === 'facturas' && (
               <InvoicesPage
-                transportista={isTransporter}
-                onConfirmManualPayment={isTransporter ? undefined : dashboard.confirmManualPayment}
-                onOpenClient={isTransporter ? undefined : openClient}
-                onOpenLetter={isTransporter ? undefined : openLetter}
+                onConfirmManualPayment={dashboard.confirmManualPayment}
+                onOpenClient={openClient}
+                onOpenLetter={openLetter}
               />
             )}
           </Suspense>
@@ -458,7 +439,7 @@ export function AdminDashboardPage({
       </DashboardLayout>
       <SectionBoundary label="No hemos podido abrir esta ventana. Vuelve a intentarlo.">
         <Suspense fallback={null}>
-          {!isTransporter && dashboard.editingLetter && (
+          {dashboard.editingLetter && (
             <LetterFormDialog
               routes={dashboard.dailyRoutes}
               templates={dashboard.routeTemplates}
@@ -470,10 +451,9 @@ export function AdminDashboardPage({
               onAddStop={dashboard.addLetterRouteStop}
             />
           )}
-          {!isTransporter && dashboard.showNewRoute && (
+          {dashboard.showNewRoute && (
             <NewRouteDirectionDialog
               templates={dashboard.routeTemplates}
-              transporters={dashboard.transporters}
               onClose={() => dashboard.setShowNewRoute(false)}
               onCreate={createRouteAndNavigate}
             />
@@ -490,5 +470,5 @@ export function AdminDashboardPage({
 }
 
 function PageLoading() {
-  return <output className="page-loading">Cargando sección…</output>
+  return <output className="page-loading">Cargando secciÃ³nâ€¦</output>
 }

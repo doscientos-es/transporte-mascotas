@@ -6,6 +6,7 @@ import {
   transportAnimalsTotalCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
+import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
 import { requireSupabase, supabase } from '@/shared/infrastructure/supabase'
 import {
   loadTransportBoxCatalog,
@@ -26,7 +27,6 @@ import {
   type RouteTemplate,
   type ServiceAction,
   type StaffInvitation,
-  type Transporter,
 } from '@/shared/types'
 
 import {
@@ -55,11 +55,10 @@ import {
   createStaffInvitation,
   deleteStaffInvitation,
   loadPendingStaffInvitations,
-  loadTransporters,
-  promoteTransporterToAdmin,
   reassignVanBox,
   saveDailyRoute,
   saveRouteTemplate,
+  updateDailyRouteStartTime,
   updateDailyRouteStops,
   updateRouteTemplate,
   updateRouteTemplateStopOrder,
@@ -194,7 +193,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   )
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
-  const [transporters, setTransporters] = useState<Transporter[]>([])
   const [staffInvitations, setStaffInvitations] = useState<StaffInvitation[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
@@ -252,7 +250,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     let active = true
     if (!session) {
       setRouteTemplates([])
-      setTransporters([])
       setStaffInvitations([])
       setDailyRoutes([])
       setSelectedTemplate(null)
@@ -294,13 +291,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
         if (active) setRoutesLoading(false)
       })
     if (role === 'admin') {
-      loadTransporters()
-        .then((loadedTransporters) => {
-          if (active) setTransporters(loadedTransporters)
-        })
-        .catch(() => {
-          if (active) toast('No se ha podido cargar el equipo de transporte.')
-        })
       loadPendingStaffInvitations()
         .then((loadedInvitations) => {
           if (active) setStaffInvitations(loadedInvitations)
@@ -327,25 +317,10 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (error) toast('No se ha podido cerrar la sesión.')
   }
 
-  async function promoteTransporter(transporterId: string) {
-    const transporter = transporters.find((item) => item.id === transporterId)
-    if (!transporter) throw new Error('No se ha encontrado el transportista seleccionado.')
-    try {
-      await promoteTransporterToAdmin(transporterId)
-      setTransporters((current) => current.filter((item) => item.id !== transporterId))
-      toast(`${transporter.displayName} ahora es administrador.`)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se ha podido actualizar el rol.'
-      toast(message)
-      throw error
-    }
-  }
-
   async function inviteStaffMember(email: string) {
     const { invitation, accepted } = await createStaffInvitation(email)
     if (accepted) {
-      setTransporters(await loadTransporters())
-      toast(`${invitation.email} ya tenía cuenta y ahora es transportista.`)
+      toast(`${invitation.email} ya tenía cuenta y ahora es administrador.`)
       return
     }
     setStaffInvitations((current) => [invitation, ...current])
@@ -435,6 +410,17 @@ export function useDashboard(session: Session | null, role: AppRole) {
       return { ...route, stops: updatedStops, actions }
     }
     await updateDailyRouteStops(routeId, updatedStops)
+    setSelectedRoute((current) => (current ? update(current) : null))
+    setDailyRoutes((current) => current.map(update))
+  }
+
+  async function updateRouteStartTime(routeId: string, startTime: string) {
+    if (!session) throw new Error('Inicia sesión para guardar la hora de salida.')
+    if (dailyRoutes.find((route) => route.id === routeId)?.closedAt)
+      throw new Error('El itinerario está cerrado y ya no se puede modificar.')
+    await updateDailyRouteStartTime(routeId, startTime)
+    const update = (route: DailyRoute): DailyRoute =>
+      route.id === routeId ? { ...route, startTime } : route
     setSelectedRoute((current) => (current ? update(current) : null))
     setDailyRoutes((current) => current.map(update))
   }
@@ -886,9 +872,9 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function createDailyRoute(
     template: RouteTemplate,
     date: string,
-    transporterId?: string,
     direction: RouteDirection = 'normal',
     selectedStopIds?: string[],
+    startTime = DEFAULT_ROUTE_START_TIME,
   ) {
     if (!session) throw new Error('Inicia sesión para crear una ruta.')
     let stops = copyTemplateStops(template, direction, selectedStopIds)
@@ -949,8 +935,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
       id: crypto.randomUUID(),
       templateId: template.id,
       date,
+      startTime,
       status: 'activa',
-      transporterId,
       direction,
       stops,
       actions,
@@ -1027,7 +1013,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     lettersError,
     ensureLetters,
     routeTemplates,
-    transporters,
     staffInvitations,
     boxCatalog,
     dailyRoutes,
@@ -1047,12 +1032,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
     notice,
     toast,
     signOut,
-    promoteTransporter,
     inviteStaffMember,
     revokeStaffInvitation,
     updateBoxCatalog,
     updateActions,
     updateRouteStops,
+    updateRouteStartTime,
     suggestRouteStop,
     addRouteStop,
     addLetterRouteStop,

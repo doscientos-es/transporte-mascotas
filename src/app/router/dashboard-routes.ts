@@ -23,7 +23,6 @@ export const APP_PATHS = {
   publicTransportRequest: AUTH_PATHS.publicTransportRequest,
   clientHome: dashboardPaths['mis-transportes'],
   staffHome: dashboardPaths.cartas,
-  transporterHome: dashboardPaths.rutas,
 } as const
 
 export const letterCreatePath = `${dashboardPaths.cartas}/nueva`
@@ -31,7 +30,6 @@ export const letterCreatePath = `${dashboardPaths.cartas}/nueva`
 export const DEFAULT_DASHBOARD_SECTIONS = {
   client: 'mis-transportes',
   staff: 'cartas',
-  transporter: 'rutas',
 } as const satisfies Record<string, NavSection>
 
 const routePath = (path: string) => path.slice(1)

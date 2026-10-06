@@ -38,7 +38,6 @@ describe('dashboard routes', () => {
     expect(APP_PATHS.passwordRecovery).toBe('/recuperar-contrasena')
     expect(APP_PATHS.passwordReset).toBe('/restablecer-contrasena')
     expect(ROUTER_PATHS.passwordReset).toBe('restablecer-contrasena')
-    expect(DEFAULT_DASHBOARD_SECTIONS.transporter).toBe('rutas')
     expect(ROUTER_PATHS.staffRouteDetail).toBe('rutas/:routeId')
   })
 
