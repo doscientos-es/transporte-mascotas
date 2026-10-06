@@ -30,7 +30,7 @@ aplicar las migraciones.
    pnpm dev
    ```
 
-Las claves privadas de pagos, facturación y WhatsApp no deben configurarse en Vite ni en el
+Las claves privadas de pagos, facturación y email no deben configurarse en Vite ni en el
 navegador. Se consumen exclusivamente desde Supabase Edge Functions. La configuración de esas
 funciones está documentada en [`supabase/functions/README.md`](./supabase/functions/README.md).
 

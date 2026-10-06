@@ -61,7 +61,7 @@ válidas para producción.
    `CAIXABANK_CYBERPAC_TRANSACTION_TYPE`, `CAIXABANK_CYBERPAC_SIGNATURE_VERSION`,
    `CAIXABANK_CYBERPAC_SECRET`, `CAIXABANK_CYBERPAC_ENDPOINT`, `PUBLIC_APP_URL`
    y los datos fiscales del emisor.
-3. Crear una solicitud de pago de factura desde el panel y enviarla por WhatsApp.
+3. Crear una solicitud de pago de factura desde el panel y enviarla por email.
 4. Abrir el enlace, probar primero la tarjeta aceptada y verificar que la factura
    pasa a emitida sólo después de recibir la notificación.
 5. Repetir con la tarjeta denegada y verificar que el pago queda fallido y la

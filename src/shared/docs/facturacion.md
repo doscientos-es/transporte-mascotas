@@ -3,7 +3,7 @@
 ## Flujo operativo
 
 1. Administración crea una **solicitud de pago** desde la carta de porte e incluye los datos fiscales del destinatario.
-2. La solicitud queda disponible para administración en el CRM; no se envía por WhatsApp.
+2. La solicitud queda disponible para administración en el CRM.
 3. Solo al confirmarse el cobro mediante el webhook firmado de Cyberpac, o al registrar el cobro manual, se emite la factura: se asigna un número correlativo por serie y año y se congela el emisor, destinatario, importes, operación y cobro.
 4. Un proceso servidor genera y guarda el PDF canónico exclusivamente desde esa instantánea emitida. La factura emitida se puede buscar, filtrar, previsualizar y descargar; la solicitud de pago se puede previsualizar y descargar solo como documento informativo, nunca como factura.
 

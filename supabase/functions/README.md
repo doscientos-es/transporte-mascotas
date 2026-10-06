@@ -15,13 +15,11 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 
 Antes de abrir cobros configurad los datos fiscales no secretos que aparecerán congelados en cada factura: `INVOICE_ISSUER_NAME`, `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`. No se emite una factura si falta alguno.
 
-Los avisos transaccionales por WhatsApp están desactivados y la facturación no
-depende de WhatsApp.
+Todas las comunicaciones con clientes se envían por email.
 
 ### Confirmaciones de pago por email (Resend)
 
-Mientras Meta no apruebe WhatsApp, la confirmación de pago se envía por email con
-Resend. Se envía cuando Cyberpac confirma el pago de una solicitud de transporte
+La confirmación de pago se envía por email con Resend. Se envía cuando Cyberpac confirma el pago de una solicitud de transporte
 (a `contact_email`) o de una solicitud de pago, y cuando administración registra
 un cobro manual (al email de los datos fiscales). Si no hay email válido no se
 envía nada. Un fallo de envío sólo se registra en los logs: nunca bloquea el pago
@@ -53,36 +51,6 @@ con el resto.
 Tras configurar los secretos, redesplegad `caixabank-webhook` y
 `confirm-manual-invoice-payment`.
 
-### Número de avisos y número principal (modelo de dos números)
-
-Kache usa dos números separados. El número principal del transportista queda en
-su app de WhatsApp Business para conversación humana, sin tocarlo. El número
-dedicado sólo se utiliza para pruebas explícitas de administración.
-
-Quien escriba al número de avisos recibe una autorespuesta que redirige al
-teléfono principal. Para activarla desplegad `whatsapp-webhook` y configurad:
-
-| Secreto                        | Uso                                                                  |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `META_WHATSAPP_VERIFY_TOKEN`   | Cadena aleatoria que se entrega a Meta al dar de alta el webhook     |
-| `META_WHATSAPP_APP_SECRET`     | App secret de Meta para validar la cabecera `X-Hub-Signature-256`    |
-| `META_WHATSAPP_AUTOREPLY_TEXT` | Texto de la autorespuesta; sin valor, el webhook no contesta a nadie |
-
-En Meta configurad el webhook con la URL
-`https://<project-ref>.supabase.co/functions/v1/whatsapp-webhook`, suscrito al
-campo `messages`. El webhook ignora recibos de entrega y eventos `system`,
-`reaction` y `unsupported`, y responde siempre 2xx al tráfico firmado para que
-Meta no dé de baja la suscripción.
-
-### Confirmaciones y recordatorios de transporte
-
-Una carta de porte manual queda programada al guardarse y una solicitud queda
-programada al confirmarla, pero ninguna de las dos operaciones encola WhatsApp.
-Las plantillas de Meta sólo se usan desde las pruebas explícitas de administración:
-
-- `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE`: debe comunicar que el pago y la ruta están confirmados.
-- `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`: debe recordar la salida prevista para el día siguiente.
-
 ### Cierre de itinerario diario
 
 Cerrar una ruta el día anterior fija las paradas y los tiempos y encola un email
@@ -102,8 +70,7 @@ ejecutad `supabase config push` con `RESEND_API_KEY` definido en el entorno.
 La página **Ajustes → Prueba de email** usa la Edge Function `send-test-email` y el cliente
 compartido de Resend para enviar un mensaje real a la dirección asociada a la cuenta
 administradora. Desplegad esa función con `verify_jwt = true`; las credenciales de Resend
-se mantienen únicamente en el servidor. Las cartas, reservas, pagos, facturas y cierres de
-ruta no se despachan automáticamente por WhatsApp.
+se mantienen únicamente en el servidor.
 
 Las solicitudes de transporte usan `transport-payment`: el importe se calcula en la base
 de datos según el tamaño de cada box y se guarda en la solicitud antes de generar el
@@ -111,7 +78,7 @@ enlace de Cyberpac. Las tarifas iniciales son 80 €, 100 € y 140 € para peq
 mediano y grande; sólo un administrador puede cambiarlas desde **Ajustes → Tarifa por
 tamaño de box**.
 
-Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla. La emisión y la disponibilidad en el CRM no dependen de WhatsApp.
+Los enlaces de pago y de factura expiran en 30 días. La factura conserva una instantánea inmutable de emisor, cliente, importes, pago, fecha de operación y número fiscal; el enlace sólo permite consultarla, no modificarla.
 
 ## Cobros manuales y documentos fiscales
 

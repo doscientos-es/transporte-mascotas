@@ -3,7 +3,7 @@ import { sendWhatsAppText } from '../_shared/whatsapp.ts'
 // Meta calls this endpoint with the events of the notices number: a GET to
 // validate the subscription and a POST signed with the app secret for every
 // notification. Whoever writes to the notices number gets an auto-reply that
-// redirects them to the transporter's main phone, so the transporter can keep
+// redirects them to Kache's main phone, so the team can keep
 // chatting from the regular WhatsApp Business app.
 
 const encoder = new TextEncoder()
