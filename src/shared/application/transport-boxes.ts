@@ -64,8 +64,8 @@ export const defaultTransportBoxCatalog: TransportBoxCatalog = {
     category: 'paso_rueda',
     label: 'Box paso de rueda',
     amountCents: 15000,
-    largeAmountCents: 18000,
     dimensions: '100 × 36/58 × 36 × 75 cm · según tamaño',
+    nextBoxFromKg: 40,
     sortOrder: 4,
   },
 }
@@ -107,26 +107,23 @@ export function transportBoxPriceCents(
   catalog: TransportBoxCatalog,
 ) {
   const item = catalog[category]
-  if (
-    (category === 'grande' || category === 'paso_rueda') &&
-    animal.weightKg > HEAVY_TARIFF_OVER_KG
-  )
+  if (category === 'grande' && animal.weightKg > HEAVY_TARIFF_OVER_KG)
     return item.largeAmountCents ?? item.amountCents
   return item.amountCents
 }
 
-/** Above this weight (kg) the large tariff applies. */
+/** Above this weight (kg) the large tariff of the large box applies. */
 export const HEAVY_TARIFF_OVER_KG = 40
-export const WHEEL_ARCH_BOX_MAX_WEIGHT_KG = 40
 
 export function transportBoxOptions(
   minimum: Exclude<TransportBoxCategory, 'paso_rueda'>,
   weightKg = 0,
+  catalog: TransportBoxCatalog = defaultTransportBoxCatalog,
 ) {
   const minimumRank = transportBoxCategoryRank(minimum)
   return transportBoxCategories.filter((category) =>
     category === 'paso_rueda'
-      ? weightKg <= WHEEL_ARCH_BOX_MAX_WEIGHT_KG
+      ? weightKg <= (catalog.paso_rueda.nextBoxFromKg ?? Infinity)
       : transportBoxCategoryRank(category) >= minimumRank,
   )
 }
@@ -140,11 +137,12 @@ type PricedAnimal = Pick<
 export function requestedTransportBoxCategory(
   animal: PricedAnimal,
   minimumCategory = minimumTransportBoxCategory(animal),
+  catalog: TransportBoxCatalog = defaultTransportBoxCatalog,
 ): TransportBoxCategory {
   const requestedCategory = animal.requestedBoxCategory
   if (
     requestedCategory &&
-    transportBoxOptions(minimumCategory, animal.weightKg).includes(requestedCategory)
+    transportBoxOptions(minimumCategory, animal.weightKg, catalog).includes(requestedCategory)
   ) {
     return requestedCategory
   }
@@ -154,7 +152,7 @@ export function requestedTransportBoxCategory(
 export function transportAnimalPriceCents(animal: PricedAnimal, catalog: TransportBoxCatalog) {
   const minimumCategory = minimumTransportBoxCategory(animal, catalog)
   return transportBoxPriceCents(
-    requestedTransportBoxCategory(animal, minimumCategory),
+    requestedTransportBoxCategory(animal, minimumCategory, catalog),
     { weightKg: animal.weightKg },
     catalog,
   )

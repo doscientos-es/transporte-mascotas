@@ -5,6 +5,7 @@ export {
   invoiceSortOptions,
   loadClientById,
   loadClientPage,
+  loadClientServiceCounts,
   loadInvoicePage,
 } from '../infrastructure/clients'
 export type { ClientSort, InvoiceSort, SortDirection } from '../infrastructure/clients'

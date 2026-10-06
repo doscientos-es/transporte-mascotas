@@ -138,6 +138,21 @@ export async function loadClientById(clientId: string): Promise<Client | null> {
   return data ? toClient(data as ClientRow) : null
 }
 
+export type ClientServiceCounts = { sent: number; received: number; paid: number }
+
+export async function loadClientServiceCounts(clientId: string): Promise<ClientServiceCounts> {
+  const { data, error } = await requireSupabase().rpc('client_service_counts', {
+    p_client_id: clientId,
+  })
+  if (error) throw error
+  const row = (data as { sent: number; received: number; paid: number }[] | null)?.[0]
+  return {
+    sent: Number(row?.sent ?? 0),
+    received: Number(row?.received ?? 0),
+    paid: Number(row?.paid ?? 0),
+  }
+}
+
 export async function loadInvoicePage(
   options: InvoicePageOptions,
 ): Promise<PaginatedResult<ClientInvoice>> {

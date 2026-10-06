@@ -427,7 +427,11 @@ export function AdminDashboardPage({
                   onOpenClient={openClient}
                   onOpenLetter={openLetter}
                 />
-                <RequestsPage routes={visibleRoutes} onNotify={dashboard.toast} />
+                <RequestsPage
+                  routes={visibleRoutes}
+                  boxCatalog={dashboard.boxCatalog}
+                  onNotify={dashboard.toast}
+                />
               </>
             )}
             {profile.role === 'admin' && section === 'ajustes' && (

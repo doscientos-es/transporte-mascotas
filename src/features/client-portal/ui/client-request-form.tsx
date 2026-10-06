@@ -556,7 +556,11 @@ export function ClientRequestForm({
         billingClient: { ...values.billingClient, ...payerIdentity(values) },
         animals: values.animals.map((animal) => {
           const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
-          const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
+          const requestedCategory = requestedTransportBoxCategory(
+            animal,
+            minimumCategory,
+            boxCatalog,
+          )
           return {
             ...animal,
             minimumBoxCategory: minimumCategory,
@@ -1414,7 +1418,11 @@ export function ClientRequestForm({
                 {(() => {
                   const measured = hasMeasurements(animal)
                   const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
-                  const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
+                  const requestedCategory = requestedTransportBoxCategory(
+                    animal,
+                    minimumCategory,
+                    boxCatalog,
+                  )
                   return (
                     <div className="mt-3 grid gap-3">
                       <p className="text-muted-foreground text-xs">
@@ -1443,22 +1451,24 @@ export function ClientRequestForm({
                             })
                           }
                         >
-                          {transportBoxOptions(minimumCategory, animal.weightKg).map((category) => (
-                            <option value={category} key={category}>
-                              {transportBoxCategoryLabel(category)} ·{' '}
-                              {currency(
-                                transportBoxPriceCents(
-                                  category,
-                                  { weightKg: animal.weightKg },
-                                  boxCatalog,
-                                ) / 100,
-                              )}
-                              {transportBoxCategoryRank(category) >
-                              transportBoxCategoryRank(minimumCategory)
-                                ? ' · extra por comodidad'
-                                : ''}
-                            </option>
-                          ))}
+                          {transportBoxOptions(minimumCategory, animal.weightKg, boxCatalog).map(
+                            (category) => (
+                              <option value={category} key={category}>
+                                {transportBoxCategoryLabel(category)} ·{' '}
+                                {currency(
+                                  transportBoxPriceCents(
+                                    category,
+                                    { weightKg: animal.weightKg },
+                                    boxCatalog,
+                                  ) / 100,
+                                )}
+                                {transportBoxCategoryRank(category) >
+                                transportBoxCategoryRank(minimumCategory)
+                                  ? ' · extra por comodidad'
+                                  : ''}
+                              </option>
+                            ),
+                          )}
                         </select>
                       </Field>
                     </div>

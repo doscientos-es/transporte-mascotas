@@ -25,6 +25,7 @@ import {
 import {
   transportBoxCategoryLabel,
   transportBoxOptions,
+  type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import { paginate } from '@/shared/lib/pagination'
 import type { AccompanyingDocument, DailyRoute, TransportRequest } from '@/shared/types'
@@ -32,7 +33,11 @@ import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
-type Props = { routes: DailyRoute[]; onNotify: (message: string) => void }
+type Props = {
+  routes: DailyRoute[]
+  boxCatalog: TransportBoxCatalog
+  onNotify: (message: string) => void
+}
 
 type Assignment = { routeId: string; pickupStopId: string; deliveryStopId: string; note: string }
 
@@ -118,7 +123,7 @@ function requestMessage(request: TransportRequest) {
   return [greeting, detail[request.status]].filter(Boolean).join(' ')
 }
 
-export function RequestsPage({ routes, onNotify }: Props) {
+export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [busy, setBusy] = useState('')
@@ -337,13 +342,15 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                   disabled={Boolean(busy)}
                                   aria-label={`Box de ${animal.name || animal.species}`}
                                 >
-                                  {transportBoxOptions(minimumCategory, animal.weightKg).map(
-                                    (category) => (
-                                      <option value={category} key={category}>
-                                        {transportBoxCategoryLabel(category)}
-                                      </option>
-                                    ),
-                                  )}
+                                  {transportBoxOptions(
+                                    minimumCategory,
+                                    animal.weightKg,
+                                    boxCatalog,
+                                  ).map((category) => (
+                                    <option value={category} key={category}>
+                                      {transportBoxCategoryLabel(category)}
+                                    </option>
+                                  ))}
                                 </select>
                               )}
                               <SharedBoxSelect
@@ -631,13 +638,15 @@ export function RequestsPage({ routes, onNotify }: Props) {
                                     disabled={Boolean(busy)}
                                     aria-label={`Box de ${animal.name || animal.species}`}
                                   >
-                                    {transportBoxOptions(minimumCategory, animal.weightKg).map(
-                                      (category) => (
-                                        <option value={category} key={category}>
-                                          {transportBoxCategoryLabel(category)}
-                                        </option>
-                                      ),
-                                    )}
+                                    {transportBoxOptions(
+                                      minimumCategory,
+                                      animal.weightKg,
+                                      boxCatalog,
+                                    ).map((category) => (
+                                      <option value={category} key={category}>
+                                        {transportBoxCategoryLabel(category)}
+                                      </option>
+                                    ))}
                                   </select>
                                 )}
                                 <SharedBoxSelect

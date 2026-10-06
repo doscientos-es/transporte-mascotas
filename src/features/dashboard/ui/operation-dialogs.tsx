@@ -1309,7 +1309,11 @@ function AnimalsSection({
       <div className="grid gap-3">
         {animals.map((animal, index) => {
           const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
-          const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory)
+          const requestedCategory = requestedTransportBoxCategory(
+            animal,
+            minimumCategory,
+            boxCatalog,
+          )
           const hasMeasurements =
             animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
           return (
@@ -1451,22 +1455,24 @@ function AnimalsSection({
                         )
                       }
                     >
-                      {transportBoxOptions(minimumCategory, animal.weightKg).map((category) => (
-                        <option value={category} key={category}>
-                          {transportBoxCategoryLabel(category)} ·{' '}
-                          {euros(
-                            transportBoxPriceCents(
-                              category,
-                              { weightKg: animal.weightKg },
-                              boxCatalog,
-                            ),
-                          )}
-                          {transportBoxCategoryRank(category) >
-                          transportBoxCategoryRank(minimumCategory)
-                            ? ' · extra por comodidad'
-                            : ''}
-                        </option>
-                      ))}
+                      {transportBoxOptions(minimumCategory, animal.weightKg, boxCatalog).map(
+                        (category) => (
+                          <option value={category} key={category}>
+                            {transportBoxCategoryLabel(category)} ·{' '}
+                            {euros(
+                              transportBoxPriceCents(
+                                category,
+                                { weightKg: animal.weightKg },
+                                boxCatalog,
+                              ),
+                            )}
+                            {transportBoxCategoryRank(category) >
+                            transportBoxCategoryRank(minimumCategory)
+                              ? ' · extra por comodidad'
+                              : ''}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </Label>
                   <p className="text-muted-foreground m-0 text-[11px]">

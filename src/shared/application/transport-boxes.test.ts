@@ -68,12 +68,22 @@ describe('transport box categories', () => {
     ).toBe('grande')
   })
 
-  it('uses the large tariff only above 40 kg', () => {
+  it('uses the configured maximum weight of the wheel-arch box', () => {
+    const catalog = {
+      ...defaultTransportBoxCatalog,
+      paso_rueda: { ...defaultTransportBoxCatalog.paso_rueda, nextBoxFromKg: 30 },
+    }
+    expect(transportBoxOptions('mediano', 35)).toContain('paso_rueda')
+    expect(transportBoxOptions('mediano', 35, catalog)).toEqual(['mediano', 'grande'])
+  })
+
+  it('uses the large tariff only for the large box above 40 kg', () => {
     const price = (category: 'grande' | 'paso_rueda', weightKg: number) =>
       transportBoxPriceCents(category, { weightKg }, defaultTransportBoxCatalog)
     expect(price('grande', 40)).toBe(15000)
     expect(price('grande', 41)).toBe(18000)
     expect(price('paso_rueda', 20)).toBe(15000)
+    expect(price('paso_rueda', 40)).toBe(15000)
   })
 
   it('falls back to the minimum box when the requested one is too small', () => {

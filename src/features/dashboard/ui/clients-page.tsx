@@ -37,6 +37,7 @@ import {
   clientSortOptions,
   loadClientById,
   loadClientPage,
+  loadClientServiceCounts,
   loadInvoicePage,
   type ClientSort,
   type SortDirection,
@@ -86,6 +87,7 @@ export function ClientsPage({
     items: [],
     total: 0,
   })
+  const [serviceCounts, setServiceCounts] = useState({ sent: 0, received: 0, paid: 0 })
   const [loading, setLoading] = useState(true)
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [loadError, setLoadError] = useState('')
@@ -172,6 +174,13 @@ export function ClientsPage({
       }
     }
     setLoadingHistory(true)
+    loadClientServiceCounts(selected.id)
+      .then((counts) => {
+        if (active) setServiceCounts(counts)
+      })
+      .catch(() => {
+        if (active) setServiceCounts({ sent: 0, received: 0, paid: 0 })
+      })
     loadInvoicePage({
       query: '',
       clientId: selected.id,
@@ -357,6 +366,10 @@ export function ClientsPage({
                       </button>
                     </div>
                   </div>
+                  <p className="empty-copy">
+                    Servicios: {serviceCounts.sent} como remitente · {serviceCounts.received} como
+                    destinatario · {serviceCounts.paid} como pagador
+                  </p>
                   <div className="client-contact-grid">
                     <span>
                       <Phone size={15} /> {selected.phone || 'Teléfono pendiente'}
