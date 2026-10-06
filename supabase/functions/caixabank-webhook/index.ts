@@ -1,4 +1,3 @@
-import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import {
   cyberpacSignature,
   decodeMerchantParameters,
@@ -84,14 +83,6 @@ Deno.serve(async (request) => {
     }
     if (payment.status === 'pagado') {
       await persistIssuedInvoiceDocument(payment.invoice_id)
-      try {
-        await dispatchBillingNotifications(payment.invoice_id, 'factura_emitida')
-      } catch (error) {
-        console.error(
-          'Invoice notification deferred',
-          error instanceof Error ? error.message : 'unknown error',
-        )
-      }
       return new Response('OK')
     }
     if (payment.status !== 'pendiente') return new Response('OK')
@@ -127,14 +118,6 @@ Deno.serve(async (request) => {
     })
     const issuedInvoiceId = (await issuedResponse.json()) as string
     await persistIssuedInvoiceDocument(payment.invoice_id)
-    try {
-      await dispatchBillingNotifications(payment.invoice_id, 'factura_emitida')
-    } catch (error) {
-      console.error(
-        'Invoice notification deferred',
-        error instanceof Error ? error.message : 'unknown error',
-      )
-    }
     try {
       await sendInvoicePaymentConfirmation(payment.invoice_id, issuedInvoiceId)
     } catch (error) {

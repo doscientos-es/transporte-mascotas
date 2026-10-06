@@ -1,65 +1,11 @@
 import { rest } from './supabase.ts'
-import { isRetryableWhatsAppError, sendWhatsAppTemplate } from './whatsapp.ts'
 
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
-type Notification = {
-  id: string
-  invoice_draft_id: string
-  channel: 'email' | 'whatsapp'
-  recipient: string
-  kind: 'solicitud_pago' | 'factura_emitida'
-  issued_invoice_id: string | null
-  attempts: number
-}
-type IssuedInvoice = {
-  series: string
-  fiscal_year: number
-  sequence_number: number
-  public_token: string
-  document_expires_at: string
-}
-
 export async function paymentUrl(invoiceId: string) {
   const payment = await createPayment(invoiceId)
   const url = Deno.env.get('SUPABASE_URL')
   if (!url) throw new Error('Falta SUPABASE_URL.')
   return `${url}/functions/v1/payment-redirect?token=${encodeURIComponent(payment.public_token)}`
-}
-
-export async function dispatchBillingNotifications(
-  invoiceId?: string,
-  kind?: Notification['kind'],
-) {
-  const claimResponse = await rest('rpc/claim_billing_notifications', {
-    method: 'POST',
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ p_invoice_draft_id: invoiceId ?? null, p_kind: kind ?? null }),
-  })
-  const notifications = (await claimResponse.json()) as Notification[]
-  if (!notifications.length) return { sent: 0, failed: 0 }
-  let sent = 0
-  let failed = 0
-  for (const notification of notifications) {
-    try {
-      const link =
-        notification.kind === 'solicitud_pago'
-          ? await paymentUrl(notification.invoice_draft_id)
-          : await invoiceUrl(notification.issued_invoice_id)
-      if (!link) throw new Error('No se ha encontrado la factura emitida.')
-      const messageId = await sendWhatsApp(notification.recipient, notification.kind, link)
-      await updateNotification(notification.id, {
-        status: 'enviada',
-        provider_message_id: messageId,
-        sent_at: new Date().toISOString(),
-        processing_started_at: null,
-      })
-      sent++
-    } catch (error) {
-      await updateNotification(notification.id, failure(notification, error))
-      failed++
-    }
-  }
-  return { sent, failed }
 }
 
 async function createPayment(invoiceId: string) {
@@ -103,59 +49,6 @@ function validateIssuer() {
     throw new Error('Faltan los datos fiscales del emisor.')
 }
 
-async function invoiceUrl(issuedInvoiceId: string | null) {
-  if (!issuedInvoiceId) return null
-  const response = await rest(
-    `issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}&select=public_token`,
-  )
-  const [invoice] = (await response.json()) as Pick<
-    IssuedInvoice,
-    'public_token' | 'document_expires_at'
-  >[]
-  if (!invoice) return null
-  await rest(`issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      document_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    }),
-  })
-  const url = Deno.env.get('SUPABASE_URL')
-  if (!url) throw new Error('Falta SUPABASE_URL.')
-  return `${url}/functions/v1/issued-invoice?token=${encodeURIComponent(invoice.public_token)}`
-}
-
-async function sendWhatsApp(recipient: string, kind: Notification['kind'], link: string) {
-  const templateEnvironmentVariable =
-    kind === 'solicitud_pago' ? 'META_WHATSAPP_PAYMENT_TEMPLATE' : 'META_WHATSAPP_INVOICE_TEMPLATE'
-  const firstValue =
-    kind === 'solicitud_pago' ? 'Tu solicitud de pago' : 'Tu factura está disponible'
-  return sendWhatsAppTemplate(recipient, templateEnvironmentVariable, [
-    { type: 'text', text: firstValue },
-    { type: 'text', text: link },
-  ])
-}
-
-async function updateNotification(id: string, body: Record<string, unknown>) {
-  await rest(`billing_notifications?id=eq.${encodeURIComponent(id)}&status=eq.procesando`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  })
-}
-
-function failure(notification: Notification, error: unknown) {
-  const retry = isRetryableWhatsAppError(error) && notification.attempts < 5
-  return {
-    status: retry ? 'fallida' : 'fallida_final',
-    error_message: safeMessage(error),
-    processing_started_at: null,
-    ...(retry ? { scheduled_for: nextAttempt(notification.attempts).toISOString() } : {}),
-  }
-}
-
-function nextAttempt(attempt: number) {
-  return new Date(Date.now() + Math.min(6 * 60, 2 ** attempt) * 60_000)
-}
-
 function requirePaymentConfiguration() {
   const required = [
     'CAIXABANK_CYBERPAC_MERCHANT_CODE',
@@ -169,8 +62,4 @@ function requirePaymentConfiguration() {
   ]
   if (required.some((name) => !Deno.env.get(name)))
     throw new Error('Falta configurar la pasarela de CaixaBank o los datos fiscales del emisor.')
-}
-
-function safeMessage(error: unknown) {
-  return (error instanceof Error ? error.message : 'Error de entrega.').slice(0, 500)
 }

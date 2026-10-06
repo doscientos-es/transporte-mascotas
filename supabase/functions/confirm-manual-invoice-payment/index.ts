@@ -1,4 +1,3 @@
-import { dispatchBillingNotifications } from '../_shared/billing-notifications.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
 import { sendInvoicePaymentConfirmation } from '../_shared/payment-confirmation-email.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
@@ -35,14 +34,6 @@ Deno.serve(async (request) => {
     if (!invoice) return json({ error: 'Solicitud de pago no encontrada.' }, 404)
     if (invoice.status === 'emitida') {
       await persistIssuedInvoiceDocument(invoice.id, userId)
-      try {
-        await dispatchBillingNotifications(invoice.id, 'factura_emitida')
-      } catch (error) {
-        console.error(
-          'Invoice notification deferred',
-          error instanceof Error ? error.message : 'unknown error',
-        )
-      }
       return json({ alreadyIssued: true })
     }
     if (invoice.status !== 'solicitud_pago')
@@ -61,14 +52,6 @@ Deno.serve(async (request) => {
     })
     const issuedInvoiceId = (await issuedResponse.json()) as string
     await persistIssuedInvoiceDocument(invoice.id, userId)
-    try {
-      await dispatchBillingNotifications(invoice.id, 'factura_emitida')
-    } catch (error) {
-      console.error(
-        'Invoice notification deferred',
-        error instanceof Error ? error.message : 'unknown error',
-      )
-    }
     try {
       await sendInvoicePaymentConfirmation(invoice.id, issuedInvoiceId)
     } catch (error) {
