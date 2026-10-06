@@ -32,6 +32,7 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
+import { clientOrderRoles } from '../application/client-order-roles'
 import {
   CLIENT_LIST_PAGE_SIZE,
   clientSortOptions,
@@ -105,12 +106,9 @@ export function ClientsPage({
   const orders = useMemo(
     () =>
       selected
-        ? letters.filter((letter) =>
-            [letter.sender, letter.recipient].some(
-              (name) =>
-                name.trim().toLocaleLowerCase() === selected.fullName.trim().toLocaleLowerCase(),
-            ),
-          )
+        ? letters
+          .map((letter) => ({ letter, roles: clientOrderRoles(selected, letter) }))
+          .filter((order) => order.roles.length > 0)
         : [],
     [letters, selected],
   )
@@ -451,7 +449,7 @@ export function ClientsPage({
                     </div>
                     {orders.length ? (
                       <div className="history-list">
-                        {orders.map((letter) => (
+                        {orders.map(({ letter, roles }) => (
                           <button
                             key={letter.id}
                             type="button"
@@ -464,6 +462,13 @@ export function ClientsPage({
                               <small>
                                 {letter.origin} → {letter.destination} · {letter.serviceDate}
                               </small>
+                              <span className="order-roles">
+                                {roles.map((role) => (
+                                  <span key={role} className="order-role-chip">
+                                    {role}
+                                  </span>
+                                ))}
+                              </span>
                             </span>
                             <StatusBadge status={letter.status}>{letter.status}</StatusBadge>
                           </button>

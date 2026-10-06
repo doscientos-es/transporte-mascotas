@@ -2555,6 +2555,22 @@
   color: #386532;
 }
 
+.order-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.order-role-chip {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef3ec;
+  color: #386532;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+
 .empty-copy {
   margin: 8px 0;
   color: #7b8778;
