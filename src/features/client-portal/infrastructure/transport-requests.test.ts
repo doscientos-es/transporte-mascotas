@@ -35,6 +35,7 @@ describe('transportRequestRpcArgs', () => {
       destination: 'Valencia',
       desiredDate: '2026-10-01',
       dailyRouteId: 'route-id',
+      accompanyingDocuments: ['cartilla_sanitaria', 'microchip'],
       notes: 'Llamar antes de llegar',
       animals: [
         {
@@ -76,6 +77,7 @@ describe('transportRequestRpcArgs', () => {
       p_destination: 'Valencia',
       p_desired_date: '2026-10-01',
       p_notes: 'Llamar antes de llegar',
+      p_accompanying_documents: ['cartilla_sanitaria', 'microchip'],
       p_animals: [
         {
           ordinal: 1,

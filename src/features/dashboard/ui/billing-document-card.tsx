@@ -45,7 +45,7 @@ export function BillingDocumentCard({
             </div>
             <div className="invoice-card-details">
               <span className="invoice-type">
-                {isIssued ? 'Factura emitida' : 'Solicitud de pago'}
+                {isIssued ? 'Factura creada' : 'Solicitud de pago'}
               </span>
               <strong title={issued?.number ?? invoice.concept}>
                 {issued?.number ?? invoice.concept}

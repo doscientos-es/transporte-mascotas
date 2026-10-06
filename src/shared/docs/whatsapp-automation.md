@@ -39,7 +39,7 @@ Edge Functions; nunca en el frontend.
 | `META_WHATSAPP_TRANSPORT_CONFIRMATION_TEMPLATE` | Confirmación de transporte                |
 | `META_WHATSAPP_ROUTE_REMINDER_TEMPLATE`         | Recordatorio de ruta                      |
 | `META_WHATSAPP_PAYMENT_TEMPLATE`                | Solicitud de pago                         |
-| `META_WHATSAPP_INVOICE_TEMPLATE`                | Factura emitida                           |
+| `META_WHATSAPP_INVOICE_TEMPLATE`                | Aviso de factura                          |
 | `META_WHATSAPP_DAILY_ROUTE_CLOSURE_TEMPLATE`    | Cierre de itinerario diario               |
 
 Para el webhook del número de avisos (autorespuesta que redirige al teléfono

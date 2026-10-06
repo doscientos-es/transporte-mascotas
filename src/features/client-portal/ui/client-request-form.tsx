@@ -42,6 +42,7 @@ import {
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import type {
+  AccompanyingDocument,
   ClientPet,
   InvoiceClientInput,
   InvoicePayer,
@@ -77,6 +78,7 @@ export type RequestFormValues = {
   destination: string
   desiredDate: string
   dailyRouteId: string
+  accompanyingDocuments: AccompanyingDocument[]
   notes: string
   animals: TransportRequestAnimal[]
 }
@@ -156,6 +158,7 @@ const initialValues = (
     destination: '',
     desiredDate: preselectedRoute?.serviceDate ?? '',
     dailyRouteId: preselectedRoute?.id ?? '',
+    accompanyingDocuments: [],
     notes: '',
     animals: [emptyAnimal(1)],
   }
@@ -298,6 +301,57 @@ function SharedBoxNotice() {
         para consultar la disponibilidad.
       </span>
     </p>
+  )
+}
+
+const accompanyingDocumentOptions: Array<[AccompanyingDocument, string]> = [
+  ['cartilla_sanitaria', 'Cartilla sanitaria'],
+  ['microchip', 'Microchip'],
+  ['pasaporte', 'Pasaporte'],
+  ['tatuaje', 'Tatuaje'],
+  ['anillo', 'Anillo'],
+  ['cites', 'CITES'],
+  ['otro', 'Otro documento'],
+]
+
+function RequestDocumentsField({
+  documents,
+  onChange,
+}: {
+  documents: AccompanyingDocument[]
+  onChange: (documents: AccompanyingDocument[]) => void
+}) {
+  function toggle(document: AccompanyingDocument) {
+    onChange(
+      documents.includes(document)
+        ? documents.filter((item) => item !== document)
+        : [...documents, document],
+    )
+  }
+
+  return (
+    <fieldset className="mt-5 rounded-lg border border-[#e2e2e2] p-3">
+      <legend className="px-1 text-sm font-semibold">Documentación aportada</legend>
+      <p className="text-muted-foreground mb-3 text-xs">
+        Marca la documentación que tienes y aportarás para el viaje.
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {accompanyingDocumentOptions.map(([value, label]) => (
+          <label
+            className="border-border bg-card flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-xs font-medium"
+            key={value}
+          >
+            <input
+              type="checkbox"
+              checked={documents.includes(value)}
+              onChange={() => toggle(value)}
+              className="accent-[#9d1921]"
+            />
+            {label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   )
 }
 
@@ -476,6 +530,8 @@ export function ClientRequestForm({
       )
       if (incompleteAnimal)
         return 'Completa el nombre, especie, raza, fecha de nacimiento, peso y medidas de cada mascota.'
+      if (!values.accompanyingDocuments.length)
+        return 'Selecciona al menos un documento que aportarás para el viaje.'
     }
     return ''
   }
@@ -1424,6 +1480,12 @@ export function ClientRequestForm({
             >
               <Plus size={15} /> Añadir otra mascota
             </Button>
+            <RequestDocumentsField
+              documents={values.accompanyingDocuments}
+              onChange={(accompanyingDocuments) =>
+                setValues((current) => ({ ...current, accompanyingDocuments }))
+              }
+            />
           </section>
         )}
 
@@ -1498,6 +1560,18 @@ export function ClientRequestForm({
                   {values.animals.length} mascota{values.animals.length === 1 ? '' : 's'}
                 </strong>
                 <small>{values.animals.map((animal) => animal.species).join(' · ')}</small>
+              </div>
+              <div>
+                <span>Documentación aportada</span>
+                <strong>
+                  {values.accompanyingDocuments
+                    .map(
+                      (document) =>
+                        accompanyingDocumentOptions.find(([value]) => value === document)?.[1],
+                    )
+                    .filter(Boolean)
+                    .join(', ')}
+                </strong>
               </div>
               <div>
                 <span>{adminMode ? 'Importe de referencia' : 'Importe del transporte'}</span>

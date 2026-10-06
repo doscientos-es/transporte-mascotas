@@ -1,5 +1,6 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type {
+  AccompanyingDocument,
   ClientPet,
   TransportRequest,
   TransportRequestAnimal,
@@ -39,6 +40,7 @@ type RequestRow = {
   origin_longitude: number | null
   destination_latitude: number | null
   destination_longitude: number | null
+  accompanying_documents: AccompanyingDocument[] | null
   notes: string
   status: TransportRequest['status']
   amount_cents: number
@@ -101,6 +103,7 @@ function mapRequest(row: RequestRow): TransportRequest {
     originLongitude: row.origin_longitude ?? undefined,
     destinationLatitude: row.destination_latitude ?? undefined,
     destinationLongitude: row.destination_longitude ?? undefined,
+    accompanyingDocuments: row.accompanying_documents ?? [],
     notes: row.notes,
     status: row.status,
     amountCents: row.amount_cents,
@@ -272,6 +275,7 @@ export function transportRequestRpcArgs(input: CreateTransportRequestInput) {
     p_destination: request.destination,
     p_desired_date: request.desiredDate,
     p_notes: request.notes,
+    p_accompanying_documents: request.accompanyingDocuments,
     p_animals: animals.map(
       ({
         ordinal,

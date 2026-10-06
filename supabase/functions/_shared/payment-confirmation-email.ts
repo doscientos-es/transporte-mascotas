@@ -43,7 +43,7 @@ export async function sendTransportPaymentConfirmation(requestId: string, issued
     `issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}&select=invoice_draft_id`,
   )
   const [invoice] = (await invoiceResponse.json()) as Array<{ invoice_draft_id: string }>
-  if (!invoice) throw new Error('No se ha encontrado la factura emitida.')
+  if (!invoice) throw new Error('No se ha encontrado la factura.')
   return sendConfirmation(
     { email: request.contact_email.trim(), name: request.contact_name },
     invoice.invoice_draft_id,

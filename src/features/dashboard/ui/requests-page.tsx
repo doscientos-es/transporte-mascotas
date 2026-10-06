@@ -27,7 +27,7 @@ import {
   transportBoxOptions,
 } from '@/shared/application/transport-boxes'
 import { paginate } from '@/shared/lib/pagination'
-import type { DailyRoute, TransportRequest } from '@/shared/types'
+import type { AccompanyingDocument, DailyRoute, TransportRequest } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
@@ -38,6 +38,15 @@ type Assignment = { routeId: string; pickupStopId: string; deliveryStopId: strin
 
 const emptyAssignment: Assignment = { routeId: '', pickupStopId: '', deliveryStopId: '', note: '' }
 const REQUEST_PAGE_SIZE = 8
+const accompanyingDocumentLabels: Record<AccompanyingDocument, string> = {
+  cartilla_sanitaria: 'Cartilla sanitaria',
+  microchip: 'Microchip',
+  pasaporte: 'Pasaporte',
+  tatuaje: 'Tatuaje',
+  anillo: 'Anillo',
+  cites: 'CITES',
+  otro: 'Otro documento',
+}
 
 const pluralize = (count: number, singular: string, plural: string) =>
   `${count} ${count === 1 ? singular : plural}`
@@ -355,6 +364,14 @@ export function RequestsPage({ routes, onNotify }: Props) {
                         : request.paidAt
                           ? `Registrado el ${new Date(request.paidAt).toLocaleDateString('es-ES')}`
                           : 'Pendiente de confirmar'}
+                    </span>
+                    <span>
+                      <b>Documentación aportada</b>
+                      {request.accompanyingDocuments.length
+                        ? request.accompanyingDocuments
+                            .map((document) => accompanyingDocumentLabels[document])
+                            .join(', ')
+                        : 'Sin documentos indicados'}
                     </span>
                     {request.notes && (
                       <span>

@@ -127,7 +127,8 @@ async function invoiceUrl(issuedInvoiceId: string | null) {
 async function sendWhatsApp(recipient: string, kind: Notification['kind'], link: string) {
   const templateEnvironmentVariable =
     kind === 'solicitud_pago' ? 'META_WHATSAPP_PAYMENT_TEMPLATE' : 'META_WHATSAPP_INVOICE_TEMPLATE'
-  const firstValue = kind === 'solicitud_pago' ? 'Tu solicitud de pago' : 'Tu factura emitida'
+  const firstValue =
+    kind === 'solicitud_pago' ? 'Tu solicitud de pago' : 'Tu factura está disponible'
   return sendWhatsAppTemplate(recipient, templateEnvironmentVariable, [
     { type: 'text', text: firstValue },
     { type: 'text', text: link },

@@ -1018,7 +1018,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function confirmManualPayment(invoice: ClientInvoice, paymentMethod: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para registrar un cobro.')
     await confirmManualInvoicePayment(invoice.id, paymentMethod)
-    toast('Cobro registrado y factura emitida.')
+    toast('Cobro registrado y factura creada.')
   }
 
   return {

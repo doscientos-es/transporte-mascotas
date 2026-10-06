@@ -43,6 +43,7 @@ const request: TransportRequest = {
   originLongitude: -6.1,
   destinationLatitude: 37.9,
   destinationLongitude: -4.8,
+  accompanyingDocuments: ['cartilla_sanitaria'],
   notes: '',
   status: 'confirmada',
   amountCents: 12000,

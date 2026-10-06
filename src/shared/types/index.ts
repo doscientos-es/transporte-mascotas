@@ -346,6 +346,7 @@ export interface TransportRequest {
   originLongitude?: number
   destinationLatitude?: number
   destinationLongitude?: number
+  accompanyingDocuments: AccompanyingDocument[]
   notes: string
   status: TransportRequestStatus
   amountCents: number
