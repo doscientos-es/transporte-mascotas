@@ -315,7 +315,7 @@ export function TemplatesPage({
   }
 
   function renderDivider(index: number) {
-    const state = `${dropIndex === index ? 'is-drop-target' : ''} ${movingStopId ? 'is-moving' : ''}`
+    const state = `${dropIndex === index ? 'is-drop-target' : ''} ${movingStopId && !draggingStopId ? 'is-moving' : ''}`
     const label = movingStopId
       ? `Mover la parada seleccionada a la posición ${index + 1}`
       : `Añadir una parada en la posición ${index + 1}`
