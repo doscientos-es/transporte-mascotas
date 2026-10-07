@@ -57,9 +57,9 @@ import type {
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
+import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
-import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -230,46 +230,46 @@ export function LetterForm({
   const [draft, setDraft] = useState<LetterDraft>(() =>
     letter
       ? {
-        reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
-        routeId: routeId ?? '',
-        sender: letter.sender,
-        senderPhone: letter.senderPhone,
-        senderEmail: letter.senderEmail,
-        senderNif: letter.senderNif,
-        senderAddress: letter.senderAddress,
-        senderPostalCode: letter.senderPostalCode,
-        senderCity: letter.senderCity,
-        senderProvince: letter.senderProvince,
-        recipient: letter.recipient,
-        recipientPhone: letter.recipientPhone,
-        recipientEmail: letter.recipientEmail,
-        recipientNif: letter.recipientNif,
-        recipientAddress: letter.recipientAddress,
-        recipientPostalCode: letter.recipientPostalCode,
-        recipientCity: letter.recipientCity,
-        recipientProvince: letter.recipientProvince,
-        origin: letter.origin,
-        destination: letter.destination,
-        originPoint: letter.originPoint,
-        destinationPoint: letter.destinationPoint,
-        accompanyingDocuments: letter.accompanyingDocuments,
-        billingPayer: letter.billingPayer,
-        otherPayer:
-          letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
-        signatureConfirmed: false,
-        animals: letter.animals.map(
-          ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
-            species,
-            breed,
-            birthDate,
-            weightKg,
-            lengthCm,
-            heightCm,
-            widthCm,
-            size,
-          }),
-        ),
-      }
+          reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
+          routeId: routeId ?? '',
+          sender: letter.sender,
+          senderPhone: letter.senderPhone,
+          senderEmail: letter.senderEmail,
+          senderNif: letter.senderNif,
+          senderAddress: letter.senderAddress,
+          senderPostalCode: letter.senderPostalCode,
+          senderCity: letter.senderCity,
+          senderProvince: letter.senderProvince,
+          recipient: letter.recipient,
+          recipientPhone: letter.recipientPhone,
+          recipientEmail: letter.recipientEmail,
+          recipientNif: letter.recipientNif,
+          recipientAddress: letter.recipientAddress,
+          recipientPostalCode: letter.recipientPostalCode,
+          recipientCity: letter.recipientCity,
+          recipientProvince: letter.recipientProvince,
+          origin: letter.origin,
+          destination: letter.destination,
+          originPoint: letter.originPoint,
+          destinationPoint: letter.destinationPoint,
+          accompanyingDocuments: letter.accompanyingDocuments,
+          billingPayer: letter.billingPayer,
+          otherPayer:
+            letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
+          signatureConfirmed: false,
+          animals: letter.animals.map(
+            ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
+              species,
+              breed,
+              birthDate,
+              weightKg,
+              lengthCm,
+              heightCm,
+              widthCm,
+              size,
+            }),
+          ),
+        }
       : emptyLetter,
   )
   const [saving, setSaving] = useState(false)
@@ -281,8 +281,8 @@ export function LetterForm({
     () => [
       ...new Set(
         selectedRoute?.stops?.map((stop) => stop.locality) ??
-        selectedTemplate?.stops.map((stop) => stop.locality) ??
-        [],
+          selectedTemplate?.stops.map((stop) => stop.locality) ??
+          [],
       ),
     ],
     [selectedRoute, selectedTemplate],
@@ -332,8 +332,8 @@ export function LetterForm({
     const routeStops = [
       ...new Set(
         route?.stops?.map((stop) => stop.locality) ??
-        template?.stops.map((stop) => stop.locality) ??
-        [],
+          template?.stops.map((stop) => stop.locality) ??
+          [],
       ),
     ]
     const matchingStop = (options: string[], value: string) =>
@@ -1597,7 +1597,7 @@ function AnimalsSection({
                               ),
                             )}
                             {transportBoxCategoryRank(category) >
-                              transportBoxCategoryRank(minimumCategory)
+                            transportBoxCategoryRank(minimumCategory)
                               ? ' · extra por comodidad'
                               : ''}
                           </option>

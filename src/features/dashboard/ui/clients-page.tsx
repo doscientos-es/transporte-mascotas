@@ -107,8 +107,8 @@ export function ClientsPage({
     () =>
       selected
         ? letters
-          .map((letter) => ({ letter, roles: clientOrderRoles(selected, letter) }))
-          .filter((order) => order.roles.length > 0)
+            .map((letter) => ({ letter, roles: clientOrderRoles(selected, letter) }))
+            .filter((order) => order.roles.length > 0)
         : [],
     [letters, selected],
   )

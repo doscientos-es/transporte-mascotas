@@ -116,7 +116,9 @@ export function MeetingPointsSettings({ meetingPoints, onSave, onDelete }: Props
       if (editingId === point.id) resetForm()
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : 'No se ha podido eliminar el punto de encuentro.',
+        reason instanceof Error
+          ? reason.message
+          : 'No se ha podido eliminar el punto de encuentro.',
       )
     } finally {
       setDeletingId(null)
@@ -149,9 +151,10 @@ export function MeetingPointsSettings({ meetingPoints, onSave, onDelete }: Props
         <form className="meeting-points-form" onSubmit={(event) => void save(event)}>
           <div className="meeting-points-form-grid">
             {fields.map(({ key, label }) => (
-              <label className="settings-pricing-field" key={key}>
+              <label className="settings-pricing-field" htmlFor={`meeting-point-${key}`} key={key}>
                 {label}
                 <Input
+                  id={`meeting-point-${key}`}
                   value={draft[key]}
                   onChange={(event) =>
                     setDraft((current) => ({ ...current, [key]: event.target.value }))
@@ -161,33 +164,45 @@ export function MeetingPointsSettings({ meetingPoints, onSave, onDelete }: Props
                 />
               </label>
             ))}
-            <label className="settings-pricing-field">
+            <label className="settings-pricing-field" htmlFor="meeting-point-latitude">
               Latitud
               <Input
+                id="meeting-point-latitude"
                 type="number"
                 step="any"
                 value={draft.latitude}
-                onChange={(event) => setDraft((current) => ({ ...current, latitude: event.target.value }))}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, latitude: event.target.value }))
+                }
                 required
                 disabled={saving}
               />
             </label>
-            <label className="settings-pricing-field">
+            <label className="settings-pricing-field" htmlFor="meeting-point-longitude">
               Longitud
               <Input
+                id="meeting-point-longitude"
                 type="number"
                 step="any"
                 value={draft.longitude}
-                onChange={(event) => setDraft((current) => ({ ...current, longitude: event.target.value }))}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, longitude: event.target.value }))
+                }
                 required
                 disabled={saving}
               />
             </label>
-            <label className="settings-pricing-field meeting-points-instructions">
+            <label
+              className="settings-pricing-field meeting-points-instructions"
+              htmlFor="meeting-point-instructions"
+            >
               Indicaciones
               <Input
+                id="meeting-point-instructions"
                 value={draft.place}
-                onChange={(event) => setDraft((current) => ({ ...current, place: event.target.value }))}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, place: event.target.value }))
+                }
                 placeholder="Ej. junto a la gasolinera, entrada principal"
                 disabled={saving}
               />

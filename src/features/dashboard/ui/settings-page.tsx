@@ -32,9 +32,7 @@ type Props = {
   boxCatalog: TransportBoxCatalog
   onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
   meetingPoints: SavedMeetingPoint[]
-  onSaveMeetingPoint: (
-    point: SavedMeetingPoint | Omit<SavedMeetingPoint, 'id'>,
-  ) => Promise<unknown>
+  onSaveMeetingPoint: (point: SavedMeetingPoint | Omit<SavedMeetingPoint, 'id'>) => Promise<unknown>
   onDeleteMeetingPoint: (id: string) => Promise<void>
 }
 
