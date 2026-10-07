@@ -5810,6 +5810,20 @@ a.whatsapp-link:hover {
 }
 
 @media (max-width: 600px) {
+  .meeting-points-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .meeting-points-list li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .meeting-points-item-actions {
+    justify-content: flex-start;
+  }
+
   .team-overview {
     grid-template-columns: 1fr;
   }
