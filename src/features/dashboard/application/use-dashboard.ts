@@ -351,6 +351,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
         .catch(() => {
           if (active) toast('No se han podido cargar los puntos de encuentro.')
         })
+    } else {
+      setMeetingPoints([])
     }
     return () => {
       active = false

@@ -15,11 +15,16 @@ describe('SettingsPage', () => {
         onRevokeInvitation: async () => {},
         boxCatalog: defaultTransportBoxCatalog,
         onSaveBoxCatalog: async () => {},
+        meetingPoints: [],
+        onSaveMeetingPoint: async () => {},
+        onDeleteMeetingPoint: async () => {},
       }),
     )
 
     expect(markup).toContain('Prueba de email')
     expect(markup).toContain('Enviar prueba de email')
+    expect(markup).toContain('Puntos de encuentro')
+    expect(markup).toContain('Añadir punto')
     expect(markup).not.toContain('href="/ajustes/email"')
   })
 })

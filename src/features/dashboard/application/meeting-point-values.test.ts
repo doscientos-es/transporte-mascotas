@@ -29,7 +29,7 @@ describe('stopFieldsFromMeetingPoint', () => {
       floor: '',
       latitude: '37.9922',
       longitude: '-1.1307',
-      indications: 'Junto a IKEA',
+      indications: 'Gasolinera · Junto a IKEA',
     })
   })
 })
