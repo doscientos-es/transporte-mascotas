@@ -107,8 +107,8 @@ export function ClientsPage({
     () =>
       selected
         ? letters
-            .map((letter) => ({ letter, roles: clientOrderRoles(selected, letter) }))
-            .filter((order) => order.roles.length > 0)
+          .map((letter) => ({ letter, roles: clientOrderRoles(selected, letter) }))
+          .filter((order) => order.roles.length > 0)
         : [],
     [letters, selected],
   )
@@ -470,7 +470,11 @@ export function ClientsPage({
                                 ))}
                               </span>
                             </span>
-                            <StatusBadge status={letter.status}>{letter.status}</StatusBadge>
+                            <StatusBadge
+                              status={letter.paymentStatus === 'paid' ? 'pagada' : 'pendiente_pago'}
+                            >
+                              {letter.paymentStatus === 'paid' ? 'Pagada' : 'Pendiente de pago'}
+                            </StatusBadge>
                           </button>
                         ))}
                       </div>

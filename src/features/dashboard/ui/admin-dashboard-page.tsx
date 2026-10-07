@@ -149,7 +149,9 @@ export function AdminDashboardPage({
           dashboard.editingLetter?.route,
       )?.id)
     : undefined
-  const pendingLetters = dashboard.letters.filter((letter) => letter.status === 'pendiente').length
+  const pendingLetters = dashboard.letters.filter(
+    (letter) => letter.paymentStatus !== 'paid',
+  ).length
   const sectionNeedsLetters = ['cartas', 'clientes', 'rutas', 'furgoneta'].includes(section)
   const routesLoading = dashboard.routesLoading
   const setSelectedRoute = dashboard.setSelectedRoute

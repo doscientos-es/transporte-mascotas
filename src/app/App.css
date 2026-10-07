@@ -2671,7 +2671,8 @@
   font-weight: 400;
 }
 
-.client-form .stop-form-position-select {
+.client-form .stop-form-position-select,
+.client-form .stop-form-meeting-point-select {
   min-height: 40px;
   border: 1px solid #dce3da;
   border-radius: 8px;
@@ -2683,7 +2684,8 @@
   font-weight: 400;
 }
 
-.client-form .stop-form-position-select:focus {
+.client-form .stop-form-position-select:focus,
+.client-form .stop-form-meeting-point-select:focus {
   border-color: #cf1f2a;
   outline: 2px solid rgb(207 31 42 / 14%);
   outline-offset: 1px;

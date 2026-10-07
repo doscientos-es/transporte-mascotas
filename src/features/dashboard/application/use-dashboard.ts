@@ -1053,7 +1053,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
       setEditingLetter(null)
-      toast(`Carta actualizada. Se mantiene en estado ${letter.status.replace('_', ' ')}.`)
+      toast('Carta actualizada.')
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se ha podido actualizar la carta.'

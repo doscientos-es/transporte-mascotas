@@ -36,11 +36,12 @@ create policy "meeting points admin delete"
 with source_points as (
   select
     stop.*,
-    concat_ws(
-      ' · ',
+    coalesce(
       nullif(btrim(stop.stop_alias), ''),
-      nullif(btrim(stop.meeting_point), '')
-    ) as instructions
+      nullif(btrim(stop.meeting_point), ''),
+      stop.locality
+    ) as name,
+    coalesce(nullif(btrim(stop.meeting_point), ''), '') as instructions
   from public.route_template_stops stop
   join public.route_templates template on template.id = stop.route_template_id
   where lower(btrim(template.name)) = 'ruta completa'
@@ -51,6 +52,7 @@ with source_points as (
 ), distinct_points as (
   select distinct on (
     lower(btrim(locality)),
+    lower(btrim(name)),
     lower(btrim(instructions)),
     round(latitude::numeric, 5),
     round(longitude::numeric, 5)
@@ -58,6 +60,7 @@ with source_points as (
   from source_points
   order by
     lower(btrim(locality)),
+    lower(btrim(name)),
     lower(btrim(instructions)),
     round(latitude::numeric, 5),
     round(longitude::numeric, 5),
@@ -79,7 +82,7 @@ insert into public.route_meeting_points (
   longitude
 )
 select
-  coalesce(nullif(btrim(stop_alias), ''), nullif(btrim(meeting_point), ''), locality),
+  name,
   locality,
   instructions,
   street,

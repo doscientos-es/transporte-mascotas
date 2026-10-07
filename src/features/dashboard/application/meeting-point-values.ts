@@ -1,5 +1,7 @@
 import type { SavedMeetingPoint } from '@/shared/types'
 
+import { mergedStopInstructions } from './stop-instructions'
+
 export function stopFieldsFromMeetingPoint(point: SavedMeetingPoint) {
   return {
     locality: point.locality,
@@ -11,6 +13,6 @@ export function stopFieldsFromMeetingPoint(point: SavedMeetingPoint) {
     floor: point.floor,
     latitude: String(point.latitude),
     longitude: String(point.longitude),
-    indications: point.place,
+    indications: mergedStopInstructions(point.name, point.place),
   }
 }

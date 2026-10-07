@@ -50,6 +50,7 @@ import type {
   LetterDraft,
   RouteDirection,
   RouteStop,
+  SavedMeetingPoint,
   RouteTemplate,
   TransportBoxCategory,
 } from '@/shared/types'
@@ -58,6 +59,7 @@ import { lookupAddressSuggestions, type AddressSuggestion } from '../application
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
+import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -228,46 +230,46 @@ export function LetterForm({
   const [draft, setDraft] = useState<LetterDraft>(() =>
     letter
       ? {
-          reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
-          routeId: routeId ?? '',
-          sender: letter.sender,
-          senderPhone: letter.senderPhone,
-          senderEmail: letter.senderEmail,
-          senderNif: letter.senderNif,
-          senderAddress: letter.senderAddress,
-          senderPostalCode: letter.senderPostalCode,
-          senderCity: letter.senderCity,
-          senderProvince: letter.senderProvince,
-          recipient: letter.recipient,
-          recipientPhone: letter.recipientPhone,
-          recipientEmail: letter.recipientEmail,
-          recipientNif: letter.recipientNif,
-          recipientAddress: letter.recipientAddress,
-          recipientPostalCode: letter.recipientPostalCode,
-          recipientCity: letter.recipientCity,
-          recipientProvince: letter.recipientProvince,
-          origin: letter.origin,
-          destination: letter.destination,
-          originPoint: letter.originPoint,
-          destinationPoint: letter.destinationPoint,
-          accompanyingDocuments: letter.accompanyingDocuments,
-          billingPayer: letter.billingPayer,
-          otherPayer:
-            letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
-          signatureConfirmed: false,
-          animals: letter.animals.map(
-            ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
-              species,
-              breed,
-              birthDate,
-              weightKg,
-              lengthCm,
-              heightCm,
-              widthCm,
-              size,
-            }),
-          ),
-        }
+        reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
+        routeId: routeId ?? '',
+        sender: letter.sender,
+        senderPhone: letter.senderPhone,
+        senderEmail: letter.senderEmail,
+        senderNif: letter.senderNif,
+        senderAddress: letter.senderAddress,
+        senderPostalCode: letter.senderPostalCode,
+        senderCity: letter.senderCity,
+        senderProvince: letter.senderProvince,
+        recipient: letter.recipient,
+        recipientPhone: letter.recipientPhone,
+        recipientEmail: letter.recipientEmail,
+        recipientNif: letter.recipientNif,
+        recipientAddress: letter.recipientAddress,
+        recipientPostalCode: letter.recipientPostalCode,
+        recipientCity: letter.recipientCity,
+        recipientProvince: letter.recipientProvince,
+        origin: letter.origin,
+        destination: letter.destination,
+        originPoint: letter.originPoint,
+        destinationPoint: letter.destinationPoint,
+        accompanyingDocuments: letter.accompanyingDocuments,
+        billingPayer: letter.billingPayer,
+        otherPayer:
+          letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
+        signatureConfirmed: false,
+        animals: letter.animals.map(
+          ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
+            species,
+            breed,
+            birthDate,
+            weightKg,
+            lengthCm,
+            heightCm,
+            widthCm,
+            size,
+          }),
+        ),
+      }
       : emptyLetter,
   )
   const [saving, setSaving] = useState(false)
@@ -279,8 +281,8 @@ export function LetterForm({
     () => [
       ...new Set(
         selectedRoute?.stops?.map((stop) => stop.locality) ??
-          selectedTemplate?.stops.map((stop) => stop.locality) ??
-          [],
+        selectedTemplate?.stops.map((stop) => stop.locality) ??
+        [],
       ),
     ],
     [selectedRoute, selectedTemplate],
@@ -330,8 +332,8 @@ export function LetterForm({
     const routeStops = [
       ...new Set(
         route?.stops?.map((stop) => stop.locality) ??
-          template?.stops.map((stop) => stop.locality) ??
-          [],
+        template?.stops.map((stop) => stop.locality) ??
+        [],
       ),
     ]
     const matchingStop = (options: string[], value: string) =>
@@ -625,6 +627,7 @@ export type StopFormValues = Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>
 
 export function StopFormDialog({
   initialStop,
+  meetingPoints = [],
   nextStopLocality,
   insertionIndex,
   stopCount,
@@ -633,6 +636,7 @@ export function StopFormDialog({
   onAdd,
 }: {
   initialStop?: RouteStop
+  meetingPoints?: SavedMeetingPoint[]
   nextStopLocality?: string
   insertionIndex?: number
   stopCount?: number
@@ -647,6 +651,7 @@ export function StopFormDialog({
   const [street, setStreet] = useState(initialStop?.street ?? '')
   const [streetNumber, setStreetNumber] = useState(initialStop?.streetNumber ?? '')
   const [addressQuery, setAddressQuery] = useState('')
+  const [selectedMeetingPointId, setSelectedMeetingPointId] = useState('')
   const [floor, setFloor] = useState(initialStop?.floor ?? '')
   const [latitude, setLatitude] = useState(initialStop?.latitude?.toString() ?? '')
   const [longitude, setLongitude] = useState(initialStop?.longitude?.toString() ?? '')
@@ -664,6 +669,7 @@ export function StopFormDialog({
   const selectedAddressQuery = useRef('')
   const selectedSuggestionAlias = useRef('')
   const lookingUpAddress = addressLookupState === 'searching'
+  const hasCoordinates = Boolean(latitude.trim() && longitude.trim())
   useEffect(() => {
     if (initialStop) {
       setAddressSuggestions([])
@@ -703,6 +709,7 @@ export function StopFormDialog({
     setAddressQuery(value)
   }
   function selectAddress(suggestion: AddressSuggestion) {
+    setSelectedMeetingPointId('')
     const selectedAddress = [
       suggestion.street,
       suggestion.streetNumber,
@@ -730,6 +737,26 @@ export function StopFormDialog({
     setAddressSuggestions([])
     setAddressLookupState('idle')
   }
+  function selectMeetingPoint(id: string) {
+    setSelectedMeetingPointId(id)
+    const point = meetingPoints.find((item) => item.id === id)
+    if (!point) return
+    const fields = stopFieldsFromMeetingPoint(point)
+    selectedAddressQuery.current = ''
+    setAddressQuery('')
+    setLocality(fields.locality)
+    setPostalCode(fields.postalCode)
+    setProvince(fields.province)
+    setCountry(fields.country)
+    setStreet(fields.street)
+    setStreetNumber(fields.streetNumber)
+    setFloor(fields.floor)
+    setLatitude(fields.latitude)
+    setLongitude(fields.longitude)
+    setIndications(fields.indications)
+    setAddressSuggestions([])
+    setAddressLookupState('idle')
+  }
   async function submit(event: { preventDefault: () => void }) {
     event.preventDefault()
     setSaving(true)
@@ -747,8 +774,8 @@ export function StopFormDialog({
         place: indications.trim(),
         dwellMinutes: Math.max(0, Number(dwellMinutes) || 0),
         minutes: Math.max(0, Number(minutesToNext) || 0),
-        latitude: Number(latitude) || undefined,
-        longitude: Number(longitude) || undefined,
+        latitude: latitude.trim() ? Number(latitude) : undefined,
+        longitude: longitude.trim() ? Number(longitude) : undefined,
       })
     } catch (reason) {
       setError(
@@ -776,6 +803,23 @@ export function StopFormDialog({
         </DialogHeader>
         <form className="stop-form-shell" onSubmit={(event) => void submit(event)}>
           <div className="client-form stop-form-fields">
+            {!editing && meetingPoints.length > 0 && (
+              <Label className="form-span">
+                Usar un punto de encuentro guardado
+                <select
+                  className="stop-form-meeting-point-select"
+                  value={selectedMeetingPointId}
+                  onChange={(event) => selectMeetingPoint(event.target.value)}
+                >
+                  <option value="">Completar manualmente</option>
+                  {meetingPoints.map((point) => (
+                    <option key={point.id} value={point.id}>
+                      {point.name} · {point.locality}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+            )}
             {!editing && (
               <>
                 <div className="form-span relative" aria-busy={lookingUpAddress}>
@@ -838,13 +882,13 @@ export function StopFormDialog({
               </>
             )}
             <Label>
-              Calle o vía (obligatorio)
+              Calle o vía {hasCoordinates ? '(opcional con coordenadas)' : '(obligatorio)'}
               <Input
                 value={street}
                 onChange={(event) => setStreet(event.target.value)}
                 disabled={lookingUpAddress}
                 placeholder="Ej. Calle Mayor"
-                required
+                required={!hasCoordinates}
               />
             </Label>
             <Label>
@@ -857,7 +901,7 @@ export function StopFormDialog({
               />
             </Label>
             <Label>
-              Código postal (obligatorio)
+              Código postal {hasCoordinates ? '(opcional con coordenadas)' : '(obligatorio)'}
               <Input
                 value={postalCode}
                 onChange={(event) =>
@@ -866,7 +910,7 @@ export function StopFormDialog({
                 inputMode="numeric"
                 disabled={lookingUpAddress}
                 placeholder="Ej. 28013"
-                required
+                required={!hasCoordinates}
               />
             </Label>
             <Label>
@@ -880,13 +924,13 @@ export function StopFormDialog({
               />
             </Label>
             <Label>
-              Provincia (obligatoria)
+              Provincia {hasCoordinates ? '(opcional con coordenadas)' : '(obligatoria)'}
               <Input
                 value={province}
                 onChange={(event) => setProvince(event.target.value)}
                 disabled={lookingUpAddress}
                 placeholder="Ej. Madrid"
-                required
+                required={!hasCoordinates}
               />
             </Label>
             <Label>
@@ -1553,7 +1597,7 @@ function AnimalsSection({
                               ),
                             )}
                             {transportBoxCategoryRank(category) >
-                            transportBoxCategoryRank(minimumCategory)
+                              transportBoxCategoryRank(minimumCategory)
                               ? ' · extra por comodidad'
                               : ''}
                           </option>
