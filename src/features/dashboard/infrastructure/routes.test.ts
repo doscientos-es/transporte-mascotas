@@ -25,17 +25,27 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
         inserts.push({ table, values })
         return Promise.resolve({ error: null })
       },
-      delete: () => ({
-        eq: (_column: string, id: string) => {
+      delete: () => {
+        const query = Promise.resolve({ error: null }) as Promise<{ error: null }> & {
+          eq: (_column: string, id: string) => typeof query
+        }
+        query.eq = (_column, id) => {
           deletes.push({ table, id })
-          return Promise.resolve({ error: null })
-        },
-      }),
+          return query
+        }
+        return query
+      },
     }),
   }),
 }))
 
-import { duplicateRouteTemplate, updateDailyRouteStops } from './routes'
+import {
+  deleteRouteTemplateStop,
+  duplicateRouteTemplate,
+  updateDailyRouteStops,
+  updateRouteTemplateStop,
+  updateRouteTemplateStopTimes,
+} from './routes'
 
 const stop = (id: string): DailyRouteStop => ({
   id,
@@ -119,5 +129,65 @@ describe('duplicateRouteTemplate', () => {
         ],
       },
     ])
+  })
+})
+
+describe('route template stop editing', () => {
+  it('updates the stop details without changing its id or sequence', async () => {
+    updates.length = 0
+    await updateRouteTemplateStop('template-1', {
+      id: 'stop-1',
+      locality: 'Badalona',
+      place: 'Estación',
+      mapUrl: 'https://maps.example/badalona',
+      minutes: 20,
+      alias: 'Centro',
+      street: 'Calle Mayor',
+      streetNumber: '12',
+      floor: '1º',
+      postalCode: '08911',
+      province: 'Barcelona',
+      country: 'España',
+      latitude: 41.45,
+      longitude: 2.25,
+    })
+
+    expect(updates).toEqual([
+      {
+        locality: 'Badalona',
+        meeting_point: 'Estación',
+        map_url: 'https://maps.example/badalona',
+        minutes_to_next: 20,
+        stop_alias: 'Centro',
+        street: 'Calle Mayor',
+        street_number: '12',
+        floor: '1º',
+        postal_code: '08911',
+        province: 'Barcelona',
+        country: 'España',
+        latitude: 41.45,
+        longitude: 2.25,
+      },
+    ])
+  })
+
+  it('deletes a stop scoped to its template', async () => {
+    deletes.length = 0
+    await deleteRouteTemplateStop('template-1', 'stop-1')
+
+    expect(deletes).toEqual([
+      { table: 'route_template_stops', id: 'stop-1' },
+      { table: 'route_template_stops', id: 'template-1' },
+    ])
+  })
+
+  it('updates only the travel times for stops scoped to their template', async () => {
+    updates.length = 0
+    await updateRouteTemplateStopTimes('template-1', [
+      { ...stop('stop-1'), minutes: 25 },
+      { ...stop('stop-2'), minutes: 0 },
+    ])
+
+    expect(updates).toEqual([{ minutes_to_next: 25 }, { minutes_to_next: null }])
   })
 })

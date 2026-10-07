@@ -10,8 +10,22 @@ import {
   Button,
   Card,
   CardContent,
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@doscientos/ui'
-import { ChevronRight, Copy, GripVertical, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  ChevronRight,
+  Clock3,
+  Copy,
+  GripVertical,
+  LoaderCircle,
+  MapPin,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
@@ -24,6 +38,7 @@ import {
 import type { RouteTemplate } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
+import { mergedStopInstructions } from '../application/stop-instructions'
 import { keyboardInsertionIndex, moveItemAtInsertionIndex } from '../application/stop-order'
 import { NewTemplateDialog, StopFormDialog, type StopFormValues } from './operation-dialogs'
 
@@ -48,7 +63,10 @@ type Props = {
   onUpdate: (templateId: string, name: string, color: string) => Promise<void>
   onDelete: (templateId: string) => Promise<void>
   onAddStop: (templateId: string, stop: StopFormValues, insertionIndex?: number) => Promise<void>
+  onUpdateStop: (templateId: string, stopId: string, stop: StopFormValues) => Promise<void>
+  onDeleteStop: (templateId: string, stopId: string) => Promise<void>
   onReorderStops: (templateId: string, stops: RouteTemplate['stops']) => Promise<void>
+  onRecalculateTimes: (templateId: string) => Promise<void>
 }
 
 export function TemplatesPage({
@@ -61,15 +79,23 @@ export function TemplatesPage({
   onUpdate,
   onDelete,
   onAddStop,
+  onUpdateStop,
+  onDeleteStop,
   onReorderStops,
+  onRecalculateTimes,
 }: Props) {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState(false)
   const [addingStopAt, setAddingStopAt] = useState<number | null>(null)
+  const [editingStopId, setEditingStopId] = useState<string | null>(null)
+  const [stopToDelete, setStopToDelete] = useState<RouteTemplate['stops'][number] | null>(null)
+  const [deletingStop, setDeletingStop] = useState(false)
+  const [stopDeleteError, setStopDeleteError] = useState('')
   const [movingStopId, setMovingStopId] = useState<string | null>(null)
   const [draggingStopId, setDraggingStopId] = useState<string | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
   const [reordering, setReordering] = useState(false)
+  const [recalculatingTimes, setRecalculatingTimes] = useState(false)
   const [optimisticStops, setOptimisticStops] = useState<RouteTemplate['stops'] | null>(null)
   const [dragPreview, setDragPreview] = useState<{ stopId: string; x: number; y: number } | null>(
     null,
@@ -80,6 +106,7 @@ export function TemplatesPage({
   const [deleteError, setDeleteError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const busy = reordering || recalculatingTimes
   const displayedStops = optimisticStops ?? selected?.stops ?? noTemplateStops
   const stopListRef = useRef<HTMLOListElement>(null)
   const dragState = useRef<StopDragState | null>(null)
@@ -90,6 +117,8 @@ export function TemplatesPage({
     dragState.current = null
     suppressClickRef.current = false
     setAddingStopAt(null)
+    setEditingStopId(null)
+    setStopToDelete(null)
     setMovingStopId(null)
     setDraggingStopId(null)
     setDragPreview(null)
@@ -153,7 +182,7 @@ export function TemplatesPage({
   }
 
   async function moveStop(stopId: string, destinationIndex: number) {
-    if (!selected || reordering) return
+    if (!selected || busy) return
     const sourceIndex = displayedStops.findIndex((stop) => stop.id === stopId)
     if (sourceIndex < 0) return
 
@@ -192,8 +221,25 @@ export function TemplatesPage({
     }
   }
 
+  async function recalculateTimes() {
+    if (!selected || recalculatingTimes || reordering) return
+    setRecalculatingTimes(true)
+    setError('')
+    try {
+      await onRecalculateTimes(selected.id)
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'No se han podido recalcular los tiempos de trayecto.',
+      )
+    } finally {
+      setRecalculatingTimes(false)
+    }
+  }
+
   function startDrag(event: ReactPointerEvent<HTMLButtonElement>, stopId: string) {
-    if (event.button !== 0 || reordering) return
+    if (event.button !== 0 || busy) return
     event.currentTarget.setPointerCapture(event.pointerId)
     dragState.current = {
       pointerId: event.pointerId,
@@ -314,20 +360,47 @@ export function TemplatesPage({
     }
   }
 
+  const editingStopIndex = selected.stops.findIndex((stop) => stop.id === editingStopId)
+  const nextStopAfterEditing = selected.stops[editingStopIndex + 1]?.locality
+
+  async function removeSelectedStop() {
+    if (!selected || !stopToDelete) return
+    setDeletingStop(true)
+    setStopDeleteError('')
+    try {
+      await onDeleteStop(selected.id, stopToDelete.id)
+      setStopToDelete(null)
+    } catch (reason) {
+      setStopDeleteError(
+        reason instanceof Error ? reason.message : 'No se ha podido eliminar la parada.',
+      )
+    } finally {
+      setDeletingStop(false)
+    }
+  }
+
   function renderDivider(index: number) {
     const state = `${dropIndex === index ? 'is-drop-target' : ''} ${movingStopId && !draggingStopId ? 'is-moving' : ''}`
+    const previousStop = index > 0 ? displayedStops[index - 1] : undefined
+    const nextStop = displayedStops[index]
     const label = movingStopId
       ? `Mover la parada seleccionada a la posición ${index + 1}`
       : `Añadir una parada en la posición ${index + 1}`
     return (
       <li
-        className={`template-divider ${state}`}
+        className={`template-divider ${previousStop ? 'has-leg' : ''} ${state}`}
         data-template-drop-index={index}
         key={`divider-${index}`}
       >
+        {previousStop && nextStop && (
+          <span className="template-leg-time">
+            {previousStop.locality} → {nextStop.locality} ·{' '}
+            {previousStop.minutes ? `${previousStop.minutes} min` : 'Sin tiempo'}
+          </span>
+        )}
         <button
           type="button"
-          disabled={reordering}
+          disabled={busy}
           onClick={() => activateDivider(index)}
           aria-label={label}
         >
@@ -343,6 +416,7 @@ export function TemplatesPage({
     const isDragging = draggingStopId === stop.id
     const isDropBefore = dropIndex === index
     const isDropAfter = dropIndex === index + 1
+    const instructions = mergedStopInstructions(stop.alias, stop.place)
     return (
       <li
         className={`${isDragging ? 'is-dragging ' : ''}${isDropBefore ? 'is-drop-before ' : ''}${isDropAfter ? 'is-drop-after' : ''}`}
@@ -350,25 +424,10 @@ export function TemplatesPage({
         data-template-stop-index={index}
         key={stop.id}
       >
-        <div className="stop-index">{index + 1}</div>
-        <div>
-          <strong>{stop.locality}</strong>
-          {stop.alias && <span className="stop-alias">{stop.alias}</span>}
-          {stop.place && stop.place !== stop.alias && <p>{stop.place}</p>}
-        </div>
-        <span className="duration">{stop.minutes ? `${stop.minutes} min` : 'Final'}</span>
-        <a
-          href={stop.mapUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Abrir ${stop.locality} en mapas`}
-        >
-          <MapPin size={17} />
-        </a>
         <button
           type="button"
           className="template-stop-drag"
-          aria-disabled={reordering}
+          aria-disabled={busy}
           onPointerDown={(event) => startDrag(event, stop.id)}
           onPointerMove={dragOver}
           onPointerUp={(event) => finishDrag(event)}
@@ -376,7 +435,7 @@ export function TemplatesPage({
           onLostPointerCapture={(event) => finishDrag(event, true)}
           onKeyDown={(event) => moveWithKeyboard(event, stop.id, index)}
           onClick={() => {
-            if (suppressClickRef.current || reordering) return
+            if (suppressClickRef.current || busy) return
             setMovingStopId((current) => (current === stop.id ? null : stop.id))
           }}
           aria-pressed={movingStopId === stop.id}
@@ -387,6 +446,44 @@ export function TemplatesPage({
         >
           <GripVertical size={18} />
         </button>
+        <div className="stop-index">{index + 1}</div>
+        <div>
+          <strong>{stop.locality}</strong>
+          {instructions && <p>{instructions}</p>}
+        </div>
+        <a
+          href={stop.mapUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Abrir ${stop.locality} en mapas`}
+        >
+          <MapPin size={17} />
+        </a>
+        <div className="template-stop-actions">
+          <button
+            type="button"
+            className="template-stop-action"
+            disabled={busy}
+            aria-label={`Editar parada ${stop.locality}`}
+            title={`Editar parada ${stop.locality}`}
+            onClick={() => setEditingStopId(stop.id)}
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            type="button"
+            className="template-stop-action is-destructive"
+            disabled={busy}
+            aria-label={`Eliminar parada ${stop.locality}`}
+            title={`Eliminar parada ${stop.locality}`}
+            onClick={() => {
+              setStopDeleteError('')
+              setStopToDelete(stop)
+            }}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </li>
     )
   }
@@ -402,7 +499,7 @@ export function TemplatesPage({
               <button
                 type="button"
                 key={template.id}
-                disabled={reordering}
+                disabled={busy}
                 onClick={() => onSelect(template)}
                 className={`template-row ${selected.id === template.id ? 'is-selected' : ''}`}
               >
@@ -425,37 +522,63 @@ export function TemplatesPage({
               <div className="template-header-actions">
                 <Button
                   variant="outline"
-                  disabled={reordering}
+                  disabled={busy}
                   onClick={() => setAddingStopAt(selected.stops.length)}
                 >
                   <Plus /> Añadir parada
                 </Button>
-                <Button variant="outline" disabled={reordering} onClick={() => setEditing(true)}>
+                <Button variant="outline" disabled={busy} onClick={() => setEditing(true)}>
                   <Pencil /> Editar
                 </Button>
-                <Button
-                  variant="outline"
-                  disabled={duplicating || reordering}
-                  onClick={() => void duplicateSelectedTemplate()}
-                >
-                  <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="template-delete-button"
-                  disabled={templates.length <= 1 || reordering}
-                  aria-description={
-                    templates.length <= 1
-                      ? 'Debe existir al menos una plantilla de ruta.'
-                      : 'Eliminar esta ruta'
+                <DropdownMenu
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="template-header-more"
+                      disabled={busy || duplicating}
+                      aria-label={
+                        recalculatingTimes
+                          ? 'Calculando tiempos…'
+                          : duplicating
+                            ? 'Duplicando plantilla…'
+                            : 'Más opciones de la plantilla'
+                      }
+                    >
+                      {recalculatingTimes || duplicating ? (
+                        <LoaderCircle className="animate-spin" />
+                      ) : (
+                        <MoreHorizontal />
+                      )}
+                    </Button>
                   }
-                  onClick={() => {
-                    setDeleteError('')
-                    setConfirmDelete(true)
-                  }}
+                  placement="bottom end"
+                  className="min-w-48"
                 >
-                  <Trash2 /> Eliminar
-                </Button>
+                  <DropdownMenuItem
+                    isDisabled={selected.stops.length < 2 || busy}
+                    onAction={() => void recalculateTimes()}
+                  >
+                    <Clock3 /> {recalculatingTimes ? 'Calculando…' : 'Recalcular tiempos'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    isDisabled={duplicating || busy}
+                    onAction={() => void duplicateSelectedTemplate()}
+                  >
+                    <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar plantilla'}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    isDisabled={templates.length <= 1 || busy || duplicating}
+                    onAction={() => {
+                      setDeleteError('')
+                      setConfirmDelete(true)
+                    }}
+                  >
+                    <Trash2 /> Eliminar plantilla
+                  </DropdownMenuItem>
+                </DropdownMenu>
               </div>
             </div>
             {movingStopId && (
@@ -526,6 +649,7 @@ export function TemplatesPage({
       {addingStopAt !== null && (
         <StopFormDialog
           insertionIndex={addingStopAt}
+          nextStopLocality={selected.stops[addingStopAt]?.locality}
           stopCount={selected.stops.length}
           onInsertionIndexChange={setAddingStopAt}
           onClose={() => setAddingStopAt(null)}
@@ -535,6 +659,51 @@ export function TemplatesPage({
           }}
         />
       )}
+      {editingStopId !== null && selected.stops.some((stop) => stop.id === editingStopId) && (
+        <StopFormDialog
+          initialStop={selected.stops.find((stop) => stop.id === editingStopId)}
+          nextStopLocality={nextStopAfterEditing}
+          onClose={() => setEditingStopId(null)}
+          onAdd={async (stop) => {
+            await onUpdateStop(selected.id, editingStopId, stop)
+            setEditingStopId(null)
+          }}
+        />
+      )}
+      <AlertDialog
+        open={Boolean(stopToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deletingStop) {
+            setStopToDelete(null)
+            setStopDeleteError('')
+          }
+        }}
+      >
+        <AlertDialogContent className="delete-template-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar parada de la plantilla</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a eliminar <strong>{stopToDelete?.locality}</strong> de la plantilla{' '}
+              <strong>{selected.name}</strong>. Las rutas diarias existentes no cambiarán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {stopDeleteError && (
+            <p className="form-error" role="alert">
+              {stopDeleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingStop}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletingStop}
+              onClick={() => void removeSelectedStop()}
+            >
+              <Trash2 /> {deletingStop ? 'Eliminando…' : 'Eliminar parada'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={confirmDelete}
         onOpenChange={(open) => {

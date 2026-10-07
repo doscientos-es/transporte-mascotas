@@ -8,6 +8,7 @@ type Animal = {
   species: string
   breed: string
   identification: string
+  birth_date: string | null
   weight_kg: number | null
   length_cm: number | null
   height_cm: number | null
@@ -68,7 +69,7 @@ export async function loadCarriageLetter(letterId: string): Promise<CarriageLett
     'origin_point',
     'destination_point',
     'accompanying_documents',
-    'animals(ordinal,species,breed,identification,weight_kg,length_cm,height_cm,width_cm)',
+    'animals(ordinal,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm)',
   ].join(',')
   const response = await rest(
     `carriage_letters?id=eq.${encodeURIComponent(letterId)}&select=${fields}`,
@@ -140,6 +141,14 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
   const { width, height } = CARRIAGE_LETTER_PAGE
   const page = pdf.addPage([mm(width), mm(height)])
+  const logoBytes = await fetch('https://www.kacheenvios.com/icon-512.png', {
+    signal: AbortSignal.timeout(3000),
+  })
+    .then(async (response) =>
+      response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined,
+    )
+    .catch(() => undefined)
+  const logo = logoBytes ? await pdf.embedPng(logoBytes).catch(() => undefined) : undefined
   const pick = (isBold?: boolean) => (isBold ? bold : regular)
 
   drawCarriageLetter(
@@ -168,10 +177,20 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
           color: channel(color),
         })
       },
+      image(_data, x, y, w, h) {
+        if (!logo) return
+        page.drawImage(logo, {
+          x: mm(x),
+          y: mm(height - y - h),
+          width: mm(w),
+          height: mm(h),
+        })
+      },
       width: (value, size, isBold) =>
         pick(isBold).widthOfTextAtSize(printable(value), size) / mm(1),
     },
     letter,
+    logoBytes,
   )
   return { body: await pdf.save(), fileName: carriageLetterFileName(letter) }
 }

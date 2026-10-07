@@ -36,7 +36,8 @@ describe('RoutesPage header', () => {
         {
           id: 'stop-1',
           locality: 'Córdoba',
-          place: '',
+          alias: 'Clínica Sol',
+          place: 'Entrada principal',
           mapUrl: '',
           minutes: 35,
           kind: 'recogida',
@@ -79,9 +80,11 @@ describe('RoutesPage header', () => {
     expect(markup).toContain('Añadir parada')
     expect(markup).toContain('Reordenar paradas')
     expect(markup).toContain('Organizar paradas')
+    expect(markup).toContain('Recalcular tiempos')
     expect(markup).toContain('Más acciones')
     expect(markup).toContain('Trayecto a Madrid')
     expect(markup).toContain('35 min')
+    expect(markup).toContain('<p>Clínica Sol · Entrada principal</p>')
     expect(markup).toContain('Fin de ruta')
     expect(markup).not.toContain('Trayecto sig.')
     expect(markup.indexOf('class="journey-place"')).toBeLessThan(

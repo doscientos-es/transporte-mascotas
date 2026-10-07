@@ -33,10 +33,31 @@ function normalized(value: string | undefined) {
 }
 
 function coordinateCacheKey(stop: DailyRouteStop) {
+  const savedCoordinates = savedCoordinatesFor(stop)
+  if (savedCoordinates) return savedCoordinates.join(',')
   return addressFor(stop).toLocaleLowerCase()
 }
 
+function savedCoordinatesFor(stop: DailyRouteStop): Coordinates | undefined {
+  const { latitude, longitude } = stop
+  if (
+    typeof latitude !== 'number' ||
+    !Number.isFinite(latitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    typeof longitude !== 'number' ||
+    !Number.isFinite(longitude) ||
+    longitude < -180 ||
+    longitude > 180
+  )
+    return undefined
+  return [longitude, latitude]
+}
+
 async function resolveCoordinates(stop: DailyRouteStop) {
+  const savedCoordinates = savedCoordinatesFor(stop)
+  if (savedCoordinates) return savedCoordinates
+
   const street = [stop.street, stop.streetNumber].filter(Boolean).join(' ')
   const queries = [
     addressFor(stop),

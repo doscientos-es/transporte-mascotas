@@ -302,6 +302,7 @@ export function AdminDashboardPage({
               section === 'cartas' && (
                 <LettersPage
                   letters={dashboard.letters}
+                  dailyRoutes={dashboard.dailyRoutes}
                   loading={dashboard.lettersLoading}
                   error={dashboard.lettersError}
                   onRetry={() => void dashboard.ensureLetters(true)}
@@ -332,7 +333,10 @@ export function AdminDashboardPage({
                 onUpdate={dashboard.editRouteTemplate}
                 onDelete={dashboard.removeRouteTemplate}
                 onAddStop={dashboard.addTemplateStop}
+                onUpdateStop={dashboard.editTemplateStop}
+                onDeleteStop={dashboard.removeTemplateStop}
                 onReorderStops={dashboard.reorderTemplateStops}
+                onRecalculateTimes={dashboard.recalculateTemplateTimes}
               />
             )}
             {section === 'rutas' &&

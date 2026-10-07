@@ -207,6 +207,41 @@ export async function addRouteTemplateStop(
   if (error) throw error
 }
 
+export async function updateRouteTemplateStop(
+  templateId: string,
+  stop: RouteTemplate['stops'][number],
+) {
+  const { error } = await requireSupabase()
+    .from('route_template_stops')
+    .update({
+      locality: stop.locality,
+      meeting_point: stop.place,
+      map_url: stop.mapUrl,
+      minutes_to_next: stop.minutes || null,
+      stop_alias: stop.alias ?? '',
+      street: stop.street ?? '',
+      street_number: stop.streetNumber ?? '',
+      floor: stop.floor ?? '',
+      postal_code: stop.postalCode ?? '',
+      province: stop.province ?? '',
+      country: stop.country ?? 'España',
+      latitude: stop.latitude ?? null,
+      longitude: stop.longitude ?? null,
+    })
+    .eq('id', stop.id)
+    .eq('route_template_id', templateId)
+  if (error) throw error
+}
+
+export async function deleteRouteTemplateStop(templateId: string, stopId: string) {
+  const { error } = await requireSupabase()
+    .from('route_template_stops')
+    .delete()
+    .eq('id', stopId)
+    .eq('route_template_id', templateId)
+  if (error) throw error
+}
+
 export async function updateRouteTemplateStopOrder(
   templateId: string,
   stops: RouteTemplate['stops'],
@@ -236,6 +271,23 @@ export async function updateRouteTemplateStopOrder(
   )
   const finalError = finalUpdates.find((result) => result.error)?.error
   if (finalError) throw finalError
+}
+
+export async function updateRouteTemplateStopTimes(
+  templateId: string,
+  stops: RouteTemplate['stops'],
+) {
+  const updates = await Promise.all(
+    stops.map((stop) =>
+      requireSupabase()
+        .from('route_template_stops')
+        .update({ minutes_to_next: stop.minutes || null })
+        .eq('id', stop.id)
+        .eq('route_template_id', templateId),
+    ),
+  )
+  const error = updates.find((result) => result.error)?.error
+  if (error) throw error
 }
 
 export async function loadRouteTemplates() {

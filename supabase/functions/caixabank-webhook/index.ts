@@ -152,6 +152,7 @@ async function processTransportPayment(
   const gatewayResponse = {
     response: notification.Ds_Response ?? null,
     authorisationCode: notification.Ds_AuthorisationCode ?? null,
+    amountCents: notification.Ds_Amount ?? null,
     date: notification.Ds_Date ?? null,
     hour: notification.Ds_Hour ?? null,
   }

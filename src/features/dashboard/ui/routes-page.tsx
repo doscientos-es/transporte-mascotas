@@ -66,6 +66,7 @@ import { DRIVER_SHEET_HEADER, driverSheetRows } from '../application/driver-shee
 import { calculateDrivingTimes } from '../application/driving-times'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
+import { mergedStopInstructions } from '../application/stop-instructions'
 import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { StopFormDialog } from './operation-dialogs'
 
@@ -462,6 +463,7 @@ export function RoutesPage({
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
   const [closingRoute, setClosingRoute] = useState(false)
+  const [recalculatingTimes, setRecalculatingTimes] = useState(false)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [operationError, setOperationError] = useState('')
   const stops = plannedStops ?? routeStops(route, template)
@@ -536,6 +538,19 @@ export function RoutesPage({
       } catch (error) {
         reportOperationError(error, 'No se ha podido actualizar el tiempo de trayecto.')
       }
+    }
+  }
+  async function recalculateRouteTimes() {
+    setRecalculatingTimes(true)
+    setOperationError('')
+    setOrganizing(false)
+    try {
+      const updatedStops = await calculateDrivingTimes(stops)
+      await onUpdateStops(route.id, updatedStops, false)
+    } catch (error) {
+      reportOperationError(error, 'No se han podido recalcular los tiempos de trayecto.')
+    } finally {
+      setRecalculatingTimes(false)
     }
   }
   async function changeStartTime(value: string) {
@@ -715,7 +730,7 @@ export function RoutesPage({
                         className="journey-add-stop"
                         size="sm"
                         onClick={() => setAddingStop(true)}
-                        disabled={Boolean(plannedStops)}
+                        disabled={Boolean(plannedStops) || recalculatingTimes}
                       >
                         <Plus /> Añadir parada
                       </Button>
@@ -724,7 +739,7 @@ export function RoutesPage({
                         variant="outline"
                         size="sm"
                         onClick={() => setReorderingStops(true)}
-                        disabled={savingPlan}
+                        disabled={savingPlan || recalculatingTimes}
                       >
                         <ArrowUpDown /> Reordenar paradas
                       </Button>
@@ -733,8 +748,18 @@ export function RoutesPage({
                         variant="outline"
                         size="sm"
                         onClick={() => setOrganizing((current) => !current)}
+                        disabled={recalculatingTimes}
                       >
                         {organizing ? 'Terminar' : 'Organizar paradas'}
+                      </Button>
+                      <Button
+                        className="journey-recalculate-times"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void recalculateRouteTimes()}
+                        disabled={recalculatingTimes || Boolean(plannedStops) || stops.length < 2}
+                      >
+                        <Clock3 /> {recalculatingTimes ? 'Calculando…' : 'Recalcular tiempos'}
                       </Button>
                     </>
                   )}
@@ -821,12 +846,22 @@ export function RoutesPage({
                   arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
                 )}
                 pointFor={pointFor}
-                organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
+                organizing={
+                  !recalculatingTimes && !itineraryClosed && (organizing || Boolean(plannedStops))
+                }
                 services={servicesByStop.get(stop.id) ?? []}
                 onDwellChange={setDwellMinutes}
                 onTravelChange={setTravelMinutes}
-                onEdit={itineraryClosed || plannedStops ? undefined : () => setEditingStop(stop)}
-                onDelete={itineraryClosed || plannedStops ? undefined : () => setDeletingStop(stop)}
+                onEdit={
+                  itineraryClosed || plannedStops || recalculatingTimes
+                    ? undefined
+                    : () => setEditingStop(stop)
+                }
+                onDelete={
+                  itineraryClosed || plannedStops || recalculatingTimes
+                    ? undefined
+                    : () => setDeletingStop(stop)
+                }
                 onAction={updateServices}
               />
             ))}
@@ -933,6 +968,7 @@ function JourneyStop({
   onAction: (ids: string[]) => Promise<void>
 }) {
   const hasServices = services.length > 0
+  const instructions = mergedStopInstructions(stop.alias, stop.place)
   return (
     <li>
       <div className="journey-node">{index + 1}</div>
@@ -942,9 +978,8 @@ function JourneyStop({
             <div className="journey-title">
               <h4>{stop.locality}</h4>
               <span className={`stop-kind stop-kind-${stop.kind}`}>{kindLabels[stop.kind]}</span>
-              {stop.alias && <span className="stop-alias">{stop.alias}</span>}
             </div>
-            {stop.place && stop.place !== stop.alias && <p>{stop.place}</p>}
+            {instructions && <p>{instructions}</p>}
             <div className="journey-times">
               <span className="arrival-time">
                 Llegada aprox.: <strong>{arrival}</strong>
@@ -1187,11 +1222,7 @@ function ReorderStopsDialog({
                 <span className="reorder-stop-description">
                   <strong>{stop.locality}</strong>
                   <small>
-                    {[
-                      kindLabels[stop.kind],
-                      stop.alias,
-                      stop.place && stop.place !== stop.alias ? stop.place : '',
-                    ]
+                    {[kindLabels[stop.kind], mergedStopInstructions(stop.alias, stop.place)]
                       .filter(Boolean)
                       .join(' · ')}
                   </small>

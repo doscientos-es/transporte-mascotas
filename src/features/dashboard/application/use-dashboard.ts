@@ -50,6 +50,7 @@ import {
   closeDailyRoute,
   deleteDailyRouteStop,
   deleteRouteTemplate,
+  deleteRouteTemplateStop,
   duplicateRouteTemplate as persistRouteTemplateCopy,
   loadDailyRoutes,
   loadRouteTemplates,
@@ -62,7 +63,9 @@ import {
   updateDailyRouteStartTime,
   updateDailyRouteStops,
   updateRouteTemplate,
+  updateRouteTemplateStop,
   updateRouteTemplateStopOrder,
+  updateRouteTemplateStopTimes,
 } from '../infrastructure/routes'
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
@@ -661,6 +664,67 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
+  async function editTemplateStop(
+    templateId: string,
+    stopId: string,
+    values: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
+  ) {
+    if (!session) throw new Error('Inicia sesión para actualizar una parada.')
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const existingStop = template.stops.find((stop) => stop.id === stopId)
+    if (!existingStop) throw new Error('No se ha encontrado la parada seleccionada.')
+    const stop = {
+      id: existingStop.id,
+      locality: values.locality,
+      place: values.place,
+      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[values.street, values.streetNumber].filter(Boolean).join(' '), values.postalCode, values.locality, values.province, values.country || 'España'].filter(Boolean).join(', '))}`,
+      minutes: values.minutes,
+      alias: values.alias,
+      street: values.street,
+      streetNumber: values.streetNumber,
+      floor: values.floor,
+      postalCode: values.postalCode,
+      province: values.province,
+      country: values.country,
+      latitude: values.latitude,
+      longitude: values.longitude,
+    }
+    try {
+      await updateRouteTemplateStop(templateId, stop)
+      const stops = template.stops.map((item) => (item.id === stopId ? stop : item))
+      const update = (item: RouteTemplate) => (item.id === templateId ? { ...item, stops } : item)
+      setRouteTemplates((current) => current.map(update))
+      setSelectedTemplate((current) => (current ? update(current) : null))
+      toast(`Parada ${stop.locality} actualizada en ${template.name}.`)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se ha podido actualizar la parada.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function removeTemplateStop(templateId: string, stopId: string) {
+    if (!session) throw new Error('Inicia sesión para eliminar una parada.')
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const stop = template.stops.find((item) => item.id === stopId)
+    if (!stop) throw new Error('No se ha encontrado la parada seleccionada.')
+    try {
+      await deleteRouteTemplateStop(templateId, stopId)
+      const stops = template.stops.filter((item) => item.id !== stopId)
+      const update = (item: RouteTemplate) => (item.id === templateId ? { ...item, stops } : item)
+      setRouteTemplates((current) => current.map(update))
+      setSelectedTemplate((current) => (current ? update(current) : null))
+      toast(`Parada ${stop.locality} eliminada de ${template.name}.`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se ha podido eliminar la parada.'
+      toast(message)
+      throw error
+    }
+  }
+
   async function reorderTemplateStops(templateId: string, stops: RouteTemplate['stops']) {
     if (!session) throw new Error('Inicia sesión para guardar el orden de las paradas.')
     const template = routeTemplates.find((item) => item.id === templateId)
@@ -684,6 +748,22 @@ export function useDashboard(session: Session | null, role: AppRole) {
       toast(message)
       throw error
     }
+  }
+
+  async function recalculateTemplateTimes(templateId: string) {
+    if (!session) throw new Error('Inicia sesión para recalcular los tiempos de la plantilla.')
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+    const calculatedStops = await calculateDrivingTimes(dailyRouteStopsForTemplate(template))
+    const stops = template.stops.map((stop, index) => ({
+      ...stop,
+      minutes: calculatedStops[index]?.minutes ?? 0,
+    }))
+    await updateRouteTemplateStopTimes(templateId, stops)
+    const update = (item: RouteTemplate) => (item.id === templateId ? { ...item, stops } : item)
+    setRouteTemplates((current) => current.map(update))
+    setSelectedTemplate((current) => (current ? update(current) : null))
+    toast(`Se han recalculado los tiempos de ${template.name}.`)
   }
 
   function updateRouteService(routeId: string, service: ServiceAction) {
@@ -1085,7 +1165,10 @@ export function useDashboard(session: Session | null, role: AppRole) {
     editRouteTemplate,
     removeRouteTemplate,
     addTemplateStop,
+    editTemplateStop,
+    removeTemplateStop,
     reorderTemplateStops,
+    recalculateTemplateTimes,
     updateRouteService,
     reassignRouteBox,
     removeRouteService,

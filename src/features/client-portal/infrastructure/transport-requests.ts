@@ -410,6 +410,7 @@ export type TransportCarriageLetter = {
     species: string
     breed: string
     identification: string
+    birth_date: string | null
     weight_kg: number | null
     length_cm: number | null
     height_cm: number | null

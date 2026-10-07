@@ -18,6 +18,7 @@ export interface PdfCanvas {
   ): void
   text(value: string, x: number, y: number, options: TextOptions): void
   width(value: string, size: number, bold?: boolean): number
+  image?(data: Uint8Array, x: number, y: number, w: number, h: number): void
 }
 export type LayoutLetter = {
   id: string
@@ -43,7 +44,7 @@ export type LayoutLetter = {
   destination_point: string
   accompanying_documents: string[] | null
   transport_box_number?: number | null
-  animals: Array<{ species: string; breed: string }>
+  animals: Array<{ species: string; breed: string; birth_date?: string | null }>
 }
 
 export const CARRIAGE_LETTER_PAGE = { width: 210, height: 148 }
@@ -79,8 +80,14 @@ const documentKeys = [
   ['cartilla_sanitaria', 'microchip', 'pasaporte', 'tatuaje'],
   ['anillo', 'cites', 'otro', ''],
 ]
+const locality = (value: string) => {
+  const parts = value.split(/\s*[-–—]\s*/)
+  return (parts.length > 1 ? parts.slice(1).join(' - ') : value).trim()
+}
+const letterNumber = (id: string) =>
+  id.replace(/^CARTA DE PORTE\s*N[º°]?\s*/i, '').trim() || 'No especificado'
 
-export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
+export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo?: Uint8Array) {
   const fit = (value: string, size: number, width: number, bold = false) => {
     let text = value.replace(/\s+/g, ' ').trim()
     while (text.length > 1 && canvas.width(text, size, bold) > width) text = `${text.slice(0, -2)}…`
@@ -121,16 +128,15 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
 
   // Header
   canvas.rect(X0, 4, X1 - X0, 24, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
-  canvas.text(fit(`CARTA DE PORTE Nº ${letter.id}`, 9, 68, true), 14, 17, { size: 9, bold: true })
-  if (letter.transport_box_number != null)
-    canvas.text(`BOX TRANSPORTE Nº ${letter.transport_box_number}`, 14, 23, {
-      size: 7,
-      bold: true,
-    })
-  canvas.text('KACHE ENVÍOS', MID, 16, { size: 17, bold: true, align: 'center' })
-  canvas.text('www.kacheenvios.com', MID, 22, { size: 6, align: 'center' })
-  canvas.text('Nº BÓXER', 196, 17, { size: 9, bold: true, align: 'right' })
-  canvas.text('ATES 01140700097', 196, 22, { size: 8, align: 'right' })
+  if (logo && canvas.image) canvas.image(logo, 8, 5, 22, 22)
+  else canvas.text('KACHE ENVÍOS', 10, 18, { size: 8, bold: true })
+  canvas.text('CARTA DE PORTE', 198, 10, { size: 7, bold: true, align: 'right' })
+  canvas.text(`Nº ${letterNumber(letter.id)}`, 198, 16, { size: 7, align: 'right' })
+  canvas.text(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 198, 23, {
+    size: 8,
+    bold: true,
+    align: 'right',
+  })
 
   // Sender / recipient
   const parties = [
@@ -190,7 +196,18 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
   const species: Array<[string, string, string]> = [
     ['Canina', 'Raza:', breeds.join(', ')],
     ['Felina', 'Nº animales:', String(letter.animals.length || '')],
-    ['Ave', 'Fecha nacimiento:', ''],
+    [
+      'Ave',
+      'Fecha nacimiento:',
+      letter.animals
+        .map(({ birth_date }) => {
+          const date = birth_date?.trim()
+          if (!date) return 'No especificado'
+          const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+          return match ? `${match[3]}/${match[2]}/${match[1]}` : date
+        })
+        .join(', ') || 'No especificado',
+    ],
     ['Otro', '(Especificar)', others.join(', ')],
   ]
   species.forEach(([name, label, value], i) => {
@@ -221,16 +238,15 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
   })
 
   // Origin, destination and signatures
-  const place = (x: number, label: string, text: string, point: string) => {
+  const place = (x: number, label: string, text: string) => {
     cell(x, 116.2, 44, 6.5)
     plain(x, 116.2, 44, 6.5, label)
     cell(x + 44, 116.2, 57, 6.5)
-    canvas.text(fit([text, point].filter(Boolean).join(' · '), 6.5, 54), x + 45.5, 120.6, {
-      size: 6.5,
-    })
+    const value = locality(text)
+    if (value) canvas.text(fit(value, 6.5, 54), x + 45.5, 120.6, { size: 6.5 })
   }
-  place(X0, 'PUNTO DE ORIGEN', letter.origin_text, letter.origin_point)
-  place(MID, 'PUNTO DE DESTINO', letter.destination_text, letter.destination_point)
+  place(X0, 'PUNTO DE ORIGEN', letter.origin_text)
+  place(MID, 'PUNTO DE DESTINO', letter.destination_text)
   cell(X0, 122.7, MID - X0, 21.3, SENDER)
   canvas.text('FIRMA REMITENTE', X0 + 1.5, 126.8, { size: 7.5, bold: true })
   cell(MID, 122.7, X1 - MID, 21.3, RECIPIENT)

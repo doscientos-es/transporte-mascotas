@@ -33,7 +33,7 @@ import {
 } from '@/features/client-portal'
 import { paginate } from '@/shared/lib/pagination'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
-import type { Letter } from '@/shared/types'
+import type { DailyRoute, Letter } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -45,6 +45,7 @@ import { downloadBlob } from './billing-document-export'
 
 type Props = {
   letters: Letter[]
+  dailyRoutes?: DailyRoute[]
   loading: boolean
   error: string
   onRetry: () => void
@@ -102,6 +103,7 @@ function formatServiceMonth(serviceMonth: string) {
 
 export function LettersPage({
   letters: sourceLetters,
+  dailyRoutes = [],
   loading,
   error,
   onRetry,
@@ -209,7 +211,11 @@ export function LettersPage({
   async function downloadLetterPdf(letter: Letter) {
     setDownloadError('')
     try {
-      const document = letterToCarriageLetter(letter)
+      const transportBoxNumber = dailyRoutes
+        .filter((route) => route.date === letter.serviceDate)
+        .flatMap((route) => route.actions)
+        .find((action) => action.letterId === letter.id && action.type === 'recogida')?.box
+      const document = letterToCarriageLetter(letter, transportBoxNumber ?? null)
       downloadBlob(await createCarriageLetterPdf(document), carriageLetterFileName(document))
     } catch {
       setDownloadError('No se ha podido generar el PDF de la carta de porte.')

@@ -3,7 +3,10 @@
 import { CARRIAGE_LETTER_PAGE, drawCarriageLetter } from './carriage-letter-layout'
 import type { TransportCarriageLetter } from './transport-requests'
 
-export function letterToCarriageLetter(letter: Letter): TransportCarriageLetter {
+export function letterToCarriageLetter(
+  letter: Letter,
+  transportBoxNumber: number | null = null,
+): TransportCarriageLetter {
   return {
     id: letter.id,
     service_date: letter.serviceDate,
@@ -28,11 +31,13 @@ export function letterToCarriageLetter(letter: Letter): TransportCarriageLetter 
     origin_point: letter.originPoint,
     destination_point: letter.destinationPoint,
     accompanying_documents: letter.accompanyingDocuments,
+    transport_box_number: transportBoxNumber,
     animals: letter.animals.map((animal, index) => ({
       ordinal: index + 1,
       species: animal.species,
       breed: animal.breed,
       identification: '',
+      birth_date: animal.birthDate || null,
       weight_kg: animal.weightKg || null,
       length_cm: animal.lengthCm || null,
       height_cm: animal.heightCm || null,
@@ -55,6 +60,9 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
   const { jsPDF } = await import('jspdf')
   const { width, height } = CARRIAGE_LETTER_PAGE
   const doc = new jsPDF({ unit: 'mm', format: [width, height], orientation: 'landscape' })
+  const logo = await fetch('/icon-512.png')
+    .then(async (response) => (response.ok ? new Uint8Array(await response.arrayBuffer()) : null))
+    .catch(() => null)
   const font = (size: number, bold?: boolean) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal')
     doc.setFontSize(size)
@@ -74,12 +82,16 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
         doc.setTextColor(...color)
         doc.text(value, x, y, { align })
       },
+      image(data, x, y, w, h) {
+        doc.addImage(data, 'PNG', x, y, w, h)
+      },
       width(value, size, bold) {
         font(size, bold)
         return doc.getTextWidth(value)
       },
     },
     letter,
+    logo ?? undefined,
   )
   return doc.output('blob')
 }

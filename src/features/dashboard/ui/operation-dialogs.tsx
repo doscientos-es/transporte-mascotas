@@ -49,6 +49,7 @@ import type {
   Letter,
   LetterDraft,
   RouteDirection,
+  RouteStop,
   RouteTemplate,
   TransportBoxCategory,
 } from '@/shared/types'
@@ -56,6 +57,7 @@ import type {
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
+import { mergedStopInstructions } from '../application/stop-instructions'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -623,13 +625,15 @@ export type StopFormValues = Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>
 
 export function StopFormDialog({
   initialStop,
+  nextStopLocality,
   insertionIndex,
   stopCount,
   onInsertionIndexChange,
   onClose,
   onAdd,
 }: {
-  initialStop?: DailyRouteStop
+  initialStop?: RouteStop
+  nextStopLocality?: string
   insertionIndex?: number
   stopCount?: number
   onInsertionIndexChange?: (index: number) => void
@@ -642,16 +646,14 @@ export function StopFormDialog({
   const [country, setCountry] = useState(initialStop?.country ?? 'España')
   const [street, setStreet] = useState(initialStop?.street ?? '')
   const [streetNumber, setStreetNumber] = useState(initialStop?.streetNumber ?? '')
-  const [addressQuery, setAddressQuery] = useState(() =>
-    [initialStop?.street, initialStop?.streetNumber, initialStop?.postalCode, initialStop?.locality]
-      .filter(Boolean)
-      .join(', '),
-  )
+  const [addressQuery, setAddressQuery] = useState('')
   const [floor, setFloor] = useState(initialStop?.floor ?? '')
   const [latitude, setLatitude] = useState(initialStop?.latitude?.toString() ?? '')
   const [longitude, setLongitude] = useState(initialStop?.longitude?.toString() ?? '')
-  const [alias, setAlias] = useState(initialStop?.alias ?? '')
-  const [place, setPlace] = useState(initialStop?.place ?? '')
+  const [indications, setIndications] = useState(
+    mergedStopInstructions(initialStop?.alias, initialStop?.place),
+  )
+  const [minutesToNext, setMinutesToNext] = useState(String(initialStop?.minutes ?? 0))
   const [dwellMinutes, setDwellMinutes] = useState(String(initialStop?.dwellMinutes ?? 15))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -660,8 +662,14 @@ export function StopFormDialog({
     'idle' | 'searching' | 'empty' | 'failed'
   >('idle')
   const selectedAddressQuery = useRef('')
+  const selectedSuggestionAlias = useRef('')
   const lookingUpAddress = addressLookupState === 'searching'
   useEffect(() => {
+    if (initialStop) {
+      setAddressSuggestions([])
+      setAddressLookupState('idle')
+      return
+    }
     const query = addressQuery.trim()
     if (query.length < 5 || query === selectedAddressQuery.current) {
       setAddressSuggestions([])
@@ -689,7 +697,7 @@ export function StopFormDialog({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [addressQuery])
+  }, [addressQuery, initialStop])
   function updateAddressQuery(value: string) {
     selectedAddressQuery.current = ''
     setAddressQuery(value)
@@ -705,9 +713,14 @@ export function StopFormDialog({
       .join(', ')
     selectedAddressQuery.current = selectedAddress
     setAddressQuery(selectedAddress)
+    const previousSuggestionAlias = selectedSuggestionAlias.current
+    const manualIndications = indications
+      .split(' · ')
+      .filter((part) => part.trim() && part.trim() !== previousSuggestionAlias)
+    selectedSuggestionAlias.current = suggestion.alias
+    setIndications(mergedStopInstructions(suggestion.alias, ...manualIndications))
     setStreet(suggestion.street)
     setStreetNumber(suggestion.streetNumber)
-    setAlias(suggestion.alias)
     setLocality(suggestion.locality)
     setPostalCode(suggestion.postalCode)
     setProvince(suggestion.province)
@@ -730,15 +743,21 @@ export function StopFormDialog({
         street: street.trim(),
         streetNumber: streetNumber.trim(),
         floor: floor.trim(),
-        alias: alias.trim(),
-        place: place.trim(),
+        alias: '',
+        place: indications.trim(),
         dwellMinutes: Math.max(0, Number(dwellMinutes) || 0),
-        minutes: 0,
+        minutes: Math.max(0, Number(minutesToNext) || 0),
         latitude: Number(latitude) || undefined,
         longitude: Number(longitude) || undefined,
       })
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se ha podido añadir la parada.')
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : initialStop
+            ? 'No se ha podido actualizar la parada.'
+            : 'No se ha podido añadir la parada.',
+      )
     } finally {
       setSaving(false)
     }
@@ -751,210 +770,258 @@ export function StopFormDialog({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="dialog-card !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]">
+      <DialogContent className="dialog-card stop-form-dialog-content !w-[calc(100%-2.5rem)] !max-w-[590px] !p-[26px]">
         <DialogHeader className="gap-0">
           <DialogTitle>{editing ? 'Editar parada' : 'Añadir parada'}</DialogTitle>
-          <DialogDescription>
-            Busca primero la dirección completa. Al elegir una coincidencia completaremos el resto;
-            si no aparece, puedes rellenarlo manualmente.
-          </DialogDescription>
         </DialogHeader>
-        <form className="client-form" onSubmit={(event) => void submit(event)}>
-          <div className="form-span relative" aria-busy={lookingUpAddress}>
+        <form className="stop-form-shell" onSubmit={(event) => void submit(event)}>
+          <div className="client-form stop-form-fields">
+            {!editing && (
+              <>
+                <div className="form-span relative" aria-busy={lookingUpAddress}>
+                  <Label>
+                    Buscar dirección para autocompletar
+                    <Input
+                      value={addressQuery}
+                      onChange={(event) => updateAddressQuery(event.target.value)}
+                      placeholder="Ej. Calle Mayor 12, 28013 Madrid"
+                      autoComplete="street-address"
+                    />
+                  </Label>
+                  <p className="stop-form-hint">
+                    Elige una sugerencia para rellenar la dirección y obtener las coordenadas del
+                    mapa.
+                  </p>
+                  {lookingUpAddress && (
+                    <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+                      Buscando la dirección… espera antes de completar los demás campos.
+                    </output>
+                  )}
+                  {addressLookupState === 'empty' && (
+                    <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+                      No hemos encontrado esa dirección. Puedes completar los campos manualmente.
+                    </output>
+                  )}
+                  {addressLookupState === 'failed' && (
+                    <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
+                      No se ha podido comprobar la dirección. Puedes completar los campos
+                      manualmente.
+                    </output>
+                  )}
+                  {addressSuggestions.length > 0 && (
+                    <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
+                      {addressSuggestions.map((suggestion) => (
+                        <button
+                          type="button"
+                          key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.alias}-${suggestion.postalCode}`}
+                          onClick={() => selectAddress(suggestion)}
+                        >
+                          <strong>
+                            {suggestion.street}
+                            {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
+                          </strong>
+                          <span>
+                            {[
+                              suggestion.alias,
+                              suggestion.locality,
+                              suggestion.postalCode,
+                              suggestion.province,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
             <Label>
-              Buscar dirección
+              Calle o vía (obligatorio)
               <Input
-                value={addressQuery}
-                onChange={(event) => updateAddressQuery(event.target.value)}
-                placeholder="Ej. Calle Mayor 12, Madrid"
-                autoComplete="street-address"
+                value={street}
+                onChange={(event) => setStreet(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. Calle Mayor"
+                required
               />
             </Label>
-            {lookingUpAddress && (
-              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-                Buscando la dirección… espera antes de completar los demás campos.
-              </output>
+            <Label>
+              Número (opcional)
+              <Input
+                value={streetNumber}
+                onChange={(event) => setStreetNumber(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. 12 o s/n"
+              />
+            </Label>
+            <Label>
+              Código postal (obligatorio)
+              <Input
+                value={postalCode}
+                onChange={(event) =>
+                  setPostalCode(event.target.value.replace(/\D/g, '').slice(0, 5))
+                }
+                inputMode="numeric"
+                disabled={lookingUpAddress}
+                placeholder="Ej. 28013"
+                required
+              />
+            </Label>
+            <Label>
+              Localidad (obligatoria)
+              <Input
+                value={locality}
+                onChange={(event) => setLocality(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. Madrid"
+                required
+              />
+            </Label>
+            <Label>
+              Provincia (obligatoria)
+              <Input
+                value={province}
+                onChange={(event) => setProvince(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. Madrid"
+                required
+              />
+            </Label>
+            <Label>
+              País (obligatorio)
+              <Input
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. España"
+                required
+              />
+            </Label>
+            <p className="stop-form-section form-span">Coordenadas del punto (obligatorias)</p>
+            <Label>
+              Latitud
+              <Input
+                type="number"
+                step="any"
+                value={latitude}
+                onChange={(event) => setLatitude(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. 40.4168"
+                required
+              />
+              <span className="stop-form-hint">Se usa para ubicar la parada en el mapa.</span>
+            </Label>
+            <Label>
+              Longitud
+              <Input
+                type="number"
+                step="any"
+                value={longitude}
+                onChange={(event) => setLongitude(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. -3.7038"
+                required
+              />
+              <span className="stop-form-hint">Junto con la latitud, señala el punto exacto.</span>
+            </Label>
+            <p className="stop-form-section form-span">Información para el conductor</p>
+            <Label>
+              Piso, portal o local (opcional)
+              <Input
+                value={floor}
+                onChange={(event) => setFloor(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. portal B, local 2"
+              />
+            </Label>
+            <Label className="form-span">
+              Indicaciones (opcional)
+              <Input
+                value={indications}
+                onChange={(event) => setIndications(event.target.value)}
+                disabled={lookingUpAddress}
+                placeholder="Ej. Clínica Sol; entrada principal junto al aparcamiento lateral"
+              />
+              <span className="stop-form-hint">
+                Añade el nombre del sitio y dónde esperar o qué referencia buscar al llegar.
+              </span>
+            </Label>
+            {nextStopLocality ? (
+              <Label className="form-span">
+                Tiempo de trayecto hasta {nextStopLocality} (minutos)
+                <Input
+                  type="number"
+                  min="0"
+                  step="5"
+                  inputMode="numeric"
+                  value={minutesToNext}
+                  onChange={(event) => setMinutesToNext(event.target.value)}
+                  disabled={lookingUpAddress}
+                />
+                <span className="stop-form-hint">
+                  Desde {locality.trim() || 'esta parada'} hasta {nextStopLocality}; no se calcula
+                  automáticamente con las coordenadas.
+                </span>
+              </Label>
+            ) : (
+              <p className="stop-form-hint form-span">
+                Esta es la última parada; no tiene un tiempo de trayecto siguiente.
+              </p>
             )}
-            {addressLookupState === 'empty' && (
-              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-                No hemos encontrado esa dirección. Puedes completar los campos manualmente.
-              </output>
-            )}
-            {addressLookupState === 'failed' && (
-              <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-                No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
-              </output>
-            )}
-            {addressSuggestions.length > 0 && (
-              <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
-                {addressSuggestions.map((suggestion) => (
-                  <button
-                    type="button"
-                    key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.alias}-${suggestion.postalCode}`}
-                    onClick={() => selectAddress(suggestion)}
-                  >
-                    <strong>
-                      {suggestion.street}
-                      {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
-                    </strong>
-                    <span>
-                      {[
-                        suggestion.alias,
-                        suggestion.locality,
-                        suggestion.postalCode,
-                        suggestion.province,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            <Label>
+              Tiempo de espera (minutos, obligatorio)
+              <Input
+                type="number"
+                min="0"
+                step="5"
+                value={dwellMinutes}
+                onChange={(event) => setDwellMinutes(event.target.value)}
+                disabled={lookingUpAddress}
+                required
+              />
+              <span className="stop-form-hint">
+                Minutos que debe esperar el transportista en este punto.
+              </span>
+            </Label>
+            {typeof insertionIndex === 'number' && onInsertionIndexChange && (
+              <Label className="form-span">
+                Posición de la parada en la ruta
+                <select
+                  className="stop-form-position-select"
+                  value={insertionIndex}
+                  onChange={(event) => onInsertionIndexChange(Number(event.target.value))}
+                >
+                  {Array.from({ length: (stopCount ?? 0) + 1 }, (_, index) => (
+                    <option key={index} value={index}>
+                      Posición {index + 1}
+                      {index === 0 ? ' · al inicio' : index === stopCount ? ' · al final' : ''}
+                    </option>
+                  ))}
+                </select>
+              </Label>
             )}
           </div>
-          <Label>
-            Vía / calle
-            <Input
-              value={street}
-              onChange={(event) => setStreet(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Número
-            <Input
-              value={streetNumber}
-              onChange={(event) => setStreetNumber(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Código postal
-            <Input
-              value={postalCode}
-              onChange={(event) => setPostalCode(event.target.value.replace(/\D/g, '').slice(0, 5))}
-              inputMode="numeric"
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Localidad
-            <Input
-              value={locality}
-              onChange={(event) => setLocality(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Provincia
-            <Input
-              value={province}
-              onChange={(event) => setProvince(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            País
-            <Input
-              value={country}
-              onChange={(event) => setCountry(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Latitud
-            <Input
-              type="number"
-              step="any"
-              value={latitude}
-              onChange={(event) => setLatitude(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Longitud
-            <Input
-              type="number"
-              step="any"
-              value={longitude}
-              onChange={(event) => setLongitude(event.target.value)}
-              disabled={lookingUpAddress}
-              required
-            />
-          </Label>
-          <Label>
-            Alias o negocio
-            <Input
-              value={alias}
-              onChange={(event) => setAlias(event.target.value)}
-              disabled={lookingUpAddress}
-              placeholder="Ej. Repsol Norte"
-            />
-          </Label>
-          <Label>
-            Piso, portal o local
-            <Input
-              value={floor}
-              onChange={(event) => setFloor(event.target.value)}
-              disabled={lookingUpAddress}
-              placeholder="Opcional"
-            />
-          </Label>
-          <Label className="form-span">
-            Indicaciones o punto de encuentro
-            <Input
-              value={place}
-              onChange={(event) => setPlace(event.target.value)}
-              disabled={lookingUpAddress}
-              placeholder="Ej. aparcamiento lateral"
-            />
-          </Label>
-          <Label>
-            Espera en la parada (min)
-            <Input
-              type="number"
-              min="0"
-              step="5"
-              value={dwellMinutes}
-              onChange={(event) => setDwellMinutes(event.target.value)}
-              disabled={lookingUpAddress}
-            />
-          </Label>
-          {typeof insertionIndex === 'number' && onInsertionIndexChange && (
-            <Label className="form-span">
-              Posición en la ruta
-              <select
-                value={insertionIndex}
-                onChange={(event) => onInsertionIndexChange(Number(event.target.value))}
+          <div className="stop-form-actions">
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="stop-form-action-row">
+              <Button variant="outline" type="button" disabled={saving} onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button
+                className="stop-form-submit"
+                type="submit"
+                disabled={saving || lookingUpAddress}
               >
-                {Array.from({ length: (stopCount ?? 0) + 1 }, (_, index) => (
-                  <option key={index} value={index}>
-                    Posición {index + 1}
-                    {index === 0 ? ' · al inicio' : index === stopCount ? ' · al final' : ''}
-                  </option>
-                ))}
-              </select>
-            </Label>
-          )}
-          {error && (
-            <p className="form-error form-span" role="alert">
-              {error}
-            </p>
-          )}
-          <Button
-            className="dialog-submit form-span"
-            type="submit"
-            disabled={saving || lookingUpAddress}
-          >
-            <Pencil /> {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Añadir parada'}
-          </Button>
+                <Pencil /> {saving ? 'Guardando…' : editing ? 'Guardar cambios' : 'Añadir parada'}
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
