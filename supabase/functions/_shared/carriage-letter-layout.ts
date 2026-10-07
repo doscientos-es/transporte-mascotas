@@ -42,6 +42,7 @@ export type LayoutLetter = {
   origin_point: string
   destination_point: string
   accompanying_documents: string[] | null
+  transport_box_number?: number | null
   animals: Array<{ species: string; breed: string }>
 }
 
@@ -121,6 +122,11 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter) {
   // Header
   canvas.rect(X0, 4, X1 - X0, 24, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
   canvas.text(fit(`CARTA DE PORTE Nº ${letter.id}`, 9, 68, true), 14, 17, { size: 9, bold: true })
+  if (letter.transport_box_number != null)
+    canvas.text(`BOX TRANSPORTE Nº ${letter.transport_box_number}`, 14, 23, {
+      size: 7,
+      bold: true,
+    })
   canvas.text('KACHE ENVÍOS', MID, 16, { size: 17, bold: true, align: 'center' })
   canvas.text('www.kacheenvios.com', MID, 22, { size: 6, align: 'center' })
   canvas.text('Nº BÓXER', 196, 17, { size: 9, bold: true, align: 'right' })

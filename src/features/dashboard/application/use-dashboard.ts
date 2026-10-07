@@ -50,6 +50,7 @@ import {
   closeDailyRoute,
   deleteDailyRouteStop,
   deleteRouteTemplate,
+  duplicateRouteTemplate as persistRouteTemplateCopy,
   loadDailyRoutes,
   loadRouteTemplates,
   createStaffInvitation,
@@ -66,7 +67,6 @@ import {
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
-import { canCloseRouteOn } from './route-closure'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize } from './van'
 
@@ -539,6 +539,37 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
+  async function duplicateRouteTemplate(templateId: string) {
+    if (!session) throw new Error('Inicia sesión para duplicar la plantilla de ruta.')
+    const template = routeTemplates.find((item) => item.id === templateId)
+    if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
+
+    const existingNames = new Set(
+      routeTemplates.map((item) => item.name.trim().toLocaleLowerCase()),
+    )
+    const baseName = `${template.name} (copia)`
+    let name = baseName
+    let copyNumber = 2
+    while (existingNames.has(name.trim().toLocaleLowerCase())) {
+      name = `${template.name} (copia ${copyNumber})`
+      copyNumber += 1
+    }
+
+    try {
+      const copy = await persistRouteTemplateCopy(template, name)
+      setRouteTemplates((current) =>
+        [...current, copy].sort((left, right) => left.name.localeCompare(right.name)),
+      )
+      setSelectedTemplate(copy)
+      toast(`Plantilla ${template.name} duplicada. Ya puedes modificar la copia.`)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se ha podido duplicar la plantilla.'
+      toast(message)
+      throw error
+    }
+  }
+
   async function editRouteTemplate(templateId: string, name: string, color: string) {
     if (!session) throw new Error('Inicia sesión para actualizar la plantilla de ruta.')
     const template = routeTemplates.find((item) => item.id === templateId)
@@ -967,8 +998,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
     if (route.closedAt) return
-    if (!canCloseRouteOn(route.date))
-      throw new Error('La ruta solo se puede cerrar el día anterior a su realización.')
     const result = await closeDailyRoute(routeId)
     const update = (item: DailyRoute): DailyRoute =>
       item.id === routeId
@@ -1048,6 +1077,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     addLetterRouteStop,
     removeRouteStop,
     createRouteTemplate,
+    duplicateRouteTemplate,
     editRouteTemplate,
     removeRouteTemplate,
     addTemplateStop,

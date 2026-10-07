@@ -119,6 +119,53 @@ export async function saveRouteTemplate(template: RouteTemplate) {
   return template
 }
 
+export async function duplicateRouteTemplate(template: RouteTemplate, name: string) {
+  const copy: RouteTemplate = {
+    ...template,
+    id: crypto.randomUUID(),
+    name,
+    stops: template.stops.map((stop) => ({ ...stop, id: crypto.randomUUID() })),
+  }
+  const database = requireSupabase()
+  const { error: templateError } = await database
+    .from('route_templates')
+    .insert({ id: copy.id, name: copy.name, color: copy.color })
+  if (templateError) throw templateError
+
+  if (copy.stops.length) {
+    const { error: stopsError } = await database.from('route_template_stops').insert(
+      copy.stops.map((stop, index) => ({
+        id: stop.id,
+        route_template_id: copy.id,
+        sequence: index + 1,
+        locality: stop.locality,
+        meeting_point: stop.place,
+        map_url: stop.mapUrl,
+        minutes_to_next: stop.minutes || null,
+        stop_alias: stop.alias ?? '',
+        street: stop.street ?? '',
+        street_number: stop.streetNumber ?? '',
+        floor: stop.floor ?? '',
+        postal_code: stop.postalCode ?? '',
+        province: stop.province ?? '',
+        country: stop.country ?? 'España',
+        latitude: stop.latitude ?? null,
+        longitude: stop.longitude ?? null,
+      })),
+    )
+    if (stopsError) {
+      try {
+        await database.from('route_templates').delete().eq('id', copy.id)
+      } catch {
+        // Keep the original stop insertion error if cleanup also fails.
+      }
+      throw stopsError
+    }
+  }
+
+  return copy
+}
+
 export async function updateRouteTemplate(template: Pick<RouteTemplate, 'id' | 'name' | 'color'>) {
   const { error } = await requireSupabase()
     .from('route_templates')

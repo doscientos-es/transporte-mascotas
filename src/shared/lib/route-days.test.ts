@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { arrivalMoment, routeDays, routeDaysLabel } from './route-days'
+import { arrivalMoment, routeDays, routeDaysLabel, routeStopArrivals } from './route-days'
 
 describe('routeDays', () => {
   it('returns one day when there is no later end date', () => {
@@ -53,5 +53,19 @@ describe('arrivalMoment', () => {
 
   it('rolls over month ends', () => {
     expect(arrivalMoment('2026-10-31', '23:30', 60)).toEqual({ date: '2026-11-01', time: '00:30' })
+  })
+})
+
+describe('routeStopArrivals', () => {
+  it('assigns the next day to a stop reached after midnight', () => {
+    expect(
+      routeStopArrivals('2026-10-06', '08:00', [
+        { minutes: 960, dwellMinutes: 15 },
+        { minutes: 0, dwellMinutes: 0 },
+      ]),
+    ).toEqual([
+      { date: '2026-10-06', time: '08:00' },
+      { date: '2026-10-07', time: '00:15' },
+    ])
   })
 })

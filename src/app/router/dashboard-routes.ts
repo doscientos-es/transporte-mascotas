@@ -20,6 +20,7 @@ export const APP_PATHS = {
   passwordRecovery: AUTH_PATHS.passwordRecovery,
   passwordReset: AUTH_PATHS.passwordReset,
   publicTransportRequest: AUTH_PATHS.publicTransportRequest,
+  paymentLaunch: '/pagar',
   clientHome: dashboardPaths['mis-transportes'],
   staffHome: dashboardPaths.cartas,
 } as const
@@ -38,6 +39,7 @@ export const ROUTER_PATHS = {
   passwordRecovery: routePath(APP_PATHS.passwordRecovery),
   passwordReset: routePath(APP_PATHS.passwordReset),
   publicTransportRequest: routePath(APP_PATHS.publicTransportRequest),
+  paymentLaunch: routePath(APP_PATHS.paymentLaunch),
   clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
   clientUpcomingDetail: `${routePath(dashboardPaths['proximas-rutas'])}/:routeId`,
   clientTransports: routePath(dashboardPaths['mis-transportes']),

@@ -11,7 +11,7 @@ import {
   Card,
   CardContent,
 } from '@doscientos/ui'
-import { ChevronRight, GripVertical, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, Copy, GripVertical, MapPin, Pencil, Plus, Trash2 } from 'lucide-react'
 import { type DragEvent, useEffect, useState } from 'react'
 
 import type { RouteTemplate } from '@/shared/types'
@@ -25,6 +25,7 @@ type Props = {
   createRequestId: number
   onSelect: (template: RouteTemplate) => void
   onCreate: (name: string, color: string) => Promise<void>
+  onDuplicate: (templateId: string) => Promise<void>
   onUpdate: (templateId: string, name: string, color: string) => Promise<void>
   onDelete: (templateId: string) => Promise<void>
   onAddStop: (templateId: string, stop: StopFormValues, insertionIndex?: number) => Promise<void>
@@ -37,6 +38,7 @@ export function TemplatesPage({
   createRequestId,
   onSelect,
   onCreate,
+  onDuplicate,
   onUpdate,
   onDelete,
   onAddStop,
@@ -53,6 +55,7 @@ export function TemplatesPage({
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
 
   useEffect(() => {
     setAddingStopAt(null)
@@ -157,6 +160,20 @@ export function TemplatesPage({
       setDeleteError(reason instanceof Error ? reason.message : 'No se ha podido eliminar la ruta.')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function duplicateSelectedTemplate() {
+    const templateId = selected?.id
+    if (!templateId) return
+    setDuplicating(true)
+    setError('')
+    try {
+      await onDuplicate(templateId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido duplicar la plantilla.')
+    } finally {
+      setDuplicating(false)
     }
   }
 
@@ -271,6 +288,13 @@ export function TemplatesPage({
                 </Button>
                 <Button variant="outline" onClick={() => setEditing(true)}>
                   <Pencil /> Editar
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={duplicating}
+                  onClick={() => void duplicateSelectedTemplate()}
+                >
+                  <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar'}
                 </Button>
                 <Button
                   variant="outline"

@@ -24,6 +24,7 @@ type DashboardRouteContext = AuthenticatedRouteContext & { navigation: Dashboard
 
 const AuthContext = createContext<AuthState>({ session: null, profile: null })
 const clientPortalRoute = () => import('./router/client-portal-route')
+const paymentLaunchRoute = () => import('./router/payment-launch-route')
 const publicTransportRequestRoute = () => import('./router/public-transport-request-route')
 const staffDashboardRoute = () => import('./router/staff-dashboard-route')
 
@@ -60,6 +61,11 @@ const router = createBrowserRouter([
           {
             path: ROUTER_PATHS.publicTransportRequest,
             lazy: publicTransportRequestRoute,
+            HydrateFallback: LoadingRoute,
+          },
+          {
+            path: ROUTER_PATHS.paymentLaunch,
+            lazy: paymentLaunchRoute,
             HydrateFallback: LoadingRoute,
           },
         ],

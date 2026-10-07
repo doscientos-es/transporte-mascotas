@@ -53,12 +53,13 @@ Tras configurar los secretos, redesplegad `caixabank-webhook` y
 
 ### Cierre de itinerario diario
 
-Cerrar una ruta el día anterior fija las paradas y los tiempos y encola un email
-de recordatorio (Resend) para cada remitente y destinatario con email válido de
-las cartas de la ruta. Tras cerrar, el panel invoca
+Administración puede cerrar una ruta en cualquier momento. Al cerrarla, se fijan
+las paradas y los tiempos y se encola un email de recordatorio (Resend) para cada
+remitente y destinatario con email válido de las cartas de la ruta. Tras cerrar, el panel invoca
 `send-daily-route-closure-notifications`; si un envío falla queda en `fallida` y
 se reintenta al volver a invocar la función. Desplegad esa función y la
-migración `20261001120000_route_closure_email_notifications.sql`.
+migración `20261001120000_route_closure_email_notifications.sql`; aplicad también
+`20261007120000_admin_close_route_anytime.sql` para permitir el cierre en cualquier fecha.
 
 ### Emails de autenticación (recuperar contraseña)
 

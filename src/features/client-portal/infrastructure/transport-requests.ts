@@ -144,6 +144,7 @@ export async function loadTransportRequests(requesterId?: string) {
 type UpcomingRouteRow = {
   id: string
   service_date: string
+  start_time?: string | null
   route_direction: UpcomingRoute['routeDirection']
   template_name: string
   template_color: string
@@ -158,6 +159,7 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
   return ((data ?? []) as UpcomingRouteRow[]).map((row) => ({
     id: row.id,
     serviceDate: row.service_date,
+    startTime: row.start_time?.slice(0, 5),
     endDate: row.end_date ?? row.service_date,
     routeDirection: row.route_direction,
     templateName: row.template_name,
@@ -168,7 +170,9 @@ export async function loadUpcomingRoutes(): Promise<UpcomingRoute[]> {
 }
 
 type PublicUpcomingRouteRow = Omit<UpcomingRouteRow, 'stops'> & {
-  stops: Array<Pick<RouteStop, 'id' | 'locality' | 'latitude' | 'longitude'>> | null
+  stops: Array<
+    Pick<RouteStop, 'id' | 'locality' | 'latitude' | 'longitude' | 'minutes' | 'dwellMinutes'>
+  > | null
 }
 
 export async function loadPublicUpcomingRoutes(): Promise<UpcomingRoute[]> {
@@ -177,6 +181,7 @@ export async function loadPublicUpcomingRoutes(): Promise<UpcomingRoute[]> {
   return ((data ?? []) as PublicUpcomingRouteRow[]).map((row) => ({
     id: row.id,
     serviceDate: row.service_date,
+    startTime: row.start_time?.slice(0, 5),
     endDate: row.end_date ?? row.service_date,
     routeDirection: row.route_direction,
     templateName: row.template_name,
@@ -186,7 +191,6 @@ export async function loadPublicUpcomingRoutes(): Promise<UpcomingRoute[]> {
       ...stop,
       place: '',
       mapUrl: '',
-      minutes: 0,
     })),
   }))
 }
@@ -400,6 +404,7 @@ export type TransportCarriageLetter = {
   origin_point: string
   destination_point: string
   accompanying_documents: string[] | null
+  transport_box_number?: number | null
   animals: Array<{
     ordinal: number
     species: string

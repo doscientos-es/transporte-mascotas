@@ -13,6 +13,7 @@ import {
   Pagination,
 } from '@doscientos/ui'
 import {
+  ArrowLeft,
   ChevronRight,
   Eye,
   FileDown,
@@ -39,6 +40,7 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
+import { groupLettersByRoute } from '../application/letter-route-groups'
 import { downloadBlob } from './billing-document-export'
 
 type Props = {
@@ -74,11 +76,19 @@ const animalSizeLabels = {
 } as const
 
 const letterStatusFilters = ['todos', 'pendiente', 'revisada', 'en_ruta', 'entregada'] as const
+const routeGroupPageSize = 12
 
 function formatServiceDate(serviceDate: string) {
   return new Date(`${serviceDate}T12:00:00`).toLocaleDateString('es-ES', {
     day: 'numeric',
     month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatServiceMonth(serviceMonth: string) {
+  return new Date(`${serviceMonth}-01T12:00:00`).toLocaleDateString('es-ES', {
+    month: 'long',
     year: 'numeric',
   })
 }
@@ -97,12 +107,50 @@ export function LettersPage({
   const search = searchParams.get('q') ?? ''
   const statusFilter = readEnumParam(searchParams.get('estado'), letterStatusFilters, 'todos')
   const requestedPage = readPageParam(searchParams.get('pagina'))
+  const routeGroups = useMemo(() => groupLettersByRoute(sourceLetters), [sourceLetters])
+  const routeSearch = searchParams.get('ruta-busqueda') ?? ''
+  const routeTemplateFilter = searchParams.get('ruta-plantilla') ?? ''
+  const routeMonthFilter = searchParams.get('ruta-mes') ?? ''
+  const requestedRoutePage = readPageParam(searchParams.get('pagina-rutas'))
+  const routeTemplateOptions = useMemo(
+    () =>
+      [...new Set(routeGroups.map(({ routeName }) => routeName))].toSorted((a, b) =>
+        a.localeCompare(b, 'es'),
+      ),
+    [routeGroups],
+  )
+  const routeMonthOptions = useMemo(
+    () =>
+      [...new Set(routeGroups.map(({ serviceDate }) => serviceDate.slice(0, 7)))].toSorted((a, b) =>
+        b.localeCompare(a),
+      ),
+    [routeGroups],
+  )
+  const filteredRouteGroups = useMemo(() => {
+    const term = routeSearch.trim().toLocaleLowerCase()
+    return routeGroups.filter((group) => {
+      const matchesSearch =
+        !term ||
+        [group.routeName, group.serviceDate, formatServiceDate(group.serviceDate)]
+          .join(' ')
+          .toLocaleLowerCase()
+          .includes(term)
+      const matchesTemplate = !routeTemplateFilter || group.routeName === routeTemplateFilter
+      const matchesMonth = !routeMonthFilter || group.serviceDate.startsWith(routeMonthFilter)
+      return matchesSearch && matchesTemplate && matchesMonth
+    })
+  }, [routeGroups, routeMonthFilter, routeSearch, routeTemplateFilter])
+  const routeGroupPagination = paginate(filteredRouteGroups, requestedRoutePage, routeGroupPageSize)
   const viewingLetter =
     sourceLetters.find((letter) => letter.id === searchParams.get('carta')) ?? null
+  const selectedRouteGroup =
+    routeGroups.find((group) => group.key === searchParams.get('ruta-carta')) ??
+    routeGroups.find((group) => group.letters.some((letter) => letter.id === viewingLetter?.id))
   const searchedLetters = useMemo(() => {
     const term = search.trim().toLocaleLowerCase()
-    if (!term) return sourceLetters
-    return sourceLetters.filter((letter) =>
+    const routeLetters = selectedRouteGroup?.letters ?? []
+    if (!term) return routeLetters
+    return routeLetters.filter((letter) =>
       [
         letter.id,
         letter.sender,
@@ -120,7 +168,7 @@ export function LettersPage({
         .toLocaleLowerCase()
         .includes(term),
     )
-  }, [search, sourceLetters])
+  }, [search, selectedRouteGroup])
   const letters = useMemo(
     () =>
       statusFilter === 'todos'
@@ -161,87 +209,160 @@ export function LettersPage({
     }
   }, [letterPagination.pageCount, requestedPage, updateParams])
 
+  useEffect(() => {
+    if (requestedRoutePage > routeGroupPagination.pageCount) {
+      updateParams({
+        'pagina-rutas':
+          routeGroupPagination.pageCount === 1 ? undefined : routeGroupPagination.pageCount,
+      })
+    }
+  }, [requestedRoutePage, routeGroupPagination.pageCount, updateParams])
+
   return (
     <>
-      <PageIntro text="Crea y prepara los servicios para cada ruta." />
-      <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
-        <Stat label="Necesita revisión" value={summary.pending} accent="lime" loading={loading} />
-        <Stat label="Programadas (semana)" value={summary.scheduled} loading={loading} />
-        <Stat label="En transporte" value={summary.animals} loading={loading} />
-      </section>
-      <Card className="table-card">
-        <CardContent>
-          <div className="table-heading">
+      <PageIntro
+        text={
+          selectedRouteGroup
+            ? `Cartas de porte de ${selectedRouteGroup.routeName}.`
+            : 'Selecciona una ruta para consultar sus cartas de porte.'
+        }
+      />
+      {selectedRouteGroup ? (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                updateParams({
+                  'ruta-carta': undefined,
+                  q: undefined,
+                  estado: undefined,
+                  pagina: undefined,
+                  carta: undefined,
+                })
+              }
+            >
+              <ArrowLeft size={16} /> Todas las rutas
+            </Button>
             <div>
-              <h3>Cartas de porte</h3>
-              <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
-            </div>
-            <div className="table-controls">
-              <label className="search">
-                <Search size={17} />
-                <input
-                  value={search}
-                  onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
-                  placeholder="Buscar"
-                  aria-label="Buscar cartas"
-                  disabled={loading}
-                />
-              </label>
-              <label className="status-filter">
-                <span>Estado</span>
-                <select
-                  value={statusFilter}
-                  onChange={(event) =>
-                    updateParams({
-                      estado: event.target.value === 'todos' ? undefined : event.target.value,
-                      pagina: undefined,
-                    })
-                  }
-                  aria-label="Filtrar cartas por estado"
-                  disabled={loading}
-                >
-                  <option value="todos">Todos</option>
-                  <option value="pendiente">Pendientes</option>
-                  <option value="revisada">Revisadas</option>
-                  <option value="en_ruta">En ruta</option>
-                  <option value="entregada">Entregadas</option>
-                </select>
-              </label>
+              <h2 className="text-base font-semibold">{selectedRouteGroup.routeName}</h2>
+              <p className="text-muted-foreground text-sm">
+                {formatServiceDate(selectedRouteGroup.serviceDate)} ·{' '}
+                {selectedRouteGroup.letters.length}{' '}
+                {selectedRouteGroup.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
+              </p>
             </div>
           </div>
-          {downloadError && (
-            <p className="letter-load-error" role="alert">
-              {downloadError}
-            </p>
-          )}
-          {loading ? (
-            <LettersListSkeleton />
-          ) : error ? (
-            <div className="letter-load-error" role="alert">
-              <p>{error}</p>
-              <Button size="sm" variant="outline" onClick={onRetry}>
-                Reintentar
-              </Button>
-            </div>
-          ) : letters.length === 0 ? (
-            <p className="empty-copy">No hay cartas que coincidan con los filtros.</p>
-          ) : (
-            <>
-              <div className="responsive-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Referencia</th>
-                      <th>Trayecto</th>
-                      <th>Mascotas</th>
-                      <th>Fecha</th>
-                      <th>Estado</th>
-                      <th aria-label="Acciones" />
-                    </tr>
-                  </thead>
-                  <tbody>
+          <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
+            <Stat
+              label="Necesita revisión"
+              value={summary.pending}
+              accent="lime"
+              loading={loading}
+              successWhenZero
+              compact
+            />
+            <Stat
+              label="Programadas (semana)"
+              value={summary.scheduled}
+              loading={loading}
+              compact
+            />
+            <Stat label="En transporte" value={summary.animals} loading={loading} compact />
+          </section>
+          <Card className="table-card">
+            <CardContent>
+              <div className="table-heading">
+                <div>
+                  <h3>Cartas de porte</h3>
+                  <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
+                </div>
+                <div className="table-controls">
+                  <label className="search">
+                    <Search size={17} />
+                    <input
+                      value={search}
+                      onChange={(event) =>
+                        updateParams({ q: event.target.value, pagina: undefined })
+                      }
+                      placeholder="Buscar"
+                      aria-label="Buscar cartas"
+                      disabled={loading}
+                    />
+                  </label>
+                  <label className="status-filter" htmlFor="letters-status-filter">
+                    <span>Estado</span>
+                    <select
+                      id="letters-status-filter"
+                      value={statusFilter}
+                      onChange={(event) =>
+                        updateParams({
+                          estado: event.target.value === 'todos' ? undefined : event.target.value,
+                          pagina: undefined,
+                        })
+                      }
+                      aria-label="Filtrar cartas por estado"
+                      disabled={loading}
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="pendiente">Pendientes</option>
+                      <option value="revisada">Revisadas</option>
+                      <option value="en_ruta">En ruta</option>
+                      <option value="entregada">Entregadas</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              {downloadError && (
+                <p className="letter-load-error" role="alert">
+                  {downloadError}
+                </p>
+              )}
+              {loading ? (
+                <LettersListSkeleton />
+              ) : error ? (
+                <div className="letter-load-error" role="alert">
+                  <p>{error}</p>
+                  <Button size="sm" variant="outline" onClick={onRetry}>
+                    Reintentar
+                  </Button>
+                </div>
+              ) : letters.length === 0 ? (
+                <p className="empty-copy">No hay cartas que coincidan con los filtros.</p>
+              ) : (
+                <>
+                  <div className="responsive-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Referencia</th>
+                          <th>Trayecto</th>
+                          <th>Mascotas</th>
+                          <th>Fecha</th>
+                          <th>Estado</th>
+                          <th aria-label="Acciones" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {letterPagination.items.map((letter) => (
+                          <LetterRow
+                            key={letter.id}
+                            letter={letter}
+                            onView={(letter) => updateParams({ carta: letter.id }, false)}
+                            onEdit={onEdit}
+                            onDownload={(letter) => void downloadLetterPdf(letter)}
+                            clientName={letter.billingClient.fullName}
+                            onOpenClient={onOpenClient}
+                            onOpenPaymentRequests={onOpenPaymentRequests}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="letter-cards">
                     {letterPagination.items.map((letter) => (
-                      <LetterRow
+                      <LetterCard
                         key={letter.id}
                         letter={letter}
                         onView={(letter) => updateParams({ carta: letter.id }, false)}
@@ -252,36 +373,171 @@ export function LettersPage({
                         onOpenPaymentRequests={onOpenPaymentRequests}
                       />
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="letter-cards">
-                {letterPagination.items.map((letter) => (
-                  <LetterCard
-                    key={letter.id}
-                    letter={letter}
-                    onView={(letter) => updateParams({ carta: letter.id }, false)}
-                    onEdit={onEdit}
-                    onDownload={(letter) => void downloadLetterPdf(letter)}
-                    clientName={letter.billingClient.fullName}
-                    onOpenClient={onOpenClient}
-                    onOpenPaymentRequests={onOpenPaymentRequests}
+                  </div>
+                  <Pagination
+                    page={letterPagination.page}
+                    pageCount={letterPagination.pageCount}
+                    ariaLabel="Paginación de cartas"
+                    onPageChange={(nextPage) =>
+                      updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+                    }
+                    summary={`Mostrando ${letterPagination.firstRecord}–${letterPagination.lastRecord} de ${letters.length}`}
                   />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <>
+          {!loading && !error && routeGroups.length > 0 && (
+            <section
+              className="mb-4 flex flex-wrap items-center gap-2.5"
+              role="search"
+              aria-label="Filtros de rutas"
+            >
+              <label className="search" htmlFor="letters-route-search">
+                <Search size={17} aria-hidden="true" />
+                <input
+                  id="letters-route-search"
+                  aria-label="Buscar rutas por nombre o fecha"
+                  placeholder="Buscar ruta o fecha"
+                  value={routeSearch}
+                  onChange={(event) =>
+                    updateParams({
+                      'ruta-busqueda': event.target.value,
+                      'pagina-rutas': undefined,
+                    })
+                  }
+                />
+              </label>
+              <label className="route-status-filter" htmlFor="letters-route-template-filter">
+                <span>Plantilla</span>
+                <select
+                  id="letters-route-template-filter"
+                  aria-label="Filtrar rutas por plantilla"
+                  value={routeTemplateFilter}
+                  onChange={(event) =>
+                    updateParams({
+                      'ruta-plantilla': event.target.value,
+                      'pagina-rutas': undefined,
+                    })
+                  }
+                >
+                  <option value="">Todas</option>
+                  {routeTemplateOptions.map((routeName) => (
+                    <option key={routeName} value={routeName}>
+                      {routeName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="route-status-filter" htmlFor="letters-route-month-filter">
+                <span>Mes</span>
+                <select
+                  id="letters-route-month-filter"
+                  aria-label="Filtrar rutas por mes"
+                  value={routeMonthFilter}
+                  onChange={(event) =>
+                    updateParams({ 'ruta-mes': event.target.value, 'pagina-rutas': undefined })
+                  }
+                >
+                  <option value="">Todos</option>
+                  {routeMonthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {formatServiceMonth(month)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(routeSearch || routeTemplateFilter || routeMonthFilter) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    updateParams({
+                      'ruta-busqueda': undefined,
+                      'ruta-plantilla': undefined,
+                      'ruta-mes': undefined,
+                      'pagina-rutas': undefined,
+                    })
+                  }
+                >
+                  Limpiar filtros
+                </Button>
+              )}
+            </section>
+          )}
+          {loading ? (
+            <LettersListSkeleton />
+          ) : error ? (
+            <div className="letter-load-error" role="alert">
+              <p>{error}</p>
+              <Button size="sm" variant="outline" onClick={onRetry}>
+                Reintentar
+              </Button>
+            </div>
+          ) : filteredRouteGroups.length === 0 ? (
+            <p className="empty-copy">
+              {routeGroups.length === 0
+                ? 'Todavía no hay cartas de porte.'
+                : 'No hay rutas que coincidan con los filtros.'}
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {routeGroupPagination.items.map((group) => (
+                  <button
+                    key={group.key}
+                    type="button"
+                    className="flex min-h-20 w-full items-start gap-4 rounded-xl border border-[#e6e0e0] bg-white p-4 text-left transition hover:border-[#dfbcbf] hover:bg-[#fffafa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c7202a]"
+                    aria-label={`Ver ${group.letters.length} cartas de ${group.routeName}, ${formatServiceDate(group.serviceDate)}`}
+                    onClick={() =>
+                      updateParams({
+                        'ruta-carta': group.key,
+                        q: undefined,
+                        estado: undefined,
+                        pagina: undefined,
+                        carta: undefined,
+                      })
+                    }
+                  >
+                    <span className="flex min-w-0 items-start gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="bg-muted-foreground/35 mt-1 size-3 shrink-0 rounded-full"
+                        style={
+                          group.templateColor ? { backgroundColor: group.templateColor } : undefined
+                        }
+                      />
+                      <span className="grid gap-1 text-left">
+                        <strong className="text-sm font-semibold">{group.routeName}</strong>
+                        <span className="text-muted-foreground text-sm">
+                          {formatServiceDate(group.serviceDate)}
+                        </span>
+                        <small className="text-muted-foreground text-xs">
+                          {group.letters.length}{' '}
+                          {group.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
+                        </small>
+                      </span>
+                    </span>
+                    <ChevronRight aria-hidden className="ml-auto self-center" size={18} />
+                  </button>
                 ))}
               </div>
               <Pagination
-                page={letterPagination.page}
-                pageCount={letterPagination.pageCount}
-                ariaLabel="Paginación de cartas"
+                page={routeGroupPagination.page}
+                pageCount={routeGroupPagination.pageCount}
+                ariaLabel="Paginación de rutas con cartas"
                 onPageChange={(nextPage) =>
-                  updateParams({ pagina: nextPage === 1 ? undefined : nextPage })
+                  updateParams({ 'pagina-rutas': nextPage === 1 ? undefined : nextPage })
                 }
-                summary={`Mostrando ${letterPagination.firstRecord}–${letterPagination.lastRecord} de ${letters.length}`}
+                summary={`Mostrando ${routeGroupPagination.firstRecord}–${routeGroupPagination.lastRecord} de ${filteredRouteGroups.length} rutas`}
               />
             </>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
       {viewingLetter && (
         <LetterDetailsDialog
           letter={viewingLetter}

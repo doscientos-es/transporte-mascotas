@@ -39,22 +39,58 @@ export type CarriageLetter = {
   origin_point: string
   destination_point: string
   accompanying_documents: string[] | null
+  transport_box_number: number | null
   animals: Animal[]
 }
 
-    `animals(${animalFields})`,
+export async function loadCarriageLetter(letterId: string): Promise<CarriageLetter | null> {
+  const fields = [
+    'id',
+    'service_date',
+    'sender_name',
+    'sender_nif',
+    'sender_phone',
+    'sender_email',
+    'sender_address',
+    'sender_postal_code',
+    'sender_city',
+    'sender_province',
+    'recipient_name',
+    'recipient_nif',
+    'recipient_phone',
+    'recipient_email',
+    'recipient_address',
+    'recipient_postal_code',
+    'recipient_city',
+    'recipient_province',
+    'origin_text',
+    'destination_text',
+    'origin_point',
+    'destination_point',
+    'accompanying_documents',
+    'animals(ordinal,species,breed,identification,weight_kg,length_cm,height_cm,width_cm)',
   ].join(',')
   const response = await rest(
-    `carriage_letters?id=eq.${encodeURIComponent(letterId)}&select=${select}`,
+    `carriage_letters?id=eq.${encodeURIComponent(letterId)}&select=${fields}`,
   )
-  const [letter] = (await response.json()) as CarriageLetter[]
+  const [letter] = (await response.json()) as Array<Omit<CarriageLetter, 'transport_box_number'>>
   if (!letter) return null
-  const groupsResponse = await rest(
-    `transport_requests?letter_id=eq.${encodeURIComponent(letterId)}&select=transport_request_animals(ordinal,shared_box_group)`,
+
+  const requestResponse = await rest(
+    `transport_requests?letter_id=eq.${encodeURIComponent(letterId)}&select=daily_route_id,transport_request_animals(ordinal,shared_box_group)`,
   )
-  const [request] = (await groupsResponse.json()) as Array<{
+  const [request] = (await requestResponse.json()) as Array<{
+    daily_route_id: string | null
     transport_request_animals: Array<{ ordinal: number; shared_box_group: string | null }>
   }>
+  const assignmentResponse = request?.daily_route_id
+    ? await rest(
+        `van_assignments?daily_route_id=eq.${encodeURIComponent(request.daily_route_id)}&letter_id=eq.${encodeURIComponent(letterId)}&select=box_number&order=created_at.desc&limit=1`,
+      )
+    : null
+  const [assignment] = assignmentResponse
+    ? ((await assignmentResponse.json()) as Array<{ box_number: number }>)
+    : []
   const groups = [
     ...new Set(
       (request?.transport_request_animals ?? [])
@@ -71,6 +107,7 @@ export type CarriageLetter = {
   }
   return {
     ...letter,
+    transport_box_number: assignment?.box_number ?? null,
     animals: letter.animals
       .map((animal) => ({ ...animal, shared_box: sharedBox(animal.ordinal) }))
       .toSorted((a, b) => a.ordinal - b.ordinal),
@@ -131,7 +168,8 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
           color: channel(color),
         })
       },
-      width: (value, size, isBold) => pick(isBold).widthOfTextAtSize(printable(value), size) / mm(1),
+      width: (value, size, isBold) =>
+        pick(isBold).widthOfTextAtSize(printable(value), size) / mm(1),
     },
     letter,
   )

@@ -17,5 +17,6 @@ export {
 } from './application/carriage-letter-pdf'
 export { ClientPortalPage } from './ui/client-portal-page'
 export { ClientRequestForm } from './ui/client-request-form'
+export { PaymentLaunchPage } from './ui/payment-launch-page'
 export { PublicTransportRequestPage } from './ui/public-transport-request-page'
 export type { RequestFormValues } from './ui/client-request-form'

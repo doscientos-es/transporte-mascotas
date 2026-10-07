@@ -30,7 +30,8 @@ Deno.serve(async (request) => {
     const kind = url.searchParams.get('kind')
     const jsonFormat = url.searchParams.get('format') === 'json'
     if (!token || !/^[0-9a-f-]{36}$/i.test(token)) return page('Enlace de pago no válido.', 400)
-    if (kind === 'transport') return transportPaymentPage(token, jsonFormat)
+    if (!jsonFormat) return paymentLaunchRedirect(token, kind)
+    if (kind === 'transport') return transportPaymentPage(token)
     const paymentResponse = await rest(
       `invoice_payments?public_token=eq.${encodeURIComponent(token)}&select=merchant_order,amount_cents,status,expires_at,invoice_id`,
     )
@@ -69,7 +70,7 @@ Deno.serve(async (request) => {
       parameters,
       signature,
     )
-    return jsonFormat ? json(paymentForm) : htmlResponse(form(paymentForm))
+    return json(paymentForm)
   } catch (error) {
     console.error(
       'Cyberpac payment redirect failed',
@@ -79,7 +80,7 @@ Deno.serve(async (request) => {
   }
 })
 
-async function transportPaymentPage(token: string, jsonFormat: boolean) {
+async function transportPaymentPage(token: string) {
   const response = await rest(
     `transport_requests?payment_public_token=eq.${encodeURIComponent(token)}&select=id,payment_merchant_order,amount_cents,status,payment_expires_at`,
   )
@@ -117,7 +118,19 @@ async function transportPaymentPage(token: string, jsonFormat: boolean) {
     parameters,
     signature,
   )
-  return jsonFormat ? json(paymentForm) : htmlResponse(form(paymentForm))
+  return json(paymentForm)
+}
+
+function paymentLaunchRedirect(token: string, kind: string | null) {
+  const publicAppUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+  if (!publicAppUrl) return page('El servicio de pago no está disponible.', 503)
+  const paymentPage = new URL('/pagar', publicAppUrl)
+  paymentPage.searchParams.set('token', token)
+  if (kind === 'transport') paymentPage.searchParams.set('kind', kind)
+  return new Response(null, {
+    status: 302,
+    headers: { Location: paymentPage.toString(), 'Cache-Control': 'no-store' },
+  })
 }
 
 function configuration() {
@@ -165,29 +178,12 @@ function createPaymentForm(
   }
 }
 
-function form(paymentForm: PaymentForm) {
-  const escape = (value: string) =>
-    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-  const fields = Object.entries(paymentForm.fields)
-    .map(([name, value]) => `<input type="hidden" name="${escape(name)}" value="${escape(value)}">`)
-    .join('')
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Pago seguro</title></head><body><p>Abriendo la pasarela de pago…</p><form id="payment" action="${escape(paymentForm.endpoint)}" method="post">${fields}<button type="submit">Continuar al pago</button></form><script>document.getElementById('payment').submit()</script></body></html>`
-}
-
 function page(message: string, status: number) {
-  return htmlResponse(
-    `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Error de pago</title></head><body><h1>${message}</h1><p>Contacta con el comercio si necesitas ayuda.</p></body></html>`,
-    status,
-  )
-}
-
-function htmlResponse(body: string, status = 200) {
-  return new Response(body, {
+  return new Response(message, {
     status,
     headers: {
-      'content-type': 'text/html; charset=utf-8',
+      'content-type': 'text/plain; charset=utf-8',
       'cache-control': 'no-store',
-      'x-content-type-options': 'nosniff',
     },
   })
 }

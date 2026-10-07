@@ -10,17 +10,26 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   Input,
   Pagination,
 } from '@doscientos/ui'
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
+  ArrowUpDown,
   Clock3,
   FileSpreadsheet,
+  GripVertical,
   Lock,
   MapPin,
+  MoreHorizontal,
   PackageOpen,
   PawPrint,
   Pencil,
@@ -30,14 +39,14 @@ import {
   Trash2,
   Truck,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   DEFAULT_ROUTE_START_TIME,
   DEFAULT_STOP_DWELL_MINUTES,
 } from '@/shared/constants/route-defaults'
 import { paginate } from '@/shared/lib/pagination'
-import { arrivalMoment } from '@/shared/lib/route-days'
+import { routeStopArrivals } from '@/shared/lib/route-days'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import { statusLabels } from '@/shared/lib/status-labels'
 import type {
@@ -53,10 +62,11 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
+import { DRIVER_SHEET_HEADER, driverSheetRows } from '../application/driver-sheet'
 import { calculateDrivingTimes } from '../application/driving-times'
-import { canCloseRouteOn, routeCloseUnavailableReason } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
+import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { StopFormDialog } from './operation-dialogs'
 
 type Props = {
@@ -188,9 +198,10 @@ export function RoutesCatalogPage({
                 onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
               />
             </label>
-            <label className="route-status-filter">
+            <label className="route-status-filter" htmlFor="route-status-filter">
               <span>Estado</span>
               <select
+                id="route-status-filter"
                 aria-label="Filtrar por estado"
                 value={statusFilter}
                 onChange={(event) =>
@@ -205,9 +216,10 @@ export function RoutesCatalogPage({
                 <option value="cerrada">Cerradas</option>
               </select>
             </label>
-            <label className="route-status-filter">
+            <label className="route-status-filter" htmlFor="route-sort-direction">
               <span>Orden</span>
               <select
+                id="route-sort-direction"
                 aria-label="Ordenar rutas por fecha"
                 value={direction}
                 onChange={(event) =>
@@ -380,8 +392,7 @@ const mapUrlFor = (
 }
 
 /** Arrival time, plus the day when the route is already past its first day. */
-function formatArrival(date: string, startTime: string, offsetMinutes: number) {
-  const arrival = arrivalMoment(date, startTime, offsetMinutes)
+function formatArrival(date: string, arrival: { date: string; time: string }) {
   if (arrival.date === date) return arrival.time
   const day = new Date(`${arrival.date}T12:00:00`).toLocaleDateString('es-ES', {
     weekday: 'long',
@@ -427,50 +438,6 @@ function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Le
   return groupsByStop
 }
 
-const DRIVER_SHEET_HEADER = [
-  'LOCALIDAD',
-  'RECOGIDA/ENTREGA',
-  'NOMBRE',
-  'BOX',
-  'TIPO MASCOTA',
-  'TELÉFONO',
-  'HORA',
-  'ESTADO',
-]
-
-// One row per animal, in stop order; ESTADO stays empty for the driver to fill in by hand.
-function driverSheetRows(
-  route: DailyRoute,
-  stops: DailyRouteStop[],
-  letters: Letter[],
-  arrival: (stop: DailyRouteStop) => string,
-) {
-  return stops.flatMap((stop) =>
-    route.actions
-      .filter((action) =>
-        action.stopId ? action.stopId === stop.id : action.stop === stop.locality,
-      )
-      .map((action) => {
-        const breed =
-          letters
-            .find((letter) => letter.id === action.letterId)
-            ?.animals.find((animal) => animal.id === action.animalId)?.breed ??
-          action.animalLabel?.split(' · ')[0] ??
-          ''
-        return [
-          stop.locality.toUpperCase(),
-          action.type === 'recogida' ? 'Recogida' : 'Entrega',
-          action.customer,
-          action.box ?? '',
-          breed,
-          action.phone,
-          arrival(stop),
-          '',
-        ]
-      }),
-  )
-}
-
 export function RoutesPage({
   route,
   template,
@@ -490,7 +457,7 @@ export function RoutesPage({
   const [addingStop, setAddingStop] = useState(false)
   const [plannedStops, setPlannedStops] = useState<DailyRouteStop[] | null>(null)
   const [savingPlan, setSavingPlan] = useState(false)
-  const [movingStop, setMovingStop] = useState(false)
+  const [reorderingStops, setReorderingStops] = useState(false)
   const [deletingStop, setDeletingStop] = useState<DailyRouteStop | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
@@ -501,67 +468,47 @@ export function RoutesPage({
   const direction = route.direction ?? 'normal'
   const startTime = route.startTime ?? DEFAULT_ROUTE_START_TIME
   const itineraryClosed = route.status === 'cerrada'
-  const canClose = canManage && !itineraryClosed && canCloseRouteOn(route.date)
-  const closeUnavailableReason = canClose ? undefined : routeCloseUnavailableReason(route.date)
   const servicesByStop = useMemo(
     () => groupedServices(route, stops, letters),
     [route, stops, letters],
   )
   const travelMinutes = stops.slice(0, -1).reduce((total, stop) => total + stop.minutes, 0)
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
-  const arrivalByStop = new Map<string, number>()
-  let elapsedMinutes = 0
-  stops.forEach((stop, index) => {
-    arrivalByStop.set(stop.id, elapsedMinutes)
-    elapsedMinutes += stop.dwellMinutes + (index < stops.length - 1 ? stop.minutes : 0)
-  })
+  const stopArrivals = routeStopArrivals(route.date, startTime, stops)
+  const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
   const pointFor = (letterId: string, type: ServiceAction['type']): ReminderPoint | undefined => {
     const action = route.actions.find((item) => item.letterId === letterId && item.type === type)
     const stop = action
       ? stops.find((item) => item.id === (action.stopId ?? '') || item.locality === action.stop)
       : undefined
-    if (!stop) return undefined
+    const arrival = stop ? arrivalByStop.get(stop.id) : undefined
+    if (!stop || !arrival) return undefined
     return {
       place: [stop.locality, stop.place].filter(Boolean).join(' · '),
-      ...arrivalMoment(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
+      ...arrival,
     }
   }
 
   useEffect(() => {
     setOrganizing(false)
     setPlannedStops(null)
+    setReorderingStops(false)
   }, [route.id])
 
   function reportOperationError(error: unknown, fallback: string) {
     setOperationError(error instanceof Error ? error.message : fallback)
   }
-  async function moveStop(index: number, direction: -1 | 1) {
-    if (movingStop) return
-    const target = index + direction
-    if (target < 0 || target >= stops.length) return
-    const next = [...stops]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    setMovingStop(true)
-    try {
-      setOperationError('')
-      await onUpdateStops(route.id, next)
-    } catch (error) {
-      reportOperationError(error, 'No se ha podido actualizar el orden de las paradas.')
-    } finally {
-      setMovingStop(false)
+  async function saveReorderedStops(nextStops: DailyRouteStop[]) {
+    if (plannedStops) {
+      try {
+        setPlannedStops(await calculateDrivingTimes(nextStops))
+      } catch {
+        setPlannedStops(nextStops)
+      }
+      return
     }
-  }
-  async function movePlannedStop(index: number, direction: -1 | 1) {
-    if (!plannedStops) return
-    const target = index + direction
-    if (target < 0 || target >= plannedStops.length) return
-    const next = [...plannedStops]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    try {
-      setPlannedStops(await calculateDrivingTimes(next))
-    } catch {
-      setPlannedStops(next)
-    }
+    setOperationError('')
+    await onUpdateStops(route.id, nextStops)
   }
   async function setDwellMinutes(index: number, value: string) {
     const dwellMinutes = Math.max(0, Number(value) || 0)
@@ -655,7 +602,10 @@ export function RoutesPage({
   }
   async function downloadDriverSheet() {
     const rows = driverSheetRows(route, stops, letters, (stop) =>
-      formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0),
+      formatArrival(
+        route.date,
+        arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
+      ),
     )
     // Loaded on demand: exceljs is large and only needed when exporting.
     const { Workbook } = await import('exceljs')
@@ -712,111 +662,118 @@ export function RoutesPage({
       </div>
       <Card className="route-journey">
         <CardContent>
-          <div className="journey-header route-journey-header">
-            <div className="journey-route-title">
-              <time className="route-date" dateTime={route.date}>
-                <b>{formatRouteDate(route.date).day}</b>
-                <small>{formatRouteDate(route.date).month}</small>
-              </time>
-              <div>
-                <h3>Ruta {template.name}</h3>
-                <div className="journey-route-badges">
-                  <span className={`route-direction-badge direction-${direction}`}>
-                    {directionLabel(direction)}
-                  </span>
-                  <span className="route-direction-badge direction-normal">
-                    {transportsLabel(routeTransportCount(route))}
-                  </span>
-                  <StatusBadge status={route.status} className="self-center" />
+          <div className="journey-header route-journey-header route-header-premium">
+            <div className="route-header-overview">
+              <div className="route-header-identity">
+                <time className="route-date" dateTime={route.date}>
+                  <b>{formatRouteDate(route.date).day}</b>
+                  <small>{formatRouteDate(route.date).month}</small>
+                </time>
+                <div className="route-header-copy">
+                  <h3>Ruta {template.name}</h3>
+                  <div className="route-header-meta">
+                    <span>{directionLabel(direction)}</span>
+                    <span className="route-header-meta-divider" aria-hidden="true">
+                      ·
+                    </span>
+                    <span>{transportsLabel(routeTransportCount(route))}</span>
+                    <StatusBadge status={route.status} />
+                  </div>
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm font-semibold">
-                <Clock3 size={16} />
-                Salida del origen
-                {canManage && !itineraryClosed && onUpdateStartTime ? (
-                  <input
-                    type="time"
-                    aria-label="Hora de salida del origen"
-                    className="rounded-md border px-2 py-1"
-                    value={startTime}
-                    onChange={(event) => void changeStartTime(event.target.value)}
-                  />
-                ) : (
-                  <strong>{startTime}</strong>
-                )}
-              </label>
-              <div className="route-total">
-                <Clock3 size={16} />
-                <span>Estimación total</span>
-                <strong>{formatDuration(travelMinutes + pointMinutes)}</strong>
-                <small>
-                  {formatDuration(travelMinutes)} trayectos · {formatDuration(pointMinutes)} paradas
-                </small>
+              <div className="route-header-stats">
+                <div className="route-start-field">
+                  <span>Hora de salida</span>
+                  {canManage && !itineraryClosed && onUpdateStartTime ? (
+                    <input
+                      type="time"
+                      aria-label="Hora de salida del origen"
+                      className="route-start-input"
+                      value={startTime}
+                      onChange={(event) => void changeStartTime(event.target.value)}
+                    />
+                  ) : (
+                    <strong>{startTime}</strong>
+                  )}
+                </div>
+                <div className="route-estimate">
+                  <span>Tiempo total estimado</span>
+                  <strong>{formatDuration(travelMinutes + pointMinutes)}</strong>
+                  <small>
+                    {formatDuration(travelMinutes)} en trayectos · {formatDuration(pointMinutes)} en
+                    paradas
+                  </small>
+                </div>
               </div>
             </div>
-            <div className="journey-actions">
-              {(onOpenVan || canManage) && (
-                <div className="journey-action-buttons" aria-label="Acciones de la ruta">
-                  <Button variant="outline" size="sm" onClick={() => void downloadDriverSheet()}>
-                    <FileSpreadsheet /> Descargar Excel
-                  </Button>
-
-                  {onOpenVan && (
-                    <Button
-                      className="journey-view-van"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onOpenVan(route)}
-                    >
-                      <Truck /> Ver furgoneta
-                    </Button>
-                  )}
-                  {canManage && (
+            {(onOpenVan || canManage) && (
+              <div className="route-header-toolbar">
+                <div className="route-header-primary-actions">
+                  {canManage && !itineraryClosed && (
                     <>
-                      {!itineraryClosed && (
-                        <>
-                          <Button
-                            className="journey-add-stop"
-                            size="sm"
-                            onClick={() => setAddingStop(true)}
-                            disabled={Boolean(plannedStops)}
-                          >
-                            <Plus /> Añadir parada
-                          </Button>
-                          <Button
-                            className="journey-organize-stops"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setOrganizing((current) => !current)}
-                          >
-                            {organizing ? 'Terminar' : 'Organizar paradas'}
-                          </Button>
-                        </>
-                      )}
-                      {!itineraryClosed && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!canClose}
-                          onClick={() => setCloseConfirmationOpen(true)}
-                        >
-                          <Lock /> Cerrar itinerario
-                        </Button>
-                      )}
+                      <Button
+                        className="journey-add-stop"
+                        size="sm"
+                        onClick={() => setAddingStop(true)}
+                        disabled={Boolean(plannedStops)}
+                      >
+                        <Plus /> Añadir parada
+                      </Button>
+                      <Button
+                        className="journey-reorder-stops"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setReorderingStops(true)}
+                        disabled={savingPlan}
+                      >
+                        <ArrowUpDown /> Reordenar paradas
+                      </Button>
+                      <Button
+                        className="journey-organize-stops"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOrganizing((current) => !current)}
+                      >
+                        {organizing ? 'Terminar' : 'Organizar paradas'}
+                      </Button>
                     </>
                   )}
                 </div>
-              )}
-            </div>
+                <DropdownMenu
+                  trigger={
+                    <Button className="route-header-more" variant="outline" size="sm">
+                      <MoreHorizontal /> Más acciones
+                    </Button>
+                  }
+                  placement="bottom end"
+                  className="min-w-48"
+                >
+                  <DropdownMenuItem onAction={() => void downloadDriverSheet()}>
+                    <FileSpreadsheet /> Descargar Excel
+                  </DropdownMenuItem>
+                  {onOpenVan && (
+                    <DropdownMenuItem onAction={() => onOpenVan(route)}>
+                      <Truck /> Ver furgoneta
+                    </DropdownMenuItem>
+                  )}
+                  {canManage && !itineraryClosed && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onAction={() => setCloseConfirmationOpen(true)}
+                      >
+                        <Lock /> Cerrar itinerario
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenu>
+              </div>
+            )}
           </div>
           {operationError && (
             <p className="form-error route-operation-error" role="alert">
               {operationError}
-            </p>
-          )}
-          {canManage && !itineraryClosed && !canClose && (
-            <p className="availability-hint">
-              <Lock size={13} /> {closeUnavailableReason}
             </p>
           )}
           {itineraryClosed && (
@@ -858,13 +815,14 @@ export function RoutesPage({
                 key={stop.id}
                 stop={stop}
                 index={index}
-                total={stops.length}
-                arrival={formatArrival(route.date, startTime, arrivalByStop.get(stop.id) ?? 0)}
+                nextStop={stops[index + 1]?.locality}
+                arrival={formatArrival(
+                  route.date,
+                  arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
+                )}
                 pointFor={pointFor}
                 organizing={!itineraryClosed && (organizing || Boolean(plannedStops))}
-                moving={movingStop}
                 services={servicesByStop.get(stop.id) ?? []}
-                onMove={plannedStops ? movePlannedStop : moveStop}
                 onDwellChange={setDwellMinutes}
                 onTravelChange={setTravelMinutes}
                 onEdit={itineraryClosed || plannedStops ? undefined : () => setEditingStop(stop)}
@@ -890,6 +848,13 @@ export function RoutesPage({
           initialStop={editingStop}
           onClose={() => setEditingStop(null)}
           onAdd={saveEditedStop}
+        />
+      )}
+      {reorderingStops && (
+        <ReorderStopsDialog
+          stops={stops}
+          onClose={() => setReorderingStops(false)}
+          onSave={saveReorderedStops}
         />
       )}
       <AlertDialog
@@ -943,13 +908,11 @@ export function RoutesPage({
 function JourneyStop({
   stop,
   index,
-  total,
+  nextStop,
   arrival,
   pointFor,
   organizing,
-  moving,
   services,
-  onMove,
   onDwellChange,
   onTravelChange,
   onEdit,
@@ -958,13 +921,11 @@ function JourneyStop({
 }: {
   stop: DailyRouteStop
   index: number
-  total: number
+  nextStop?: string
   arrival: string
   pointFor: (letterId: string, type: ServiceAction['type']) => ReminderPoint | undefined
   organizing: boolean
-  moving: boolean
   services: ServiceGroup[]
-  onMove: (index: number, direction: -1 | 1) => Promise<void>
   onDwellChange: (index: number, value: string) => Promise<void>
   onTravelChange: (index: number, value: string) => Promise<void>
   onEdit?: () => void
@@ -989,11 +950,7 @@ function JourneyStop({
                 Llegada aprox.: <strong>{arrival}</strong>
               </span>
               <span>Espera: {formatDuration(stop.dwellMinutes)}</span>
-              <span>
-                {index === total - 1
-                  ? 'Fin de ruta'
-                  : `Trayecto sig.: ${formatDuration(stop.minutes)}`}
-              </span>
+              {!nextStop && <span>Fin de ruta</span>}
             </div>
           </div>
           {stop.mapUrl && (
@@ -1016,39 +973,7 @@ function JourneyStop({
               />
               <span>min</span>
             </label>
-            {index < total - 1 && (
-              <label>
-                Trayecto a la siguiente{' '}
-                <Input
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                  value={stop.minutes}
-                  onChange={(event) => void onTravelChange(index, event.target.value)}
-                />
-                <span>min</span>
-              </label>
-            )}
             <div className="stop-move-actions">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={moving || index === 0}
-                aria-label={`Subir ${stop.locality}`}
-                onClick={() => void onMove(index, -1)}
-              >
-                <ArrowUp /> Subir
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={moving || index === total - 1}
-                aria-label={`Bajar ${stop.locality}`}
-                onClick={() => void onMove(index, 1)}
-              >
-                <ArrowDown /> Bajar
-              </Button>
               {onEdit && (
                 <Button
                   variant="outline"
@@ -1090,8 +1015,207 @@ function JourneyStop({
             ))}
           </div>
         )}
+        {nextStop && (
+          <div className="journey-leg">
+            <Clock3 size={14} aria-hidden="true" />
+            <span>Trayecto a {nextStop}</span>
+            {organizing ? (
+              <label className="journey-leg-editor" htmlFor={`journey-leg-${stop.id}`}>
+                <Input
+                  id={`journey-leg-${stop.id}`}
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  aria-label={`Minutos de trayecto hasta ${nextStop}`}
+                  value={stop.minutes}
+                  onChange={(event) => void onTravelChange(index, event.target.value)}
+                />
+                <span>min</span>
+              </label>
+            ) : (
+              <strong>{formatDuration(stop.minutes)}</strong>
+            )}
+          </div>
+        )}
       </div>
     </li>
+  )
+}
+
+function ReorderStopsDialog({
+  stops,
+  onClose,
+  onSave,
+}: {
+  stops: DailyRouteStop[]
+  onClose: () => void
+  onSave: (stops: DailyRouteStop[]) => Promise<void>
+}) {
+  const [orderedStops, setOrderedStops] = useState(stops)
+  const [draggedStopId, setDraggedStopId] = useState<string | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const dragState = useRef<{
+    pointerId: number
+    stopId: string
+    destinationIndex: number | null
+  } | null>(null)
+  const unchanged = orderedStops.every((stop, index) => stop.id === stops[index]?.id)
+
+  function moveStop(sourceIndex: number, destinationIndex: number) {
+    setOrderedStops((current) => moveItemAtInsertionIndex(current, sourceIndex, destinationIndex))
+  }
+
+  function startDragging(event: PointerEvent<HTMLButtonElement>, stopId: string) {
+    if (event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragState.current = { pointerId: event.pointerId, stopId, destinationIndex: null }
+    setDraggedStopId(stopId)
+  }
+
+  function updateDropTarget(event: PointerEvent<HTMLButtonElement>) {
+    const activeDrag = dragState.current
+    if (activeDrag?.pointerId !== event.pointerId) return
+
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>('[data-reorder-index]')
+    if (!target) {
+      activeDrag.destinationIndex = null
+      setDropIndex(null)
+      return
+    }
+
+    const targetIndex = Number(target.dataset.reorderIndex)
+    const { top, height } = target.getBoundingClientRect()
+    const destinationIndex = targetIndex + (event.clientY > top + height / 2 ? 1 : 0)
+    activeDrag.destinationIndex = destinationIndex
+    setDropIndex(destinationIndex)
+  }
+
+  function finishDragging(event: PointerEvent<HTMLButtonElement>, cancelled = false) {
+    const activeDrag = dragState.current
+    if (activeDrag?.pointerId !== event.pointerId) return
+    if (!cancelled && activeDrag.destinationIndex !== null) {
+      const sourceIndex = orderedStops.findIndex((stop) => stop.id === activeDrag.stopId)
+      moveStop(sourceIndex, activeDrag.destinationIndex)
+    }
+    dragState.current = null
+    setDraggedStopId(null)
+    setDropIndex(null)
+  }
+
+  function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    event.preventDefault()
+    const direction = event.key === 'ArrowUp' ? -1 : 1
+    const destinationIndex = index + direction
+    if (destinationIndex < 0 || destinationIndex >= orderedStops.length) return
+    moveStop(index, destinationIndex + (direction > 0 ? 1 : 0))
+  }
+
+  async function save() {
+    setSaving(true)
+    setError('')
+    try {
+      await onSave(orderedStops)
+      onClose()
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : 'No se ha podido actualizar el orden de las paradas.',
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !saving) onClose()
+      }}
+    >
+      <DialogContent className="dialog-card route-create-dialog reorder-stops-dialog w-[calc(100%-2.5rem)]! max-w-115! p-6.5!">
+        <DialogHeader className="gap-0">
+          <DialogTitle>Reordenar paradas</DialogTitle>
+          <DialogDescription>
+            Arrastra cada parada a su nueva posición. También puedes seleccionarla y usar las
+            flechas del teclado.
+          </DialogDescription>
+        </DialogHeader>
+        <p className="reorder-drop-hint" aria-live="polite">
+          {dropIndex === null
+            ? 'Mantén pulsada una parada y arrástrala al lugar deseado.'
+            : dropIndex >= orderedStops.length
+              ? 'Se colocará al final de la lista.'
+              : `Se colocará antes de ${orderedStops[dropIndex].locality}.`}
+        </p>
+        <ol className="reorder-stops-list">
+          {orderedStops.map((stop, index) => (
+            <li
+              className={[
+                draggedStopId === stop.id ? 'is-dragging' : '',
+                dropIndex === index ? 'is-drop-before' : '',
+                dropIndex === orderedStops.length && index === orderedStops.length - 1
+                  ? 'is-drop-after'
+                  : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              data-reorder-index={index}
+              key={stop.id}
+            >
+              <button
+                type="button"
+                className="reorder-stop-item"
+                aria-label={`Mover ${stop.locality}, posición ${index + 1} de ${orderedStops.length}`}
+                aria-keyshortcuts="ArrowUp ArrowDown"
+                title="Mantén pulsado para arrastrar; también puedes usar las flechas del teclado"
+                onKeyDown={(event) => moveWithKeyboard(event, index)}
+                onPointerDown={(event) => startDragging(event, stop.id)}
+                onPointerMove={updateDropTarget}
+                onPointerUp={(event) => finishDragging(event)}
+                onPointerCancel={(event) => finishDragging(event, true)}
+              >
+                <span className="reorder-stop-index">{index + 1}</span>
+                <span className="reorder-stop-description">
+                  <strong>{stop.locality}</strong>
+                  <small>
+                    {[
+                      kindLabels[stop.kind],
+                      stop.alias,
+                      stop.place && stop.place !== stop.alias ? stop.place : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </small>
+                </span>
+                <GripVertical size={18} className="reorder-stop-grip" />
+              </button>
+            </li>
+          ))}
+        </ol>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="reorder-stops-footer">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button onClick={() => void save()} disabled={saving || unchanged}>
+            {saving ? 'Guardando…' : 'Guardar orden'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

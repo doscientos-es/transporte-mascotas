@@ -54,6 +54,7 @@ import type {
 } from '@/shared/types'
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
+import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 
 type OperationDialogProps = {
@@ -324,26 +325,36 @@ export function LetterForm({
   function selectRoute(routeId: string) {
     const route = routes.find((item) => item.id === routeId)
     const template = templates.find((item) => item.id === route?.templateId)
-    const routeStopNames = new Set(
-      (
+    const routeStops = [
+      ...new Set(
         route?.stops?.map((stop) => stop.locality) ??
-        template?.stops.map((stop) => stop.locality) ??
-        []
-      ).map((stop) => stop.toLocaleLowerCase()),
-    )
-    setDraft((current) => ({
-      ...current,
-      routeId,
-      origin: routeStopNames.has(current.origin.toLocaleLowerCase()) ? current.origin : '',
-      destination: routeStopNames.has(current.destination.toLocaleLowerCase())
-        ? current.destination
-        : '',
-    }))
+          template?.stops.map((stop) => stop.locality) ??
+          [],
+      ),
+    ]
+    const matchingStop = (options: string[], value: string) =>
+      options.find((stop) => stop.toLocaleLowerCase() === value.toLocaleLowerCase()) ?? ''
+    setDraft((current) => {
+      const origin = matchingStop(letterOriginOptions(routeStops), current.origin)
+      return {
+        ...current,
+        routeId,
+        origin,
+        destination: matchingStop(
+          letterDestinationOptions(routeStops, origin),
+          current.destination,
+        ),
+      }
+    })
   }
   async function addStop(values: StopFormValues) {
     if (!selectedRoute || !addingStopFor) throw new Error('Selecciona primero una ruta diaria.')
     const stop = await onAddStop(selectedRoute.id, values)
-    update(addingStopFor, stop.locality)
+    setDraft((current) => ({
+      ...current,
+      [addingStopFor]: stop.locality,
+      ...(addingStopFor === 'origin' ? { destination: '' } : {}),
+    }))
     setAddingStopFor(null)
   }
   const updateAnimalCount = (count: number) =>
@@ -477,8 +488,16 @@ function TripSection({
   const upcomingRoutes = routes.filter((route) => route.date >= today)
   const recentRoutes = routes.filter((route) => route.date < today)
   const stopPlaceholder = selectedRoute ? 'Selecciona una parada…' : 'Elige primero una ruta'
-  const selectStop = (field: 'origin' | 'destination', value: string) =>
-    value === '__new-stop__' ? onAddStop(field) : update(field, value)
+  const originStops = letterOriginOptions(stops)
+  const destinationStops = letterDestinationOptions(stops, draft.origin)
+  const selectStop = (field: 'origin' | 'destination', value: string) => {
+    if (value === '__new-stop__') {
+      onAddStop(field)
+      return
+    }
+    update(field, value)
+    if (field === 'origin') update('destination', '')
+  }
   const routeOption = (route: DailyRoute) => {
     const date = new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', {
       weekday: 'short',
@@ -550,7 +569,7 @@ function TripSection({
             required
           >
             <option value="">{stopPlaceholder}</option>
-            {stops.map((stop) => (
+            {originStops.map((stop) => (
               <option value={stop} key={stop}>
                 {stop}
               </option>
@@ -564,11 +583,11 @@ function TripSection({
             className={letterSelect}
             value={draft.destination}
             onChange={(event) => selectStop('destination', event.target.value)}
-            disabled={!selectedRoute}
+            disabled={!selectedRoute || !draft.origin}
             required
           >
             <option value="">{stopPlaceholder}</option>
-            {stops.map((stop) => (
+            {destinationStops.map((stop) => (
               <option value={stop} key={stop}>
                 {stop}
               </option>

@@ -328,6 +328,7 @@ export function AdminDashboardPage({
                 createRequestId={templateCreateRequestId}
                 onSelect={dashboard.setSelectedTemplate}
                 onCreate={dashboard.createRouteTemplate}
+                onDuplicate={dashboard.duplicateRouteTemplate}
                 onUpdate={dashboard.editRouteTemplate}
                 onDelete={dashboard.removeRouteTemplate}
                 onAddStop={dashboard.addTemplateStop}

@@ -104,6 +104,7 @@ export interface Letter {
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   route: string
+  routeTemplateColor?: string
   serviceDate: string
   status: LetterStatus
   animals: Animal[]
@@ -218,6 +219,7 @@ export interface RouteStop {
   place: string
   mapUrl: string
   minutes: number
+  dwellMinutes?: number
   alias?: string
   street?: string
   streetNumber?: string
@@ -343,6 +345,8 @@ export interface TransportRequest {
 export interface UpcomingRoute {
   id: string
   serviceDate: string
+  /** Departure time from the route origin as `HH:MM`. */
+  startTime?: string
   /** Day the last stop is reached; later than `serviceDate` when the route lasts several days. */
   endDate?: string
   routeDirection: RouteDirection

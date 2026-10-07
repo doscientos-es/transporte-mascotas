@@ -34,7 +34,7 @@ type LetterRow = {
   billing_client: unknown
   signed_at: string | null
   imported_at: string
-  route_templates: { name: string } | Array<{ name: string }> | null
+  route_templates: { name: string; color: string } | Array<{ name: string; color: string }> | null
   animals: Array<{
     id: string
     species: string
@@ -83,7 +83,7 @@ async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error
@@ -118,6 +118,7 @@ async function fetchLetters(): Promise<Letter[]> {
     billingClient: invoiceClientFrom(letter.billing_client),
     signedAt: letter.signed_at ?? undefined,
     route: routeTemplateName(letter.route_templates) ?? 'Sin ruta',
+    routeTemplateColor: routeTemplateColor(letter.route_templates),
     serviceDate: letter.service_date,
     status: letter.status,
     importedAt: new Date(letter.imported_at).toLocaleString('es-ES'),
@@ -316,4 +317,8 @@ export async function updateLetter(
 
 function routeTemplateName(template: LetterRow['route_templates']) {
   return (Array.isArray(template) ? template[0] : template)?.name
+}
+
+function routeTemplateColor(template: LetterRow['route_templates']) {
+  return (Array.isArray(template) ? template[0] : template)?.color
 }

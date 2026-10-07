@@ -49,3 +49,18 @@ export function arrivalMoment(date: string, startTime: string, offsetMinutes: nu
     time: moment.toISOString().slice(11, 16),
   }
 }
+
+/** Arrival moment at each stop, including earlier stops' dwell and driving time. */
+export function routeStopArrivals(
+  date: string,
+  startTime: string,
+  stops: Array<{ minutes: number; dwellMinutes?: number }>,
+) {
+  let elapsedMinutes = 0
+
+  return stops.map((stop, index) => {
+    const arrival = arrivalMoment(date, startTime, elapsedMinutes)
+    if (index < stops.length - 1) elapsedMinutes += (stop.dwellMinutes ?? 0) + stop.minutes
+    return arrival
+  })
+}
