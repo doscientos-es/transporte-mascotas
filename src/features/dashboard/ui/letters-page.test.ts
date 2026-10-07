@@ -95,4 +95,39 @@ describe('LettersPage route selector', () => {
     expect(markup).toContain('aria-label="Paginación de rutas con cartas"')
     expect(markup).toContain('Mostrando 1–12 de 13 rutas')
   })
+
+  it('places the all-routes button to the left of the selected route description', () => {
+    const routeKey = encodeURIComponent(JSON.stringify(['Ruta Norte', '2026-10-07']))
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        { initialEntries: [`/?ruta-carta=${routeKey}`] },
+        createElement(LettersPage, {
+          letters: [
+            {
+              id: 'north',
+              route: 'Ruta Norte',
+              serviceDate: '2026-10-07',
+              status: 'pendiente',
+              animals: [],
+              billingClient: { fullName: 'Cliente' },
+            } as Letter,
+          ],
+          loading: false,
+          error: '',
+          onRetry: vi.fn(),
+          onEdit: vi.fn(),
+          onOpenClient: vi.fn(),
+          onOpenPaymentRequests: vi.fn(),
+        }),
+      ),
+    )
+    const headerStart = markup.indexOf('<header')
+    const headerEnd = markup.indexOf('</header>', headerStart)
+    const header = markup.slice(headerStart, headerEnd)
+
+    expect(header.indexOf('Todas las rutas')).toBeLessThan(
+      header.indexOf('Cartas de porte de Ruta Norte.'),
+    )
+  })
 })

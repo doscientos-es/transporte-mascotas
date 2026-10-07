@@ -226,10 +226,8 @@ export function LettersPage({
             ? `Cartas de porte de ${selectedRouteGroup.routeName}.`
             : 'Selecciona una ruta para consultar sus cartas de porte.'
         }
-      />
-      {selectedRouteGroup ? (
-        <>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+        leading={
+          selectedRouteGroup && (
             <Button
               size="sm"
               variant="outline"
@@ -245,14 +243,17 @@ export function LettersPage({
             >
               <ArrowLeft size={16} /> Todas las rutas
             </Button>
-            <div>
-              <h2 className="text-base font-semibold">{selectedRouteGroup.routeName}</h2>
-              <p className="text-muted-foreground text-sm">
-                {formatServiceDate(selectedRouteGroup.serviceDate)} ·{' '}
-                {selectedRouteGroup.letters.length}{' '}
-                {selectedRouteGroup.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
-              </p>
-            </div>
+          )
+        }
+      />
+      {selectedRouteGroup ? (
+        <>
+          <div className="mb-4">
+            <p className="text-muted-foreground text-sm">
+              {formatServiceDate(selectedRouteGroup.serviceDate)} ·{' '}
+              {selectedRouteGroup.letters.length}{' '}
+              {selectedRouteGroup.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
+            </p>
           </div>
           <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
             <Stat
@@ -391,9 +392,8 @@ export function LettersPage({
       ) : (
         <>
           {!loading && !error && routeGroups.length > 0 && (
-            <section
+            <search
               className="mb-4 flex flex-wrap items-center gap-2.5"
-              role="search"
               aria-label="Filtros de rutas"
             >
               <label className="search" htmlFor="letters-route-search">
@@ -466,7 +466,7 @@ export function LettersPage({
                   Limpiar filtros
                 </Button>
               )}
-            </section>
+            </search>
           )}
           {loading ? (
             <LettersListSkeleton />
