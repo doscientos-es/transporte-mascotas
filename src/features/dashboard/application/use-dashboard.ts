@@ -778,7 +778,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         billingClient: billingClientForDraft(draft),
         route: routeTemplate.name,
         serviceDate: dailyRoute.date,
-        status: 'programada',
+        status: 'pendiente',
         importedAt: new Date().toLocaleString('es-ES'),
         animals,
       }

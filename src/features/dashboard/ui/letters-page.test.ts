@@ -130,4 +130,39 @@ describe('LettersPage route selector', () => {
       header.indexOf('Cartas de porte de Ruta Norte.'),
     )
   })
+
+  it('offers the payment and route lifecycle states in the letter filter', () => {
+    const routeKey = encodeURIComponent(JSON.stringify(['Ruta Norte', '2026-10-07']))
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        { initialEntries: [`/?ruta-carta=${routeKey}`] },
+        createElement(LettersPage, {
+          letters: [
+            {
+              id: 'letter-completed',
+              route: 'Ruta Norte',
+              serviceDate: '2026-10-07',
+              status: 'entregada',
+              animals: [],
+              billingClient: { fullName: 'Cliente' },
+            } as Letter,
+          ],
+          loading: false,
+          error: '',
+          onRetry: vi.fn(),
+          onEdit: vi.fn(),
+          onOpenClient: vi.fn(),
+          onOpenPaymentRequests: vi.fn(),
+        }),
+      ),
+    )
+
+    expect(markup).toContain('<option value="pendiente">Pendientes</option>')
+    expect(markup).toContain('<option value="programada">Programadas</option>')
+    expect(markup).toContain('<option value="en_ruta">En ruta</option>')
+    expect(markup).toContain('<option value="entregada">Completadas</option>')
+    expect(markup).toContain('<option value="cancelada">Canceladas</option>')
+    expect(markup).toContain('>Completada</span>')
+  })
 })

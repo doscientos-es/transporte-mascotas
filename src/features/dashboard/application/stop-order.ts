@@ -14,3 +14,12 @@ export function moveItemAtInsertionIndex<Item>(
   reordered.splice(insertionIndex, 0, moved)
   return reordered
 }
+
+export function keyboardInsertionIndex(
+  currentIndex: number,
+  direction: 'up' | 'down',
+  itemCount: number,
+) {
+  if (direction === 'up') return currentIndex > 0 && currentIndex < itemCount ? currentIndex - 1 : null
+  return currentIndex >= 0 && currentIndex < itemCount - 1 ? currentIndex + 2 : null
+}

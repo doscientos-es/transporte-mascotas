@@ -75,7 +75,14 @@ const animalSizeLabels = {
   grande: 'Grande',
 } as const
 
-const letterStatusFilters = ['todos', 'pendiente', 'revisada', 'en_ruta', 'entregada'] as const
+const letterStatusFilters = [
+  'todos',
+  'pendiente',
+  'programada',
+  'en_ruta',
+  'entregada',
+  'cancelada',
+] as const
 const routeGroupPageSize = 12
 
 function formatServiceDate(serviceDate: string) {
@@ -181,7 +188,7 @@ export function LettersPage({
       letters.reduce(
         (totals, letter) => ({
           pending: totals.pending + Number(letter.status === 'pendiente'),
-          scheduled: totals.scheduled + Number(letter.status !== 'pendiente'),
+          scheduled: totals.scheduled + Number(letter.status === 'programada'),
           animals: totals.animals + letter.animals.length,
         }),
         { pending: 0, scheduled: 0, animals: 0 },
@@ -308,9 +315,10 @@ export function LettersPage({
                     >
                       <option value="todos">Todos</option>
                       <option value="pendiente">Pendientes</option>
-                      <option value="revisada">Revisadas</option>
+                      <option value="programada">Programadas</option>
                       <option value="en_ruta">En ruta</option>
-                      <option value="entregada">Entregadas</option>
+                      <option value="entregada">Completadas</option>
+                      <option value="cancelada">Canceladas</option>
                     </select>
                   </label>
                 </div>
@@ -856,8 +864,8 @@ function LetterDetailsDialog({
             <p>
               {letter.accompanyingDocuments.length
                 ? letter.accompanyingDocuments
-                    .map((document) => accompanyingDocumentLabels[document])
-                    .join(', ')
+                  .map((document) => accompanyingDocumentLabels[document])
+                  .join(', ')
                 : 'Sin documentos indicados'}
             </p>
           </div>

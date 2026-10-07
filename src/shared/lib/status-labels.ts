@@ -1,8 +1,9 @@
 export const statusLabels: Record<string, string> = {
   pendiente: 'Pendiente',
   revisada: 'Revisada',
+  programada: 'Programada',
   en_ruta: 'En ruta',
-  entregada: 'Entregada',
+  entregada: 'Completada',
   activa: 'Activa',
   cerrada: 'Cerrada',
   completada: 'Completada',
