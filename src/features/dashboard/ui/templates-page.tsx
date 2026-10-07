@@ -87,6 +87,8 @@ export function TemplatesPage({
   const previousStopPositions = useRef<Map<string, number> | null>(null)
 
   useEffect(() => {
+    dragState.current = null
+    suppressClickRef.current = false
     setAddingStopAt(null)
     setMovingStopId(null)
     setDraggingStopId(null)
@@ -110,7 +112,9 @@ export function TemplatesPage({
       .forEach((element) => {
         const stopId = element.dataset.templateStopId
         if (!stopId || typeof element.animate !== 'function') return
-        const offset = previousPositions.get(stopId) - element.getBoundingClientRect().top
+        const previousTop = previousPositions.get(stopId)
+        if (previousTop === undefined) return
+        const offset = previousTop - element.getBoundingClientRect().top
         if (offset === 0) return
         element.animate(
           [{ transform: `translateY(${offset}px)` }, { transform: 'translateY(0)' }],
@@ -165,7 +169,9 @@ export function TemplatesPage({
     setMovingStopId(null)
     setReordering(true)
     setError('')
-    setReorderAnnouncement(`Parada ${stop.locality} movida a la posición ${newPosition}. Guardando.`)
+    setReorderAnnouncement(
+      `Parada ${stop.locality} movida a la posición ${newPosition}. Guardando.`,
+    )
     try {
       await onReorderStops(selected.id, stops)
       setReorderAnnouncement(`Orden guardado. ${stop.locality} está en la posición ${newPosition}.`)
@@ -362,7 +368,7 @@ export function TemplatesPage({
         <button
           type="button"
           className="template-stop-drag"
-          disabled={reordering}
+          aria-disabled={reordering}
           onPointerDown={(event) => startDrag(event, stop.id)}
           onPointerMove={dragOver}
           onPointerUp={(event) => finishDrag(event)}
@@ -370,7 +376,7 @@ export function TemplatesPage({
           onLostPointerCapture={(event) => finishDrag(event, true)}
           onKeyDown={(event) => moveWithKeyboard(event, stop.id, index)}
           onClick={() => {
-            if (suppressClickRef.current) return
+            if (suppressClickRef.current || reordering) return
             setMovingStopId((current) => (current === stop.id ? null : stop.id))
           }}
           aria-pressed={movingStopId === stop.id}
@@ -396,6 +402,7 @@ export function TemplatesPage({
               <button
                 type="button"
                 key={template.id}
+                disabled={reordering}
                 onClick={() => onSelect(template)}
                 className={`template-row ${selected.id === template.id ? 'is-selected' : ''}`}
               >
@@ -416,15 +423,19 @@ export function TemplatesPage({
                 <h3>Ruta {selected.name}</h3>
               </div>
               <div className="template-header-actions">
-                <Button variant="outline" onClick={() => setAddingStopAt(selected.stops.length)}>
+                <Button
+                  variant="outline"
+                  disabled={reordering}
+                  onClick={() => setAddingStopAt(selected.stops.length)}
+                >
                   <Plus /> Añadir parada
                 </Button>
-                <Button variant="outline" onClick={() => setEditing(true)}>
+                <Button variant="outline" disabled={reordering} onClick={() => setEditing(true)}>
                   <Pencil /> Editar
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={duplicating}
+                  disabled={duplicating || reordering}
                   onClick={() => void duplicateSelectedTemplate()}
                 >
                   <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar'}
@@ -432,7 +443,7 @@ export function TemplatesPage({
                 <Button
                   variant="outline"
                   className="template-delete-button"
-                  disabled={templates.length <= 1}
+                  disabled={templates.length <= 1 || reordering}
                   aria-description={
                     templates.length <= 1
                       ? 'Debe existir al menos una plantilla de ruta.'

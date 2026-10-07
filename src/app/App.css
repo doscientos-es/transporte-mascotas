@@ -4914,6 +4914,11 @@
   cursor: grabbing;
 }
 
+.template-stop-drag[aria-disabled='true'] {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .template-stop-drag:focus-visible {
   outline: 2px solid #b51e27;
   outline-offset: 2px;

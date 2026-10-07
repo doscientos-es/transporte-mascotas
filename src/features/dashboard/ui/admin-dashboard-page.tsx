@@ -394,13 +394,11 @@ export function AdminDashboardPage({
               <ClientRequestForm
                 adminMode
                 routes={requestRoutes}
-                savedPets={[]}
                 contactName=""
                 contactPhone=""
                 contactEmail=""
                 onSubmit={createManualTransport}
                 onCancel={() => setCreatingTransport(false)}
-                onSavePets={async () => undefined}
                 boxCatalog={dashboard.boxCatalog}
               />
             )}

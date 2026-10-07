@@ -130,13 +130,11 @@ export function PublicTransportRequestPage() {
       {!created && routes.length > 0 && (
         <ClientRequestForm
           routes={routes}
-          savedPets={[]}
           contactName=""
           contactPhone=""
           contactEmail=""
           onSubmit={submitRequest}
           onCancel={() => window.location.assign(AUTH_PATHS.clientAccess)}
-          onSavePets={async () => {}}
           boxCatalog={boxCatalog}
           initialRouteId={initialRouteId}
         />

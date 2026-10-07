@@ -20,6 +20,7 @@ export function keyboardInsertionIndex(
   direction: 'up' | 'down',
   itemCount: number,
 ) {
-  if (direction === 'up') return currentIndex > 0 && currentIndex < itemCount ? currentIndex - 1 : null
+  if (direction === 'up')
+    return currentIndex > 0 && currentIndex < itemCount ? currentIndex - 1 : null
   return currentIndex >= 0 && currentIndex < itemCount - 1 ? currentIndex + 2 : null
 }

@@ -385,6 +385,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
         : route
     setSelectedRoute(update(selectedRoute))
     setDailyRoutes((current) => current.map(update))
+    invalidateLettersCache(session.user.id)
+    await ensureLetters(true)
   }
 
   async function updateRouteStops(routeId: string, stops: DailyRouteStop[], recalculate = true) {
@@ -1038,6 +1040,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function confirmManualPayment(invoice: ClientInvoice, paymentMethod: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para registrar un cobro.')
     await confirmManualInvoicePayment(invoice.id, paymentMethod)
+    invalidateLettersCache(session.user.id)
+    await ensureLetters(true)
     toast('Cobro registrado y factura creada.')
   }
 

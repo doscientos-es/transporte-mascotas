@@ -10,7 +10,6 @@ describe('SettingsPage', () => {
   it('renders the email test action directly in settings', () => {
     const markup = renderToStaticMarkup(
       createElement(SettingsPage, {
-        onPromote: async () => {},
         invitations: [],
         onInvite: async () => {},
         onRevokeInvitation: async () => {},

@@ -111,6 +111,14 @@ export function LettersPage({
 }: Props) {
   const pageSize = 8
   const { searchParams, updateParams } = useUrlParams()
+
+  useEffect(() => {
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') onRetry()
+    }, 60_000)
+    return () => window.clearInterval(refreshInterval)
+  }, [onRetry])
+
   const search = searchParams.get('q') ?? ''
   const statusFilter = readEnumParam(searchParams.get('estado'), letterStatusFilters, 'todos')
   const requestedPage = readPageParam(searchParams.get('pagina'))
@@ -864,8 +872,8 @@ function LetterDetailsDialog({
             <p>
               {letter.accompanyingDocuments.length
                 ? letter.accompanyingDocuments
-                  .map((document) => accompanyingDocumentLabels[document])
-                  .join(', ')
+                    .map((document) => accompanyingDocumentLabels[document])
+                    .join(', ')
                 : 'Sin documentos indicados'}
             </p>
           </div>
