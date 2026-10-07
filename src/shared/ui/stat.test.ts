@@ -11,6 +11,8 @@ describe('Stat', () => {
     )
 
     expect(markup).toContain('[--card-spacing:10px]')
+    expect(markup).toContain('border-0')
+    expect(markup).not.toContain('border-t-[3px]')
     expect(markup).toContain('text-[24px]')
     expect(markup).toContain('grid-cols-[auto_minmax(0,1fr)]')
     expect(markup).toContain('col-start-1')
@@ -32,6 +34,8 @@ describe('Stat', () => {
     expect(markup).toContain('data-tone="success"')
     expect(markup).toContain('lucide-check')
     expect(markup).toContain('bg-[#f1faf3]')
+    expect(markup).toContain('border-0')
+    expect(markup).not.toContain('border-t-[3px]')
   })
 
   it('keeps a positive value in the neutral state', () => {
