@@ -140,13 +140,13 @@ export function AdminDashboardPage({
   const activeAssignments = activeRoute ? assignmentsForRoute(activeRoute) : []
   const editingRouteId = dashboard.editingLetter
     ? (dashboard.dailyRoutes.find((route) =>
-        route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
-      )?.id ??
+      route.actions.some((action) => action.letterId === dashboard.editingLetter?.id),
+    )?.id ??
       dashboard.dailyRoutes.find(
         (route) =>
           route.date === dashboard.editingLetter?.serviceDate &&
           dashboard.routeTemplates.find((template) => template.id === route.templateId)?.name ===
-            dashboard.editingLetter?.route,
+          dashboard.editingLetter?.route,
       )?.id)
     : undefined
   const pendingLetters = dashboard.letters.filter((letter) => letter.status === 'pendiente').length
@@ -207,7 +207,7 @@ export function AdminDashboardPage({
       await downloadVanManifest(
         activeAssignments,
         dashboard.routeTemplates.find((template) => template.id === activeRoute.templateId)?.name ??
-          'ruta',
+        'ruta',
       )
     } catch {
       dashboard.toast('No se ha podido generar el PDF. Vuelve a intentarlo.')
@@ -325,6 +325,7 @@ export function AdminDashboardPage({
             {section === 'plantillas' && (
               <TemplatesPage
                 templates={dashboard.routeTemplates}
+                meetingPoints={dashboard.meetingPoints}
                 selected={dashboard.selectedTemplate}
                 createRequestId={templateCreateRequestId}
                 onSelect={dashboard.setSelectedTemplate}
@@ -346,6 +347,7 @@ export function AdminDashboardPage({
                 <RoutesPage
                   route={activeRoute}
                   template={activeTemplate}
+                  meetingPoints={dashboard.meetingPoints}
                   letters={dashboard.letters}
                   onBack={() => navigateToSection('rutas')}
                   onOpenVan={(route) => {
@@ -428,6 +430,9 @@ export function AdminDashboardPage({
                 onRevokeInvitation={dashboard.revokeStaffInvitation}
                 boxCatalog={dashboard.boxCatalog}
                 onSaveBoxCatalog={dashboard.updateBoxCatalog}
+                meetingPoints={dashboard.meetingPoints}
+                onSaveMeetingPoint={dashboard.saveMeetingPoint}
+                onDeleteMeetingPoint={dashboard.removeMeetingPoint}
               />
             )}
             {section === 'facturas' && (

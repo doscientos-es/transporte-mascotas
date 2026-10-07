@@ -131,38 +131,54 @@ describe('LettersPage route selector', () => {
     )
   })
 
-  it('offers the payment and route lifecycle states in the letter filter', () => {
+  it('filters letters by payment status and shows only payment labels', () => {
     const routeKey = encodeURIComponent(JSON.stringify(['Ruta Norte', '2026-10-07']))
-    const markup = renderToStaticMarkup(
-      createElement(
-        MemoryRouter,
-        { initialEntries: [`/?ruta-carta=${routeKey}`] },
-        createElement(LettersPage, {
-          letters: [
-            {
-              id: 'letter-completed',
-              route: 'Ruta Norte',
-              serviceDate: '2026-10-07',
-              status: 'entregada',
-              animals: [],
-              billingClient: { fullName: 'Cliente' } as Letter['billingClient'],
-            } as unknown as Letter,
-          ],
-          loading: false,
-          error: '',
-          onRetry: vi.fn(),
-          onEdit: vi.fn(),
-          onOpenClient: vi.fn(),
-          onOpenPaymentRequests: vi.fn(),
-        }),
-      ),
-    )
+    const letters = [
+      {
+        id: 'letter-paid',
+        route: 'Ruta Norte',
+        serviceDate: '2026-10-07',
+        status: 'entregada',
+        paymentStatus: 'paid',
+        animals: [],
+        billingClient: { fullName: 'Cliente' } as Letter['billingClient'],
+      },
+      {
+        id: 'letter-pending',
+        route: 'Ruta Norte',
+        serviceDate: '2026-10-07',
+        status: 'en_ruta',
+        paymentStatus: 'pending',
+        animals: [],
+        billingClient: { fullName: 'Cliente' } as Letter['billingClient'],
+      },
+    ] as unknown as Letter[]
+    const renderForStatus = (status: 'paid' | 'pending') =>
+      renderToStaticMarkup(
+        createElement(
+          MemoryRouter,
+          { initialEntries: [`/?ruta-carta=${routeKey}&estado=${status}`] },
+          createElement(LettersPage, {
+            letters,
+            loading: false,
+            error: '',
+            onRetry: vi.fn(),
+            onEdit: vi.fn(),
+            onOpenClient: vi.fn(),
+            onOpenPaymentRequests: vi.fn(),
+          }),
+        ),
+      )
+    const paidMarkup = renderForStatus('paid')
+    const pendingMarkup = renderForStatus('pending')
 
-    expect(markup).toContain('<option value="pendiente">Pendientes</option>')
-    expect(markup).toContain('<option value="programada">Programadas</option>')
-    expect(markup).toContain('<option value="en_ruta">En ruta</option>')
-    expect(markup).toContain('<option value="entregada">Completadas</option>')
-    expect(markup).toContain('<option value="cancelada">Canceladas</option>')
-    expect(markup).toContain('>Completada</span>')
+    expect(paidMarkup).toContain('<option value="pending">Pendientes de pago</option>')
+    expect(paidMarkup).toContain('<option value="paid" selected="">Pagadas</option>')
+    expect(paidMarkup).not.toContain('En ruta')
+    expect(paidMarkup).not.toContain('Completadas')
+    expect(paidMarkup).toContain('>Pagada</span>')
+    expect(paidMarkup).not.toContain('letter-pending')
+    expect(pendingMarkup).toContain('>Pendiente de pago</span>')
+    expect(pendingMarkup).not.toContain('letter-paid')
   })
 })

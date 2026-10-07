@@ -56,6 +56,7 @@ import type {
   Letter,
   RouteDirection,
   RouteTemplate,
+  SavedMeetingPoint,
   ServiceAction,
 } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -73,6 +74,7 @@ import { StopFormDialog } from './operation-dialogs'
 type Props = {
   route: DailyRoute
   template: RouteTemplate
+  meetingPoints?: SavedMeetingPoint[]
   letters: Letter[]
   onOpenVan?: (route: DailyRoute) => void
   onBack: () => void
@@ -442,6 +444,7 @@ function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Le
 export function RoutesPage({
   route,
   template,
+  meetingPoints = [],
   letters,
   onOpenVan,
   onBack,
@@ -870,6 +873,7 @@ export function RoutesPage({
       </Card>
       {addingStop && (
         <StopFormDialog
+          meetingPoints={meetingPoints}
           onClose={() => setAddingStop(false)}
           onAdd={async (stop) => {
             const plan = await onSuggestStop(route.id, stop)

@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { statusLabels } from '@/shared/lib/status-labels'
 
 const statusStyles: Record<string, string> = {
+  pendiente_pago: 'bg-[#fff3d2] text-[#936b00]',
+  pagada: 'bg-[#ddf5e4] text-[#16723e]',
   pendiente: 'bg-[#fff3d2] text-[#936b00]',
   pago_pendiente: 'bg-[#fff3d2] text-[#936b00]',
   por_verificar: 'bg-[#fff3d2] text-[#936b00]',

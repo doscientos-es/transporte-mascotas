@@ -76,14 +76,7 @@ const animalSizeLabels = {
   grande: 'Grande',
 } as const
 
-const letterStatusFilters = [
-  'todos',
-  'pendiente',
-  'programada',
-  'en_ruta',
-  'entregada',
-  'cancelada',
-] as const
+const letterStatusFilters = ['todos', 'pending', 'paid'] as const
 const routeGroupPageSize = 12
 
 function formatServiceDate(serviceDate: string) {
@@ -178,7 +171,7 @@ export function LettersPage({
         letter.destination,
         letter.route,
         letter.serviceDate,
-        letter.status,
+        letter.paymentStatus === 'paid' ? 'Pagada' : 'Pendiente de pago',
         ...letter.animals.map((animal) => animal.breed),
       ]
         .join(' ')
@@ -190,18 +183,18 @@ export function LettersPage({
     () =>
       statusFilter === 'todos'
         ? searchedLetters
-        : searchedLetters.filter((letter) => letter.status === statusFilter),
+        : searchedLetters.filter((letter) => letter.paymentStatus === statusFilter),
     [searchedLetters, statusFilter],
   )
   const summary = useMemo(
     () =>
       letters.reduce(
         (totals, letter) => ({
-          pending: totals.pending + Number(letter.status === 'pendiente'),
-          scheduled: totals.scheduled + Number(letter.status === 'programada'),
+          pending: totals.pending + Number(letter.paymentStatus !== 'paid'),
+          paid: totals.paid + Number(letter.paymentStatus === 'paid'),
           animals: totals.animals + letter.animals.length,
         }),
-        { pending: 0, scheduled: 0, animals: 0 },
+        { pending: 0, paid: 0, animals: 0 },
       ),
     [letters],
   )
@@ -278,20 +271,15 @@ export function LettersPage({
           </div>
           <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
             <Stat
-              label="Necesita revisión"
+              label="Pendientes de pago"
               value={summary.pending}
               accent="lime"
               loading={loading}
               successWhenZero
               compact
             />
-            <Stat
-              label="Programadas (semana)"
-              value={summary.scheduled}
-              loading={loading}
-              compact
-            />
-            <Stat label="En transporte" value={summary.animals} loading={loading} compact />
+            <Stat label="Pagadas" value={summary.paid} loading={loading} compact />
+            <Stat label="Animales" value={summary.animals} loading={loading} compact />
           </section>
           <Card className="table-card">
             <CardContent>
@@ -328,11 +316,8 @@ export function LettersPage({
                       disabled={loading}
                     >
                       <option value="todos">Todos</option>
-                      <option value="pendiente">Pendientes</option>
-                      <option value="programada">Programadas</option>
-                      <option value="en_ruta">En ruta</option>
-                      <option value="entregada">Completadas</option>
-                      <option value="cancelada">Canceladas</option>
+                      <option value="pending">Pendientes de pago</option>
+                      <option value="paid">Pagadas</option>
                     </select>
                   </label>
                 </div>
@@ -589,6 +574,15 @@ function LettersListSkeleton() {
   )
 }
 
+function LetterPaymentBadge({ letter }: { letter: Letter }) {
+  const isPaid = letter.paymentStatus === 'paid'
+  return (
+    <StatusBadge status={isPaid ? 'pagada' : 'pendiente_pago'}>
+      {isPaid ? 'Pagada' : 'Pendiente de pago'}
+    </StatusBadge>
+  )
+}
+
 function LetterRow({
   letter,
   onView,
@@ -635,7 +629,7 @@ function LetterRow({
         })}
       </td>
       <td>
-        <StatusBadge status={letter.status} />
+        <LetterPaymentBadge letter={letter} />
       </td>
       <td>
         <div className="row-actions">
@@ -728,7 +722,7 @@ function LetterCard({
           <strong>{letter.id}</strong>
           <small>Creada {letter.importedAt}</small>
         </div>
-        <StatusBadge status={letter.status} />
+        <LetterPaymentBadge letter={letter} />
       </div>
       <div className="letter-card-route">
         <span>{letter.origin}</span>
@@ -830,7 +824,7 @@ function LetterDetailsDialog({
           <div>
             <dt>Estado</dt>
             <dd>
-              <StatusBadge status={letter.status} />
+              <LetterPaymentBadge letter={letter} />
             </dd>
           </div>
         </dl>

@@ -19,10 +19,11 @@ import {
   type TransportBoxCategory,
 } from '@/shared/application/transport-boxes'
 import { AUTH_PATHS } from '@/shared/constants/auth-paths'
-import type { StaffInvitation } from '@/shared/types'
+import type { SavedMeetingPoint, StaffInvitation } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { sendEmailTest } from '../application/email-test'
+import { MeetingPointsSettings } from './meeting-points-settings'
 
 type Props = {
   invitations: StaffInvitation[]
@@ -30,6 +31,11 @@ type Props = {
   onRevokeInvitation: (email: string) => Promise<void>
   boxCatalog: TransportBoxCatalog
   onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
+  meetingPoints: SavedMeetingPoint[]
+  onSaveMeetingPoint: (
+    point: SavedMeetingPoint | Omit<SavedMeetingPoint, 'id'>,
+  ) => Promise<unknown>
+  onDeleteMeetingPoint: (id: string) => Promise<void>
 }
 
 const sizeFields = [
@@ -45,6 +51,9 @@ export function SettingsPage({
   onRevokeInvitation,
   boxCatalog,
   onSaveBoxCatalog,
+  meetingPoints,
+  onSaveMeetingPoint,
+  onDeleteMeetingPoint,
 }: Props) {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -302,6 +311,11 @@ export function SettingsPage({
           </Button>
         </div>
       </section>
+      <MeetingPointsSettings
+        meetingPoints={meetingPoints}
+        onSave={onSaveMeetingPoint}
+        onDelete={onDeleteMeetingPoint}
+      />
       <section className="settings-support">
         <div>
           <h2>Prueba de email</h2>

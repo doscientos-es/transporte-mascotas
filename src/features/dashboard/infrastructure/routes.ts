@@ -88,7 +88,12 @@ function mapStop(stop: StoredStop) {
     id: stop.id,
     locality: stop.locality,
     place: stop.meeting_point,
-    mapUrl: stop.street || stop.postal_code ? mapUrlFor(stop) : (stop.map_url ?? mapUrlFor(stop)),
+    mapUrl:
+      typeof stop.latitude === 'number' && typeof stop.longitude === 'number'
+        ? mapUrlFor(stop)
+        : stop.street || stop.postal_code
+          ? mapUrlFor(stop)
+          : (stop.map_url ?? mapUrlFor(stop)),
     minutes: stop.minutes_to_next ?? 0,
     alias: stop.stop_alias,
     street: stop.street,

@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react'
 
-import type { RouteTemplate } from '@/shared/types'
+import type { RouteTemplate, SavedMeetingPoint } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { mergedStopInstructions } from '../application/stop-instructions'
@@ -55,6 +55,7 @@ const noTemplateStops: RouteTemplate['stops'] = []
 
 type Props = {
   templates: RouteTemplate[]
+  meetingPoints?: SavedMeetingPoint[]
   selected: RouteTemplate | null
   createRequestId: number
   onSelect: (template: RouteTemplate) => void
@@ -71,6 +72,7 @@ type Props = {
 
 export function TemplatesPage({
   templates,
+  meetingPoints = [],
   selected,
   createRequestId,
   onSelect,
@@ -648,6 +650,7 @@ export function TemplatesPage({
       )}
       {addingStopAt !== null && (
         <StopFormDialog
+          meetingPoints={meetingPoints}
           insertionIndex={addingStopAt}
           nextStopLocality={selected.stops[addingStopAt]?.locality}
           stopCount={selected.stops.length}

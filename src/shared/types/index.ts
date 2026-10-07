@@ -107,6 +107,7 @@ export interface Letter {
   routeTemplateColor?: string
   serviceDate: string
   status: LetterStatus
+  paymentStatus?: 'paid' | 'pending'
   animals: Animal[]
   importedAt: string
   extractionEmail?: string
@@ -229,6 +230,21 @@ export interface RouteStop {
   country?: string
   latitude?: number
   longitude?: number
+}
+
+export interface SavedMeetingPoint {
+  id: string
+  name: string
+  locality: string
+  place: string
+  street: string
+  streetNumber: string
+  floor: string
+  postalCode: string
+  province: string
+  country: string
+  latitude: number
+  longitude: number
 }
 
 export type DailyStopKind = 'parada' | 'recogida' | 'entrega'

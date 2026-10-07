@@ -24,6 +24,7 @@ import {
   type LetterDraft,
   type ManualPaymentMethod,
   type RouteDirection,
+  type SavedMeetingPoint,
   type RouteTemplate,
   type ServiceAction,
   type StaffInvitation,
@@ -43,6 +44,11 @@ import {
   sendPaymentRequestEmail,
   updateLetter,
 } from '../infrastructure/letters'
+import {
+  deleteMeetingPoint as persistMeetingPointDeletion,
+  loadMeetingPoints,
+  saveMeetingPoint as persistMeetingPoint,
+} from '../infrastructure/meeting-points'
 import {
   addDailyRouteStop,
   addRouteTemplateStop,
@@ -79,6 +85,34 @@ function copyTemplateStops(
   selectedStopIds?: string[],
 ): DailyRouteStop[] {
   return dailyRouteStopsForTemplate(template, direction, selectedStopIds)
+}
+
+function mapUrlForStop(
+  stop: Pick<
+    DailyRouteStop,
+    | 'latitude'
+    | 'longitude'
+    | 'street'
+    | 'streetNumber'
+    | 'postalCode'
+    | 'locality'
+    | 'province'
+    | 'country'
+  >,
+) {
+  const query =
+    typeof stop.latitude === 'number' && typeof stop.longitude === 'number'
+      ? `${stop.latitude},${stop.longitude}`
+      : [
+          [stop.street, stop.streetNumber].filter(Boolean).join(' '),
+          stop.postalCode,
+          stop.locality,
+          stop.province,
+          stop.country || 'España',
+        ]
+          .filter(Boolean)
+          .join(', ')
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
 }
 
 function stopsForRoute(route: DailyRoute, templates: RouteTemplate[]) {
@@ -196,6 +230,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   )
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
+  const [meetingPoints, setMeetingPoints] = useState<SavedMeetingPoint[]>([])
   const [staffInvitations, setStaffInvitations] = useState<StaffInvitation[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
@@ -253,6 +288,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     let active = true
     if (!session) {
       setRouteTemplates([])
+      setMeetingPoints([])
       setStaffInvitations([])
       setDailyRoutes([])
       setSelectedTemplate(null)
@@ -308,6 +344,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         .catch(() => {
           if (active) toast('No se han podido cargar las tarifas de transporte.')
         })
+      loadMeetingPoints()
+        .then((loadedPoints) => {
+          if (active) setMeetingPoints(loadedPoints)
+        })
+        .catch(() => {
+          if (active) toast('No se han podido cargar los puntos de encuentro.')
+        })
     }
     return () => {
       active = false
@@ -349,6 +392,38 @@ export function useDashboard(session: Session | null, role: AppRole) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se han podido guardar las tarifas.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function saveMeetingPoint(point: SavedMeetingPoint | Omit<SavedMeetingPoint, 'id'>) {
+    try {
+      const saved = await persistMeetingPoint(point)
+      setMeetingPoints((current) =>
+        [...current.filter((item) => item.id !== saved.id), saved].toSorted(
+          (left, right) =>
+            left.locality.localeCompare(right.locality) || left.name.localeCompare(right.name),
+        ),
+      )
+      toast(`Punto de encuentro ${saved.name} guardado.`)
+      return saved
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se ha podido guardar el punto de encuentro.'
+      toast(message)
+      throw error
+    }
+  }
+
+  async function removeMeetingPoint(id: string) {
+    try {
+      await persistMeetingPointDeletion(id)
+      setMeetingPoints((current) => current.filter((point) => point.id !== id))
+      toast('Punto de encuentro eliminado de la biblioteca.')
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se ha podido eliminar el punto de encuentro.'
       toast(message)
       throw error
     }
@@ -441,7 +516,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       ...stop,
       id: crypto.randomUUID(),
       kind: 'parada',
-      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[stop.street, stop.streetNumber].filter(Boolean).join(' '), stop.postalCode, stop.locality, stop.province, stop.country || 'España'].filter(Boolean).join(', '))}`,
+      mapUrl: mapUrlForStop(stop),
     }
     return findBestStopInsertion(stopsForRoute(route, routeTemplates), nextStop)
   }
@@ -643,7 +718,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const stop = {
       ...values,
       id: crypto.randomUUID(),
-      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[values.street, values.streetNumber].filter(Boolean).join(' '), values.postalCode, values.locality, values.province, values.country || 'España'].filter(Boolean).join(', '))}`,
+      mapUrl: mapUrlForStop(values),
     }
     try {
       const index = Math.max(
@@ -678,7 +753,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       id: existingStop.id,
       locality: values.locality,
       place: values.place,
-      mapUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([[values.street, values.streetNumber].filter(Boolean).join(' '), values.postalCode, values.locality, values.province, values.country || 'España'].filter(Boolean).join(', '))}`,
+      mapUrl: mapUrlForStop(values),
       minutes: values.minutes,
       alias: values.alias,
       street: values.street,
@@ -1131,6 +1206,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     lettersError,
     ensureLetters,
     routeTemplates,
+    meetingPoints,
     staffInvitations,
     boxCatalog,
     dailyRoutes,
@@ -1153,6 +1229,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
     inviteStaffMember,
     revokeStaffInvitation,
     updateBoxCatalog,
+    saveMeetingPoint,
+    removeMeetingPoint,
     updateActions,
     updateRouteStops,
     updateRouteStartTime,

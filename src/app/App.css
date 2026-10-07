@@ -5434,6 +5434,90 @@
   min-width: 0;
 }
 
+.meeting-points-actions,
+.meeting-points-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.meeting-points-actions > span {
+  color: #707070;
+  font-size: 12px;
+}
+
+.meeting-points-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #e2e2e2;
+  border-radius: 12px;
+  background: #fafafa;
+}
+
+.meeting-points-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.meeting-points-instructions {
+  grid-column: 1 / -1;
+}
+
+.meeting-points-list {
+  display: grid;
+  gap: 8px;
+  max-height: 460px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meeting-points-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #ececec;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.meeting-points-summary {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.meeting-points-summary strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #1d1d1d;
+  font-size: 13px;
+}
+
+.meeting-points-summary span,
+.meeting-points-empty {
+  color: #707070;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.meeting-points-empty {
+  margin: 0;
+}
+
+.meeting-points-item-actions {
+  flex: none;
+  justify-content: flex-end;
+}
+
 .settings-pricing-card {
   display: grid;
   align-content: start;
