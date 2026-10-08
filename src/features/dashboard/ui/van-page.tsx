@@ -552,9 +552,9 @@ function ReassignBoxControl({
         </strong>
         <p>El cambio se aplica a todos los animales de esta carta.</p>
         {shareBox && (
-          <p role="status">
+          <output aria-live="polite">
             El box {targetBoxNumber} ya está ocupado; al confirmar, compartirán el box.
-          </p>
+          </output>
         )}
       </div>
       <div className="box-reassignment-controls">
