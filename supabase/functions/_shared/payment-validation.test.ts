@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { isSuccessfulCyberpacPayment, isValidCyberpacNotification } from './payment-validation.ts'
+import {
+  cyberpacTransportGatewayResponse,
+  isSuccessfulCyberpacPayment,
+  isValidCyberpacNotification,
+} from './payment-validation.ts'
 
 describe('isValidCyberpacNotification', () => {
   const validNotification = {
@@ -74,5 +78,25 @@ describe('isSuccessfulCyberpacPayment', () => {
     ['a different currency', { currency: '840' }],
   ])('rejects %s', (_, change) => {
     expect(isSuccessfulCyberpacPayment({ ...validPayment, ...change })).toBe(false)
+  })
+})
+
+describe('cyberpacTransportGatewayResponse', () => {
+  it('includes the received amount required to persist a verified transport payment', () => {
+    expect(
+      cyberpacTransportGatewayResponse({
+        Ds_Response: '00',
+        Ds_Amount: '12000',
+        Ds_AuthorisationCode: '123456',
+        Ds_Date: '1008',
+        Ds_Hour: '1601',
+      }),
+    ).toEqual({
+      response: '00',
+      authorisationCode: '123456',
+      amountCents: '12000',
+      date: '1008',
+      hour: '1601',
+    })
   })
 })

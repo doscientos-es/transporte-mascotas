@@ -58,3 +58,13 @@ export function isSuccessfulCyberpacPayment({
     (!expectedCurrency || currency === expectedCurrency)
   )
 }
+
+export function cyberpacTransportGatewayResponse(notification: Record<string, string>) {
+  return {
+    response: notification.Ds_Response ?? null,
+    authorisationCode: notification.Ds_AuthorisationCode ?? null,
+    amountCents: notification.Ds_Amount ?? null,
+    date: notification.Ds_Date ?? null,
+    hour: notification.Ds_Hour ?? null,
+  }
+}
