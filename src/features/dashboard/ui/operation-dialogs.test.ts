@@ -130,3 +130,39 @@ describe('LetterForm contact emails', () => {
     expect(emailInputs.every((input) => input.includes('required=""'))).toBe(true)
   })
 })
+
+describe('LetterForm saved transport-box category', () => {
+  it('keeps the configured category when editing a letter', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: {
+          ...letter,
+          animals: [
+            {
+              id: 'animal-1',
+              species: 'Gato',
+              breed: 'Común',
+              birthDate: '2020-01-01',
+              weightKg: 2,
+              lengthCm: 30,
+              heightCm: 20,
+              widthCm: 25,
+              size: 'pequeno',
+              boxCategory: 'mediano',
+            },
+          ],
+        },
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn().mockResolvedValue(undefined),
+        onAddStop: vi.fn().mockResolvedValue(stops[0]),
+      }),
+    )
+
+    expect(markup.match(/<option value="mediano"[^>]*>/)?.[0]).toContain('selected=""')
+  })
+})
