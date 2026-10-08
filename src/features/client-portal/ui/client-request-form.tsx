@@ -41,7 +41,8 @@ import {
   transportBoxPriceCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
-import { routeDaysLabel } from '@/shared/lib/route-days'
+import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
+import { routeDaysLabel, routeStopArrivals } from '@/shared/lib/route-days'
 import type {
   AccompanyingDocument,
   InvoiceClientInput,
@@ -53,6 +54,7 @@ import type {
 
 import { findNearestPickupStop, getCurrentLocation } from '../application/nearest-route-stop'
 import { payerIdentity } from '../application/request-payer'
+import { approximateArrivalPeriod } from '../application/route-arrival-window'
 import { transportLocationMapsUrl } from '../application/route-maps'
 import {
   deliveryOptions,
@@ -486,14 +488,14 @@ export function ClientRequestForm({
       const requiredFiscalFields: Array<[string, string]> =
         values.billingPayer === 'manual'
           ? [
-              ['nombre o razón social', values.billingClient.fullName],
-              ['NIF/CIF', values.billingClient.nif],
-              ['dirección fiscal', values.billingClient.address],
-              ['código postal', values.billingClient.postalCode],
-              ['ciudad', values.billingClient.city],
-              ['correo del pagador', values.billingClient.email],
-              ['teléfono del pagador', values.billingClient.phone],
-            ]
+            ['nombre o razón social', values.billingClient.fullName],
+            ['NIF/CIF', values.billingClient.nif],
+            ['dirección fiscal', values.billingClient.address],
+            ['código postal', values.billingClient.postalCode],
+            ['ciudad', values.billingClient.city],
+            ['correo del pagador', values.billingClient.email],
+            ['teléfono del pagador', values.billingClient.phone],
+          ]
           : []
       const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
       if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
@@ -579,11 +581,22 @@ export function ClientRequestForm({
   const pickupStopIndex =
     selectedRoute?.stops.findIndex((stop) => stop.locality === values.origin) ?? -1
   const pickupStop = pickupStopIndex >= 0 ? selectedRoute?.stops[pickupStopIndex] : undefined
-  const deliveryStop = values.destination
-    ? selectedRoute?.stops
-        .slice(pickupStopIndex + 1)
-        .find((stop) => stop.locality === values.destination)
-    : undefined
+  const deliveryStopIndex =
+    selectedRoute && pickupStopIndex >= 0 && values.destination
+      ? selectedRoute.stops.findIndex(
+        (stop, index) => index > pickupStopIndex && stop.locality === values.destination,
+      )
+      : -1
+  const deliveryStop = deliveryStopIndex >= 0 ? selectedRoute?.stops[deliveryStopIndex] : undefined
+  const arrivals = selectedRoute
+    ? routeStopArrivals(
+      selectedRoute.serviceDate,
+      selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
+      selectedRoute.stops,
+    )
+    : []
+  const pickupArrival = pickupStopIndex >= 0 ? arrivals[pickupStopIndex] : undefined
+  const deliveryArrival = deliveryStopIndex >= 0 ? arrivals[deliveryStopIndex] : undefined
   // Localities can repeat (several stops in one town); select option ids must be unique.
   const originStops = pickupOptions(routeStops)
   const destinationStops = deliveryOptions(routeStops, values.origin)
@@ -1121,6 +1134,12 @@ export function ClientRequestForm({
                   disabled={!selectedRoute}
                 />
                 {pickupStop && <StopMapLink stop={pickupStop} />}
+                {pickupArrival && (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Recogida aproximada: {formatDepartureDate(pickupArrival.date)} ·{' '}
+                    {approximateArrivalPeriod(pickupArrival.time)}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel>Entrega</FieldLabel>
@@ -1133,6 +1152,12 @@ export function ClientRequestForm({
                   disabled={!values.origin}
                 />
                 {deliveryStop && <StopMapLink stop={deliveryStop} />}
+                {deliveryArrival && (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Entrega aproximada: {formatDepartureDate(deliveryArrival.date)} ·{' '}
+                    {approximateArrivalPeriod(deliveryArrival.time)}
+                  </p>
+                )}
               </Field>
               <Field>
                 <FieldLabel id="request-desired-date-label" htmlFor="request-desired-date">
@@ -1152,7 +1177,7 @@ export function ClientRequestForm({
                         : 'Selecciona una salida'}
                     </strong>
                     <span className="text-muted-foreground text-xs">
-                      Fecha fijada por la ruta seleccionada
+                      Franja orientativa; confirmaremos la hora exacta al cerrar la ruta.
                     </span>
                   </span>
                 </output>
@@ -1385,7 +1410,7 @@ export function ClientRequestForm({
                                   ) / 100,
                                 )}
                                 {transportBoxCategoryRank(category) >
-                                transportBoxCategoryRank(minimumCategory)
+                                  transportBoxCategoryRank(minimumCategory)
                                   ? ' · extra por comodidad'
                                   : ''}
                               </option>

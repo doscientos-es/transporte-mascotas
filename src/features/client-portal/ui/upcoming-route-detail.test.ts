@@ -7,7 +7,7 @@ import type { UpcomingRoute } from '@/shared/types'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
 describe('UpcomingRouteDetail', () => {
-  it('shows the actual arrival day and time for stops reached after midnight', () => {
+  it('shows only the approximate arrival period and day for stops reached after midnight', () => {
     const route: UpcomingRoute = {
       id: 'route-north',
       serviceDate: '2026-10-06',
@@ -43,7 +43,9 @@ describe('UpcomingRouteDetail', () => {
       }),
     )
 
-    expect(markup).toContain('dateTime="2026-10-07T00:15"')
-    expect(markup).toContain('00:15 · miércoles, 7 de octubre')
+    expect(markup).toContain('Franja aproximada: <strong>por la noche · miércoles, 7 de octubre</strong>')
+    expect(markup).not.toContain('00:15')
+    expect(markup).not.toContain('dateTime="2026-10-07T00:15"')
+    expect(markup).toContain('Confirmaremos la hora exacta al cerrar la ruta.')
   })
 })

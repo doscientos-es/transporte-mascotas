@@ -5,6 +5,7 @@ import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
 import { routeDays, routeDaysLabel, routeStopArrivals } from '@/shared/lib/route-days'
 import type { UpcomingRoute } from '@/shared/types'
 
+import { approximateArrivalPeriod } from '../application/route-arrival-window'
 import { itineraryDirectionsUrl, itineraryEmbedUrl } from '../application/route-maps'
 
 type Props = {
@@ -71,6 +72,10 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
             </div>
           </div>
 
+          <p className="text-muted-foreground mt-4 text-sm">
+            Las franjas son orientativas. Confirmaremos la hora exacta al cerrar la ruta.
+          </p>
+
           {embedUrl && (
             <section className="border-border bg-card mt-5 overflow-hidden rounded-xl border">
               <iframe
@@ -111,11 +116,10 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
                         {arrival && (
                           <div className="journey-times">
                             <span>
-                              Llegada estimada:{' '}
+                              Franja aproximada:{' '}
                               <strong>
-                                <time dateTime={`${arrival.date}T${arrival.time}`}>
-                                  {arrival.time} · {formatStopDate(arrival.date)}
-                                </time>
+                                {approximateArrivalPeriod(arrival.time)} ·{' '}
+                                {formatStopDate(arrival.date)}
                               </strong>
                             </span>
                           </div>
