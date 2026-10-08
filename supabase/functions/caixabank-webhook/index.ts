@@ -11,6 +11,7 @@ import {
   sendTransportPaymentConfirmation,
 } from '../_shared/payment-confirmation-email.ts'
 import {
+  cyberpacPaymentOutcome,
   cyberpacTransportGatewayResponse,
   isSuccessfulCyberpacPayment,
   isValidCyberpacNotification,
@@ -38,6 +39,7 @@ Deno.serve(async (request) => {
   let gatewayResponseCode: string | null = null
   let receivedAmountCents: number | null = null
   let receivedCurrency: string | null = null
+  let paymentEventId: string | null = null
   try {
     const { signatureVersion, parameters, signature } = await readCyberpacNotification(request)
     const notification = decodeMerchantParameters(parameters)
@@ -75,6 +77,21 @@ Deno.serve(async (request) => {
     )
       return new Response('Firma no válida.', { status: 400 })
     signatureVerified = true
+    processingStage = 'record_verified_notification'
+    paymentEventId = await recordPaymentTransactionEvent({
+      eventSource: 'gateway_notification',
+      paymentKind: 'unmatched',
+      merchantOrder: order,
+      amountCents: receivedAmountCents,
+      currency: receivedCurrency,
+      responseCode: gatewayResponseCode,
+      authorisationCode: notification.Ds_AuthorisationCode ?? null,
+      gatewayDate: notification.Ds_Date ?? null,
+      gatewayHour: notification.Ds_Hour ?? null,
+      signatureVerified: true,
+      processingStage,
+      outcome: 'received',
+    })
     await recordPaymentAudit('cyberpac_notification_verified', 'payment', order, {
       merchantOrder: order,
       responseCode: gatewayResponseCode,
@@ -89,6 +106,12 @@ Deno.serve(async (request) => {
     if (payment) {
       entityType = 'invoice_payment'
       entityId = payment.id
+      await updatePaymentTransactionEvent(paymentEventId, {
+        paymentKind: 'invoice',
+        paymentRecordId: payment.id,
+        expectedAmountCents: payment.amount_cents,
+        processingStage: 'process_invoice_payment',
+      })
     }
     if (!payment) {
       const transportFields =
@@ -105,6 +128,11 @@ Deno.serve(async (request) => {
         transportPayment = historicalPayment
       }
       if (!transportPayment) {
+        await updatePaymentTransactionEvent(paymentEventId, {
+          processingStage: 'match_payment_order',
+          outcome: 'review_required',
+          errorMessage: 'No se encontró una solicitud asociada a la orden firmada.',
+        })
         await recordPaymentAudit('cyberpac_payment_order_unmatched', 'payment', order, {
           merchantOrder: order,
           responseCode: gatewayResponseCode,
@@ -116,11 +144,21 @@ Deno.serve(async (request) => {
       entityType = 'transport_request'
       entityId = transportPayment.id
       processingStage = 'process_transport_payment'
-      return await processTransportPayment(transportPayment, notification, order)
+      await updatePaymentTransactionEvent(paymentEventId, {
+        paymentKind: 'transport',
+        paymentRecordId: transportPayment.id,
+        expectedAmountCents: transportPayment.amount_cents,
+        processingStage,
+      })
+      return await processTransportPayment(transportPayment, notification, order, paymentEventId)
     }
     if (payment.status === 'pagado') {
       processingStage = 'persist_issued_invoice_document'
       await persistIssuedInvoiceDocument(payment.invoice_id)
+      await updatePaymentTransactionEvent(paymentEventId, {
+        processingStage,
+        outcome: 'confirmed',
+      })
       await recordPaymentAudit('cyberpac_invoice_payment_already_confirmed', entityType, entityId, {
         merchantOrder: order,
         paymentId: payment.id,
@@ -128,6 +166,11 @@ Deno.serve(async (request) => {
       return new Response('OK')
     }
     if (payment.status !== 'pendiente') {
+      await updatePaymentTransactionEvent(paymentEventId, {
+        processingStage: 'ignore_invoice_payment',
+        outcome: 'ignored',
+        errorMessage: `El pago ya está en estado ${payment.status}.`,
+      })
       await recordPaymentAudit('cyberpac_invoice_payment_ignored', entityType, entityId, {
         merchantOrder: order,
         paymentStatus: payment.status,
@@ -144,6 +187,7 @@ Deno.serve(async (request) => {
     const gatewayResponse = {
       response: notification.Ds_Response ?? null,
       authorisationCode: notification.Ds_AuthorisationCode ?? null,
+      amountCents: notification.Ds_Amount ?? null,
       date: notification.Ds_Date ?? null,
       hour: notification.Ds_Hour ?? null,
     }
@@ -152,6 +196,11 @@ Deno.serve(async (request) => {
       await rest(`invoice_payments?id=eq.${encodeURIComponent(payment.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'fallido', gateway_response: gatewayResponse }),
+      })
+      await updatePaymentTransactionEvent(paymentEventId, {
+        processingStage,
+        outcome: 'declined',
+        processedAt: new Date().toISOString(),
       })
       await recordPaymentAudit('cyberpac_invoice_payment_not_approved', entityType, entityId, {
         merchantOrder: order,
@@ -176,6 +225,11 @@ Deno.serve(async (request) => {
     const issuedInvoiceId = (await issuedResponse.json()) as string
     processingStage = 'persist_issued_invoice_document'
     await persistIssuedInvoiceDocument(payment.invoice_id)
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'invoice_payment_confirmed',
+      outcome: 'confirmed',
+      processedAt: new Date().toISOString(),
+    })
     await recordPaymentAudit('cyberpac_invoice_payment_confirmed', entityType, entityId, {
       merchantOrder: order,
       paymentId: payment.id,
@@ -203,6 +257,20 @@ Deno.serve(async (request) => {
       currency: receivedCurrency,
       error: message,
     })
+    if (paymentEventId) {
+      try {
+        await updatePaymentTransactionEvent(paymentEventId, {
+          processingStage,
+          outcome: 'retryable_error',
+          errorMessage: message.slice(0, 300),
+        })
+      } catch (traceError) {
+        console.error('Cyberpac transaction event update failed', {
+          merchantOrder: merchantOrder || null,
+          error: traceError instanceof Error ? traceError.message : 'unknown error',
+        })
+      }
+    }
     if (signatureVerified && merchantOrder) {
       await recordPaymentAudit(
         'cyberpac_webhook_processing_failed',
@@ -222,7 +290,7 @@ Deno.serve(async (request) => {
       signatureVerified
         ? 'Notificación verificada pendiente de reintento.'
         : 'Notificación no procesada.',
-      { status: signatureVerified ? 500 : 400 },
+      { status: signatureVerified ? 503 : 400 },
     )
   }
 })
@@ -231,17 +299,35 @@ async function processTransportPayment(
   payment: TransportPayment,
   notification: Record<string, string>,
   merchantOrder: string,
+  paymentEventId: string,
 ) {
   if (
     payment.status === 'confirmada' ||
     payment.status === 'en_ruta' ||
     payment.status === 'entregada'
-  )
+  ) {
+    await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ payment_attempt_status: 'confirmed' }),
+    })
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'already_finalized',
+      outcome: 'confirmed',
+      processedAt: new Date().toISOString(),
+    })
     return new Response('OK')
-  if (payment.status !== 'pago_pendiente' && payment.status !== 'por_verificar')
+  }
+  if (payment.status !== 'pago_pendiente' && payment.status !== 'por_verificar') {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'ignore_transport_payment',
+      outcome: 'ignored',
+      errorMessage: `La solicitud está en estado ${payment.status}.`,
+      processedAt: new Date().toISOString(),
+    })
     return new Response('OK')
+  }
   const gatewayResponse = cyberpacTransportGatewayResponse(notification)
-  const paid = isSuccessfulCyberpacPayment({
+  const outcome = cyberpacPaymentOutcome({
     amount: notification.Ds_Amount,
     response: notification.Ds_Response,
     expectedAmount: payment.amount_cents,
@@ -250,17 +336,28 @@ async function processTransportPayment(
   })
   if (payment.status === 'pago_pendiente') {
     try {
+      const paymentAttemptStatus =
+        outcome === 'paid'
+          ? 'confirmation_pending'
+          : outcome === 'declined'
+            ? 'failed'
+            : 'review_required'
       await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
         method: 'PATCH',
         body: JSON.stringify(
-          paid
+          outcome === 'paid'
             ? {
                 status: 'por_verificar',
                 payment_reference: merchantOrder,
                 paid_at: new Date().toISOString(),
                 payment_gateway_response: gatewayResponse,
+              payment_attempt_status: paymentAttemptStatus,
               }
-            : { payment_gateway_response: gatewayResponse },
+            : {
+                payment_reference: merchantOrder,
+                payment_gateway_response: gatewayResponse,
+                payment_attempt_status: paymentAttemptStatus,
+              },
         ),
       })
     } catch (error) {
@@ -286,7 +383,12 @@ async function processTransportPayment(
       throw error
     }
   }
-  if (!paid) {
+  if (outcome === 'declined') {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'gateway_declined',
+      outcome: 'declined',
+      processedAt: new Date().toISOString(),
+    })
     await recordPaymentAudit(
       'cyberpac_transport_payment_not_approved',
       'transport_request',
@@ -301,76 +403,98 @@ async function processTransportPayment(
     )
     return new Response('OK')
   }
+  if (outcome === 'review_required') {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'verify_amount_and_currency',
+      outcome: 'review_required',
+      errorMessage: 'La pasarela aprobó o no aclaró la operación, pero el importe o la moneda no coinciden.',
+      processedAt: new Date().toISOString(),
+    })
+    await recordPaymentAudit('cyberpac_transport_payment_review_required', 'transport_request', payment.id, {
+      merchantOrder,
+      amountCents: parseGatewayAmount(gatewayResponse.amountCents ?? undefined),
+      expectedAmountCents: payment.amount_cents,
+      responseCode: gatewayResponse.response,
+    })
+    return new Response('Operación registrada para revisión.', { status: 200 })
+  }
+
   await recordPaymentAudit('cyberpac_transport_payment_received', 'transport_request', payment.id, {
     merchantOrder,
     amountCents: parseGatewayAmount(gatewayResponse.amountCents ?? undefined),
     responseCode: gatewayResponse.response,
   })
-  if (paid) {
-    let issuedInvoiceId: string | null = null
-    try {
-      const issuer = issuerSnapshot()
-      const finalizeResponse = await rest('rpc/auto_finalize_paid_transport', {
-        method: 'POST',
-        body: JSON.stringify({
-          p_request_id: payment.id,
-          p_paid_at: new Date().toISOString(),
-          p_gateway_response: gatewayResponse,
-          p_issuer_snapshot: issuer,
-        }),
-      })
-      issuedInvoiceId = (await finalizeResponse.json()) as string | null
-    } catch (error) {
-      await recordPaymentAudit(
-        'cyberpac_transport_finalization_deferred',
-        'transport_request',
-        payment.id,
-        { merchantOrder, amountCents: payment.amount_cents, stage: 'finalize_transport_payment' },
-      )
-      console.error('Transport payment recorded but finalization deferred', {
-        requestId: payment.id,
-        merchantOrder,
-        error: error instanceof Error ? error.message : 'unknown error',
-      })
-      return new Response('Pago registrado; la confirmación operativa se reintentará.', {
-        status: 503,
-      })
-    }
-    if (!issuedInvoiceId) {
-      await recordPaymentAudit(
-        'cyberpac_transport_finalization_deferred',
-        'transport_request',
-        payment.id,
-        {
-          merchantOrder,
-          amountCents: payment.amount_cents,
-          stage: 'finalize_transport_payment_no_invoice',
-        },
-      )
-      return new Response('Pago registrado; la confirmación operativa se reintentará.', {
-        status: 503,
-      })
-    }
+  let issuedInvoiceId: string | null = null
+  try {
+    const issuer = issuerSnapshot()
+    const finalizeResponse = await rest('rpc/auto_finalize_paid_transport', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_request_id: payment.id,
+        p_paid_at: new Date().toISOString(),
+        p_gateway_response: gatewayResponse,
+        p_issuer_snapshot: issuer,
+      }),
+    })
+    issuedInvoiceId = (await finalizeResponse.json()) as string | null
+  } catch (error) {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'finalize_transport_payment',
+      outcome: 'retryable_error',
+      errorMessage: error instanceof Error ? error.message.slice(0, 300) : 'unknown error',
+    })
     await recordPaymentAudit(
-      'cyberpac_transport_payment_finalized',
+      'cyberpac_transport_finalization_deferred',
       'transport_request',
       payment.id,
-      {
-        merchantOrder,
-        amountCents: payment.amount_cents,
-        issuedInvoiceId,
-      },
+      { merchantOrder, amountCents: payment.amount_cents, stage: 'finalize_transport_payment' },
     )
-    if (issuedInvoiceId) {
-      try {
-        await sendTransportPaymentConfirmation(payment.id, issuedInvoiceId)
-      } catch (error) {
-        console.error(
-          'Payment confirmation email not sent',
-          error instanceof Error ? error.message : 'unknown error',
-        )
-      }
-    }
+    console.error('Transport payment recorded but finalization deferred', {
+      requestId: payment.id,
+      merchantOrder,
+      error: error instanceof Error ? error.message : 'unknown error',
+    })
+    return new Response('Pago registrado; la confirmación operativa se reintentará.', {
+      status: 503,
+    })
+  }
+  if (!issuedInvoiceId) {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'finalize_transport_payment',
+      outcome: 'retryable_error',
+      errorMessage: 'La finalización no devolvió la factura emitida.',
+    })
+    await recordPaymentAudit(
+      'cyberpac_transport_finalization_deferred',
+      'transport_request',
+      payment.id,
+      { merchantOrder, amountCents: payment.amount_cents, stage: 'finalize_transport_payment_no_invoice' },
+    )
+    return new Response('Pago registrado; la confirmación operativa se reintentará.', {
+      status: 503,
+    })
+  }
+  await rest(`transport_requests?id=eq.${encodeURIComponent(payment.id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ payment_attempt_status: 'confirmed' }),
+  })
+  await updatePaymentTransactionEvent(paymentEventId, {
+    processingStage: 'transport_payment_finalized',
+    outcome: 'confirmed',
+    processedAt: new Date().toISOString(),
+  })
+  await recordPaymentAudit('cyberpac_transport_payment_finalized', 'transport_request', payment.id, {
+    merchantOrder,
+    amountCents: payment.amount_cents,
+    issuedInvoiceId,
+  })
+  try {
+    await sendTransportPaymentConfirmation(payment.id, issuedInvoiceId)
+  } catch (error) {
+    console.error(
+      'Payment confirmation email not sent',
+      error instanceof Error ? error.message : 'unknown error',
+    )
   }
   return new Response('OK')
 }
