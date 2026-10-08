@@ -46,12 +46,13 @@ export function ClientTransportCard({
 
   return (
     <Card
-      className={`invoice-card client-transport-card client-transport-request-card ${request.status === 'por_verificar'
-        ? '!border-l-[#ca8a04]'
-        : request.status === 'confirmada' || request.status === 'en_ruta'
-          ? '!border-l-[#171717]'
-          : ''
-        }`}
+      className={`invoice-card client-transport-card client-transport-request-card ${
+        request.status === 'por_verificar'
+          ? '!border-l-[#ca8a04]'
+          : request.status === 'confirmada' || request.status === 'en_ruta'
+            ? '!border-l-[#171717]'
+            : ''
+      }`}
     >
       <CardContent>
         <div className="client-transport-request-header">
@@ -87,9 +88,9 @@ export function ClientTransportCard({
                       <span aria-hidden="true">·</span>
                       {transportBoxCategoryLabel(
                         animal.assignedBoxCategory ??
-                        animal.requestedBoxCategory ??
-                        animal.minimumBoxCategory ??
-                        'pequeno',
+                          animal.requestedBoxCategory ??
+                          animal.minimumBoxCategory ??
+                          'pequeno',
                       )}
                     </span>
                   ))}

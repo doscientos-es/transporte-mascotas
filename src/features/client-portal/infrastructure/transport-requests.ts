@@ -297,8 +297,7 @@ export async function payTransportRequest(requestId: string) {
   const { data, error } = await requireSupabase().functions.invoke('transport-payment', {
     body: { requestId },
   })
-  if (error)
-    throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
+  if (error) throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
   return openPaymentForm(result?.paymentUrl)

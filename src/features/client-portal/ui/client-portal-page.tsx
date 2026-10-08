@@ -28,12 +28,12 @@ import {
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 
 import { carriageLetterFileName, createCarriageLetterPdf } from '../application/carriage-letter-pdf'
-import { signOut as signOutSession } from '../application/session'
-import { isConfirmedTransport } from '../application/transport-calendar'
 import {
   canRetryTransportPayment,
   transportPaymentAttemptNotice,
 } from '../application/payment-attempt'
+import { signOut as signOutSession } from '../application/session'
+import { isConfirmedTransport } from '../application/transport-calendar'
 import {
   createTransportRequest,
   loadTransportCarriageLetter,
@@ -173,7 +173,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         .then((currentRequests) => {
           const request = currentRequests.find((item) => item.id === paymentRequestId)
           if (request?.paymentAttemptStatus === 'failed')
-            setError('CaixaBank ha confirmado que el pago no se completó. Ya puedes volver a intentarlo.')
+            setError(
+              'CaixaBank ha confirmado que el pago no se completó. Ya puedes volver a intentarlo.',
+            )
           else
             setError(
               'Aún no podemos confirmar el resultado con CaixaBank. No vuelvas a iniciar el pago; actualiza el estado o contacta con Kache Envíos.',
@@ -278,7 +280,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
       setError(
         transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-        'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+          'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
       )
       return
     }
@@ -294,7 +296,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         setError(
           currentRequest && !canRetryTransportPayment(currentRequest.paymentAttemptStatus)
             ? (transportPaymentAttemptNotice(currentRequest.paymentAttemptStatus) ??
-              'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
+                'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
             : reason instanceof Error
               ? reason.message
               : 'No se ha podido abrir el pago.',
@@ -346,7 +348,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         ) {
           setPendingPaymentRequestId(null)
           setShowForm(false)
-          setNotice('El pago está registrado. No necesitas volver a pagar; estamos actualizando la solicitud.')
+          setNotice(
+            'El pago está registrado. No necesitas volver a pagar; estamos actualizando la solicitud.',
+          )
           return
         }
         if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
@@ -354,7 +358,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           setShowForm(false)
           setNotice(
             transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-            'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+              'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
           )
           return
         }

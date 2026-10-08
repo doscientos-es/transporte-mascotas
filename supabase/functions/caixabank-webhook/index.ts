@@ -216,21 +216,17 @@ Deno.serve(async (request) => {
       await updatePaymentTransactionEvent(paymentEventId, {
         processingStage: 'verify_invoice_amount_and_currency',
         outcome: 'review_required',
-        errorMessage: 'La respuesta no permite confirmar con seguridad el importe o la autorización.',
+        errorMessage:
+          'La respuesta no permite confirmar con seguridad el importe o la autorización.',
         processedAt: new Date().toISOString(),
       })
-      await recordPaymentAudit(
-        'cyberpac_invoice_payment_review_required',
-        entityType,
-        entityId,
-        {
-          merchantOrder: order,
-          responseCode: gatewayResponse.response,
-          amountCents: receivedAmountCents,
-          expectedAmountCents: payment.amount_cents,
-          currency: receivedCurrency,
-        },
-      )
+      await recordPaymentAudit('cyberpac_invoice_payment_review_required', entityType, entityId, {
+        merchantOrder: order,
+        responseCode: gatewayResponse.response,
+        amountCents: receivedAmountCents,
+        expectedAmountCents: payment.amount_cents,
+        currency: receivedCurrency,
+      })
       return new Response('Operación registrada para revisión.', { status: 200 })
     }
     const paidAt = new Date().toISOString()
@@ -373,7 +369,7 @@ async function processTransportPayment(
                 payment_reference: merchantOrder,
                 paid_at: new Date().toISOString(),
                 payment_gateway_response: gatewayResponse,
-              payment_attempt_status: paymentAttemptStatus,
+                payment_attempt_status: paymentAttemptStatus,
               }
             : {
                 payment_reference: merchantOrder,
@@ -405,6 +401,12 @@ async function processTransportPayment(
       throw error
     }
   }
+  if (outcome === 'paid') {
+    await updatePaymentTransactionEvent(paymentEventId, {
+      processingStage: 'transport_payment_confirmation_pending',
+      outcome: 'confirmation_pending',
+    })
+  }
   if (outcome === 'declined') {
     await updatePaymentTransactionEvent(paymentEventId, {
       processingStage: 'gateway_declined',
@@ -429,15 +431,21 @@ async function processTransportPayment(
     await updatePaymentTransactionEvent(paymentEventId, {
       processingStage: 'verify_amount_and_currency',
       outcome: 'review_required',
-      errorMessage: 'La pasarela aprobó o no aclaró la operación, pero el importe o la moneda no coinciden.',
+      errorMessage:
+        'La pasarela aprobó o no aclaró la operación, pero el importe o la moneda no coinciden.',
       processedAt: new Date().toISOString(),
     })
-    await recordPaymentAudit('cyberpac_transport_payment_review_required', 'transport_request', payment.id, {
-      merchantOrder,
-      amountCents: parseGatewayAmount(gatewayResponse.amountCents ?? undefined),
-      expectedAmountCents: payment.amount_cents,
-      responseCode: gatewayResponse.response,
-    })
+    await recordPaymentAudit(
+      'cyberpac_transport_payment_review_required',
+      'transport_request',
+      payment.id,
+      {
+        merchantOrder,
+        amountCents: parseGatewayAmount(gatewayResponse.amountCents ?? undefined),
+        expectedAmountCents: payment.amount_cents,
+        responseCode: gatewayResponse.response,
+      },
+    )
     return new Response('Operación registrada para revisión.', { status: 200 })
   }
 
@@ -490,7 +498,11 @@ async function processTransportPayment(
       'cyberpac_transport_finalization_deferred',
       'transport_request',
       payment.id,
-      { merchantOrder, amountCents: payment.amount_cents, stage: 'finalize_transport_payment_no_invoice' },
+      {
+        merchantOrder,
+        amountCents: payment.amount_cents,
+        stage: 'finalize_transport_payment_no_invoice',
+      },
     )
     return new Response('Pago registrado; la confirmación operativa se reintentará.', {
       status: 503,
@@ -505,11 +517,16 @@ async function processTransportPayment(
     outcome: 'confirmed',
     processedAt: new Date().toISOString(),
   })
-  await recordPaymentAudit('cyberpac_transport_payment_finalized', 'transport_request', payment.id, {
-    merchantOrder,
-    amountCents: payment.amount_cents,
-    issuedInvoiceId,
-  })
+  await recordPaymentAudit(
+    'cyberpac_transport_payment_finalized',
+    'transport_request',
+    payment.id,
+    {
+      merchantOrder,
+      amountCents: payment.amount_cents,
+      issuedInvoiceId,
+    },
+  )
   try {
     await sendTransportPaymentConfirmation(payment.id, issuedInvoiceId)
   } catch (error) {
@@ -546,6 +563,96 @@ async function recordPaymentAudit(
       error: error instanceof Error ? error.message : 'unknown error',
     })
   }
+}
+
+type PaymentTransactionEventInput = {
+  eventSource: 'checkout_prepared' | 'gateway_notification'
+  paymentKind: 'transport' | 'invoice' | 'unmatched'
+  merchantOrder: string
+  paymentRecordId?: string | null
+  amountCents?: number | null
+  expectedAmountCents?: number | null
+  currency?: string | null
+  responseCode?: string | null
+  authorisationCode?: string | null
+  gatewayDate?: string | null
+  gatewayHour?: string | null
+  signatureVerified?: boolean
+  processingStage: string
+  outcome:
+    | 'started'
+    | 'received'
+    | 'confirmation_pending'
+    | 'confirmed'
+    | 'declined'
+    | 'review_required'
+    | 'retryable_error'
+    | 'ignored'
+  errorMessage?: string
+  processedAt?: string | null
+}
+
+type PaymentTransactionEventUpdate = Partial<
+  Pick<
+    PaymentTransactionEventInput,
+    | 'paymentKind'
+    | 'paymentRecordId'
+    | 'expectedAmountCents'
+    | 'processingStage'
+    | 'outcome'
+    | 'errorMessage'
+    | 'processedAt'
+  >
+>
+
+async function recordPaymentTransactionEvent(event: PaymentTransactionEventInput) {
+  const response = await rest('payment_transaction_events', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({
+      event_source: event.eventSource,
+      payment_kind: event.paymentKind,
+      merchant_order: event.merchantOrder,
+      payment_record_id: event.paymentRecordId ?? null,
+      amount_cents: event.amountCents ?? null,
+      expected_amount_cents: event.expectedAmountCents ?? null,
+      currency: event.currency ?? null,
+      response_code: event.responseCode ?? null,
+      authorisation_code: event.authorisationCode ?? null,
+      gateway_date: event.gatewayDate ?? null,
+      gateway_hour: event.gatewayHour ?? null,
+      signature_verified: event.signatureVerified ?? false,
+      processing_stage: event.processingStage,
+      outcome: event.outcome,
+      error_message: event.errorMessage ?? '',
+      processed_at: event.processedAt ?? null,
+    }),
+  })
+  const [record] = (await response.json()) as Array<{ id: string }>
+  if (!record?.id) throw new Error('No se ha podido guardar la traza de la transacción.')
+  return record.id
+}
+
+async function updatePaymentTransactionEvent(
+  eventId: string | null,
+  updates: PaymentTransactionEventUpdate,
+) {
+  if (!eventId) throw new Error('Falta el identificador de la traza de pago.')
+  const fields: Record<string, unknown> = {}
+  if ('paymentKind' in updates) fields.payment_kind = updates.paymentKind
+  if ('paymentRecordId' in updates) fields.payment_record_id = updates.paymentRecordId
+  if ('expectedAmountCents' in updates) fields.expected_amount_cents = updates.expectedAmountCents
+  if ('processingStage' in updates) fields.processing_stage = updates.processingStage
+  if ('outcome' in updates) fields.outcome = updates.outcome
+  if ('errorMessage' in updates) fields.error_message = updates.errorMessage
+  if ('processedAt' in updates) fields.processed_at = updates.processedAt
+  const response = await rest(`payment_transaction_events?id=eq.${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(fields),
+  })
+  const [record] = (await response.json()) as Array<{ id: string }>
+  if (!record?.id) throw new Error('No se ha podido actualizar la traza de la transacción.')
 }
 
 function parseGatewayAmount(value: string | undefined) {
