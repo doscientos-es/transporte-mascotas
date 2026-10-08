@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sessionUserId } from '@/shared/application/session-user-id'
 import {
   defaultTransportBoxCatalog,
+  minimumTransportBoxCategory,
+  requestedTransportBoxCategory,
   transportAnimalsTotalCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
@@ -16,6 +18,7 @@ import {
 import {
   type Animal,
   type AppRole,
+  type AnimalSize,
   type Client,
   type ClientInvoice,
   type DailyRoute,
@@ -79,7 +82,7 @@ import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
 import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
 import { findForwardRouteSegment } from './route-segment'
-import { assignmentsForRoute, boxesBySize } from './van'
+import { assignmentsForRoute, boxesBySize, vanBoxSizeForAnimal } from './van'
 
 function copyTemplateStops(
   template: RouteTemplate,
@@ -134,10 +137,15 @@ function linkActionsToStops(actions: ServiceAction[], stops: DailyRouteStop[]): 
 
 const sizeRank = { pequeno: 0, mediano: 1, grande: 2 } as const
 
-function largestAnimal(animals: Animal[]) {
-  return animals.reduce((largest, animal) =>
-    sizeRank[animal.size] > sizeRank[largest.size] ? animal : largest,
-  )
+function vanRequirementForAnimal(animal: Animal, boxCatalog: TransportBoxCatalog): AnimalSize {
+  if (animal.boxCategory) return vanBoxSizeForAnimal(animal)
+  if (animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0) {
+    return vanBoxSizeForAnimal({
+      size: animal.size,
+      boxCategory: minimumTransportBoxCategory(animal, boxCatalog),
+    })
+  }
+  return animal.size
 }
 
 function contactInvoiceInput(
@@ -162,9 +170,12 @@ function billingClientForDraft(draft: LetterDraft) {
     : contactInvoiceInput(draft, draft.billingPayer === 'remitente' ? 'sender' : 'recipient')
 }
 
-function selectFreeBox(animals: Animal[], usedBoxes: Set<number>) {
+function selectFreeBox(animals: Animal[], usedBoxes: Set<number>, boxCatalog: TransportBoxCatalog) {
   if (!animals.length) return undefined
-  const largestSize = largestAnimal(animals).size
+  const largestSize = animals.reduce<AnimalSize>((largest, animal) => {
+    const requiredSize = vanRequirementForAnimal(animal, boxCatalog)
+    return sizeRank[requiredSize] > sizeRank[largest] ? requiredSize : largest
+  }, 'pequeno')
   const compatibleBoxes = (['pequeno', 'mediano', 'grande'] as const)
     .filter((size) => sizeRank[size] >= sizeRank[largestSize])
     .flatMap((size) => boxesBySize[size])
@@ -181,6 +192,7 @@ function actionsForLetter(
   route: DailyRoute,
   template: RouteTemplate,
   letter: Letter,
+  boxCatalog: TransportBoxCatalog,
   originStopId?: string,
   destinationStopId?: string,
 ) {
@@ -198,7 +210,7 @@ function actionsForLetter(
   )
   if (!segment) return []
   const { originStop, destinationStop } = segment
-  const box = selectFreeBox(letter.animals, usedBoxes)
+  const box = selectFreeBox(letter.animals, usedBoxes, boxCatalog)
   return letter.animals.flatMap((animal) => [
     ...(originStop
       ? [
@@ -938,12 +950,21 @@ export function useDashboard(session: Session | null, role: AppRole) {
         dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
       if (!dailyRoute || !routeTemplate)
         throw new Error('Selecciona la ruta diaria donde se realizará el servicio.')
-      const animals: Animal[] = draft.animals.map((animal) => ({
-        ...animal,
-        id: crypto.randomUUID(),
-        breed: animal.breed.trim() || 'Sin clasificar',
-        size: sizeForMeasurements(animal),
-      }))
+      const animals: Animal[] = draft.animals.map((draftAnimal) => {
+        const { requestedBoxCategory, ...animal } = draftAnimal
+        const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
+        return {
+          ...animal,
+          id: crypto.randomUUID(),
+          breed: animal.breed.trim() || 'Sin clasificar',
+          size: sizeForMeasurements(animal),
+          boxCategory: requestedTransportBoxCategory(
+            { ...animal, requestedBoxCategory },
+            minimumCategory,
+            boxCatalog,
+          ),
+        }
+      })
       const reference = draft.reference.trim()
       const id = reference || 'PENDIENTE'
       const letter: Letter = {
@@ -981,6 +1002,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         dailyRoute,
         routeTemplate,
         letter,
+        boxCatalog,
         draft.originStopId,
         draft.destinationStopId,
       )
@@ -1032,13 +1054,22 @@ export function useDashboard(session: Session | null, role: AppRole) {
         dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
       if (!dailyRoute || !routeTemplate)
         throw new Error('Selecciona la ruta diaria donde se realizará el servicio.')
-      const animals: Animal[] = draft.animals.map((animal, index) => ({
-        ...animal,
-        id: currentLetter.animals[index]?.id ?? crypto.randomUUID(),
-        box: currentLetter.animals[index]?.box,
-        breed: animal.breed.trim() || 'Sin clasificar',
-        size: sizeForMeasurements(animal),
-      }))
+      const animals: Animal[] = draft.animals.map((draftAnimal, index) => {
+        const { requestedBoxCategory, ...animal } = draftAnimal
+        const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
+        return {
+          ...animal,
+          id: currentLetter.animals[index]?.id ?? crypto.randomUUID(),
+          box: currentLetter.animals[index]?.box,
+          breed: animal.breed.trim() || 'Sin clasificar',
+          size: sizeForMeasurements(animal),
+          boxCategory: requestedTransportBoxCategory(
+            { ...animal, requestedBoxCategory },
+            minimumCategory,
+            boxCatalog,
+          ),
+        }
+      })
       const letter: Letter = {
         ...currentLetter,
         sender: draft.sender.trim(),
@@ -1072,6 +1103,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         dailyRoute,
         routeTemplate,
         letter,
+        boxCatalog,
         draft.originStopId,
         draft.destinationStopId,
       )
@@ -1126,7 +1158,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const actions = letters
       .filter((letter) => letter.route === template.name && letter.serviceDate === date)
       .flatMap((letter) => {
-        const box = selectFreeBox(letter.animals, usedBoxes)
+        const box = selectFreeBox(letter.animals, usedBoxes, boxCatalog)
         if (box) usedBoxes.add(box)
         const originStop = stops.find((stop) =>
           stop.locality.toLocaleLowerCase().includes(letter.origin.toLocaleLowerCase()),

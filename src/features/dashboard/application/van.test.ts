@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import { shouldShareVanBox } from './van'
+import { isBoxCompatible, shouldShareVanBox, vanBoxSizeForAnimal } from './van'
+
+describe('van box category compatibility', () => {
+  it('uses the configured box category instead of the legacy animal size', () => {
+    const animal = { size: 'pequeno' as const, boxCategory: 'mediano' as const }
+
+    expect(vanBoxSizeForAnimal(animal)).toBe('mediano')
+    expect(isBoxCompatible(15, animal.boxCategory)).toBe(false)
+    expect(isBoxCompatible(5, animal.boxCategory)).toBe(true)
+    expect(isBoxCompatible(1, animal.boxCategory)).toBe(true)
+  })
+
+  it('maps the wheel-arch box to a large van compartment', () => {
+    expect(vanBoxSizeForAnimal({ size: 'pequeno', boxCategory: 'paso_rueda' })).toBe('grande')
+    expect(isBoxCompatible(5, 'paso_rueda')).toBe(false)
+    expect(isBoxCompatible(1, 'paso_rueda')).toBe(true)
+  })
+})
 
 describe('shouldShareVanBox', () => {
   it('shares a target box that is occupied by another assignment', () => {

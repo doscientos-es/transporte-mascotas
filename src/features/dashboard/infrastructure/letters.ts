@@ -46,6 +46,7 @@ type LetterRow = {
     height_cm: number | null
     width_cm: number | null
     size: Letter['animals'][number]['size']
+    box_category: Letter['animals'][number]['boxCategory'] | null
     identification: string
   }>
 }
@@ -85,7 +86,7 @@ async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm,size,box_category)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error
@@ -132,6 +133,7 @@ async function fetchLetters(): Promise<Letter[]> {
       lengthCm: animal.length_cm ?? 0,
       heightCm: animal.height_cm ?? 0,
       widthCm: animal.width_cm ?? 0,
+      boxCategory: animal.box_category ?? undefined,
     })),
   }))
 }
@@ -213,7 +215,7 @@ export async function saveManualLetter(
     p_billing_total: billingTotal,
     p_signature_confirmed: signatureConfirmed,
     p_animals: letter.animals.map(
-      ({ id, species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm }) => ({
+      ({ id, species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, boxCategory }) => ({
         id,
         species,
         breed,
@@ -222,6 +224,7 @@ export async function saveManualLetter(
         length_cm: lengthCm,
         height_cm: heightCm,
         width_cm: widthCm,
+        box_category: boxCategory,
       }),
     ),
     p_actions: actions.map((action) => ({
@@ -316,6 +319,7 @@ export async function updateLetter(
       length_cm: animal.lengthCm,
       height_cm: animal.heightCm,
       width_cm: animal.widthCm,
+      box_category: animal.boxCategory ?? null,
     })),
   )
   if (animalsError) throw animalsError

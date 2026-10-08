@@ -1,4 +1,4 @@
-import type { AnimalSize, DailyRoute } from '@/shared/types'
+import type { Animal, AnimalSize, DailyRoute, TransportBoxCategory } from '@/shared/types'
 
 export type VanAssignment = { box: number; label: string; animalCount: number }
 
@@ -36,14 +36,18 @@ export function boxSize(box: number): AnimalSize {
   return 'pequeno'
 }
 
-/** A box fits an animal of its own size or a smaller one (same rule as `assign_van_box`). */
-export function isBoxCompatible(box: number, animalSize: AnimalSize): boolean {
-  const size = boxSize(box)
-  return (
-    size === animalSize ||
-    (animalSize === 'pequeno' && size !== 'pequeno') ||
-    (animalSize === 'mediano' && size === 'grande')
-  )
+export function vanBoxSizeForCategory(category: AnimalSize | TransportBoxCategory): AnimalSize {
+  return category === 'paso_rueda' ? 'grande' : category
+}
+
+export function vanBoxSizeForAnimal(animal: Pick<Animal, 'size' | 'boxCategory'>): AnimalSize {
+  return animal.boxCategory ? vanBoxSizeForCategory(animal.boxCategory) : animal.size
+}
+
+/** A van compartment fits the requested transport-box category or a larger one. */
+export function isBoxCompatible(box: number, category: AnimalSize | TransportBoxCategory): boolean {
+  const sizeRank = { pequeno: 0, mediano: 1, grande: 2 } as const
+  return sizeRank[boxSize(box)] >= sizeRank[vanBoxSizeForCategory(category)]
 }
 
 export function shouldShareVanBox(targetBox: number, currentBox: number, occupiedBoxes: number[]) {

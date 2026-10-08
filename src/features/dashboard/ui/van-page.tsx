@@ -11,8 +11,19 @@ import {
 import { ArrowRightLeft, MapPin, PawPrint, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+import {
+  minimumTransportBoxCategory,
+  type TransportBoxCatalog,
+} from '@/shared/application/transport-boxes'
 import { statusLabels } from '@/shared/lib/status-labels'
-import type { AnimalSize, DailyRoute, Letter, RouteTemplate, ServiceAction } from '@/shared/types'
+import type {
+  AnimalSize,
+  DailyRoute,
+  Letter,
+  RouteTemplate,
+  ServiceAction,
+  TransportBoxCategory,
+} from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
 import {
@@ -29,6 +40,7 @@ type BoxAnimalDetails = {
   delivery?: ServiceAction
   animalLabel: string
   animalSize?: AnimalSize
+  boxCategory?: TransportBoxCategory
   compatibleBoxes: number[]
   showReassignmentControl: boolean
 }
@@ -45,6 +57,7 @@ export function VanPage({
   templates,
   letters,
   assignments,
+  boxCatalog,
   canManage,
   onSelectRoute,
   onReassignBox,
@@ -54,6 +67,7 @@ export function VanPage({
   templates: RouteTemplate[]
   letters: Letter[]
   assignments: VanAssignment[]
+  boxCatalog: TransportBoxCatalog
   canManage: boolean
   onSelectRoute: (route: DailyRoute) => void
   onReassignBox: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
@@ -85,20 +99,18 @@ export function VanPage({
               ?.animals.find((item) => item.id === pickup.animalId)
             const letterAnimals =
               letters.find((letter) => letter.id === pickup.letterId)?.animals ?? []
+            const categoryFor = (item: Letter['animals'][number]) =>
+              item.boxCategory ??
+              (item.weightKg > 0 && item.lengthCm > 0 && item.heightCm > 0 && item.widthCm > 0
+                ? minimumTransportBoxCategory(item, boxCatalog)
+                : item.size)
             const showReassignmentControl = canManage && !reassignmentShownFor.has(pickup.letterId)
             const compatibleBoxes = vanLanes
               .flatMap((lane) => lane.boxes)
               .filter(
                 (candidate) =>
                   !letterAnimals.length ||
-                  letterAnimals.every((item) => {
-                    const candidateSize = boxSize(candidate)
-                    return (
-                      candidateSize === item.size ||
-                      (item.size === 'pequeno' && candidateSize !== 'pequeno') ||
-                      (item.size === 'mediano' && candidateSize === 'grande')
-                    )
-                  }),
+                  letterAnimals.every((item) => isBoxCompatible(candidate, categoryFor(item))),
               )
             reassignmentShownFor.add(pickup.letterId)
             return {
@@ -116,6 +128,7 @@ export function VanPage({
                   ? [animal.breed, animal.species].filter(Boolean).join(' · ')
                   : 'Mascota sin identificar'),
               animalSize: animal?.size,
+              boxCategory: animal ? categoryFor(animal) : undefined,
               compatibleBoxes,
               showReassignmentControl,
             }
@@ -139,7 +152,15 @@ export function VanPage({
           return (
             !inBox &&
             animals.length > 0 &&
-            animals.every((item) => isBoxCompatible(selectedBox, item.size))
+            animals.every((item) =>
+              isBoxCompatible(
+                selectedBox,
+                item.boxCategory ??
+                  (item.weightKg > 0 && item.lengthCm > 0 && item.heightCm > 0 && item.widthCm > 0
+                    ? minimumTransportBoxCategory(item, boxCatalog)
+                    : item.size),
+              ),
+            )
           )
         })
   useEffect(() => {
@@ -374,6 +395,7 @@ function BoxDetailsDialog({
                 delivery,
                 animalLabel,
                 animalSize,
+                boxCategory,
                 compatibleBoxes,
                 showReassignmentControl,
               }) => (
@@ -388,7 +410,8 @@ function BoxDetailsDialog({
                         {animalSize
                           ? `Tamaño ${boxSizeLabel[animalSize].toLocaleLowerCase()}`
                           : 'Tamaño no indicado'}{' '}
-                        · {pickup.letterId}
+                        {boxCategory && `· box ${boxCategory.replace('_', ' ')}`} ·{' '}
+                        {pickup.letterId}
                       </small>
                     </div>
                     <StatusBadge status={pickup.status} />

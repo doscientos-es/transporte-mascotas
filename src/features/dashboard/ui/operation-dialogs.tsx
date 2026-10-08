@@ -271,7 +271,7 @@ export function LetterForm({
             letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
           signatureConfirmed: false,
           animals: letter.animals.map(
-            ({ species, breed, birthDate, weightKg, lengthCm, heightCm, widthCm, size }) => ({
+            ({
               species,
               breed,
               birthDate,
@@ -280,6 +280,17 @@ export function LetterForm({
               heightCm,
               widthCm,
               size,
+              boxCategory,
+            }) => ({
+              species,
+              breed,
+              birthDate,
+              weightKg,
+              lengthCm,
+              heightCm,
+              widthCm,
+              size,
+              requestedBoxCategory: boxCategory,
             }),
           ),
         }

@@ -388,6 +388,7 @@ export function AdminDashboardPage({
                 routes={visibleRoutes}
                 templates={dashboard.routeTemplates}
                 letters={dashboard.letters}
+                boxCatalog={dashboard.boxCatalog}
                 assignments={activeAssignments}
                 canManage={profile.role === 'admin'}
                 onSelectRoute={(route) => {
