@@ -44,7 +44,12 @@ export type LayoutLetter = {
   destination_point: string
   accompanying_documents: string[] | null
   transport_box_number?: number | null
-  animals: Array<{ species: string; breed: string; birth_date?: string | null }>
+  animals: Array<{
+    species: string
+    breed: string
+    identification?: string
+    birth_date?: string | null
+  }>
 }
 
 export const CARRIAGE_LETTER_PAGE = { width: 210, height: 148 }
@@ -128,13 +133,22 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
 
   // Header
   canvas.rect(X0, 4, X1 - X0, 24, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
-  if (logo && canvas.image) canvas.image(logo, 8, 5, 22, 22)
-  else canvas.text('KACHE ENVÍOS', 10, 18, { size: 8, bold: true })
-  canvas.text('CARTA DE PORTE', 198, 10, { size: 7, bold: true, align: 'right' })
-  canvas.text(`Nº ${letterNumber(letter.id)}`, 198, 16, { size: 7, align: 'right' })
-  canvas.text(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 198, 23, {
-    size: 8,
-    bold: true,
+  if (logo && canvas.image) canvas.image(logo, 96.5, 5, 17, 17)
+  else canvas.text('KACHE ENVÍOS', MID, 16, { size: 8, bold: true, align: 'center' })
+  canvas.text('kacheenvios.com', MID, 26, { size: 5.5, align: 'center' })
+  canvas.text(fit('CARTA DE PORTE', 6.5, 80, true), 10, 11, { size: 6.5, bold: true })
+  canvas.text(fit(`Nº ${letterNumber(letter.id)}`, 8, 80, true), 10, 21, { size: 8, bold: true })
+  const identification = [
+    ...new Set(letter.animals.map((animal) => animal.identification?.trim()).filter(Boolean)),
+  ].join(', ')
+  canvas.text(
+    fit(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 7, 70, true),
+    198,
+    12,
+    { size: 7, bold: true, align: 'right' },
+  )
+  canvas.text(fit(`Identificación: ${identification || 'No especificado'}`, 6.5, 70), 198, 21, {
+    size: 6.5,
     align: 'right',
   })
 

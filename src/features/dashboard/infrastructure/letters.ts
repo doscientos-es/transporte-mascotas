@@ -46,6 +46,7 @@ type LetterRow = {
     height_cm: number | null
     width_cm: number | null
     size: Letter['animals'][number]['size']
+    identification: string
   }>
 }
 
@@ -84,7 +85,7 @@ async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm,size)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error

@@ -4,15 +4,17 @@ import { approximateArrivalPeriod } from './route-arrival-window'
 
 describe('approximateArrivalPeriod', () => {
   it.each([
-    ['06:00', 'por la mañana'],
-    ['11:59', 'por la mañana'],
-    ['12:00', 'al mediodía'],
-    ['14:59', 'al mediodía'],
-    ['15:00', 'por la tarde'],
-    ['19:59', 'por la tarde'],
-    ['20:00', 'por la noche'],
-    ['00:15', 'por la noche'],
-    ['05:59', 'por la noche'],
+    ['06:00', 'mañana (06:00–12:00)'],
+    ['11:59', 'mañana (06:00–12:00)'],
+    ['12:00', 'mediodía (12:00–15:00)'],
+    ['14:59', 'mediodía (12:00–15:00)'],
+    ['15:00', 'tarde (15:00–21:00)'],
+    ['20:59', 'tarde (15:00–21:00)'],
+    ['21:00', 'noche (21:00–00:00)'],
+    ['23:59', 'noche (21:00–00:00)'],
+    ['00:00', 'madrugada (00:00–06:00)'],
+    ['00:15', 'madrugada (00:00–06:00)'],
+    ['05:59', 'madrugada (00:00–06:00)'],
   ])('maps %s to %s', (time, period) => {
     expect(approximateArrivalPeriod(time)).toBe(period)
   })

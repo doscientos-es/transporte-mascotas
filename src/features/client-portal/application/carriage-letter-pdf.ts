@@ -36,7 +36,7 @@ export function letterToCarriageLetter(
       ordinal: index + 1,
       species: animal.species,
       breed: animal.breed,
-      identification: '',
+      identification: animal.identification ?? '',
       birth_date: animal.birthDate || null,
       weight_kg: animal.weightKg || null,
       length_cm: animal.lengthCm || null,

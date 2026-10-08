@@ -71,6 +71,7 @@ export interface Animal {
   heightCm: number
   widthCm: number
   size: AnimalSize
+  identification?: string
   box?: number
 }
 

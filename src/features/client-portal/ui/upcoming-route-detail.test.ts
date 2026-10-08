@@ -44,7 +44,7 @@ describe('UpcomingRouteDetail', () => {
     )
 
     expect(markup).toContain(
-      'Franja aproximada: <strong>por la noche · miércoles, 7 de octubre</strong>',
+      'Franja aproximada: <strong>madrugada (00:00–06:00) · miércoles, 7 de octubre</strong>',
     )
     expect(markup).not.toContain('00:15')
     expect(markup).not.toContain('dateTime="2026-10-07T00:15"')

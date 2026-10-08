@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 
+import { sessionUserId } from '@/shared/application/session-user-id'
 import { isSupabaseConfigured, supabase } from '@/shared/infrastructure/supabase'
 import type { UserProfile } from '@/shared/types'
 
@@ -12,6 +13,7 @@ export function useAuthSession() {
   const [authError, setAuthError] = useState('')
   const [profileError, setProfileError] = useState('')
   const [reloadAttempt, setReloadAttempt] = useState(0)
+  const userId = sessionUserId(session)
 
   useEffect(() => {
     if (!supabase) return
@@ -47,7 +49,7 @@ export function useAuthSession() {
   }, [reloadAttempt])
 
   useEffect(() => {
-    if (!supabase || !session) {
+    if (!supabase || !userId) {
       setProfile(null)
       setProfileReady(true)
       return
@@ -60,7 +62,7 @@ export function useAuthSession() {
         const { data, error } = await supabase
           .from('profiles')
           .select('display_name,phone,role')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .single()
         if (!active) return
         if (error) throw error
@@ -80,7 +82,7 @@ export function useAuthSession() {
     return () => {
       active = false
     }
-  }, [reloadAttempt, session])
+  }, [reloadAttempt, userId])
 
   return {
     session,

@@ -13,6 +13,7 @@ describe('letterToCarriageLetter', () => {
           id: 'animal-1',
           species: 'Perro',
           breed: 'Mestizo',
+          identification: '123456789',
           birthDate: '2020-06-12',
           weightKg: 12,
           lengthCm: 40,
@@ -26,5 +27,6 @@ describe('letterToCarriageLetter', () => {
 
     expect(document.transport_box_number).toBe(17)
     expect(document.animals[0]?.birth_date).toBe('2020-06-12')
+    expect(document.animals[0]?.identification).toBe('123456789')
   })
 })

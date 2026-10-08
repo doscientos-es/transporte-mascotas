@@ -34,28 +34,40 @@ const letter = (
 })
 
 describe('carriage letter layout', () => {
-  it('prints a single carriage-letter reference and the assigned box number', () => {
+  it('centers the transparent logo and prints the letter, box, and animal identifiers', () => {
     const texts: string[] = []
+    const textPositions: Array<{ value: string; x: number; align?: string }> = []
     const images: Array<[number, number, number, number]> = []
 
     drawCarriageLetter(
       {
         rect: () => {},
-        text: (value) => texts.push(value),
+        text: (value, x, _y, { align }) => {
+          texts.push(value)
+          textPositions.push({ value, x, align })
+        },
         width: (value) => value.length,
         image: (_data, x, y, w, h) => images.push([x, y, w, h]),
       },
-      letter(17),
+      letter(17, {
+        animals: [{ species: 'Perro', breed: 'Mestizo', identification: '123456789' }],
+      }),
       new Uint8Array([1]),
     )
 
     expect(texts).toContain('CARTA DE PORTE')
     expect(texts).toContain('Nº 2026-P00001')
     expect(texts).toContain('Nº Box: 17')
+    expect(texts).toContain('kacheenvios.com')
+    expect(texts).toContain('Identificación: 123456789')
     expect(texts).not.toContain('CARTA DE PORTE Nº CARTA DE PORTE Nº 2026-P00001')
-    expect(texts).not.toContain('Nº BÓXER')
-    expect(texts).not.toContain('ATES 01140700097')
-    expect(images).toEqual([[8, 5, 22, 22]])
+    expect(textPositions).toContainEqual({ value: 'Nº 2026-P00001', x: 10, align: undefined })
+    expect(textPositions).toContainEqual({
+      value: 'Identificación: 123456789',
+      x: 198,
+      align: 'right',
+    })
+    expect(images).toEqual([[96.5, 5, 17, 17]])
   })
 
   it('shows an explicit fallback when no transport box is assigned', () => {

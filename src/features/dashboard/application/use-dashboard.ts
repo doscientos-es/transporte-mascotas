@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { sessionUserId } from '@/shared/application/session-user-id'
 import {
   defaultTransportBoxCatalog,
   transportAnimalsTotalCents,
@@ -235,6 +236,7 @@ function actionsForLetter(
 }
 
 export function useDashboard(session: Session | null, role: AppRole) {
+  const userId = sessionUserId(session)
   const [letters, setLetters] = useState<Letter[]>(() =>
     session ? (getCachedLetters(session.user.id) ?? []) : [],
   )
@@ -274,12 +276,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
 
   const ensureLetters = useCallback(
     async (force = false) => {
-      if (!session || role !== 'admin') return
+      if (!userId || role !== 'admin') return
       if (!force && lettersLoaded.current) return
       if (!force && lettersRequest.current) return lettersRequest.current
       setLettersLoading(true)
       setLettersError('')
-      const request = loadLetters(session.user.id, force)
+      const request = loadLetters(userId, force)
         .then((loadedLetters) => {
           lettersLoaded.current = true
           setLetters(loadedLetters)
@@ -292,14 +294,14 @@ export function useDashboard(session: Session | null, role: AppRole) {
       lettersRequest.current = request
       return request
     },
-    [role, session],
+    [role, userId],
   )
 
   useEffect(() => () => window.clearTimeout(noticeTimer.current), [])
 
   useEffect(() => {
     let active = true
-    if (!session) {
+    if (!userId) {
       setRouteTemplates([])
       setMeetingPoints([])
       setStaffInvitations([])
@@ -370,7 +372,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     return () => {
       active = false
     }
-  }, [role, session, toast])
+  }, [role, userId, toast])
 
   async function signOut() {
     if (!supabase || !session) return toast('No hay una sesión autenticada que cerrar.')

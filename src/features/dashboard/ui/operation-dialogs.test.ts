@@ -107,3 +107,26 @@ describe('LetterForm route stop options', () => {
     expect(markup).toContain('Madrid · parada 3')
   })
 })
+
+describe('LetterForm contact emails', () => {
+  it('requires a valid email for both sender and recipient', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn().mockResolvedValue(undefined),
+        onAddStop: vi.fn().mockResolvedValue(stops[0]),
+      }),
+    )
+    const emailInputs = markup.match(/<input[^>]*type="email"[^>]*>/g) ?? []
+
+    expect(markup).toContain('Email (obligatorio)')
+    expect(emailInputs).toHaveLength(2)
+    expect(emailInputs.every((input) => input.includes('required=""'))).toBe(true)
+  })
+})

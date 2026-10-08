@@ -1322,13 +1322,14 @@ function ContactDetails({
           />
         </Label>
         <Label className="sm:col-span-3">
-          Email (opcional)
+          Email (obligatorio)
           <Input
             type="email"
             value={value('Email')}
             onChange={(event) => onChange(person, 'Email', event.target.value)}
             placeholder="nombre@correo.com"
             autoComplete="email"
+            required
           />
         </Label>
         <div className="relative sm:col-span-6" aria-busy={lookingUpAddress}>
