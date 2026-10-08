@@ -46,6 +46,10 @@ export function isBoxCompatible(box: number, animalSize: AnimalSize): boolean {
   )
 }
 
+export function shouldShareVanBox(targetBox: number, currentBox: number, occupiedBoxes: number[]) {
+  return targetBox !== currentBox && occupiedBoxes.includes(targetBox)
+}
+
 export type VanLane = { id: string; side: 'left' | 'right'; boxes: number[]; size: AnimalSize }
 
 // Physical order from the supplied FURGONETA part: the cab is at the top and

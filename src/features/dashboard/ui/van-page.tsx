@@ -19,6 +19,7 @@ import {
   boxGridSpan,
   boxSize,
   isBoxCompatible,
+  shouldShareVanBox,
   type VanAssignment,
   vanLanes,
 } from '../application/van'
@@ -66,6 +67,7 @@ export function VanPage({
     0,
   )
   const occupiedBoxCount = new Set(assignments.map((assignment) => assignment.box)).size
+  const occupiedBoxes = [...new Set(assignments.map((assignment) => assignment.box))]
   const selectedAssignment = assignments.find((assignment) => assignment.box === selectedBox)
   const routeName = (item: DailyRoute) =>
     templates.find((template) => template.id === item.templateId)?.name ?? 'Ruta sin plantilla'
@@ -290,6 +292,7 @@ export function VanPage({
           routeName={routeName(route)}
           routeDate={route.date}
           animals={selectedBoxDetails}
+          occupiedBoxes={occupiedBoxes}
           canManage={canManage}
           addableLetters={addableLetters}
           onReassign={async (letterId, box, shareBox) => {
@@ -308,6 +311,7 @@ function BoxDetailsDialog({
   routeName,
   routeDate,
   animals,
+  occupiedBoxes,
   canManage,
   addableLetters,
   onReassign,
@@ -317,6 +321,7 @@ function BoxDetailsDialog({
   routeName: string
   routeDate: string
   animals: BoxAnimalDetails[]
+  occupiedBoxes: number[]
   canManage: boolean
   addableLetters: string[]
   onReassign: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
@@ -412,6 +417,7 @@ function BoxDetailsDialog({
                     <ReassignBoxControl
                       letterId={pickup.letterId}
                       currentBox={box}
+                      occupiedBoxes={occupiedBoxes}
                       compatibleBoxes={compatibleBoxes}
                       onReassign={onReassign}
                     />
@@ -512,22 +518,26 @@ function AddLetterToBoxControl({
 function ReassignBoxControl({
   letterId,
   currentBox,
+  occupiedBoxes,
   compatibleBoxes,
   onReassign,
 }: {
   letterId: string
   currentBox: number
+  occupiedBoxes: number[]
   compatibleBoxes: number[]
-  onReassign: (letterId: string, box: number) => Promise<void>
+  onReassign: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
 }) {
   const [targetBox, setTargetBox] = useState(String(currentBox))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const targetBoxNumber = Number(targetBox)
+  const shareBox = shouldShareVanBox(targetBoxNumber, currentBox, occupiedBoxes)
   async function submit() {
     setSaving(true)
     setError('')
     try {
-      await onReassign(letterId, Number(targetBox))
+      await onReassign(letterId, targetBoxNumber, shareBox)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido cambiar el box.')
     } finally {
@@ -541,6 +551,11 @@ function ReassignBoxControl({
           <ArrowRightLeft size={15} /> Reasignar box
         </strong>
         <p>El cambio se aplica a todos los animales de esta carta.</p>
+        {shareBox && (
+          <p role="status">
+            El box {targetBoxNumber} ya está ocupado; al confirmar, compartirán el box.
+          </p>
+        )}
       </div>
       <div className="box-reassignment-controls">
         <label>
@@ -566,7 +581,8 @@ function ReassignBoxControl({
           disabled={saving || Number(targetBox) === currentBox}
           onClick={() => void submit()}
         >
-          <ArrowRightLeft size={15} /> {saving ? 'Cambiando…' : 'Confirmar cambio'}
+          <ArrowRightLeft size={15} />
+          {saving ? 'Cambiando…' : shareBox ? 'Compartir box' : 'Confirmar cambio'}
         </Button>
       </div>
       {error && (
