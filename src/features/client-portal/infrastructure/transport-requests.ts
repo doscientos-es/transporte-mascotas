@@ -203,6 +203,7 @@ export type CreateTransportRequestInput = Omit<
   | 'id'
   | 'requesterId'
   | 'status'
+  | 'paymentAttemptStatus'
   | 'amountCents'
   | 'paymentReference'
   | 'createdAt'
