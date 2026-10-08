@@ -359,6 +359,7 @@ export function AdminDashboardPage({
                   onAction={dashboard.updateActions}
                   onUpdateStops={dashboard.updateRouteStops}
                   onUpdateStartTime={dashboard.updateRouteStartTime}
+                  onUpdateDate={dashboard.updateRouteDate}
                   onSuggestStop={dashboard.suggestRouteStop}
                   onAddStop={dashboard.addRouteStop}
                   onRemoveStop={dashboard.removeRouteStop}

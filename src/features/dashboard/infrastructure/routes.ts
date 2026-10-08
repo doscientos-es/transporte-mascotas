@@ -424,6 +424,14 @@ export async function updateDailyRouteStartTime(routeId: string, startTime: stri
   if (error) throw error
 }
 
+export async function updateDailyRouteDate(routeId: string, date: string) {
+  const { error } = await requireSupabase()
+    .from('daily_routes')
+    .update({ service_date: date })
+    .eq('id', routeId)
+  if (error) throw error
+}
+
 export async function closeDailyRoute(routeId: string) {
   const { data, error } = await requireSupabase().rpc('close_daily_route', {
     p_daily_route_id: routeId,

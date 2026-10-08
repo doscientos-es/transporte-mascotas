@@ -66,6 +66,7 @@ import {
   reassignVanBox,
   saveDailyRoute,
   saveRouteTemplate,
+  updateDailyRouteDate,
   updateDailyRouteStartTime,
   updateDailyRouteStops,
   updateRouteTemplate,
@@ -503,6 +504,25 @@ export function useDashboard(session: Session | null, role: AppRole) {
     await updateDailyRouteStartTime(routeId, startTime)
     const update = (route: DailyRoute): DailyRoute =>
       route.id === routeId ? { ...route, startTime } : route
+    setSelectedRoute((current) => (current ? update(current) : null))
+    setDailyRoutes((current) => current.map(update))
+  }
+
+  async function updateRouteDate(routeId: string, date: string) {
+    if (!session) throw new Error('Inicia sesión para cambiar el día de la ruta.')
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (route?.closedAt) throw new Error('El itinerario está cerrado y ya no se puede modificar.')
+    if (
+      route &&
+      dailyRoutes.some(
+        (item) => item.id !== routeId && item.templateId === route.templateId && item.date === date,
+      )
+    ) {
+      throw new Error('Ya existe una ruta de esta plantilla para ese día.')
+    }
+    await updateDailyRouteDate(routeId, date)
+    const update = (item: DailyRoute): DailyRoute =>
+      item.id === routeId ? { ...item, date } : item
     setSelectedRoute((current) => (current ? update(current) : null))
     setDailyRoutes((current) => current.map(update))
   }
@@ -1238,6 +1258,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     updateActions,
     updateRouteStops,
     updateRouteStartTime,
+    updateRouteDate,
     suggestRouteStop,
     addRouteStop,
     addLetterRouteStop,

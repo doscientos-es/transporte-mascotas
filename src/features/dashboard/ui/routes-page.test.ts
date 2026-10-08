@@ -66,6 +66,7 @@ describe('RoutesPage header', () => {
           onBack: vi.fn(),
           onAction: async () => {},
           onUpdateStops: async () => {},
+          onUpdateDate: async () => {},
           onSuggestStop: async () => ({ index: 0, stops: [] }),
           onAddStop: async () => {},
           onRemoveStop: async () => {},
@@ -86,6 +87,9 @@ describe('RoutesPage header', () => {
     expect(markup).toContain('35 min')
     expect(markup).toContain('<p>Clínica Sol · Entrada principal</p>')
     expect(markup).toContain('Fin de ruta')
+    expect(markup).toContain('Día de inicio')
+    expect(markup).toContain('aria-label="Día de inicio de la ruta"')
+    expect(markup).toContain('type="date"')
     expect(markup).not.toContain('Trayecto sig.')
     expect(markup.indexOf('class="journey-place"')).toBeLessThan(
       markup.indexOf('class="journey-leg"'),

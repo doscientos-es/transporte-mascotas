@@ -42,6 +42,7 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 import {
   deleteRouteTemplateStop,
   duplicateRouteTemplate,
+  updateDailyRouteDate,
   updateDailyRouteStops,
   updateRouteTemplateStop,
   updateRouteTemplateStopTimes,
@@ -64,6 +65,16 @@ describe('updateDailyRouteStops', () => {
     await updateDailyRouteStops('route-1', [stop('second'), stop('first')])
 
     expect(updates.map(({ sequence }) => sequence)).toEqual([100000, 100001, 1, 2])
+  })
+})
+
+describe('updateDailyRouteDate', () => {
+  it('updates only the route start date', async () => {
+    updates.length = 0
+
+    await updateDailyRouteDate('route-1', '2026-12-03')
+
+    expect(updates).toEqual([{ service_date: '2026-12-03' }])
   })
 })
 

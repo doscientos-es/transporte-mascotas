@@ -81,6 +81,7 @@ type Props = {
   onAction: (ids: string[]) => Promise<void>
   onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>
   onUpdateStartTime?: (routeId: string, startTime: string) => Promise<void>
+  onUpdateDate?: (routeId: string, date: string) => Promise<void>
   onSuggestStop: (
     routeId: string,
     stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
@@ -451,6 +452,7 @@ export function RoutesPage({
   onAction,
   onUpdateStops,
   onUpdateStartTime,
+  onUpdateDate,
   onSuggestStop,
   onAddStop,
   onRemoveStop,
@@ -564,6 +566,15 @@ export function RoutesPage({
       await onUpdateStartTime(route.id, value)
     } catch (error) {
       reportOperationError(error, 'No se ha podido actualizar la hora de salida.')
+    }
+  }
+  async function changeDate(value: string) {
+    if (!value || !onUpdateDate) return
+    try {
+      setOperationError('')
+      await onUpdateDate(route.id, value)
+    } catch (error) {
+      reportOperationError(error, 'No se ha podido cambiar el día de inicio de la ruta.')
     }
   }
   async function acceptPlan() {
@@ -701,6 +712,22 @@ export function RoutesPage({
                 </div>
               </div>
               <div className="route-header-stats">
+                <div className="route-start-field">
+                  <span>Día de inicio</span>
+                  {canManage && !itineraryClosed && onUpdateDate ? (
+                    <input
+                      type="date"
+                      aria-label="Día de inicio de la ruta"
+                      className="route-start-input route-date-input"
+                      value={route.date}
+                      onChange={(event) => void changeDate(event.target.value)}
+                    />
+                  ) : (
+                    <strong>
+                      {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES')}
+                    </strong>
+                  )}
+                </div>
                 <div className="route-start-field">
                   <span>Hora de salida</span>
                   {canManage && !itineraryClosed && onUpdateStartTime ? (

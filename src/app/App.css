@@ -7550,6 +7550,10 @@ a.whatsapp-link:hover {
   outline-offset: 1px;
 }
 
+.route-date-input {
+  min-width: 150px;
+}
+
 .route-estimate {
   display: grid;
   grid-template-columns: minmax(0, max-content) max-content;
@@ -7649,8 +7653,17 @@ a.whatsapp-link:hover {
 
   .route-header-stats {
     display: grid;
-    grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
+  }
+
+  .route-date-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .route-estimate {
+    grid-column: 1 / -1;
   }
 
   .route-estimate {
