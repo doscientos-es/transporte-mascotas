@@ -59,6 +59,26 @@ export function isSuccessfulCyberpacPayment({
   )
 }
 
+export function cyberpacPaymentOutcome({
+  amount,
+  response,
+  expectedAmount,
+  currency,
+  expectedCurrency,
+}: {
+  amount: string | undefined
+  response: string | undefined
+  expectedAmount: number
+  currency?: string
+  expectedCurrency?: string
+}): 'paid' | 'declined' | 'review_required' {
+  if (isSuccessfulCyberpacPayment({ amount, response, expectedAmount, currency, expectedCurrency }))
+    return 'paid'
+  const responseCode = Number(response)
+  if (Number.isInteger(responseCode) && responseCode >= 100) return 'declined'
+  return 'review_required'
+}
+
 export function cyberpacTransportGatewayResponse(notification: Record<string, string>) {
   return {
     response: notification.Ds_Response ?? null,

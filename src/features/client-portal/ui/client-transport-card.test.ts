@@ -46,6 +46,7 @@ const request: TransportRequest = {
   accompanyingDocuments: ['cartilla_sanitaria'],
   notes: '',
   status: 'confirmada',
+  paymentAttemptStatus: 'confirmed',
   amountCents: 12000,
   paymentReference: 'payment-1',
   paidAt: '2026-09-20T12:00:00Z',
@@ -99,10 +100,27 @@ describe('ClientTransportCard', () => {
   })
 
   it('offers payment for an unpaid request and keeps documents unavailable', () => {
-    const markup = renderCard({ ...request, status: 'pago_pendiente', paidAt: undefined })
+    const markup = renderCard({
+      ...request,
+      status: 'pago_pendiente',
+      paymentAttemptStatus: 'not_started',
+      paidAt: undefined,
+    })
 
     expect(markup).toContain('Continuar pago')
     expect(markup).not.toContain('Descargar factura')
     expect(markup).not.toContain('Descargar carta de porte')
+  })
+
+  it('does not offer another payment while a bank result is uncertain', () => {
+    const markup = renderCard({
+      ...request,
+      status: 'pago_pendiente',
+      paymentAttemptStatus: 'review_required',
+      paidAt: undefined,
+    })
+
+    expect(markup).toContain('No vuelvas a pagar')
+    expect(markup).not.toContain('Continuar pago')
   })
 })

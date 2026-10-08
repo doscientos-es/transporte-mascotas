@@ -14,6 +14,10 @@ import { transportBoxCategoryLabel } from '@/shared/application/transport-boxes'
 import type { TransportRequest } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
+import {
+  canRetryTransportPayment,
+  transportPaymentAttemptNotice,
+} from '../application/payment-attempt'
 import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
 import { isConfirmedTransport } from '../application/transport-calendar'
 
@@ -42,13 +46,12 @@ export function ClientTransportCard({
 
   return (
     <Card
-      className={`invoice-card client-transport-card client-transport-request-card ${
-        request.status === 'por_verificar'
-          ? '!border-l-[#ca8a04]'
-          : request.status === 'confirmada' || request.status === 'en_ruta'
-            ? '!border-l-[#171717]'
-            : ''
-      }`}
+      className={`invoice-card client-transport-card client-transport-request-card ${request.status === 'por_verificar'
+        ? '!border-l-[#ca8a04]'
+        : request.status === 'confirmada' || request.status === 'en_ruta'
+          ? '!border-l-[#171717]'
+          : ''
+        }`}
     >
       <CardContent>
         <div className="client-transport-request-header">
@@ -70,7 +73,8 @@ export function ClientTransportCard({
                 <span>{request.destination}</span>
               </h3>
               <p className="client-transport-request-note">
-                {request.adminNote || clientStatusHint(request.status)}
+                {request.adminNote ||
+                  clientStatusHint(request.status, request.paymentAttemptStatus)}
               </p>
               {request.animals.length > 0 && (
                 <div className="client-transport-pets">
@@ -81,9 +85,9 @@ export function ClientTransportCard({
                       <span aria-hidden="true">·</span>
                       {transportBoxCategoryLabel(
                         animal.assignedBoxCategory ??
-                          animal.requestedBoxCategory ??
-                          animal.minimumBoxCategory ??
-                          'pequeno',
+                        animal.requestedBoxCategory ??
+                        animal.minimumBoxCategory ??
+                        'pequeno',
                       )}
                     </span>
                   ))}
@@ -102,17 +106,18 @@ export function ClientTransportCard({
                 <CheckCircle2 size={14} aria-hidden="true" /> Pago registrado
               </span>
             )}
-            {request.status === 'pago_pendiente' && (
-              <Button
-                className="client-transport-pay-button"
-                size="sm"
-                disabled={Boolean(payingRequestId)}
-                onClick={() => onContinuePayment(request.id)}
-              >
-                <CreditCard size={15} />{' '}
-                {payingRequestId === request.id ? 'Abriendo pago…' : 'Continuar pago'}
-              </Button>
-            )}
+            {request.status === 'pago_pendiente' &&
+              canRetryTransportPayment(request.paymentAttemptStatus) && (
+                <Button
+                  className="client-transport-pay-button"
+                  size="sm"
+                  disabled={Boolean(payingRequestId)}
+                  onClick={() => onContinuePayment(request.id)}
+                >
+                  <CreditCard size={15} />{' '}
+                  {payingRequestId === request.id ? 'Abriendo pago…' : 'Continuar pago'}
+                </Button>
+              )}
           </div>
         </div>
 
@@ -204,7 +209,15 @@ function TransportLocationMap({
   )
 }
 
-function clientStatusHint(status: TransportRequest['status']) {
+function clientStatusHint(
+  status: TransportRequest['status'],
+  paymentAttemptStatus: TransportRequest['paymentAttemptStatus'],
+) {
+  if (status === 'pago_pendiente')
+    return (
+      transportPaymentAttemptNotice(paymentAttemptStatus) ??
+      'Estamos esperando la confirmación del pago.'
+    )
   if (status === 'por_verificar')
     return 'Pago registrado. Estamos comprobando la disponibilidad de ruta.'
   if (status === 'confirmada')
@@ -214,5 +227,5 @@ function clientStatusHint(status: TransportRequest['status']) {
   if (status === 'rechazada')
     return 'No hemos podido asignar esta solicitud. Puedes contactar con nosotros para revisarla.'
   if (status === 'cancelada') return 'Esta solicitud está cancelada. Si tienes dudas, contáctanos.'
-  return 'Estamos esperando la confirmación del pago.'
+  return ''
 }

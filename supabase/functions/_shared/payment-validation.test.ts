@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  cyberpacPaymentOutcome,
   cyberpacTransportGatewayResponse,
   isSuccessfulCyberpacPayment,
   isValidCyberpacNotification,
@@ -78,6 +79,30 @@ describe('isSuccessfulCyberpacPayment', () => {
     ['a different currency', { currency: '840' }],
   ])('rejects %s', (_, change) => {
     expect(isSuccessfulCyberpacPayment({ ...validPayment, ...change })).toBe(false)
+  })
+})
+
+describe('cyberpacPaymentOutcome', () => {
+  const approved = {
+    amount: '12000',
+    response: '00',
+    expectedAmount: 12000,
+    currency: '978',
+    expectedCurrency: '978',
+  }
+
+  it('marks an exact approved payment as paid', () => {
+    expect(cyberpacPaymentOutcome(approved)).toBe('paid')
+  })
+
+  it('requires review when an approved response has a missing or mismatched amount', () => {
+    expect(cyberpacPaymentOutcome({ ...approved, amount: undefined })).toBe('review_required')
+    expect(cyberpacPaymentOutcome({ ...approved, amount: '11999' })).toBe('review_required')
+  })
+
+  it('allows retry only when Cyberpac reports a clear decline response', () => {
+    expect(cyberpacPaymentOutcome({ ...approved, response: '100' })).toBe('declined')
+    expect(cyberpacPaymentOutcome({ ...approved, response: undefined })).toBe('review_required')
   })
 })
 

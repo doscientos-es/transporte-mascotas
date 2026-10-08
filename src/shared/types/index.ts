@@ -303,6 +303,14 @@ export type TransportRequestStatus =
   | 'entregada'
   | 'cancelada'
 
+export type TransportPaymentAttemptStatus =
+  | 'not_started'
+  | 'started'
+  | 'confirmation_pending'
+  | 'review_required'
+  | 'failed'
+  | 'confirmed'
+
 export interface TransportRequestAnimal {
   id?: string
   name: string
@@ -354,6 +362,7 @@ export interface TransportRequest {
   accompanyingDocuments: AccompanyingDocument[]
   notes: string
   status: TransportRequestStatus
+  paymentAttemptStatus: TransportPaymentAttemptStatus
   amountCents: number
   paymentReference: string
   paidAt?: string

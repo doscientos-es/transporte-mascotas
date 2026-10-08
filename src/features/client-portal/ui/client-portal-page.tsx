@@ -31,6 +31,10 @@ import { carriageLetterFileName, createCarriageLetterPdf } from '../application/
 import { signOut as signOutSession } from '../application/session'
 import { isConfirmedTransport } from '../application/transport-calendar'
 import {
+  canRetryTransportPayment,
+  transportPaymentAttemptNotice,
+} from '../application/payment-attempt'
+import {
   createTransportRequest,
   loadTransportCarriageLetter,
   loadTransportInvoice,
@@ -163,10 +167,23 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       })
     } else if (paymentStatus === 'ko') {
       setError(
-        paymentInvoiceId
-          ? 'El pago de la factura no se ha completado. Puedes reintentarlo desde esta sección.'
-          : 'El pago no se ha completado. Puedes reintentarlo desde Mis transportes.',
+        'Estamos comprobando el resultado con CaixaBank. No inicies otro pago hasta que confirmemos el estado.',
       )
+      void refresh()
+        .then((currentRequests) => {
+          const request = currentRequests.find((item) => item.id === paymentRequestId)
+          if (request?.paymentAttemptStatus === 'failed')
+            setError('CaixaBank ha confirmado que el pago no se completó. Ya puedes volver a intentarlo.')
+          else
+            setError(
+              'Aún no podemos confirmar el resultado con CaixaBank. No vuelvas a iniciar el pago; actualiza el estado o contacta con Kache Envíos.',
+            )
+        })
+        .catch(() =>
+          setError(
+            'No hemos podido comprobar el resultado con CaixaBank. No vuelvas a iniciar el pago; contacta con Kache Envíos para revisar la operación.',
+          ),
+        )
     }
   }, [
     navigate,
@@ -257,6 +274,14 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
 
   async function continuePayment(requestId: string) {
     if (payingRequestId) return
+    const request = requests.find((item) => item.id === requestId)
+    if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
+      setError(
+        transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
+        'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+      )
+      return
+    }
     setError('')
     setPayingRequestId(requestId)
     try {
@@ -297,10 +322,18 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         const currentRequests = await loadTransportRequests(userId)
         setRequests(currentRequests)
         const request = currentRequests.find((item) => item.id === requestId)
-        if (request?.status === 'por_verificar') {
+        if (request && (request.paidAt || request.status !== 'pago_pendiente')) {
           setPendingPaymentRequestId(null)
+          setShowForm(false)
+          setNotice('El pago está registrado. No necesitas volver a pagar; estamos actualizando la solicitud.')
+          return
+        }
+        if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
+          setPendingPaymentRequestId(null)
+          setShowForm(false)
           setNotice(
-            'Pago registrado. Estamos revisando tu solicitud y te avisaremos al asignar la ruta.',
+            transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
+            'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
           )
           return
         }
@@ -308,7 +341,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         // The request remains recoverable through its id; do not create a duplicate on retry.
       }
       throw new Error(
-        'Hemos guardado tu solicitud, pero no hemos podido registrar el pago. Reinténtalo: no se creará otra solicitud.',
+        'Hemos guardado tu solicitud, pero no podemos confirmar si el intento de pago se inició. Actualiza el estado antes de reintentarlo para evitar un posible cobro duplicado.',
       )
     }
   }
@@ -482,21 +515,28 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           )}
           {!showForm && (pendingPaymentRequestId || unpaidRequest) && (
             <div className="inline-feedback is-warning" aria-live="polite">
-              <p>Tienes una solicitud guardada pendiente de registrar el pago.</p>
-              <Button
-                type="button"
-                disabled={Boolean(payingRequestId)}
-                onClick={() =>
-                  pendingPaymentRequestId
-                    ? setShowForm(true)
-                    : unpaidRequest && void continuePayment(unpaidRequest.id)
-                }
-              >
-                <CreditCard size={15} />{' '}
-                {payingRequestId && payingRequestId === unpaidRequest?.id
-                  ? 'Abriendo pago…'
-                  : 'Continuar pago'}
-              </Button>
+              <p>
+                {unpaidRequest
+                  ? (transportPaymentAttemptNotice(unpaidRequest.paymentAttemptStatus) ??
+                    'Tienes una solicitud guardada pendiente de registrar el pago.')
+                  : 'Tienes una solicitud guardada pendiente de registrar el pago.'}
+              </p>
+              {(!unpaidRequest || canRetryTransportPayment(unpaidRequest.paymentAttemptStatus)) && (
+                <Button
+                  type="button"
+                  disabled={Boolean(payingRequestId)}
+                  onClick={() =>
+                    pendingPaymentRequestId
+                      ? setShowForm(true)
+                      : unpaidRequest && void continuePayment(unpaidRequest.id)
+                  }
+                >
+                  <CreditCard size={15} />{' '}
+                  {payingRequestId && payingRequestId === unpaidRequest?.id
+                    ? 'Abriendo pago…'
+                    : 'Continuar pago'}
+                </Button>
+              )}
             </div>
           )}
           {!showForm && guestAccountEmail && !accountPromptDismissed && (

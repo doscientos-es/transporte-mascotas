@@ -43,6 +43,11 @@ export function PaymentSuccessPanel({
   const [downloading, setDownloading] = useState<DocumentKind | null>(null)
   const [invoiceError, setInvoiceError] = useState('')
   const confirmed = request ? isConfirmedTransport(request.status) : false
+  const paymentRecorded = Boolean(
+    request?.paidAt ||
+    request?.status === 'por_verificar' ||
+    (request && isConfirmedTransport(request.status)),
+  )
 
   async function downloadDocument(kind: DocumentKind) {
     if (!request || downloading) return
@@ -68,12 +73,26 @@ export function PaymentSuccessPanel({
   return (
     <section className="payment-success" aria-live="polite">
       <div className="payment-success-hero">
-        <CheckCircle2 size={44} aria-hidden="true" />
-        <h2>¡Pago completado! Muchas gracias</h2>
+        {paymentRecorded || confirmed ? (
+          <CheckCircle2 size={44} aria-hidden="true" />
+        ) : (
+          <RefreshCw size={44} aria-hidden="true" />
+        )}
+        <h2>
+          {confirmed
+            ? '¡Transporte confirmado!'
+            : paymentRecorded
+              ? 'Pago recibido; estamos revisando la solicitud'
+              : confirming
+                ? 'Estamos comprobando el pago con CaixaBank'
+                : 'Aún no hemos podido confirmar el pago'}
+        </h2>
         <p>
-          {request
-            ? `Hemos recibido tu pago de ${formatCurrency(request.amountCents)}. Te enviaremos la confirmación a ${request.contactEmail}.`
-            : 'Hemos recibido tu pago. Estamos cargando los datos de tu transporte.'}
+          {paymentRecorded && request
+            ? `El pago de ${formatCurrency(request.amountCents)} está registrado. No necesitas volver a pagar; te avisaremos cuando terminemos de confirmar el transporte.`
+            : confirming
+              ? 'CaixaBank nos ha devuelto a la aplicación y estamos contrastando la confirmación. No vuelvas a pagar mientras comprobamos el resultado.'
+              : 'No hemos recibido una confirmación final del banco. No vuelvas a iniciar el pago; contacta con Kache Envíos para que revisemos la operación.'}
         </p>
       </div>
 
@@ -101,10 +120,12 @@ export function PaymentSuccessPanel({
             <strong className={confirmed ? 'is-confirmed' : ''}>
               {confirmed ? (
                 'Transporte confirmado'
+              ) : paymentRecorded ? (
+                'Pago registrado; solicitud en revisión'
               ) : (
                 <>
                   <RefreshCw className={confirming ? 'is-spinning' : ''} size={14} />{' '}
-                  {confirming ? 'Confirmando tu reserva…' : 'Pago registrado, en revisión'}
+                  {confirming ? 'Verificando con CaixaBank…' : 'Pendiente de conciliación'}
                 </>
               )}
             </strong>

@@ -3,6 +3,7 @@ import type {
   AccompanyingDocument,
   TransportRequest,
   TransportRequestAnimal,
+  TransportPaymentAttemptStatus,
   TransportBoxCategory,
   UpcomingRoute,
   RouteStop,
@@ -42,6 +43,7 @@ type RequestRow = {
   accompanying_documents: AccompanyingDocument[] | null
   notes: string
   status: TransportRequest['status']
+  payment_attempt_status: TransportPaymentAttemptStatus
   amount_cents: number
   payment_reference: string
   paid_at: string | null
@@ -104,6 +106,7 @@ function mapRequest(row: RequestRow): TransportRequest {
     accompanyingDocuments: row.accompanying_documents ?? [],
     notes: row.notes,
     status: row.status,
+    paymentAttemptStatus: row.payment_attempt_status,
     amountCents: row.amount_cents,
     paymentReference: row.payment_reference,
     paidAt: row.paid_at ?? undefined,
@@ -294,7 +297,8 @@ export async function payTransportRequest(requestId: string) {
   const { data, error } = await requireSupabase().functions.invoke('transport-payment', {
     body: { requestId },
   })
-  if (error) throw new Error('No se ha podido preparar el pago. Vuelve a intentarlo.')
+  if (error)
+    throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
   return openPaymentForm(result?.paymentUrl)
