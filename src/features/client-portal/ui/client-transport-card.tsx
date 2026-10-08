@@ -73,8 +73,10 @@ export function ClientTransportCard({
                 <span>{request.destination}</span>
               </h3>
               <p className="client-transport-request-note">
-                {request.adminNote ||
-                  clientStatusHint(request.status, request.paymentAttemptStatus)}
+                {request.status === 'pago_pendiente'
+                  ? clientStatusHint(request.status, request.paymentAttemptStatus)
+                  : request.adminNote ||
+                    clientStatusHint(request.status, request.paymentAttemptStatus)}
               </p>
               {request.animals.length > 0 && (
                 <div className="client-transport-pets">

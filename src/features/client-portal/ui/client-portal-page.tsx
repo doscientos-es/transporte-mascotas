@@ -287,7 +287,23 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     try {
       await completeRequestPayment(requestId)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
+      try {
+        const currentRequests = await loadTransportRequests(userId)
+        setRequests(currentRequests)
+        const currentRequest = currentRequests.find((item) => item.id === requestId)
+        setError(
+          currentRequest && !canRetryTransportPayment(currentRequest.paymentAttemptStatus)
+            ? (transportPaymentAttemptNotice(currentRequest.paymentAttemptStatus) ??
+              'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
+            : reason instanceof Error
+              ? reason.message
+              : 'No se ha podido abrir el pago.',
+        )
+      } catch {
+        setError(
+          'No hemos podido confirmar si el intento de pago se inició. No vuelvas a pagar; actualiza el estado o contacta con Kache Envíos.',
+        )
+      }
       setPayingRequestId(null)
     }
   }
@@ -322,7 +338,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         const currentRequests = await loadTransportRequests(userId)
         setRequests(currentRequests)
         const request = currentRequests.find((item) => item.id === requestId)
-        if (request && (request.paidAt || request.status !== 'pago_pendiente')) {
+        if (
+          request &&
+          (request.paidAt ||
+            request.status === 'por_verificar' ||
+            isConfirmedTransport(request.status))
+        ) {
           setPendingPaymentRequestId(null)
           setShowForm(false)
           setNotice('El pago está registrado. No necesitas volver a pagar; estamos actualizando la solicitud.')

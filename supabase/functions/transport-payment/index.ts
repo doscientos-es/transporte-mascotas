@@ -4,6 +4,7 @@ type PreparedPayment = {
   public_token: string
   merchant_order: string
   expires_at: string
+  reused_existing_attempt: boolean
 }
 
 Deno.serve(async (request) => {
@@ -23,14 +24,28 @@ Deno.serve(async (request) => {
     })
     const [payment] = (await response.json()) as PreparedPayment[]
     if (!payment) return json({ error: 'No se ha podido preparar el enlace de pago.' }, 409)
+    if (payment.reused_existing_attempt)
+      return json(
+        {
+          error:
+            'Hay un intento de pago pendiente de confirmación. No inicies otro pago; actualiza tus transportes o contacta con Kache Envíos para revisar la operación.',
+        },
+        409,
+      )
     const baseUrl = Deno.env.get('SUPABASE_URL')
     return json({
       paymentUrl: `${baseUrl}/functions/v1/payment-redirect?token=${encodeURIComponent(payment.public_token)}&kind=transport`,
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error'
+    if (message === 'No autenticado.') return json({ error: message }, 401)
+    console.error('Transport payment preparation failed', { error: message })
     return json(
-      { error: error instanceof Error ? error.message : 'No se ha podido preparar el pago.' },
-      500,
+      {
+        error:
+          'No hemos podido comprobar si el intento de pago se inició. No vuelvas a pagar todavía; actualiza el estado o contacta con Kache Envíos.',
+      },
+      503,
     )
   }
 })
@@ -41,6 +56,7 @@ function isCyberpacConfigured() {
     Deno.env.get('CAIXABANK_CYBERPAC_TERMINAL') &&
     Deno.env.get('CAIXABANK_CYBERPAC_SECRET') &&
     Deno.env.get('CAIXABANK_CYBERPAC_ENDPOINT') &&
-    Deno.env.get('PUBLIC_APP_URL'),
+    Deno.env.get('PUBLIC_APP_URL') &&
+    Deno.env.get('SUPABASE_URL'),
   )
 }
