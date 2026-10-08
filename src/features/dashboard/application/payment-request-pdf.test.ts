@@ -1,15 +1,18 @@
-import { readFile } from 'node:fs/promises'
-
 import { describe, expect, it, vi } from 'vitest'
 
 import { createPaymentRequestDocument } from './payment-request-pdf'
 
 describe('createPaymentRequestDocument', () => {
   it('uses the generated brand icon in a downloadable payment request PDF', async () => {
-    const fetchMock = vi.fn(async () => {
-      const icon = await readFile(new URL('../../../../public/icon-512.png', import.meta.url))
-      return new Response(icon, { headers: { 'content-type': 'image/png' } })
-    })
+    const icon = Uint8Array.from(
+      atob(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/G0sAAAAASUVORK5CYII=',
+      ),
+      (character) => character.charCodeAt(0),
+    )
+    const fetchMock = vi.fn(
+      async () => new Response(icon, { headers: { 'content-type': 'image/png' } }),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     try {
