@@ -16,11 +16,22 @@ describe('closestStop', () => {
 
   it('ignores stops without exact coordinates and excludes the final stop from pickup', () => {
     const nearest = findNearestPickupStop({ latitude: 40.4168, longitude: -3.7038 }, [
-      { locality: 'Sin coordenadas' },
-      { locality: 'Getafe', latitude: 40.3083, longitude: -3.7327 },
-      { locality: 'Madrid', latitude: 40.4168, longitude: -3.7038 },
+      { id: 'no-location', locality: 'Sin coordenadas' },
+      { id: 'getafe', locality: 'Getafe', latitude: 40.3083, longitude: -3.7327 },
+      { id: 'madrid', locality: 'Madrid', latitude: 40.4168, longitude: -3.7038 },
     ])
 
-    expect(nearest).toBe('Getafe')
+    expect(nearest?.locality).toBe('Getafe')
+    expect(nearest?.id).toBe('getafe')
+  })
+
+  it('keeps the identity of the nearest stop when the locality repeats', () => {
+    const nearest = findNearestPickupStop({ latitude: 40, longitude: -3 }, [
+      { id: 'first', locality: 'Madrid', latitude: 41, longitude: -3 },
+      { id: 'second', locality: 'Madrid', latitude: 40, longitude: -3 },
+      { id: 'last', locality: 'Barcelona', latitude: 41, longitude: 2 },
+    ])
+
+    expect(nearest?.id).toBe('second')
   })
 })

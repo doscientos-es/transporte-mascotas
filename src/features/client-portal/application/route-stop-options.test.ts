@@ -8,52 +8,61 @@ import {
 } from './route-stop-options'
 
 describe('pickupOptions', () => {
-  it('lists every stop except the last', () => {
-    expect(pickupOptions(['A', 'B', 'C', 'D'])).toEqual(['A', 'B', 'C'])
-  })
-
-  it('does not repeat localities that appear in several stops', () => {
-    expect(pickupOptions(['A', 'B', 'B', 'C', 'D'])).toEqual(['A', 'B', 'C'])
-  })
-
-  it('keeps the base when the route returns to it', () => {
-    expect(pickupOptions(['A', 'B', 'C', 'A'])).toEqual(['A', 'B', 'C'])
+  it('lists every stop except the last and identifies repeated localities by route position', () => {
+    expect(
+      pickupOptions([
+        { id: 'a1', locality: 'A' },
+        { id: 'b', locality: 'B' },
+        { id: 'a2', locality: 'A' },
+        { id: 'c', locality: 'C' },
+      ]),
+    ).toEqual([
+      { id: 'a1', locality: 'A', label: 'A · parada 1' },
+      { id: 'b', locality: 'B', label: 'B' },
+      { id: 'a2', locality: 'A', label: 'A · parada 3' },
+    ])
   })
 
   it('handles empty and single-stop routes', () => {
     expect(pickupOptions([])).toEqual([])
-    expect(pickupOptions(['A'])).toEqual([])
+    expect(pickupOptions([{ id: 'a', locality: 'A' }])).toEqual([])
   })
 })
 
 describe('deliveryOptions', () => {
-  const route = ['A', 'B', 'C', 'D']
+  const route = ['A', 'B', 'C', 'D'].map((locality, index) => ({
+    id: String(index),
+    locality,
+  }))
 
   it('lists only the stops after the pickup', () => {
-    expect(deliveryOptions(route, 'A')).toEqual(['B', 'C', 'D'])
-    expect(deliveryOptions(route, 'B')).toEqual(['C', 'D'])
-    expect(deliveryOptions(route, 'C')).toEqual(['D'])
+    expect(deliveryOptions(route, '0').map((stop) => stop.locality)).toEqual(['B', 'C', 'D'])
+    expect(deliveryOptions(route, '1').map((stop) => stop.locality)).toEqual(['C', 'D'])
+    expect(deliveryOptions(route, '2').map((stop) => stop.locality)).toEqual(['D'])
   })
 
   it('excludes earlier stops', () => {
-    expect(deliveryOptions(route, 'C')).not.toContain('A')
-    expect(deliveryOptions(route, 'C')).not.toContain('B')
+    expect(deliveryOptions(route, '2').map((stop) => stop.locality)).not.toContain('A')
+    expect(deliveryOptions(route, '2').map((stop) => stop.locality)).not.toContain('B')
   })
 
   it('has no delivery after the last stop', () => {
-    expect(deliveryOptions(route, 'D')).toEqual([])
+    expect(deliveryOptions(route, '3')).toEqual([])
   })
 
-  it('does not repeat localities that appear in several stops', () => {
-    expect(deliveryOptions(['A', 'B', 'B', 'C', 'C', 'D'], 'A')).toEqual(['B', 'C', 'D'])
-  })
-
-  it('uses the first occurrence of a repeated pickup and never offers the pickup itself', () => {
-    expect(deliveryOptions(['A', 'B', 'A', 'C'], 'A')).toEqual(['B', 'C'])
-  })
-
-  it('offers the return to the base from an intermediate stop', () => {
-    expect(deliveryOptions(['A', 'B', 'C', 'A'], 'B')).toEqual(['C', 'A'])
+  it('allows a later occurrence of the pickup locality as a delivery', () => {
+    const repeatedRoute = [
+      { id: 'a1', locality: 'A' },
+      { id: 'b', locality: 'B' },
+      { id: 'a2', locality: 'A' },
+      { id: 'c', locality: 'C' },
+    ]
+    expect(deliveryOptions(repeatedRoute, 'a1')).toEqual([
+      { id: 'b', locality: 'B', label: 'B' },
+      { id: 'a2', locality: 'A', label: 'A · parada 3' },
+      { id: 'c', locality: 'C', label: 'C' },
+    ])
+    expect(deliveryOptions(repeatedRoute, 'a2').map((stop) => stop.locality)).toEqual(['C'])
   })
 
   it('returns nothing without a valid pickup', () => {
@@ -63,12 +72,33 @@ describe('deliveryOptions', () => {
 })
 
 describe('routeSelectionError', () => {
-  const routes = [{ id: 'r1', serviceDate: '2026-10-10', localities: ['A', 'B', 'C', 'A'] }]
+  const routes = [
+    {
+      id: 'r1',
+      serviceDate: '2026-10-10',
+      localities: ['A', 'B', 'C', 'A'],
+      stops: [
+        { id: 'a1', locality: 'A' },
+        { id: 'b', locality: 'B' },
+        { id: 'c', locality: 'C' },
+        { id: 'a2', locality: 'A' },
+      ],
+    },
+  ]
   const ok = { dailyRouteId: 'r1', origin: 'A', destination: 'C', desiredDate: '2026-10-10' }
 
   it('accepts a valid selection', () => {
     expect(routeSelectionError(routes, ok)).toBe('')
     expect(routeSelectionError(routes, { ...ok, origin: 'B', destination: 'A' })).toBe('')
+    expect(
+      routeSelectionError(routes, {
+        ...ok,
+        origin: 'A',
+        destination: 'A',
+        originStopId: 'a1',
+        destinationStopId: 'a2',
+      }),
+    ).toBe('')
   })
 
   it('requires every field', () => {
@@ -88,6 +118,15 @@ describe('routeSelectionError', () => {
     )
     expect(routeSelectionError(routes, { ...ok, origin: 'Z' })).toMatch(/posterior/)
     expect(routeSelectionError(routes, { ...ok, destination: 'Z' })).toMatch(/posterior/)
+    expect(
+      routeSelectionError(routes, {
+        ...ok,
+        origin: 'A',
+        destination: 'B',
+        originStopId: 'a2',
+        destinationStopId: 'b',
+      }),
+    ).toMatch(/posterior/)
   })
 })
 

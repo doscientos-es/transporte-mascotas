@@ -29,21 +29,26 @@ export function closestStop<T extends { coordinates: Coordinates }>(
   }, null)
 }
 
-export function findNearestPickupStop(
+export function findNearestPickupStop<T extends {
+  id: string
+  locality: string
+  latitude?: number
+  longitude?: number
+}>(
   clientLocation: Coordinates,
-  stops: Array<{ locality: string; latitude?: number; longitude?: number }>,
+  stops: T[],
 ) {
   const candidates = stops.slice(0, -1).flatMap((stop) =>
     typeof stop.latitude === 'number' && typeof stop.longitude === 'number'
       ? [
           {
-            locality: stop.locality,
+            stop,
             coordinates: { latitude: stop.latitude, longitude: stop.longitude },
           },
         ]
       : [],
   )
-  return closestStop(clientLocation, candidates)?.locality ?? null
+  return closestStop(clientLocation, candidates)?.stop ?? null
 }
 
 export function getCurrentLocation() {

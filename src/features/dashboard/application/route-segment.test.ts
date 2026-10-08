@@ -25,4 +25,12 @@ describe('findForwardRouteSegment', () => {
   it('rejects a journey that only exists in reverse order', () => {
     expect(findForwardRouteSegment(stops.slice(0, 2), 'Valencia', 'Madrid')).toBeNull()
   })
+
+  it('uses the selected occurrence when a locality repeats', () => {
+    expect(findForwardRouteSegment(stops, 'Madrid', 'Madrid', '0', '2')).toEqual({
+      originStop: stops[0],
+      destinationStop: stops[2],
+    })
+    expect(findForwardRouteSegment(stops, 'Madrid', 'Valencia', '2', '1')).toBeNull()
+  })
 })

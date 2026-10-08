@@ -84,6 +84,8 @@ export type RequestFormValues = {
   billingClient: InvoiceClientInput
   origin: string
   destination: string
+  originStopId: string
+  destinationStopId: string
   desiredDate: string
   dailyRouteId: string
   accompanyingDocuments: AccompanyingDocument[]
@@ -164,6 +166,8 @@ const initialValues = (
     billingClient: invoiceClient(),
     origin: '',
     destination: '',
+    originStopId: '',
+    destinationStopId: '',
     desiredDate: preselectedRoute?.serviceDate ?? '',
     dailyRouteId: preselectedRoute?.id ?? '',
     accompanyingDocuments: [],
@@ -488,14 +492,14 @@ export function ClientRequestForm({
       const requiredFiscalFields: Array<[string, string]> =
         values.billingPayer === 'manual'
           ? [
-              ['nombre o razón social', values.billingClient.fullName],
-              ['NIF/CIF', values.billingClient.nif],
-              ['dirección fiscal', values.billingClient.address],
-              ['código postal', values.billingClient.postalCode],
-              ['ciudad', values.billingClient.city],
-              ['correo del pagador', values.billingClient.email],
-              ['teléfono del pagador', values.billingClient.phone],
-            ]
+            ['nombre o razón social', values.billingClient.fullName],
+            ['NIF/CIF', values.billingClient.nif],
+            ['dirección fiscal', values.billingClient.address],
+            ['código postal', values.billingClient.postalCode],
+            ['ciudad', values.billingClient.city],
+            ['correo del pagador', values.billingClient.email],
+            ['teléfono del pagador', values.billingClient.phone],
+          ]
           : []
       const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
       if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
@@ -577,29 +581,28 @@ export function ClientRequestForm({
 
   const selectedRoute = routes.find((route) => route.id === values.dailyRouteId)
   const requestTotal = transportAnimalsTotalCents(values.animals, boxCatalog) / 100
-  const routeStops = selectedRoute?.localities ?? []
-  const pickupStopIndex =
-    selectedRoute?.stops.findIndex((stop) => stop.locality === values.origin) ?? -1
+  const routeStops =
+    selectedRoute?.stops ??
+    selectedRoute?.localities.map((locality, index) => ({ id: String(index), locality })) ??
+    []
+  const pickupStopIndex = routeStops.findIndex((stop) => stop.id === values.originStopId)
   const pickupStop = pickupStopIndex >= 0 ? selectedRoute?.stops[pickupStopIndex] : undefined
   const deliveryStopIndex =
     selectedRoute && pickupStopIndex >= 0 && values.destination
-      ? selectedRoute.stops.findIndex(
-          (stop, index) => index > pickupStopIndex && stop.locality === values.destination,
-        )
+      ? routeStops.findIndex((stop) => stop.id === values.destinationStopId)
       : -1
   const deliveryStop = deliveryStopIndex >= 0 ? selectedRoute?.stops[deliveryStopIndex] : undefined
   const arrivals = selectedRoute
     ? routeStopArrivals(
-        selectedRoute.serviceDate,
-        selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
-        selectedRoute.stops,
-      )
+      selectedRoute.serviceDate,
+      selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
+      selectedRoute.stops,
+    )
     : []
   const pickupArrival = pickupStopIndex >= 0 ? arrivals[pickupStopIndex] : undefined
   const deliveryArrival = deliveryStopIndex >= 0 ? arrivals[deliveryStopIndex] : undefined
-  // Localities can repeat (several stops in one town); select option ids must be unique.
   const originStops = pickupOptions(routeStops)
-  const destinationStops = deliveryOptions(routeStops, values.origin)
+  const destinationStops = deliveryOptions(routeStops, values.originStopId)
 
   function selectRoute(routeId: string) {
     const route = routes.find((item) => item.id === routeId)
@@ -610,6 +613,8 @@ export function ClientRequestForm({
       desiredDate: route?.serviceDate ?? '',
       origin: '',
       destination: '',
+      originStopId: '',
+      destinationStopId: '',
     }))
     if (
       !route ||
@@ -634,10 +639,16 @@ export function ClientRequestForm({
       }
       setValues((current) =>
         current.dailyRouteId === route.id && !current.origin
-          ? { ...current, origin, destination: '' }
+          ? {
+            ...current,
+            origin: origin.locality,
+            originStopId: origin.id,
+            destination: '',
+            destinationStopId: '',
+          }
           : current,
       )
-      setOriginSuggestion(`Hemos seleccionado ${origin} como recogida más cercana.`)
+      setOriginSuggestion(`Hemos seleccionado ${origin.locality} como recogida más cercana.`)
     } catch {
       if (requestId === originSuggestionRequest.current)
         setOriginSuggestion(
@@ -1125,12 +1136,20 @@ export function ClientRequestForm({
                 <FieldLabel>Recogida</FieldLabel>
                 <FormSelect
                   ariaLabel="Recogida"
-                  value={values.origin}
-                  onChange={(origin) =>
-                    setValues((current) => ({ ...current, origin, destination: '' }))
+                  value={values.originStopId}
+                  onChange={(originStopId) => {
+                    const stop = routeStops.find((item) => item.id === originStopId)
+                    setValues((current) => ({
+                      ...current,
+                      origin: stop?.locality ?? '',
+                      originStopId,
+                      destination: '',
+                      destinationStopId: '',
+                    }))
+                  }
                   }
                   placeholder="Selecciona una parada"
-                  options={originStops.map((stop) => ({ id: stop, label: stop }))}
+                  options={originStops.map((stop) => ({ id: stop.id, label: stop.label }))}
                   disabled={!selectedRoute}
                 />
                 {pickupStop && <StopMapLink stop={pickupStop} />}
@@ -1145,11 +1164,18 @@ export function ClientRequestForm({
                 <FieldLabel>Entrega</FieldLabel>
                 <FormSelect
                   ariaLabel="Entrega"
-                  value={values.destination}
-                  onChange={(destination) => setValues((current) => ({ ...current, destination }))}
+                  value={values.destinationStopId}
+                  onChange={(destinationStopId) => {
+                    const stop = routeStops.find((item) => item.id === destinationStopId)
+                    setValues((current) => ({
+                      ...current,
+                      destination: stop?.locality ?? '',
+                      destinationStopId,
+                    }))
+                  }}
                   placeholder="Selecciona una parada"
-                  options={destinationStops.map((stop) => ({ id: stop, label: stop }))}
-                  disabled={!values.origin}
+                  options={destinationStops.map((stop) => ({ id: stop.id, label: stop.label }))}
+                  disabled={!values.originStopId}
                 />
                 {deliveryStop && <StopMapLink stop={deliveryStop} />}
                 {deliveryArrival && (
@@ -1410,7 +1436,7 @@ export function ClientRequestForm({
                                   ) / 100,
                                 )}
                                 {transportBoxCategoryRank(category) >
-                                transportBoxCategoryRank(minimumCategory)
+                                  transportBoxCategoryRank(minimumCategory)
                                   ? ' · extra por comodidad'
                                   : ''}
                               </option>
