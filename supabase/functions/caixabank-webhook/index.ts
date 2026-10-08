@@ -13,7 +13,6 @@ import {
 import {
   cyberpacPaymentOutcome,
   cyberpacTransportGatewayResponse,
-  isSuccessfulCyberpacPayment,
   isValidCyberpacNotification,
 } from '../_shared/payment-validation.ts'
 import { rest } from '../_shared/supabase.ts'
@@ -158,6 +157,7 @@ Deno.serve(async (request) => {
       await updatePaymentTransactionEvent(paymentEventId, {
         processingStage,
         outcome: 'confirmed',
+        processedAt: new Date().toISOString(),
       })
       await recordPaymentAudit('cyberpac_invoice_payment_already_confirmed', entityType, entityId, {
         merchantOrder: order,
@@ -170,6 +170,7 @@ Deno.serve(async (request) => {
         processingStage: 'ignore_invoice_payment',
         outcome: 'ignored',
         errorMessage: `El pago ya está en estado ${payment.status}.`,
+        processedAt: new Date().toISOString(),
       })
       await recordPaymentAudit('cyberpac_invoice_payment_ignored', entityType, entityId, {
         merchantOrder: order,
@@ -177,7 +178,7 @@ Deno.serve(async (request) => {
       })
       return new Response('OK')
     }
-    const paid = isSuccessfulCyberpacPayment({
+    const outcome = cyberpacPaymentOutcome({
       amount: notification.Ds_Amount,
       response: notification.Ds_Response,
       expectedAmount: payment.amount_cents,
@@ -191,7 +192,7 @@ Deno.serve(async (request) => {
       date: notification.Ds_Date ?? null,
       hour: notification.Ds_Hour ?? null,
     }
-    if (!paid) {
+    if (outcome === 'declined') {
       processingStage = 'record_invoice_payment_failure'
       await rest(`invoice_payments?id=eq.${encodeURIComponent(payment.id)}`, {
         method: 'PATCH',
@@ -210,6 +211,27 @@ Deno.serve(async (request) => {
         currency: receivedCurrency,
       })
       return new Response('OK')
+    }
+    if (outcome === 'review_required') {
+      await updatePaymentTransactionEvent(paymentEventId, {
+        processingStage: 'verify_invoice_amount_and_currency',
+        outcome: 'review_required',
+        errorMessage: 'La respuesta no permite confirmar con seguridad el importe o la autorización.',
+        processedAt: new Date().toISOString(),
+      })
+      await recordPaymentAudit(
+        'cyberpac_invoice_payment_review_required',
+        entityType,
+        entityId,
+        {
+          merchantOrder: order,
+          responseCode: gatewayResponse.response,
+          amountCents: receivedAmountCents,
+          expectedAmountCents: payment.amount_cents,
+          currency: receivedCurrency,
+        },
+      )
+      return new Response('Operación registrada para revisión.', { status: 200 })
     }
     const paidAt = new Date().toISOString()
     processingStage = 'confirm_invoice_payment'

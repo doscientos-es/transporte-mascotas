@@ -49,6 +49,7 @@ export function isSuccessfulCyberpacPayment({
   currency?: string
   expectedCurrency?: string
 }) {
+  if (!amount || !/^\d+$/.test(amount) || !response || !/^\d+$/.test(response)) return false
   const responseCode = Number(response)
   return (
     Number.isInteger(responseCode) &&
@@ -74,6 +75,7 @@ export function cyberpacPaymentOutcome({
 }): 'paid' | 'declined' | 'review_required' {
   if (isSuccessfulCyberpacPayment({ amount, response, expectedAmount, currency, expectedCurrency }))
     return 'paid'
+  if (!response || !/^\d+$/.test(response)) return 'review_required'
   const responseCode = Number(response)
   if (Number.isInteger(responseCode) && responseCode >= 100) return 'declined'
   return 'review_required'

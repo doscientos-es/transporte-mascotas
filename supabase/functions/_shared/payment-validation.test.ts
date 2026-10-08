@@ -73,7 +73,9 @@ describe('isSuccessfulCyberpacPayment', () => {
 
   it.each([
     ['a different amount', { amount: '8001' }],
+    ['an empty amount', { amount: '' }],
     ['a rejected response', { response: '100' }],
+    ['an empty response', { response: '' }],
     ['a negative response', { response: '-1' }],
     ['a fractional response', { response: '0.5' }],
     ['a different currency', { currency: '840' }],
@@ -103,6 +105,7 @@ describe('cyberpacPaymentOutcome', () => {
   it('allows retry only when Cyberpac reports a clear decline response', () => {
     expect(cyberpacPaymentOutcome({ ...approved, response: '100' })).toBe('declined')
     expect(cyberpacPaymentOutcome({ ...approved, response: undefined })).toBe('review_required')
+    expect(cyberpacPaymentOutcome({ ...approved, response: '' })).toBe('review_required')
   })
 })
 

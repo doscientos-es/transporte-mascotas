@@ -8,8 +8,8 @@ alter table public.transport_requests
 update public.transport_requests
 set payment_attempt_status = case
   when status in ('confirmada', 'en_ruta', 'entregada') then 'confirmed'
-  when paid_at is not null then 'confirmation_pending'
-  when payment_gateway_response <> '{}'::jsonb then 'review_required'
+  when status = 'por_verificar' or paid_at is not null then 'confirmation_pending'
+  when coalesce(payment_gateway_response, '{}'::jsonb) <> '{}'::jsonb then 'review_required'
   else 'not_started'
 end;
 
