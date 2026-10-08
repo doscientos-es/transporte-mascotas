@@ -488,14 +488,14 @@ export function ClientRequestForm({
       const requiredFiscalFields: Array<[string, string]> =
         values.billingPayer === 'manual'
           ? [
-            ['nombre o razón social', values.billingClient.fullName],
-            ['NIF/CIF', values.billingClient.nif],
-            ['dirección fiscal', values.billingClient.address],
-            ['código postal', values.billingClient.postalCode],
-            ['ciudad', values.billingClient.city],
-            ['correo del pagador', values.billingClient.email],
-            ['teléfono del pagador', values.billingClient.phone],
-          ]
+              ['nombre o razón social', values.billingClient.fullName],
+              ['NIF/CIF', values.billingClient.nif],
+              ['dirección fiscal', values.billingClient.address],
+              ['código postal', values.billingClient.postalCode],
+              ['ciudad', values.billingClient.city],
+              ['correo del pagador', values.billingClient.email],
+              ['teléfono del pagador', values.billingClient.phone],
+            ]
           : []
       const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
       if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
@@ -584,16 +584,16 @@ export function ClientRequestForm({
   const deliveryStopIndex =
     selectedRoute && pickupStopIndex >= 0 && values.destination
       ? selectedRoute.stops.findIndex(
-        (stop, index) => index > pickupStopIndex && stop.locality === values.destination,
-      )
+          (stop, index) => index > pickupStopIndex && stop.locality === values.destination,
+        )
       : -1
   const deliveryStop = deliveryStopIndex >= 0 ? selectedRoute?.stops[deliveryStopIndex] : undefined
   const arrivals = selectedRoute
     ? routeStopArrivals(
-      selectedRoute.serviceDate,
-      selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
-      selectedRoute.stops,
-    )
+        selectedRoute.serviceDate,
+        selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
+        selectedRoute.stops,
+      )
     : []
   const pickupArrival = pickupStopIndex >= 0 ? arrivals[pickupStopIndex] : undefined
   const deliveryArrival = deliveryStopIndex >= 0 ? arrivals[deliveryStopIndex] : undefined
@@ -1410,7 +1410,7 @@ export function ClientRequestForm({
                                   ) / 100,
                                 )}
                                 {transportBoxCategoryRank(category) >
-                                  transportBoxCategoryRank(minimumCategory)
+                                transportBoxCategoryRank(minimumCategory)
                                   ? ' · extra por comodidad'
                                   : ''}
                               </option>
