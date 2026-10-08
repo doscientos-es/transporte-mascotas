@@ -30,9 +30,9 @@ const colors = {
 
 async function addBrandLogo(doc: jsPDF) {
   try {
-    const response = await fetch('/logo-dark.svg')
+    const response = await fetch('/icon-512.png')
     if (!response.ok) return false
-    doc.addSvgAsImage(await response.text(), 20, 13, 17, 14)
+    doc.addImage(new Uint8Array(await response.arrayBuffer()), 'PNG', 20, 13, 17, 14)
     return true
   } catch {
     return false
