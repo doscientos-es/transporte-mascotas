@@ -491,6 +491,7 @@ export function RoutesPage({
     return {
       place: [stop.locality, stop.place].filter(Boolean).join(' · '),
       ...arrival,
+      mapUrl: stop.mapUrl,
     }
   }
 

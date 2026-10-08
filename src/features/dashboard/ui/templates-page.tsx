@@ -35,7 +35,7 @@ import {
   useState,
 } from 'react'
 
-import type { RouteTemplate, SavedMeetingPoint } from '@/shared/types'
+import type { RouteDirection, RouteTemplate, SavedMeetingPoint } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { mergedStopInstructions } from '../application/stop-instructions'
@@ -60,7 +60,7 @@ type Props = {
   createRequestId: number
   onSelect: (template: RouteTemplate) => void
   onCreate: (name: string, color: string) => Promise<void>
-  onDuplicate: (templateId: string) => Promise<void>
+  onDuplicate: (templateId: string, direction?: RouteDirection) => Promise<void>
   onUpdate: (templateId: string, name: string, color: string) => Promise<void>
   onDelete: (templateId: string) => Promise<void>
   onAddStop: (templateId: string, stop: StopFormValues, insertionIndex?: number) => Promise<void>
@@ -348,13 +348,13 @@ export function TemplatesPage({
     }
   }
 
-  async function duplicateSelectedTemplate() {
+  async function duplicateSelectedTemplate(direction: RouteDirection = 'normal') {
     const templateId = selected?.id
     if (!templateId) return
     setDuplicating(true)
     setError('')
     try {
-      await onDuplicate(templateId)
+      await onDuplicate(templateId, direction)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido duplicar la plantilla.')
     } finally {
@@ -568,6 +568,12 @@ export function TemplatesPage({
                     onAction={() => void duplicateSelectedTemplate()}
                   >
                     <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar plantilla'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    isDisabled={duplicating || busy}
+                    onAction={() => void duplicateSelectedTemplate('inversa')}
+                  >
+                    <Copy /> {duplicating ? 'Duplicando…' : 'Duplicar plantilla invertida'}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

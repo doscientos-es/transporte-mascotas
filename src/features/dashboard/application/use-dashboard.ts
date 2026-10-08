@@ -621,7 +621,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     }
   }
 
-  async function duplicateRouteTemplate(templateId: string) {
+  async function duplicateRouteTemplate(templateId: string, direction: RouteDirection = 'normal') {
     if (!session) throw new Error('Inicia sesión para duplicar la plantilla de ruta.')
     const template = routeTemplates.find((item) => item.id === templateId)
     if (!template) throw new Error('No se ha encontrado la ruta seleccionada.')
@@ -629,21 +629,23 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const existingNames = new Set(
       routeTemplates.map((item) => item.name.trim().toLocaleLowerCase()),
     )
-    const baseName = `${template.name} (copia)`
+    const baseName = `${template.name} (copia${direction === 'inversa' ? ' inversa' : ''})`
     let name = baseName
     let copyNumber = 2
     while (existingNames.has(name.trim().toLocaleLowerCase())) {
-      name = `${template.name} (copia ${copyNumber})`
+      name = `${template.name} (copia${direction === 'inversa' ? ' inversa' : ''} ${copyNumber})`
       copyNumber += 1
     }
 
     try {
-      const copy = await persistRouteTemplateCopy(template, name)
+      const copy = await persistRouteTemplateCopy(template, name, direction)
       setRouteTemplates((current) =>
         [...current, copy].sort((left, right) => left.name.localeCompare(right.name)),
       )
       setSelectedTemplate(copy)
-      toast(`Plantilla ${template.name} duplicada. Ya puedes modificar la copia.`)
+      toast(
+        `Plantilla ${template.name} duplicada${direction === 'inversa' ? ' en sentido inverso' : ''}. Ya puedes modificar la copia.`,
+      )
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se ha podido duplicar la plantilla.'

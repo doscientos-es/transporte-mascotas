@@ -130,6 +130,42 @@ describe('duplicateRouteTemplate', () => {
       },
     ])
   })
+
+  it('duplicates the route in reverse and moves travel times to their reversed legs', async () => {
+    inserts.length = 0
+    const original: RouteTemplate = {
+      id: 'source-template',
+      name: 'Levante',
+      color: '#123456',
+      stops: [
+        { id: 'stop-a', locality: 'Alicante', place: '', mapUrl: '', minutes: 10 },
+        { id: 'stop-b', locality: 'Valencia', place: '', mapUrl: '', minutes: 20 },
+        { id: 'stop-c', locality: 'Barcelona', place: '', mapUrl: '', minutes: 0 },
+      ],
+    }
+
+    const copy = await duplicateRouteTemplate(original, 'Levante (copia inversa)', 'inversa')
+
+    expect(copy.stops.map(({ locality }) => locality)).toEqual([
+      'Barcelona',
+      'Valencia',
+      'Alicante',
+    ])
+    expect(copy.stops.map(({ minutes }) => minutes)).toEqual([20, 10, 0])
+    expect(
+      copy.stops.every(
+        (stop) => !original.stops.some((originalStop) => originalStop.id === stop.id),
+      ),
+    ).toBe(true)
+    expect(inserts[1]).toMatchObject({
+      table: 'route_template_stops',
+      values: [
+        { sequence: 1, locality: 'Barcelona', minutes_to_next: 20 },
+        { sequence: 2, locality: 'Valencia', minutes_to_next: 10 },
+        { sequence: 3, locality: 'Alicante', minutes_to_next: null },
+      ],
+    })
+  })
 })
 
 describe('route template stop editing', () => {

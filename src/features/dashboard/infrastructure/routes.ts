@@ -124,12 +124,27 @@ export async function saveRouteTemplate(template: RouteTemplate) {
   return template
 }
 
-export async function duplicateRouteTemplate(template: RouteTemplate, name: string) {
+export async function duplicateRouteTemplate(
+  template: RouteTemplate,
+  name: string,
+  direction: RouteDirection = 'normal',
+) {
+  const copiedStops = template.stops.map((stop) => ({ ...stop, id: crypto.randomUUID() }))
+  const stops =
+    direction === 'inversa'
+      ? copiedStops.toReversed().map((stop, index, reversedStops) => ({
+          ...stop,
+          minutes:
+            index < reversedStops.length - 1
+              ? copiedStops[copiedStops.length - index - 2].minutes
+              : 0,
+        }))
+      : copiedStops
   const copy: RouteTemplate = {
     ...template,
     id: crypto.randomUUID(),
     name,
-    stops: template.stops.map((stop) => ({ ...stop, id: crypto.randomUUID() })),
+    stops,
   }
   const database = requireSupabase()
   const { error: templateError } = await database

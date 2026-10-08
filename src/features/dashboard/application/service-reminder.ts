@@ -5,6 +5,8 @@ export type ReminderPoint = {
   time: string
   /** Calendar day of the arrival as YYYY-MM-DD; routes can last several days. */
   date: string
+  /** Google Maps link for this stop, when available. */
+  mapUrl?: string
 }
 
 type ReminderInput = {
@@ -44,9 +46,9 @@ function formatDay(date: string) {
 export function transportReminderMessage({ pickup, delivery }: ReminderInput) {
   const schedule = [
     pickup &&
-      `HORA DE RECOGIDA EN ${pickup.place.toUpperCase()} (${formatDay(pickup.date)}, ${pickup.time})`,
+      `HORA DE RECOGIDA EN ${pickup.place.toUpperCase()} (${formatDay(pickup.date)}, ${pickup.time})${pickup.mapUrl ? `\n${pickup.mapUrl}` : ''}`,
     delivery &&
-      `HORA DE ENTREGA EN ${delivery.place.toUpperCase()} (${formatDay(delivery.date)}, ${delivery.time})`,
+      `HORA DE ENTREGA EN ${delivery.place.toUpperCase()} (${formatDay(delivery.date)}, ${delivery.time})${delivery.mapUrl ? `\n${delivery.mapUrl}` : ''}`,
   ].filter(Boolean)
   return [schedule.join('\n'), ...RULES].filter(Boolean).join('\n\n')
 }
