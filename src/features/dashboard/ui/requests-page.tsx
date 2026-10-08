@@ -33,6 +33,8 @@ import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
+import { labelledRouteStops } from '../application/letter-route-stops'
+
 type Props = {
   routes: DailyRoute[]
   boxCatalog: TransportBoxCatalog
@@ -290,8 +292,9 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
               const route = routes.find((item) => item.id === assignment.routeId)
               const stops = route?.stops ?? []
               const pickupIndex = stops.findIndex((stop) => stop.id === assignment.pickupStopId)
-              const pickupStops = stops.slice(0, -1)
-              const deliveryStops = pickupIndex >= 0 ? stops.slice(pickupIndex + 1) : []
+              const labelledStops = labelledRouteStops(stops)
+              const pickupStops = labelledStops.slice(0, -1)
+              const deliveryStops = pickupIndex >= 0 ? labelledStops.slice(pickupIndex + 1) : []
               const availableRoutes = availableRoutesFor(request)
               return (
                 <div
@@ -439,7 +442,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                         <option value="">Selecciona una parada</option>
                         {pickupStops.map((stop) => (
                           <option value={stop.id} key={stop.id}>
-                            {stop.locality}
+                            {stop.label}
                           </option>
                         ))}
                       </select>
@@ -458,7 +461,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                         <option value="">Selecciona una parada</option>
                         {deliveryStops.map((stop) => (
                           <option value={stop.id} key={stop.id}>
-                            {stop.locality}
+                            {stop.label}
                           </option>
                         ))}
                       </select>

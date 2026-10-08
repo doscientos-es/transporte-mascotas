@@ -111,8 +111,8 @@ describe('routeSelectionError', () => {
     expect(routeSelectionError(routes, { ...ok, desiredDate: '2026-10-11' })).toMatch(/ya no está/)
   })
 
-  it('rejects delivery equal to or before the pickup, and unknown stops', () => {
-    expect(routeSelectionError(routes, { ...ok, destination: 'A' })).toMatch(/posterior/)
+  it('allows a later occurrence of the same locality and rejects earlier or unknown stops', () => {
+    expect(routeSelectionError(routes, { ...ok, destination: 'A' })).toBe('')
     expect(routeSelectionError(routes, { ...ok, origin: 'C', destination: 'B' })).toMatch(
       /posterior/,
     )

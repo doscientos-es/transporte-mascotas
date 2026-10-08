@@ -71,15 +71,17 @@ export function routeSelectionError(
   } else {
     const normalizedOrigin = origin.trim().toLocaleLowerCase()
     const normalizedDestination = destination.trim().toLocaleLowerCase()
-    const validSegment = stops.slice(0, -1).some(
-      (stop, pickupIndex) =>
-        stop.locality.trim().toLocaleLowerCase() === normalizedOrigin &&
-        stops
-          .slice(pickupIndex + 1)
-          .some(
-            (nextStop) => nextStop.locality.trim().toLocaleLowerCase() === normalizedDestination,
-          ),
-    )
+    const validSegment = stops
+      .slice(0, -1)
+      .some(
+        (stop, pickupIndex) =>
+          stop.locality.trim().toLocaleLowerCase() === normalizedOrigin &&
+          stops
+            .slice(pickupIndex + 1)
+            .some(
+              (nextStop) => nextStop.locality.trim().toLocaleLowerCase() === normalizedDestination,
+            ),
+      )
     if (!validSegment) return 'Elige una entrega posterior a la recogida dentro de la ruta.'
   }
   return ''

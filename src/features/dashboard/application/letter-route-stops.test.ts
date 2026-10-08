@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { letterDestinationOptions, letterOriginOptions } from './letter-route-stops'
+import {
+  labelledRouteStops,
+  letterDestinationOptions,
+  letterOriginOptions,
+} from './letter-route-stops'
 
 describe('letter route stop options', () => {
   const stops = ['Madrid', 'Zaragoza', 'Barcelona', 'Girona'].map((locality, index) => ({
@@ -48,5 +52,11 @@ describe('letter route stop options', () => {
       locality: 'Madrid',
       label: 'Madrid · parada 3',
     })
+    expect(labelledRouteStops(repeatedStops).map((stop) => stop.label)).toEqual([
+      'Madrid · parada 1',
+      'Zaragoza',
+      'Madrid · parada 3',
+      'Barcelona',
+    ])
   })
 })

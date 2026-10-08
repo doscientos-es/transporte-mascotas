@@ -135,6 +135,8 @@ export interface LetterDraft {
   recipientProvince: string
   origin: string
   destination: string
+  originStopId?: string
+  destinationStopId?: string
   originPoint: string
   destinationPoint: string
   accompanyingDocuments: AccompanyingDocument[]

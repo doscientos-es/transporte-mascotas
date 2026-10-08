@@ -133,6 +133,8 @@ const emptyLetter: LetterDraft = {
   routeId: '',
   origin: '',
   destination: '',
+  originStopId: '',
+  destinationStopId: '',
   originPoint: '',
   destinationPoint: '',
   sender: '',
@@ -250,6 +252,17 @@ export function LetterForm({
           recipientProvince: letter.recipientProvince,
           origin: letter.origin,
           destination: letter.destination,
+          originStopId:
+            routes
+              .find((route) => route.id === routeId)
+              ?.actions.find(
+                (action) => action.letterId === letter.id && action.type === 'recogida',
+              )?.stopId ?? '',
+          destinationStopId:
+            routes
+              .find((route) => route.id === routeId)
+              ?.actions.find((action) => action.letterId === letter.id && action.type === 'entrega')
+              ?.stopId ?? '',
           originPoint: letter.originPoint,
           destinationPoint: letter.destinationPoint,
           accompanyingDocuments: letter.accompanyingDocuments,
@@ -278,13 +291,7 @@ export function LetterForm({
   const selectedRoute = routes.find((route) => route.id === draft.routeId)
   const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
   const stops = useMemo(
-    () => [
-      ...new Set(
-        selectedRoute?.stops?.map((stop) => stop.locality) ??
-          selectedTemplate?.stops.map((stop) => stop.locality) ??
-          [],
-      ),
-    ],
+    () => selectedRoute?.stops ?? selectedTemplate?.stops ?? [],
     [selectedRoute, selectedTemplate],
   )
   const update = <K extends Exclude<keyof LetterDraft, 'animals'>>(
@@ -329,25 +336,27 @@ export function LetterForm({
   function selectRoute(routeId: string) {
     const route = routes.find((item) => item.id === routeId)
     const template = templates.find((item) => item.id === route?.templateId)
-    const routeStops = [
-      ...new Set(
-        route?.stops?.map((stop) => stop.locality) ??
-          template?.stops.map((stop) => stop.locality) ??
-          [],
-      ),
-    ]
-    const matchingStop = (options: string[], value: string) =>
-      options.find((stop) => stop.toLocaleLowerCase() === value.toLocaleLowerCase()) ?? ''
+    const routeStops = route?.stops ?? template?.stops ?? []
     setDraft((current) => {
-      const origin = matchingStop(letterOriginOptions(routeStops), current.origin)
+      const originOptions = letterOriginOptions(routeStops)
+      const origin =
+        originOptions.find((stop) => stop.id === current.originStopId) ??
+        originOptions.find(
+          (stop) => stop.locality.toLocaleLowerCase() === current.origin.toLocaleLowerCase(),
+        )
+      const destinationOptions = origin ? letterDestinationOptions(routeStops, origin.id) : []
+      const destination =
+        destinationOptions.find((stop) => stop.id === current.destinationStopId) ??
+        destinationOptions.find(
+          (stop) => stop.locality.toLocaleLowerCase() === current.destination.toLocaleLowerCase(),
+        )
       return {
         ...current,
         routeId,
-        origin,
-        destination: matchingStop(
-          letterDestinationOptions(routeStops, origin),
-          current.destination,
-        ),
+        origin: origin?.locality ?? '',
+        originStopId: origin?.id ?? '',
+        destination: destination?.locality ?? '',
+        destinationStopId: destination?.id ?? '',
       }
     })
   }
@@ -357,7 +366,9 @@ export function LetterForm({
     setDraft((current) => ({
       ...current,
       [addingStopFor]: stop.locality,
-      ...(addingStopFor === 'origin' ? { destination: '' } : {}),
+      ...(addingStopFor === 'origin'
+        ? { originStopId: stop.id, destination: '', destinationStopId: '' }
+        : { destinationStopId: stop.id }),
     }))
     setAddingStopFor(null)
   }
@@ -481,7 +492,7 @@ function TripSection({
   routes: DailyRoute[]
   templates: RouteTemplate[]
   selectedRoute?: DailyRoute
-  stops: string[]
+  stops: RouteStop[]
   update: <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => void
   onRouteChange: (routeId: string) => void
   onAddStop: (field: 'origin' | 'destination') => void
@@ -493,14 +504,22 @@ function TripSection({
   const recentRoutes = routes.filter((route) => route.date < today)
   const stopPlaceholder = selectedRoute ? 'Selecciona una parada…' : 'Elige primero una ruta'
   const originStops = letterOriginOptions(stops)
-  const destinationStops = letterDestinationOptions(stops, draft.origin)
-  const selectStop = (field: 'origin' | 'destination', value: string) => {
-    if (value === '__new-stop__') {
+  const destinationStops = letterDestinationOptions(stops, draft.originStopId ?? '')
+  const selectStop = (field: 'origin' | 'destination', stopId: string) => {
+    if (stopId === '__new-stop__') {
       onAddStop(field)
       return
     }
-    update(field, value)
-    if (field === 'origin') update('destination', '')
+    const stop = stops.find((item) => item.id === stopId)
+    if (field === 'origin') {
+      update('originStopId', stopId)
+      update('origin', stop?.locality ?? '')
+      update('destinationStopId', '')
+      update('destination', '')
+    } else {
+      update('destinationStopId', stopId)
+      update('destination', stop?.locality ?? '')
+    }
   }
   const routeOption = (route: DailyRoute) => {
     const date = new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', {
@@ -552,10 +571,10 @@ function TripSection({
             {stops.map((stop, index) => (
               <li
                 className="bg-card inline-flex items-center gap-1 rounded-full border border-[#f0cdd0] px-2 py-0.5 text-[11px] text-[#4d4d4d]"
-                key={stop}
+                key={stop.id}
               >
                 <span className="text-accent font-semibold">{index + 1}</span>
-                {stop}
+                {stop.locality}
               </li>
             ))}
             {itineraryClosed && (
@@ -567,15 +586,15 @@ function TripSection({
           Origen
           <select
             className={letterSelect}
-            value={draft.origin}
+            value={draft.originStopId ?? ''}
             onChange={(event) => selectStop('origin', event.target.value)}
             disabled={!selectedRoute}
             required
           >
             <option value="">{stopPlaceholder}</option>
             {originStops.map((stop) => (
-              <option value={stop} key={stop}>
-                {stop}
+              <option value={stop.id} key={stop.id}>
+                {stop.label}
               </option>
             ))}
             {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
@@ -585,15 +604,15 @@ function TripSection({
           Destino
           <select
             className={letterSelect}
-            value={draft.destination}
+            value={draft.destinationStopId ?? ''}
             onChange={(event) => selectStop('destination', event.target.value)}
-            disabled={!selectedRoute || !draft.origin}
+            disabled={!selectedRoute || !draft.originStopId}
             required
           >
             <option value="">{stopPlaceholder}</option>
             {destinationStops.map((stop) => (
-              <option value={stop} key={stop}>
-                {stop}
+              <option value={stop.id} key={stop.id}>
+                {stop.label}
               </option>
             ))}
             {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}

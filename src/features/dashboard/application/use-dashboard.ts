@@ -176,13 +176,25 @@ function selectFreeBox(animals: Animal[], usedBoxes: Set<number>) {
   return requestedBox ?? compatibleBoxes.find((box) => !usedBoxes.has(box))
 }
 
-function actionsForLetter(route: DailyRoute, template: RouteTemplate, letter: Letter) {
+function actionsForLetter(
+  route: DailyRoute,
+  template: RouteTemplate,
+  letter: Letter,
+  originStopId?: string,
+  destinationStopId?: string,
+) {
   if (!letter.animals.length) return []
   const stops = route.stops ?? copyTemplateStops(template)
   const usedBoxes = new Set(
     route.actions.map((action) => action.box).filter((box): box is number => Boolean(box)),
   )
-  const segment = findForwardRouteSegment(stops, letter.origin, letter.destination)
+  const segment = findForwardRouteSegment(
+    stops,
+    letter.origin,
+    letter.destination,
+    originStopId,
+    destinationStopId,
+  )
   if (!segment) return []
   const { originStop, destinationStop } = segment
   const box = selectFreeBox(letter.animals, usedBoxes)
@@ -963,7 +975,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         importedAt: new Date().toLocaleString('es-ES'),
         animals,
       }
-      const routeActions = actionsForLetter(dailyRoute, routeTemplate, letter)
+      const routeActions = actionsForLetter(
+        dailyRoute,
+        routeTemplate,
+        letter,
+        draft.originStopId,
+        draft.destinationStopId,
+      )
       if (routeActions.length !== animals.length * 2)
         throw new Error(
           'Elige un origen anterior al destino entre las paradas de la ruta seleccionada.',
@@ -1048,7 +1066,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
         serviceDate: dailyRoute.date,
         animals,
       }
-      const rebuiltActions = actionsForLetter(dailyRoute, routeTemplate, letter)
+      const rebuiltActions = actionsForLetter(
+        dailyRoute,
+        routeTemplate,
+        letter,
+        draft.originStopId,
+        draft.destinationStopId,
+      )
       if (rebuiltActions.length !== animals.length * 2)
         throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
       const previousActions = dailyRoutes
