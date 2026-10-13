@@ -102,3 +102,68 @@ ${buttons ? `<tr><td style="padding:18px 32px 6px">${buttons}</td></tr>` : ''}
 
   return { subject, text, html }
 }
+
+export type PaymentRequestContent = {
+  name: string
+  concept: string
+  total: string
+  payUrl: string
+  portalUrl: string | null
+}
+
+export function paymentRequestEmail(content: PaymentRequestContent) {
+  const greeting = content.name.trim() ? `Hola ${content.name.trim()},` : 'Hola,'
+  const subject = 'Tu solicitud de pago de Kache Envíos'
+  const intro =
+    'Tienes una solicitud de pago pendiente. Puedes pagarla con tarjeta en unos segundos.'
+  const closing = 'Si tienes cualquier duda, responde a este email y te ayudaremos.'
+
+  const text = [
+    greeting,
+    '',
+    intro,
+    '',
+    `Concepto: ${content.concept}`,
+    `Importe: ${content.total}`,
+    '',
+    `Pagar ahora: ${content.payUrl}`,
+    ...(content.portalUrl ? ['', `También la encontrarás en tu cuenta: ${content.portalUrl}`] : []),
+    '',
+    closing,
+    '',
+    'Gracias por confiar en Kache Envíos.',
+  ].join('\n')
+
+  const bigButton = `<a href="${escapeHtml(content.payUrl)}" style="display:inline-block;padding:16px 36px;border-radius:10px;background:${CORAL};color:#ffffff;font-weight:bold;font-size:17px;text-decoration:none">Pagar ${escapeHtml(content.total)}</a>`
+  const html = `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background:${CREAM};font-family:${FONT};color:${INK}">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Tienes un pago pendiente de ${escapeHtml(content.total)}. Págalo ahora con tarjeta.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM}"><tr><td align="center" style="padding:32px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden">
+<tr><td style="background:${INK};padding:26px 32px">
+<div style="font-size:20px;font-weight:bold;letter-spacing:1px;color:#ffffff">KACHE ENVÍOS</div>
+<div style="font-size:12px;color:#d8d3ce;margin-top:4px">Transporte de mascotas</div>
+</td></tr>
+<tr><td style="padding:32px 32px 8px">
+<div style="display:inline-block;padding:6px 12px;border-radius:999px;background:#fde8e8;color:${CORAL};font-size:12px;font-weight:bold;letter-spacing:.5px">PAGO PENDIENTE</div>
+<p style="margin:22px 0 8px;font-size:16px">${escapeHtml(greeting)}</p>
+<p style="margin:0;font-size:15px;line-height:1.6;color:#3a3835">${escapeHtml(intro)}</p>
+</td></tr>
+<tr><td style="padding:16px 32px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM};border-radius:10px"><tr><td style="padding:18px 20px">
+<div style="font-size:12px;font-weight:bold;letter-spacing:.5px;color:${MUTED}">CONCEPTO</div>
+<div style="font-size:15px;font-weight:bold;margin:4px 0 14px">${escapeHtml(content.concept)}</div>
+<div style="font-size:12px;font-weight:bold;letter-spacing:.5px;color:${MUTED}">IMPORTE</div>
+<div style="font-size:26px;font-weight:bold;margin-top:4px">${escapeHtml(content.total)}</div>
+</td></tr></table></td></tr>
+<tr><td align="center" style="padding:14px 32px 6px">${bigButton}</td></tr>
+<tr><td align="center" style="padding:8px 32px 0"><p style="margin:0;font-size:12px;color:${MUTED}">Pago seguro con tarjeta a través de CaixaBank.</p></td></tr>
+${content.portalUrl ? `<tr><td align="center" style="padding:14px 32px 0"><p style="margin:0;font-size:13px;color:${MUTED}">También la encontrarás en tu cuenta: <a href="${escapeHtml(content.portalUrl)}" style="color:${CORAL};font-weight:bold">Mis transportes</a></p></td></tr>` : ''}
+<tr><td style="padding:22px 32px 32px"><p style="margin:0;font-size:14px;line-height:1.6;color:#3a3835">${escapeHtml(closing)}</p><p style="margin:14px 0 0;font-size:14px;font-weight:bold">Gracias por confiar en Kache Envíos.</p></td></tr>
+</table>
+<p style="max-width:600px;margin:18px auto 0;font-size:11px;line-height:1.5;color:${MUTED}">Has recibido este email porque Kache Envíos te ha enviado una solicitud de pago. Si el botón no funciona, copia este enlace en tu navegador: ${escapeHtml(content.payUrl)}</p>
+</td></tr></table>
+</body></html>`
+
+  return { subject, text, html }
+}

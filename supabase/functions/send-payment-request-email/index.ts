@@ -1,5 +1,6 @@
 import { paymentUrl } from '../_shared/billing-notifications.ts'
-import { escapeHtml, isEmailConfigured, isValidEmail, sendEmail } from '../_shared/resend.ts'
+import { paymentRequestEmail } from '../_shared/payment-confirmation-template.ts'
+import { isEmailConfigured, isValidEmail, sendEmail } from '../_shared/resend.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 type Draft = {
@@ -26,15 +27,20 @@ Deno.serve(async (request) => {
     if (!isEmailConfigured()) return json({ error: 'El envío de emails no está configurado.' }, 503)
 
     const link = await paymentUrl(draft.id)
-    const name = escapeHtml(draft.client_snapshot.fullName?.trim() || 'cliente')
     const total = `${Number(draft.total_amount).toFixed(2).replace('.', ',')} €`
-    const concept = escapeHtml(draft.concept)
     const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+    const message = paymentRequestEmail({
+      name: draft.client_snapshot.fullName ?? '',
+      concept: draft.concept,
+      total,
+      payUrl: link,
+      portalUrl: appUrl ? `${appUrl}/mis-transportes` : null,
+    })
     await sendEmail({
       to: email,
-      subject: 'Tu solicitud de pago de Kache Envíos',
-      html: `<p>Hola ${name},</p><p>Tienes una solicitud de pago pendiente: <strong>${concept}</strong> por <strong>${total}</strong>.</p><p><a href="${escapeHtml(link)}">Pagar ahora</a></p>${appUrl ? `<p>También la encontrarás en tu cuenta: <a href="${escapeHtml(appUrl)}/mis-transportes">Mis transportes</a>.</p>` : ''}`,
-      text: `Hola ${draft.client_snapshot.fullName?.trim() || 'cliente'},\n\nTienes una solicitud de pago pendiente: ${draft.concept} por ${total}.\nPagar ahora: ${link}${appUrl ? `\nTambién la encontrarás en tu cuenta: ${appUrl}/mis-transportes` : ''}`,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
       idempotencyKey: `payment-request/${draft.id}`,
     })
     return json({ sent: true })
