@@ -230,8 +230,12 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
   async function markPaid(request: TransportRequest) {
     setBusy(request.id)
     try {
-      await confirmTransportRequestPaymentManually(request.id, paymentMethod)
-      onNotify('Cobro registrado. La solicitud está lista para asignar.')
+      const { warning } = await confirmTransportRequestPaymentManually(request.id, paymentMethod)
+      onNotify(
+        warning
+          ? `Cobro registrado. La solicitud está lista para asignar. ${warning}`
+          : 'Cobro registrado. La solicitud está lista para asignar.',
+      )
       setMarkingPaid(null)
       await refresh()
     } catch (error) {

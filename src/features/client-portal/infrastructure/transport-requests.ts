@@ -483,9 +483,20 @@ export async function confirmTransportRequestPaymentManually(
   }
   const result = data as ManualPaymentFailure | null
   if (result?.error) throw new Error(manualPaymentFailureMessage(result))
+  return {
+    warning: result?.warning
+      ? `${result.warning} (${result.warningCode ?? 'WARNING'} · ref. ${result.traceId ?? '-'})`
+      : '',
+  }
 }
 
-type ManualPaymentFailure = { error?: string; code?: string; traceId?: string }
+type ManualPaymentFailure = {
+  error?: string
+  code?: string
+  traceId?: string
+  warning?: string
+  warningCode?: string
+}
 
 /** Appends the support reference so a developer can find the attempt in payment_transaction_events. */
 function manualPaymentFailureMessage(failure: ManualPaymentFailure | null) {
