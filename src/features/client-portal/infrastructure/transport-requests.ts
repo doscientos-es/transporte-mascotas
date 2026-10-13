@@ -474,12 +474,24 @@ export async function confirmTransportRequestPaymentManually(
     const context: unknown = 'context' in error ? error.context : null
     const details =
       context instanceof Response
-        ? ((await context.json().catch(() => null)) as { error?: string } | null)
+        ? ((await context.json().catch(() => null)) as ManualPaymentFailure | null)
         : null
-    throw new Error(details?.error || 'No se ha podido registrar el cobro. Vuelve a intentarlo.')
+    throw new Error(
+      manualPaymentFailureMessage(details) ||
+        'No se ha podido registrar el cobro. Vuelve a intentarlo.',
+    )
   }
-  const result = data as { error?: string } | null
-  if (result?.error) throw new Error(result.error)
+  const result = data as ManualPaymentFailure | null
+  if (result?.error) throw new Error(manualPaymentFailureMessage(result))
+}
+
+type ManualPaymentFailure = { error?: string; code?: string; traceId?: string }
+
+/** Appends the support reference so a developer can find the attempt in payment_transaction_events. */
+function manualPaymentFailureMessage(failure: ManualPaymentFailure | null) {
+  if (!failure?.error) return ''
+  const reference = failure.traceId ? ` (${failure.code ?? 'ERROR'} · ref. ${failure.traceId})` : ''
+  return `${failure.error}${reference}`
 }
 
 export async function updateTransportRequestAnimalBox(
