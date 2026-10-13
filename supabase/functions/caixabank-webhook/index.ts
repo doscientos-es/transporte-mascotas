@@ -39,6 +39,8 @@ Deno.serve(async (request) => {
   let receivedAmountCents: number | null = null
   let receivedCurrency: string | null = null
   let paymentEventId: string | null = null
+  // Groups the log lines and the payment_transaction_events row of this notification.
+  const traceId = crypto.randomUUID()
   try {
     const { signatureVersion, parameters, signature } = await readCyberpacNotification(request)
     const notification = decodeMerchantParameters(parameters)
@@ -90,6 +92,7 @@ Deno.serve(async (request) => {
       signatureVerified: true,
       processingStage,
       outcome: 'received',
+      traceId,
     })
     await recordPaymentAudit('cyberpac_notification_verified', 'payment', order, {
       merchantOrder: order,
@@ -266,6 +269,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error'
     console.error('CaixaBank notification processing failed', {
+      traceId,
       merchantOrder: merchantOrder || null,
       entityType,
       entityId: entityId || null,
@@ -281,9 +285,17 @@ Deno.serve(async (request) => {
           processingStage,
           outcome: 'retryable_error',
           errorMessage: message.slice(0, 300),
+          errorCode: `WEBHOOK_${processingStage.toUpperCase()}_FAILED`,
+          details: {
+            stage: processingStage,
+            entityType,
+            entityId: entityId || null,
+            error: message.slice(0, 1000),
+          },
         })
       } catch (traceError) {
         console.error('Cyberpac transaction event update failed', {
+          traceId,
           merchantOrder: merchantOrder || null,
           error: traceError instanceof Error ? traceError.message : 'unknown error',
         })
@@ -590,6 +602,9 @@ type PaymentTransactionEventInput = {
     | 'ignored'
   errorMessage?: string
   processedAt?: string | null
+  traceId?: string
+  errorCode?: string
+  details?: Record<string, unknown>
 }
 
 type PaymentTransactionEventUpdate = Partial<
@@ -602,6 +617,8 @@ type PaymentTransactionEventUpdate = Partial<
     | 'outcome'
     | 'errorMessage'
     | 'processedAt'
+    | 'errorCode'
+    | 'details'
   >
 >
 
@@ -626,6 +643,9 @@ async function recordPaymentTransactionEvent(event: PaymentTransactionEventInput
       outcome: event.outcome,
       error_message: event.errorMessage ?? '',
       processed_at: event.processedAt ?? null,
+      trace_id: event.traceId ?? null,
+      error_code: event.errorCode ?? '',
+      details: event.details ?? {},
     }),
   })
   const [record] = (await response.json()) as Array<{ id: string }>
@@ -646,6 +666,8 @@ async function updatePaymentTransactionEvent(
   if ('outcome' in updates) fields.outcome = updates.outcome
   if ('errorMessage' in updates) fields.error_message = updates.errorMessage
   if ('processedAt' in updates) fields.processed_at = updates.processedAt
+  if ('errorCode' in updates) fields.error_code = updates.errorCode
+  if ('details' in updates) fields.details = updates.details
   const response = await rest(`payment_transaction_events?id=eq.${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
     headers: { Prefer: 'return=representation' },
