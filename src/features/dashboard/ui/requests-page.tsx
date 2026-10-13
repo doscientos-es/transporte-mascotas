@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import {
   confirmTransportRequest,
+  confirmTransportRequestPaymentManually,
   loadTransportRequests,
   rejectTransportRequest,
   setTransportRequestAnimalSharedBox,
@@ -53,6 +54,21 @@ const accompanyingDocumentLabels: Record<AccompanyingDocument, string> = {
   anillo: 'Anillo',
   cites: 'CITES',
   otro: 'Otro documento',
+}
+
+const manualPaymentMethods = ['Transferencia', 'Bizum', 'Efectivo', 'Tarjeta', 'Otro'] as const
+
+/** `needsReview` flags attempts that may already be paid at the gateway. */
+const paymentAttemptLabels: Record<
+  TransportRequest['paymentAttemptStatus'],
+  { label: string; needsReview: boolean }
+> = {
+  not_started: { label: 'Sin intento de pago', needsReview: false },
+  started: { label: 'Pago iniciado, sin confirmar', needsReview: true },
+  confirmation_pending: { label: 'Pago recibido, pendiente de confirmar', needsReview: true },
+  review_required: { label: 'Pago por revisar', needsReview: true },
+  failed: { label: 'Pago rechazado', needsReview: false },
+  confirmed: { label: 'Pago confirmado', needsReview: false },
 }
 
 const pluralize = (count: number, singular: string, plural: string) =>
@@ -135,6 +151,8 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
   const [pendingPage, setPendingPage] = useState(1)
   const [historyPage, setHistoryPage] = useState(1)
   const [awaitingPage, setAwaitingPage] = useState(1)
+  const [markingPaid, setMarkingPaid] = useState<TransportRequest | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<string>(manualPaymentMethods[0])
 
   const refresh = useCallback(async () => {
     setRequests(await loadTransportRequests())
@@ -204,6 +222,20 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
       await refresh()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido rechazar la solicitud.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function markPaid(request: TransportRequest) {
+    setBusy(request.id)
+    try {
+      await confirmTransportRequestPaymentManually(request.id, paymentMethod)
+      onNotify('Cobro registrado. La solicitud está lista para asignar.')
+      setMarkingPaid(null)
+      await refresh()
+    } catch (error) {
+      onNotify(error instanceof Error ? error.message : 'No se ha podido registrar el cobro.')
     } finally {
       setBusy('')
     }
@@ -527,6 +559,8 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                     <th>Fecha</th>
                     <th>Importe</th>
                     <th>Creada</th>
+                    <th>Pago</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -554,6 +588,26 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                       <td>{formatDate(request.desiredDate)}</td>
                       <td>{formatAmount(request.amountCents)}</td>
                       <td>{new Date(request.createdAt).toLocaleDateString('es-ES')}</td>
+                      <td>
+                        <strong>{paymentAttemptLabels[request.paymentAttemptStatus].label}</strong>
+                        {paymentAttemptLabels[request.paymentAttemptStatus].needsReview && (
+                          <small>Revisar en la pasarela antes de cobrar de nuevo</small>
+                        )}
+                        {request.paymentReference && <small>Ref. {request.paymentReference}</small>}
+                      </td>
+                      <td>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={Boolean(busy)}
+                          onClick={() => {
+                            setPaymentMethod(manualPaymentMethods[0])
+                            setMarkingPaid(request)
+                          }}
+                        >
+                          Marcar como pagada
+                        </Button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -707,6 +761,49 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
               onClick={() => rejecting && void reject(rejecting)}
             >
               {busy ? 'Rechazando…' : 'Rechazar solicitud'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={markingPaid !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setMarkingPaid(null)
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader className="gap-1">
+            <AlertDialogTitle>Marcar como pagada</AlertDialogTitle>
+            <AlertDialogDescription>
+              {markingPaid
+                ? `Confirma que has cobrado ${formatAmount(markingPaid.amountCents)} a ${markingPaid.contactName}. La solicitud pasará a pendientes de asignar y quedará registrado quién la marcó.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <label className="grid gap-1.5 text-xs font-bold text-[#454545]">
+            Método de cobro
+            <select
+              value={paymentMethod}
+              onChange={(event) => setPaymentMethod(event.target.value)}
+              disabled={Boolean(busy)}
+            >
+              {manualPaymentMethods.map((method) => (
+                <option value={method} key={method}>
+                  {method}
+                </option>
+              ))}
+            </select>
+          </label>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={Boolean(busy)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={Boolean(busy)}
+              onClick={(event) => {
+                event.preventDefault()
+                if (markingPaid) void markPaid(markingPaid)
+              }}
+            >
+              {busy ? 'Guardando…' : 'Marcar como pagada'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

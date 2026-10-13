@@ -1,5 +1,6 @@
 export {
   confirmTransportRequest,
+  confirmTransportRequestPaymentManually,
   createAdminTransportRequest,
   createTransportRequest,
   loadTransportRequests,

@@ -460,6 +460,28 @@ export async function rejectTransportRequest(requestId: string, adminNote: strin
   if (error) throwRequestError(error, 'No se ha podido rechazar la solicitud. Vuelve a intentarlo.')
 }
 
+/** Admin marks a transport request as paid outside the payment link. */
+export async function confirmTransportRequestPaymentManually(
+  requestId: string,
+  paymentMethod: string,
+  note = '',
+) {
+  const { data, error } = await requireSupabase().functions.invoke(
+    'confirm-manual-transport-payment',
+    { body: { requestId, paymentMethod, note } },
+  )
+  if (error) {
+    const context: unknown = 'context' in error ? error.context : null
+    const details =
+      context instanceof Response
+        ? ((await context.json().catch(() => null)) as { error?: string } | null)
+        : null
+    throw new Error(details?.error || 'No se ha podido registrar el cobro. Vuelve a intentarlo.')
+  }
+  const result = data as { error?: string } | null
+  if (result?.error) throw new Error(result.error)
+}
+
 export async function updateTransportRequestAnimalBox(
   animalId: string,
   category: TransportBoxCategory,
