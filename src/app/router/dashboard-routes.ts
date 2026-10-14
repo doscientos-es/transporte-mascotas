@@ -8,6 +8,7 @@ export const dashboardPaths: Record<NavSection, string> = {
   furgoneta: '/furgoneta',
   clientes: '/clientes',
   facturas: '/facturas',
+  finanzas: '/finanzas',
   solicitudes: '/solicitudes',
   ajustes: '/ajustes',
   'proximas-rutas': '/proximas-rutas',
@@ -48,6 +49,7 @@ export const ROUTER_PATHS = {
   staffVan: routePath(dashboardPaths.furgoneta),
   staffVanDetail: `${routePath(dashboardPaths.furgoneta)}/:routeId`,
   staffInvoices: routePath(dashboardPaths.facturas),
+  adminFinance: routePath(dashboardPaths.finanzas),
   adminLetters: routePath(dashboardPaths.cartas),
   adminLetterCreate: routePath(letterCreatePath),
   adminClients: routePath(dashboardPaths.clientes),
@@ -87,6 +89,7 @@ export function dashboardLocationForPath(
   if (path === dashboardPaths.furgoneta) return { section: 'furgoneta' }
   if (path === dashboardPaths.clientes) return { section: 'clientes' }
   if (path === dashboardPaths.facturas) return { section: 'facturas' }
+  if (path === dashboardPaths.finanzas) return { section: 'finanzas' }
   if (path === dashboardPaths.solicitudes) return { section: 'solicitudes' }
   if (path === dashboardPaths.ajustes) return { section: 'ajustes' }
   if (path === dashboardPaths['proximas-rutas']) return { section: 'proximas-rutas' }

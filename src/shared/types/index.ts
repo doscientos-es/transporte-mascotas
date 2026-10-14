@@ -29,6 +29,7 @@ export type NavSection =
   | 'rutas'
   | 'furgoneta'
   | 'facturas'
+  | 'finanzas'
   | 'solicitudes'
   | 'ajustes'
   | 'proximas-rutas'

@@ -126,6 +126,11 @@ const router = createBrowserRouter([
                 HydrateFallback: LoadingRoute,
               },
               {
+                path: ROUTER_PATHS.adminFinance,
+                lazy: staffDashboardRoute,
+                HydrateFallback: LoadingRoute,
+              },
+              {
                 path: ROUTER_PATHS.adminLetters,
                 lazy: staffDashboardRoute,
                 HydrateFallback: LoadingRoute,

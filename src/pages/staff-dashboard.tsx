@@ -13,6 +13,7 @@ const labels: Record<NavSection, string> = {
   rutas: 'Rutas',
   furgoneta: 'Furgoneta',
   facturas: 'Facturas',
+  finanzas: 'Finanzas',
   solicitudes: 'Solicitudes',
   ajustes: 'Ajustes',
   'proximas-rutas': 'Próximas rutas',

@@ -57,6 +57,10 @@ const InvoicesPage = lazyWithRetry(
   () => import('./invoices-page'),
   ({ InvoicesPage: page }) => page,
 )
+const FinancePage = lazyWithRetry(
+  () => import('./finance-page'),
+  ({ FinancePage: page }) => page,
+)
 const PaymentRequestsPage = lazyWithRetry(
   () => import('./payment-requests-page'),
   ({ PaymentRequestsPage: page }) => page,
@@ -438,6 +442,9 @@ export function AdminDashboardPage({
                 onSaveMeetingPoint={dashboard.saveMeetingPoint}
                 onDeleteMeetingPoint={dashboard.removeMeetingPoint}
               />
+            )}
+            {profile.role === 'admin' && section === 'finanzas' && (
+              <FinancePage userId={session?.user.id} />
             )}
             {section === 'facturas' && (
               <InvoicesPage

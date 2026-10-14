@@ -77,7 +77,7 @@ describe('DashboardLayout', () => {
     )
 
     const mobileNavigation = markup.slice(markup.indexOf('data-slot="mobile-navigation"'))
-    expect(mobileNavigation.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(8)
+    expect(mobileNavigation.match(/data-slot="mobile-navigation-item"/g)).toHaveLength(9)
     expect(mobileNavigation).toContain('Plantillas')
     expect(mobileNavigation).toContain('Furgoneta')
     expect(mobileNavigation).toContain('Ajustes')
