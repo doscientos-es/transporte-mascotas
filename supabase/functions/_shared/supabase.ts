@@ -27,10 +27,28 @@ export function serviceHeaders() {
   return { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
 }
 
+/**
+ * Connection resets between edge functions and the API gateway happen now and then
+ * ("connection error: connection reset"). Reads are safe to repeat, so retry them a couple
+ * of times; writes are never retried because the first attempt may already have been applied.
+ */
+async function fetchWithRetry(input: string, init: RequestInit = {}) {
+  const method = (init.method ?? 'GET').toUpperCase()
+  const attempts = method === 'GET' || method === 'HEAD' ? 3 : 1
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(input, init)
+    } catch (error) {
+      if (attempt >= attempts) throw error
+      await new Promise((resolve) => setTimeout(resolve, 150 * attempt))
+    }
+  }
+}
+
 export async function rest(path: string, init: RequestInit = {}) {
   const url = Deno.env.get('SUPABASE_URL')
   if (!url) throw new Error('Falta SUPABASE_URL.')
-  const response = await fetch(`${url}/rest/v1/${path}`, {
+  const response = await fetchWithRetry(`${url}/rest/v1/${path}`, {
     ...init,
     headers: { ...serviceHeaders(), ...init.headers },
   })
@@ -56,7 +74,7 @@ export async function requireUser(request: Request) {
   const url = Deno.env.get('SUPABASE_URL')
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (!authorization || !url || !key) throw new Error('No autenticado.')
-  const userResponse = await fetch(`${url}/auth/v1/user`, {
+  const userResponse = await fetchWithRetry(`${url}/auth/v1/user`, {
     headers: { apikey: key, Authorization: authorization },
   })
   if (!userResponse.ok) throw new Error('No autenticado.')

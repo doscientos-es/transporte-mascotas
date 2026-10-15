@@ -226,11 +226,13 @@ async function authorize(request: Request) {
     return await requireAdmin(request)
   } catch (error) {
     const message = error instanceof Error ? error.message : ''
-    throw new ManualPaymentError(
-      message.includes('permisos') ? 'FORBIDDEN' : 'UNAUTHENTICATED',
-      'authorize',
-      message,
-    )
+    // Only a rejected session is "unauthenticated"; a network failure is retryable.
+    const code = message.includes('permisos')
+      ? 'FORBIDDEN'
+      : message.includes('No autenticado')
+        ? 'UNAUTHENTICATED'
+        : 'INTERNAL'
+    throw new ManualPaymentError(code, 'authorize', message)
   }
 }
 
