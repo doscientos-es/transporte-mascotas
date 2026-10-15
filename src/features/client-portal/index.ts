@@ -16,6 +16,7 @@ export {
   createCarriageLetterPdf,
   letterToCarriageLetter,
 } from './application/carriage-letter-pdf'
+export { itineraryDirectionsLinks } from './application/route-maps'
 export { ClientPortalPage } from './ui/client-portal-page'
 export { ClientRequestForm } from './ui/client-request-form'
 export { PaymentLaunchPage } from './ui/payment-launch-page'
