@@ -437,6 +437,23 @@ export async function closeDailyRoute(routeId: string) {
   return result
 }
 
+export async function deleteDailyRoute(routeId: string) {
+  const database = requireSupabase()
+  const { count, error: actionsError } = await database
+    .from('route_actions')
+    .select('id', { count: 'exact', head: true })
+    .eq('daily_route_id', routeId)
+  if (actionsError) throw actionsError
+  if (count) throw new Error('No se puede eliminar una ruta con servicios asociados.')
+  const { data, error } = await database
+    .from('daily_routes')
+    .delete()
+    .eq('id', routeId)
+    .select('id')
+  if (error) throw error
+  if (!data?.length) throw new Error('No se ha podido eliminar la ruta.')
+}
+
 export async function saveDailyRoute(route: DailyRoute, template: RouteTemplate, userId: string) {
   const database = requireSupabase()
   const { error: routeError } = await database.from('daily_routes').insert({

@@ -92,6 +92,7 @@ type Props = {
   onUpdateService: (routeId: string, service: ServiceAction) => void
   onRemoveService: (routeId: string, serviceId: string) => void
   onCloseRoute: (routeId: string) => Promise<void>
+  onDeleteRoute?: (routeId: string) => Promise<void>
   canManage?: boolean
 }
 type ServiceGroup = { key: string; actions: ServiceAction[]; animalLabels: string[] }
@@ -444,6 +445,7 @@ export function RoutesPage({
   onAddStop,
   onRemoveStop,
   onCloseRoute,
+  onDeleteRoute,
   canManage = true,
 }: Props) {
   const [organizing, setOrganizing] = useState(false)
@@ -457,6 +459,9 @@ export function RoutesPage({
   const [closingRoute, setClosingRoute] = useState(false)
   const [recalculatingTimes, setRecalculatingTimes] = useState(false)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
+  const [editingRoute, setEditingRoute] = useState(false)
+  const [deleteRouteOpen, setDeleteRouteOpen] = useState(false)
+  const [deletingRoute, setDeletingRoute] = useState(false)
   const [operationError, setOperationError] = useState('')
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
@@ -617,6 +622,21 @@ export function RoutesPage({
       setClosingRoute(false)
     }
   }
+  async function deleteRoute() {
+    if (!onDeleteRoute) return
+    setDeletingRoute(true)
+    try {
+      setOperationError('')
+      await onDeleteRoute(route.id)
+      setDeleteRouteOpen(false)
+      onBack()
+    } catch (error) {
+      setDeleteRouteOpen(false)
+      reportOperationError(error, 'No se ha podido eliminar la ruta.')
+    } finally {
+      setDeletingRoute(false)
+    }
+  }
   async function downloadDriverSheet() {
     const rows = driverSheetRows(route, stops, letters, (stop) =>
       formatArrival(
@@ -701,33 +721,11 @@ export function RoutesPage({
               <div className="route-header-stats">
                 <div className="route-start-field">
                   <span>Día de inicio</span>
-                  {canManage && !itineraryClosed && onUpdateDate ? (
-                    <input
-                      type="date"
-                      aria-label="Día de inicio de la ruta"
-                      className="route-start-input route-date-input"
-                      value={route.date}
-                      onChange={(event) => void changeDate(event.target.value)}
-                    />
-                  ) : (
-                    <strong>
-                      {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES')}
-                    </strong>
-                  )}
+                  <strong>{new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES')}</strong>
                 </div>
                 <div className="route-start-field">
                   <span>Hora de salida</span>
-                  {canManage && !itineraryClosed && onUpdateStartTime ? (
-                    <input
-                      type="time"
-                      aria-label="Hora de salida del origen"
-                      className="route-start-input"
-                      value={startTime}
-                      onChange={(event) => void changeStartTime(event.target.value)}
-                    />
-                  ) : (
-                    <strong>{startTime}</strong>
-                  )}
+                  <strong>{startTime}</strong>
                 </div>
                 <div className="route-estimate">
                   <span>Tiempo total estimado</span>
@@ -753,31 +751,12 @@ export function RoutesPage({
                         <Plus /> Añadir parada
                       </Button>
                       <Button
-                        className="journey-reorder-stops"
+                        className="journey-edit-route"
                         variant="outline"
                         size="sm"
-                        onClick={() => setReorderingStops(true)}
-                        disabled={savingPlan || recalculatingTimes}
+                        onClick={() => setEditingRoute(true)}
                       >
-                        <ArrowUpDown /> Reordenar paradas
-                      </Button>
-                      <Button
-                        className="journey-organize-stops"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setOrganizing((current) => !current)}
-                        disabled={recalculatingTimes}
-                      >
-                        {organizing ? 'Terminar' : 'Organizar paradas'}
-                      </Button>
-                      <Button
-                        className="journey-recalculate-times"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void recalculateRouteTimes()}
-                        disabled={recalculatingTimes || Boolean(plannedStops) || stops.length < 2}
-                      >
-                        <Clock3 /> {recalculatingTimes ? 'Calculando…' : 'Recalcular tiempos'}
+                        <Pencil /> Editar ruta
                       </Button>
                     </>
                   )}
@@ -848,8 +827,11 @@ export function RoutesPage({
             <div className="itinerary-toolbar">
               <span>
                 <Clock3 size={15} /> Los trayectos se calculan en coche por defecto y se recalculan
-                al cambiar el orden. Puedes ajustar a mano los minutos de espera y de trayecto.
+                al cambiar el orden. Los minutos de espera y de trayecto se guardan al modificarlos.
               </span>
+              <Button size="sm" onClick={() => setOrganizing(false)}>
+                Terminar
+              </Button>
             </div>
           )}
           <ol>
@@ -904,6 +886,56 @@ export function RoutesPage({
           onAdd={saveEditedStop}
         />
       )}
+      {editingRoute && (
+        <RouteSettingsDialog
+          date={route.date}
+          startTime={startTime}
+          organizing={organizing}
+          recalculating={recalculatingTimes}
+          busy={savingPlan || Boolean(plannedStops)}
+          canRecalculate={stops.length > 1}
+          canDelete={Boolean(onDeleteRoute)}
+          onClose={() => setEditingRoute(false)}
+          onDateChange={changeDate}
+          onStartTimeChange={changeStartTime}
+          onReorder={() => {
+            setEditingRoute(false)
+            setReorderingStops(true)
+          }}
+          onToggleOrganizing={() => {
+            setEditingRoute(false)
+            setOrganizing((current) => !current)
+          }}
+          onRecalculate={() => {
+            setEditingRoute(false)
+            void recalculateRouteTimes()
+          }}
+          onDelete={() => {
+            setEditingRoute(false)
+            setDeleteRouteOpen(true)
+          }}
+        />
+      )}
+      <AlertDialog open={deleteRouteOpen} onOpenChange={setDeleteRouteOpen}>
+        <AlertDialogContent className="w-[calc(100%-2.5rem)]! max-w-115! p-6.5!">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar ruta</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`¿Eliminar la ruta ${template.name} del ${new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES')}? Se borrarán sus paradas. Esta acción no se puede deshacer.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingRoute}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletingRoute}
+              onClick={() => void deleteRoute()}
+            >
+              <Trash2 /> {deletingRoute ? 'Eliminando…' : 'Eliminar ruta'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {reorderingStops && (
         <ReorderStopsDialog
           stops={stops}
@@ -1094,6 +1126,97 @@ function JourneyStop({
         )}
       </div>
     </li>
+  )
+}
+
+function RouteSettingsDialog({
+  date,
+  startTime,
+  organizing,
+  recalculating,
+  busy,
+  canRecalculate,
+  canDelete,
+  onClose,
+  onDateChange,
+  onStartTimeChange,
+  onReorder,
+  onToggleOrganizing,
+  onRecalculate,
+  onDelete,
+}: {
+  date: string
+  startTime: string
+  organizing: boolean
+  recalculating: boolean
+  busy: boolean
+  canRecalculate: boolean
+  canDelete: boolean
+  onClose: () => void
+  onDateChange: (value: string) => Promise<void>
+  onStartTimeChange: (value: string) => Promise<void>
+  onReorder: () => void
+  onToggleOrganizing: () => void
+  onRecalculate: () => void
+  onDelete: () => void
+}) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent className="dialog-card route-create-dialog w-[calc(100%-2.5rem)]! max-w-115! p-6.5!">
+        <DialogHeader className="gap-0">
+          <DialogTitle>Editar ruta</DialogTitle>
+          <DialogDescription>
+            Los cambios de día y hora se guardan al modificarlos.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="route-start-field">
+          <span>Día de inicio</span>
+          <input
+            type="date"
+            aria-label="Día de inicio de la ruta"
+            className="route-start-input route-date-input"
+            value={date}
+            onChange={(event) => void onDateChange(event.target.value)}
+          />
+        </div>
+        <div className="route-start-field">
+          <span>Hora de salida</span>
+          <input
+            type="time"
+            aria-label="Hora de salida del origen"
+            className="route-start-input"
+            value={startTime}
+            onChange={(event) => void onStartTimeChange(event.target.value)}
+          />
+        </div>
+        <div className="route-header-primary-actions">
+          <Button variant="outline" size="sm" onClick={onReorder} disabled={busy || recalculating}>
+            <ArrowUpDown /> Reordenar paradas
+          </Button>
+          <Button variant="outline" size="sm" onClick={onToggleOrganizing} disabled={recalculating}>
+            {organizing ? 'Terminar de organizar' : 'Organizar paradas'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRecalculate}
+            disabled={recalculating || busy || !canRecalculate}
+          >
+            <Clock3 /> Recalcular tiempos
+          </Button>
+        </div>
+        {canDelete && (
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 /> Eliminar ruta
+          </Button>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
 

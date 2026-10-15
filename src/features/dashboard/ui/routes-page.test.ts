@@ -81,17 +81,16 @@ describe('RoutesPage header', () => {
     )
 
     expect(markup).toContain('Añadir parada')
-    expect(markup).toContain('Reordenar paradas')
-    expect(markup).toContain('Organizar paradas')
-    expect(markup).toContain('Recalcular tiempos')
+    expect(markup).toContain('Editar ruta')
+    expect(markup).not.toContain('Reordenar paradas')
+    expect(markup).not.toContain('Recalcular tiempos')
     expect(markup).toContain('Más acciones')
     expect(markup).toContain('Trayecto a Madrid')
     expect(markup).toContain('35 min')
     expect(markup).toContain('<p>Clínica Sol · Entrada principal</p>')
     expect(markup).toContain('Fin de ruta')
     expect(markup).toContain('Día de inicio')
-    expect(markup).toContain('aria-label="Día de inicio de la ruta"')
-    expect(markup).toContain('type="date"')
+    expect(markup).not.toContain('type="date"')
     expect(markup).not.toContain('Trayecto sig.')
     expect(markup.indexOf('class="journey-place"')).toBeLessThan(
       markup.indexOf('class="journey-leg"'),

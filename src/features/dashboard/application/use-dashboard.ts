@@ -57,6 +57,7 @@ import {
   addRouteTemplateStop,
   appendLetterToDailyRoute,
   closeDailyRoute,
+  deleteDailyRoute,
   deleteDailyRouteStop,
   deleteRouteTemplate,
   deleteRouteTemplateStop,
@@ -1213,6 +1214,17 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast('Itinerario cerrado. Las paradas y los tiempos han quedado fijados.')
   }
 
+  async function removeRoute(routeId: string) {
+    if (!session) throw new Error('Inicia sesión para eliminar la ruta.')
+    const route = dailyRoutes.find((item) => item.id === routeId)
+    if (route?.actions.length)
+      throw new Error('No se puede eliminar una ruta con servicios asociados.')
+    await deleteDailyRoute(routeId)
+    setDailyRoutes((current) => current.filter((item) => item.id !== routeId))
+    setSelectedRoute((current) => (current?.id === routeId ? null : current))
+    toast('Ruta eliminada.')
+  }
+
   async function saveClient(client: Client | Omit<Client, 'id' | 'createdAt'>) {
     if (!session) throw new Error('Inicia sesión para guardar un cliente.')
     try {
@@ -1300,6 +1312,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     editLetter,
     createDailyRoute,
     closeRoute,
+    removeRoute,
     saveClient,
     removeClient,
     confirmManualPayment,
