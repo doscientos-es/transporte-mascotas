@@ -230,8 +230,7 @@ function clientStatusHint(
       (paymentAttemptStatus ? transportPaymentAttemptNotice(paymentAttemptStatus) : undefined) ??
       'Estamos esperando la confirmación del pago.'
     )
-  if (status === 'por_verificar')
-    return 'Pago registrado. Estamos comprobando la disponibilidad de ruta.'
+  if (status === 'por_verificar') return 'Pago recibido. Estamos confirmando tu reserva.'
   if (status === 'confirmada')
     return 'Tu transporte está confirmado. Te avisaremos con los detalles.'
   if (status === 'en_ruta') return 'El transporte ya está en ruta.'

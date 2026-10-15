@@ -82,7 +82,7 @@ export function PaymentSuccessPanel({
           {confirmed
             ? '¡Transporte confirmado!'
             : paymentRecorded
-              ? 'Pago recibido; estamos revisando la solicitud'
+              ? 'Pago recibido; estamos confirmando tu reserva'
               : confirming
                 ? 'Estamos comprobando el pago con CaixaBank'
                 : 'Aún no hemos podido confirmar el pago'}
@@ -121,7 +121,7 @@ export function PaymentSuccessPanel({
               {confirmed ? (
                 'Transporte confirmado'
               ) : paymentRecorded ? (
-                'Pago registrado; solicitud en revisión'
+                'Confirmando tu reserva'
               ) : (
                 <>
                   <RefreshCw className={confirming ? 'is-spinning' : ''} size={14} />{' '}

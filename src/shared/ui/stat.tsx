@@ -22,7 +22,7 @@ export function Stat({
     <MetricCard
       className={[
         compact
-          ? '[--card-spacing:10px] border-0 gap-0 shadow-none [&_[data-slot=card-content]]:items-center [&_[data-slot=card-content]]:gap-0 [&_.min-w-0]:grid [&_.min-w-0]:w-full [&_.min-w-0]:flex-1 [&_.min-w-0]:grid-cols-[auto_minmax(0,1fr)] [&_.min-w-0]:items-center [&_.min-w-0]:gap-x-2'
+          ? '[--card-spacing:10px] border-0 shadow-none flex-row items-center gap-2.5 px-2.5 [&_[data-slot=card-header]]:contents [&_[data-slot=card-content]]:order-1 [&_[data-slot=card-content]]:w-auto [&_[data-slot=card-content]]:flex-none [&_[data-slot=card-content]]:p-0 [&_[data-slot=metric-card-label]]:order-2'
           : '[--card-spacing:18px] shadow-none',
         isClear
           ? 'bg-[#f1faf3] [&_[data-slot="metric-card-icon"]]:text-[#27834a] [&_[data-slot="metric-card-label"]]:text-[#356546] [&_[data-slot="metric-card-value"]]:text-[#176b38]'
@@ -30,10 +30,10 @@ export function Stat({
             ? 'bg-[#fffafa]'
             : 'bg-white',
         compact
-          ? "[&_[data-slot='metric-card-label']]:col-start-2 [&_[data-slot='metric-card-label']]:row-start-1 [&_[data-slot='metric-card-label']]:m-0 [&_[data-slot='metric-card-label']]:text-[12px] [&_[data-slot='metric-card-label']]:text-[#686868]"
+          ? "[&_[data-slot='metric-card-label']]:m-0 [&_[data-slot='metric-card-label']]:text-[12px] [&_[data-slot='metric-card-label']]:text-[#686868]"
           : "[&_[data-slot='metric-card-label']]:m-0 [&_[data-slot='metric-card-label']]:text-[13px] [&_[data-slot='metric-card-label']]:text-[#686868]",
         compact
-          ? "[&_[data-slot='metric-card-value']]:col-start-1 [&_[data-slot='metric-card-value']]:row-start-1 [&_[data-slot='metric-card-value']]:mt-0 [&_[data-slot='metric-card-value']]:text-[24px] [&_[data-slot='metric-card-value']]:tracking-[-0.06em] [&_[data-slot='metric-card-value']]:text-[#171717]"
+          ? "[&_[data-slot='metric-card-value']]:mt-0 [&_[data-slot='metric-card-value']]:text-[24px] [&_[data-slot='metric-card-value']]:tracking-[-0.06em] [&_[data-slot='metric-card-value']]:text-[#171717]"
           : "[&_[data-slot='metric-card-value']]:mt-2 [&_[data-slot='metric-card-value']]:text-[31px] [&_[data-slot='metric-card-value']]:tracking-[-0.06em] [&_[data-slot='metric-card-value']]:text-[#171717]",
       ].join(' ')}
       icon={

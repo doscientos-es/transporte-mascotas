@@ -495,6 +495,22 @@ export function RoutesPage({
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
   const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
+  const mapDetails = stops.map((stop, index) => {
+    const next = stops[index + 1]
+    return [
+      kindLabels[stop.kind],
+      `Llegada aprox.: ${formatArrival(route.date, stopArrivals[index] ?? { date: route.date, time: startTime })}`,
+      `Espera: ${formatDuration(stop.dwellMinutes)}`,
+      next ? `Siguiente: ${next.locality} · ${formatDuration(stop.minutes)}` : 'Fin de ruta',
+    ]
+  })
+  function showStopInList(index: number) {
+    const item = document.getElementById(`route-stop-${index}`)
+    if (!item) return
+    item.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    item.classList.add('is-highlighted')
+    window.setTimeout(() => item.classList.remove('is-highlighted'), 2200)
+  }
   const pointFor = (letterId: string, type: ServiceAction['type']): ReminderPoint | undefined => {
     const action = route.actions.find((item) => item.letterId === letterId && item.type === type)
     const stop = action
@@ -718,147 +734,191 @@ export function RoutesPage({
         </Button>
       </div>
       <Card className="route-journey">
-        <CardContent>
-          <div className="journey-header route-journey-header route-header-premium">
-            <div className="route-header-overview">
-              <div className="route-header-identity">
-                <time className="route-date" dateTime={route.date}>
-                  <b>{formatRouteDate(route.date).day}</b>
-                  <small>{formatRouteDate(route.date).month}</small>
-                </time>
-                <div className="route-header-copy">
-                  <h3>Ruta {template.name}</h3>
-                  <div className="route-header-meta">
-                    <span>{directionLabel(direction)}</span>
-                    <span className="route-header-meta-divider" aria-hidden="true">
-                      ·
-                    </span>
-                    <span>{transportsLabel(routeTransportCount(route))}</span>
-                    <StatusBadge status={route.status} />
+        <CardContent className="route-layout">
+          <div className="route-layout-main">
+            <div className="journey-header route-journey-header route-header-premium">
+              <div className="route-header-overview">
+                <div className="route-header-identity">
+                  <time className="route-date" dateTime={route.date}>
+                    <b>{formatRouteDate(route.date).day}</b>
+                    <small>{formatRouteDate(route.date).month}</small>
+                  </time>
+                  <div className="route-header-copy">
+                    <div className="route-header-title-row">
+                      <h3>Ruta {template.name}</h3>
+                      <StatusBadge status={route.status} />
+                    </div>
+                    <div className="route-header-meta">
+                      <span>{directionLabel(direction)}</span>
+                      <span className="route-header-meta-divider" aria-hidden="true">
+                        ·
+                      </span>
+                      <span>{transportsLabel(routeTransportCount(route))}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="route-header-stats">
-                <div className="route-start-field">
-                  <span>Día de inicio</span>
-                  <strong>{new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES')}</strong>
+              <dl className="route-header-stats">
+                <div className="route-stat">
+                  <dt>Salida</dt>
+                  <dd>
+                    {new Date(`${route.date}T12:00:00`).toLocaleDateString('es-ES', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    })}
+                    <b>{startTime}</b>
+                  </dd>
                 </div>
-                <div className="route-start-field">
-                  <span>Hora de salida</span>
-                  <strong>{startTime}</strong>
+                <div className="route-stat">
+                  <dt>Duración estimada</dt>
+                  <dd>
+                    {formatDuration(travelMinutes + pointMinutes)}
+                    <small>
+                      {formatDuration(travelMinutes)} de trayecto · {formatDuration(pointMinutes)}{' '}
+                      en paradas
+                    </small>
+                  </dd>
                 </div>
-                <div className="route-estimate">
-                  <span>Tiempo total estimado</span>
-                  <strong>{formatDuration(travelMinutes + pointMinutes)}</strong>
-                  <small>
-                    {formatDuration(travelMinutes)} en trayectos · {formatDuration(pointMinutes)} en
-                    paradas
-                  </small>
-                </div>
-              </div>
-            </div>
-            {(onOpenVan || canManage) && (
-              <div className="route-header-toolbar">
-                <div className="route-header-primary-actions">
-                  {canManage && !itineraryClosed && (
-                    <>
-                      <Button
-                        className="journey-add-stop"
-                        size="sm"
-                        onClick={() => setAddingStop(true)}
-                        disabled={Boolean(plannedStops) || recalculatingTimes}
-                      >
-                        <Plus /> Añadir parada
+              </dl>
+              {(onOpenVan || canManage) && (
+                <div className="route-header-toolbar">
+                  <div className="route-header-primary-actions">
+                    {canManage && !itineraryClosed && (
+                      <>
+                        <Button
+                          className="journey-add-stop"
+                          size="sm"
+                          onClick={() => setAddingStop(true)}
+                          disabled={Boolean(plannedStops) || recalculatingTimes}
+                        >
+                          <Plus /> Añadir parada
+                        </Button>
+                        <Button
+                          className="journey-edit-route"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingRoute(true)}
+                        >
+                          <Pencil /> Editar ruta
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <DropdownMenu
+                    trigger={
+                      <Button className="route-header-more" variant="outline" size="sm">
+                        <MoreHorizontal /> Más acciones
                       </Button>
-                      <Button
-                        className="journey-edit-route"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditingRoute(true)}
-                      >
-                        <Pencil /> Editar ruta
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <DropdownMenu
-                  trigger={
-                    <Button className="route-header-more" variant="outline" size="sm">
-                      <MoreHorizontal /> Más acciones
-                    </Button>
-                  }
-                  placement="bottom end"
-                  className="min-w-48"
-                >
-                  <DropdownMenuItem onAction={() => void downloadDriverSheet()}>
-                    <FileSpreadsheet /> Descargar Excel
-                  </DropdownMenuItem>
-                  {onOpenVan && (
-                    <DropdownMenuItem onAction={() => onOpenVan(route)}>
-                      <Truck /> Ver furgoneta
+                    }
+                    placement="bottom end"
+                    className="min-w-48"
+                  >
+                    <DropdownMenuItem onAction={() => void downloadDriverSheet()}>
+                      <FileSpreadsheet /> Descargar Excel
                     </DropdownMenuItem>
-                  )}
-                  {canManage && !itineraryClosed && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onAction={() => setCloseConfirmationOpen(true)}
-                      >
-                        <Lock /> Cerrar itinerario
+                    {onOpenVan && (
+                      <DropdownMenuItem onAction={() => onOpenVan(route)}>
+                        <Truck /> Ver furgoneta
                       </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenu>
+                    )}
+                    {canManage && !itineraryClosed && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onAction={() => setCloseConfirmationOpen(true)}
+                        >
+                          <Lock /> Cerrar itinerario
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenu>
+                </div>
+              )}
+            </div>
+            {operationError && (
+              <p className="form-error route-operation-error" role="alert">
+                {operationError}
+              </p>
+            )}
+            {itineraryClosed && (
+              <p className="itinerary-toolbar">
+                <Lock size={15} /> Itinerario cerrado: se conservan las paradas y los tiempos. Aún
+                puedes añadir animales en las paradas existentes.
+              </p>
+            )}
+            {plannedStops && (
+              <div className="itinerary-toolbar">
+                <span>
+                  <Clock3 size={15} /> Posición sugerida por cercanía y tiempo en coche. Muévela si
+                  lo necesitas antes de guardarla.
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setPlannedStops(null)}
+                  disabled={savingPlan}
+                >
+                  Cancelar
+                </Button>
+                <Button size="sm" onClick={() => void acceptPlan()} disabled={savingPlan}>
+                  {savingPlan ? 'Guardando…' : 'Aceptar posición'}
+                </Button>
               </div>
             )}
+            {organizing && !plannedStops && (
+              <div className="itinerary-toolbar">
+                <span>
+                  <Clock3 size={15} /> Los trayectos se calculan en coche por defecto y se
+                  recalculan al cambiar el orden. Los minutos de espera y de trayecto se guardan al
+                  modificarlos.
+                </span>
+                <Button size="sm" onClick={() => setOrganizing(false)}>
+                  Terminar
+                </Button>
+              </div>
+            )}
+            <ol>
+              {stops.map((stop, index) => (
+                <JourneyStop
+                  key={stop.id}
+                  stop={stop}
+                  index={index}
+                  nextStop={stops[index + 1]?.locality}
+                  arrival={formatArrival(
+                    route.date,
+                    arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
+                  )}
+                  pointFor={pointFor}
+                  organizing={
+                    !recalculatingTimes && !itineraryClosed && (organizing || Boolean(plannedStops))
+                  }
+                  services={servicesByStop.get(stop.id) ?? []}
+                  onDwellChange={setDwellMinutes}
+                  onTravelChange={setTravelMinutes}
+                  onEdit={
+                    itineraryClosed || plannedStops || recalculatingTimes
+                      ? undefined
+                      : () => setEditingStop(stop)
+                  }
+                  onDelete={
+                    itineraryClosed || plannedStops || recalculatingTimes
+                      ? undefined
+                      : () => setDeletingStop(stop)
+                  }
+                  onAction={updateServices}
+                />
+              ))}
+            </ol>
           </div>
-          {operationError && (
-            <p className="form-error route-operation-error" role="alert">
-              {operationError}
-            </p>
-          )}
-          {itineraryClosed && (
-            <p className="itinerary-toolbar">
-              <Lock size={15} /> Itinerario cerrado: se conservan las paradas y los tiempos. Aún
-              puedes añadir animales en las paradas existentes.
-            </p>
-          )}
-          {plannedStops && (
-            <div className="itinerary-toolbar">
-              <span>
-                <Clock3 size={15} /> Posición sugerida por cercanía y tiempo en coche. Muévela si lo
-                necesitas antes de guardarla.
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setPlannedStops(null)}
-                disabled={savingPlan}
-              >
-                Cancelar
-              </Button>
-              <Button size="sm" onClick={() => void acceptPlan()} disabled={savingPlan}>
-                {savingPlan ? 'Guardando…' : 'Aceptar posición'}
-              </Button>
-            </div>
-          )}
-          {organizing && !plannedStops && (
-            <div className="itinerary-toolbar">
-              <span>
-                <Clock3 size={15} /> Los trayectos se calculan en coche por defecto y se recalculan
-                al cambiar el orden. Los minutos de espera y de trayecto se guardan al modificarlos.
-              </span>
-              <Button size="sm" onClick={() => setOrganizing(false)}>
-                Terminar
-              </Button>
-            </div>
-          )}
           {stops.length >= 2 && (
-            <div className="upcoming-route-map route-admin-map">
+            <aside className="route-layout-map upcoming-route-map">
               <Suspense fallback={null}>
                 <RouteMap
                   stops={mapStops}
+                  details={mapDetails}
+                  onStopClick={showStopInList}
                   label={`Mapa del recorrido de la ruta ${template.name}`}
                 />
               </Suspense>
@@ -876,40 +936,8 @@ export function RoutesPage({
                     : `Abrir en Google Maps: paradas ${link.from} a ${link.to}`}
                 </a>
               ))}
-            </div>
+            </aside>
           )}
-          <ol>
-            {stops.map((stop, index) => (
-              <JourneyStop
-                key={stop.id}
-                stop={stop}
-                index={index}
-                nextStop={stops[index + 1]?.locality}
-                arrival={formatArrival(
-                  route.date,
-                  arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
-                )}
-                pointFor={pointFor}
-                organizing={
-                  !recalculatingTimes && !itineraryClosed && (organizing || Boolean(plannedStops))
-                }
-                services={servicesByStop.get(stop.id) ?? []}
-                onDwellChange={setDwellMinutes}
-                onTravelChange={setTravelMinutes}
-                onEdit={
-                  itineraryClosed || plannedStops || recalculatingTimes
-                    ? undefined
-                    : () => setEditingStop(stop)
-                }
-                onDelete={
-                  itineraryClosed || plannedStops || recalculatingTimes
-                    ? undefined
-                    : () => setDeletingStop(stop)
-                }
-                onAction={updateServices}
-              />
-            ))}
-          </ol>
         </CardContent>
       </Card>
       {addingStop && (
@@ -1065,7 +1093,7 @@ function JourneyStop({
   const hasServices = services.length > 0
   const instructions = mergedStopInstructions(stop.alias, stop.place)
   return (
-    <li>
+    <li id={`route-stop-${index}`}>
       <div className="journey-node">{index + 1}</div>
       <div className="journey-stop">
         <div className="journey-place">

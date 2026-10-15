@@ -89,7 +89,8 @@ describe('RoutesPage header', () => {
     expect(markup).toContain('35 min')
     expect(markup).toContain('<p>Clínica Sol · Entrada principal</p>')
     expect(markup).toContain('Fin de ruta')
-    expect(markup).toContain('Día de inicio')
+    expect(markup).toContain('Salida')
+    expect(markup).toContain('Duración estimada')
     expect(markup).not.toContain('type="date"')
     expect(markup).not.toContain('Trayecto sig.')
     expect(markup.indexOf('class="journey-place"')).toBeLessThan(

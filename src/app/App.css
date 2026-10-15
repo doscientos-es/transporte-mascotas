@@ -7477,10 +7477,71 @@ a.whatsapp-link:hover {
   margin: 0 0 0 2px;
 }
 
+.route-header-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.route-header-title-row .status {
+  margin: 0;
+}
+
 .route-header-stats {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  margin: 0;
+  border-radius: 10px;
+  padding: 11px 0;
+  background: #faf8f8;
+}
+
+.route-stat {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 18px;
+}
+
+.route-stat + .route-stat {
+  border-left: 1px solid #eee9e9;
+}
+
+.route-stat dt {
+  color: #82797a;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.route-stat dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: 0;
+  color: #282324;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.route-stat dd::first-letter {
+  text-transform: uppercase;
+}
+
+.route-stat dd b {
+  color: #a91f29;
+  font-weight: 700;
+}
+
+.route-stat dd small {
+  color: #82797a;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .route-start-field {
@@ -7623,8 +7684,14 @@ a.whatsapp-link:hover {
 
   .route-header-stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    gap: 10px;
+    padding: 12px 0;
+  }
+
+  .route-stat + .route-stat {
+    border-top: 1px solid #eee9e9;
+    border-left: 0;
+    padding-top: 10px;
   }
 
   .route-date-input {
@@ -8663,6 +8730,64 @@ a.whatsapp-link:hover {
 @media (max-width: 720px) {
   .upcoming-route-map .route-map {
     height: 280px;
+  }
+}
+
+.route-map-stop span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #cf1f2a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 35%);
+  cursor: pointer;
+}
+.route-map-stop span.is-edge {
+  background: #111;
+}
+.route-map-popup {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+}
+.route-map-popup strong {
+  font-size: 13px;
+}
+.route-journey li.is-highlighted .journey-place {
+  border-color: #cf1f2a;
+  box-shadow: 0 0 0 3px rgb(207 31 42 / 15%);
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+
+/* Route detail: stops on the left, map pinned on the right when the card is wide enough. */
+.route-layout-map {
+  margin-top: 20px;
+}
+@container route-journey (min-width: 1000px) {
+  .route-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 42%);
+    align-items: start;
+    gap: 24px;
+  }
+  .route-layout-main .journey-header.route-journey-header.route-header-premium {
+    margin-right: 0;
+    border-radius: 16px 0 0 0;
+  }
+  .route-layout-map {
+    position: sticky;
+    top: 16px;
+    margin-top: 0;
+  }
+  .route-layout-map .route-map {
+    height: min(620px, calc(100vh - 150px));
   }
 }
 

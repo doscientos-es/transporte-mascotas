@@ -8,6 +8,24 @@ import type { RouteStop } from '@/shared/types'
 type Props = {
   stops: Pick<RouteStop, 'latitude' | 'longitude' | 'locality'>[]
   label: string
+  /** Numbered, clickable markers. Reports the clicked stop index. */
+  onStopClick?: (index: number) => void
+  /** Popup lines per stop (same order as `stops`), read when a popup opens. */
+  details?: string[][]
+}
+
+function stopPopup(index: number, locality: string, lines: string[] = []) {
+  const element = document.createElement('div')
+  element.className = 'route-map-popup'
+  const title = document.createElement('strong')
+  title.textContent = `${index + 1}. ${locality}`
+  element.append(title)
+  for (const line of lines) {
+    const row = document.createElement('span')
+    row.textContent = line
+    element.append(row)
+  }
+  return element
 }
 
 const RED = '#cf1f2a'
@@ -15,8 +33,15 @@ const BLACK = '#111'
 const ARROW_SPACING = 70
 
 /** Interactive map (OpenStreetMap tiles, no API key) with the route drawn over it. */
-export default function RouteMap({ stops, label }: Props) {
+export default function RouteMap({ stops, label, onStopClick: onClick, details: lines }: Props) {
   const container = useRef<HTMLDivElement>(null)
+  // Latest values are read through refs so editing times does not rebuild the map.
+  const interactive = useRef(Boolean(onClick))
+  const onStopClick = useRef(onClick)
+  const details = useRef(lines ?? [])
+  interactive.current = Boolean(onClick)
+  onStopClick.current = onClick
+  details.current = lines ?? []
 
   useEffect(() => {
     const element = container.current
@@ -38,6 +63,21 @@ export default function RouteMap({ stops, label }: Props) {
     L.polyline(points, { color: RED, weight: 3, opacity: 0.85 }).addTo(map)
     points.forEach((point, index) => {
       const edge = index === 0 || index === points.length - 1
+      if (interactive.current) {
+        const marker = L.marker(point, {
+          icon: L.divIcon({
+            className: 'route-map-stop',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            html: `<span class="${edge ? 'is-edge' : ''}">${index + 1}</span>`,
+          }),
+        })
+          .bindTooltip(stops[index].locality)
+          .bindPopup(() => stopPopup(index, stops[index].locality, details.current[index]))
+          .addTo(map)
+        marker.on('click', () => onStopClick.current?.(index))
+        return
+      }
       L.circleMarker(point, {
         radius: edge ? 7 : 3.5,
         color: '#fff',

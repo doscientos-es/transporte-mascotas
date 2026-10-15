@@ -135,7 +135,7 @@ function requestMessage(request: TransportRequest) {
   const greeting = `Hola ${request.contactName}, te escribimos de Kache Envíos sobre tu transporte ${trip}.`
   const detail: Partial<Record<TransportRequest['status'], string>> = {
     pago_pendiente: 'Te recordamos que el pago está pendiente para poder tramitar la solicitud.',
-    por_verificar: 'Hemos recibido tu solicitud y la estamos revisando.',
+    por_verificar: 'Hemos recibido tu pago y estamos confirmando tu reserva.',
     confirmada: 'Tu transporte está confirmado.',
     en_ruta: 'Tu mascota ya está en ruta.',
   }
@@ -241,6 +241,25 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
       await refresh()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido registrar el cobro.')
+    } finally {
+      setBusy('')
+    }
+  }
+
+  async function retryConfirmation(request: TransportRequest) {
+    setBusy(request.id)
+    try {
+      const { warning } = await confirmTransportRequestPaymentManually(request.id, 'Tarjeta')
+      onNotify(
+        warning
+          ? `Reserva confirmada y factura emitida. ${warning}`
+          : 'Reserva confirmada y factura emitida.',
+      )
+      await refresh()
+    } catch (error) {
+      onNotify(
+        error instanceof Error ? error.message : 'No se ha podido confirmar la reserva todavía.',
+      )
     } finally {
       setBusy('')
     }
@@ -353,6 +372,26 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                       <b>{request.destination}</b>
                     </span>
                   </div>
+                  {request.paidAt && request.paymentReference !== 'admin_manual' && (
+                    <div
+                      className="mb-3 flex flex-wrap items-center justify-between gap-2.5 rounded-lg border border-[#f0d58a] bg-[#fff8e1] p-3 text-[13px] text-[#6b4f00]"
+                      role="alert"
+                    >
+                      <span>
+                        <b>Cobrada, pero sin confirmar.</b> La confirmación automática ha fallado
+                        (ruta o paradas no disponibles, o faltan datos fiscales). Reintenta; si
+                        vuelve a fallar, asigna la ruta a mano o rechaza y reembolsa.
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={Boolean(busy)}
+                        onClick={() => void retryConfirmation(request)}
+                      >
+                        <RefreshCw size={14} /> Reintentar confirmación
+                      </Button>
+                    </div>
+                  )}
                   <div className="request-details">
                     <span>
                       <b>Fecha solicitada</b>
