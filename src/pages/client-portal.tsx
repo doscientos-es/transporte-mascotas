@@ -13,12 +13,14 @@ const metadata: Partial<Record<NavSection, readonly [string, string]>> = {
 } as const
 
 export function ClientPortalRoutePage({ session, profile, navigation }: Props) {
-  const { section } = navigation
+  const { isCreatingRequest, section } = navigation
   const fallbackMetadata = [
     'Mis transportes',
     'Sigue el estado de tus transportes de mascotas.',
   ] as const
-  const [title, description] = metadata[section] ?? fallbackMetadata
+  const [title, description] = isCreatingRequest
+    ? ['Solicitar transporte', 'Elige una salida y solicita el transporte de tu mascota.']
+    : (metadata[section] ?? fallbackMetadata)
   usePageMetadata(title, description)
 
   return <ClientPortalPage session={session} profile={profile} navigation={navigation} />

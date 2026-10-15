@@ -12,8 +12,8 @@ importers:
         specifier: ^0.1.4
         version: 0.1.4(react@19.2.8)
       '@doscientos/ui':
-        specifier: ^0.1.38
-        version: 0.1.38(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: ^0.1.43
+        version: 0.1.43(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@fontsource-variable/geist':
         specifier: ^5.3.0
         version: 5.3.0
@@ -264,8 +264,8 @@ packages:
       react:
         optional: true
 
-  '@doscientos/ui@0.1.38':
-    resolution: {integrity: sha512-Z1AIutgWtOTV61Xtdq1B2BTXtdlrknsVy38CCodzGFHnHn9T5R7dDuIGsfe/mR+nW5mddFI1UYckvBvhUwb42w==}
+  '@doscientos/ui@0.1.43':
+    resolution: {integrity: sha512-aK/jlt8QD6Hd5NdV4IuBx7d8eA+2r+2lXznSY+0D2ZfUvsYIPqrPrpU2Jiv2HAAri08M5ddVS9oKI6jGOrIJpg==}
     peerDependencies:
       react: '>=18.3.0'
       react-dom: '>=18.3.0'
@@ -1334,8 +1334,8 @@ packages:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
 
-  cn@0.2.6:
-    resolution: {integrity: sha512-+i4L0zUGgRcEnhsxueVrP7iBGxBx5iD0WOTYg1MwFEu2ZyCmH5Ov2V1cul2Ht5UchRQQgftCf4be/RxspuW6QQ==}
+  cn@0.3.2:
+    resolution: {integrity: sha512-RKzY5Edavc8B2Ka6tjJecKFC4nm0p7lADY72xzICmiJSf4TkaxWXt0fHsib2P2G4FkFyXfSDi9oDtIBuCZvY2g==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -3243,10 +3243,10 @@ snapshots:
     optionalDependencies:
       react: 19.2.8
 
-  '@doscientos/ui@0.1.38(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@doscientos/ui@0.1.43(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       class-variance-authority: 0.7.1
-      cn: 0.2.6
+      cn: 0.3.2
       lucide-react: 1.35.0(react@19.2.8)
       react: 19.2.8
       react-aria-components: 1.20.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -4079,7 +4079,7 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  cn@0.2.6: {}
+  cn@0.3.2: {}
 
   code-block-writer@13.0.3: {}
 

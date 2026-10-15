@@ -50,7 +50,7 @@ export function ClientTransportCard({
         request.status === 'por_verificar'
           ? '!border-l-[#ca8a04]'
           : request.status === 'confirmada' || request.status === 'en_ruta'
-            ? '!border-l-[#171717]'
+            ? '!border-l-[#cf1f2a]'
             : ''
       }`}
     >
@@ -124,20 +124,27 @@ export function ClientTransportCard({
           </div>
         </div>
 
-        <div className="client-transport-locations">
-          <TransportLocationMap
-            label="Recogida"
-            location={request.origin}
-            latitude={request.originLatitude}
-            longitude={request.originLongitude}
-          />
-          <TransportLocationMap
-            label="Entrega"
-            location={request.destination}
-            latitude={request.destinationLatitude}
-            longitude={request.destinationLongitude}
-          />
-        </div>
+        <TransportProgress status={request.status} />
+
+        <details className="client-transport-details">
+          <summary>
+            <MapPin size={14} aria-hidden="true" /> Ver recogida y entrega
+          </summary>
+          <div className="client-transport-locations">
+            <TransportLocationMap
+              label="Recogida"
+              location={request.origin}
+              latitude={request.originLatitude}
+              longitude={request.originLongitude}
+            />
+            <TransportLocationMap
+              label="Entrega"
+              location={request.destination}
+              latitude={request.destinationLatitude}
+              longitude={request.destinationLongitude}
+            />
+          </div>
+        </details>
 
         {(request.paidAt || confirmed) && (
           <div className="client-transport-documents">
@@ -168,6 +175,34 @@ export function ClientTransportCard({
         )}
       </CardContent>
     </Card>
+  )
+}
+
+const progressSteps = ['Pago', 'Verificación', 'Confirmada', 'En ruta', 'Entregada'] as const
+const progressIndex: Partial<Record<TransportRequest['status'], number>> = {
+  pago_pendiente: 0,
+  por_verificar: 1,
+  confirmada: 2,
+  en_ruta: 3,
+  entregada: 4,
+}
+
+function TransportProgress({ status }: { status: TransportRequest['status'] }) {
+  const current = progressIndex[status]
+  if (current === undefined) return null
+  return (
+    <ol className="client-transport-progress" aria-label="Progreso de la solicitud">
+      {progressSteps.map((step, index) => (
+        <li
+          key={step}
+          data-state={index < current ? 'done' : index === current ? 'current' : 'todo'}
+          aria-current={index === current ? 'step' : undefined}
+        >
+          <span aria-hidden="true" />
+          {step}
+        </li>
+      ))}
+    </ol>
   )
 }
 

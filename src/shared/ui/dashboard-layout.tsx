@@ -174,7 +174,10 @@ export function DashboardLayout({
   )
 
   return (
-    <div className="kache-dashboard-layout grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7]">
+    <div
+      className="kache-dashboard-layout grid min-h-dvh grid-cols-[260px_minmax(0,1fr)] bg-[#f7f7f7]"
+      data-role={profileRole}
+    >
       <aside
         className="kache-dashboard-sidebar sticky top-0 flex h-dvh min-h-dvh flex-col bg-[#171717] px-[14px] py-[22px] text-[#f5f5f5]"
         aria-label="Navegación principal"

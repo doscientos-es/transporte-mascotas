@@ -11,6 +11,8 @@ import {
   paymentReturnStateFromSearch,
   routePathFor,
   ROUTER_PATHS,
+  transportRequestCreatePath,
+  transportRequestCreatePathFor,
   vanPathFor,
 } from './dashboard-routes'
 
@@ -32,6 +34,15 @@ describe('dashboard routes', () => {
     expect(letterCreatePath).toBe('/cartas/nueva')
     expect(ROUTER_PATHS.adminLetterCreate).toBe('cartas/nueva')
     expect(dashboardLocationForPath(letterCreatePath)).toEqual({ section: 'cartas' })
+    expect(transportRequestCreatePath).toBe('/mis-transportes/nueva')
+    expect(ROUTER_PATHS.clientTransportCreate).toBe('mis-transportes/nueva')
+    expect(dashboardLocationForPath(transportRequestCreatePath)).toEqual({
+      section: 'mis-transportes',
+    })
+    expect(transportRequestCreatePathFor()).toBe('/mis-transportes/nueva')
+    expect(transportRequestCreatePathFor('ruta norte')).toBe(
+      '/mis-transportes/nueva?ruta=ruta+norte',
+    )
     expect(APP_PATHS.clientHome).toBe('/mis-transportes')
     expect(APP_PATHS.passwordRecovery).toBe('/recuperar-contrasena')
     expect(APP_PATHS.passwordReset).toBe('/restablecer-contrasena')

@@ -59,8 +59,15 @@ const formatCurrency = (cents: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100)
 
 export function ClientPortalPage({ session, profile, navigation }: Props) {
-  const { section, routeId, navigateToSection, navigateToUpcomingRoute, navigateToRequestForm } =
-    navigation
+  const {
+    section,
+    routeId,
+    isCreatingRequest,
+    navigateToSection,
+    navigateToUpcomingRoute,
+    navigateToRequestForm,
+    replaceWithSection,
+  } = navigation
   const routerLocation = useLocation()
   const navigate = useNavigate()
   const navigationState = routerLocation.state as {
@@ -75,12 +82,12 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const paymentRequestId = navigationState?.paymentRequestId ?? searchParams.get('request')
   const paymentInvoiceId = navigationState?.paymentInvoiceId ?? searchParams.get('invoice')
   const preselectRouteId = navigationState?.preselectRouteId
-  const [preselectedRouteId, setPreselectedRouteId] = useState<string>()
+  const preselectedRouteId = searchParams.get('ruta') ?? undefined
   const [routes, setRoutes] = useState<UpcomingRoute[]>([])
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [paymentRequests, setPaymentRequests] = useState<ClientPaymentRequest[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
-  const [showForm, setShowForm] = useState(false)
+  const showForm = isCreatingRequest
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -144,19 +151,14 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }, [notice])
   useEffect(() => {
     if (!preselectRouteId) return
-    setPreselectedRouteId(preselectRouteId)
     setPendingPaymentRequestId(null)
-    setShowForm(true)
-    void navigate(
-      { pathname: routerLocation.pathname, search: routerLocation.search },
-      { replace: true, state: null },
-    )
-  }, [navigate, preselectRouteId, routerLocation.pathname, routerLocation.search])
+    navigateToRequestForm(preselectRouteId, { replace: true })
+  }, [navigateToRequestForm, preselectRouteId])
   useEffect(() => {
     if (!paymentStatus || !userId) return
     void navigate(routerLocation.pathname, { replace: true, state: null })
     if (paymentStatus === 'ok') {
-      setShowForm(false)
+      replaceWithSection('mis-transportes')
       if (paymentInvoiceId) {
         setInvoicePaymentSuccess(true)
       } else {
@@ -193,6 +195,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     paymentRequestId,
     paymentStatus,
     refresh,
+    replaceWithSection,
     routerLocation.pathname,
     userId,
   ])
@@ -280,7 +283,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
       setError(
         transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-          'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+        'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
       )
       return
     }
@@ -296,7 +299,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         setError(
           currentRequest && !canRetryTransportPayment(currentRequest.paymentAttemptStatus)
             ? (transportPaymentAttemptNotice(currentRequest.paymentAttemptStatus) ??
-                'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
+              'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
             : reason instanceof Error
               ? reason.message
               : 'No se ha podido abrir el pago.',
@@ -347,7 +350,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
             isConfirmedTransport(request.status))
         ) {
           setPendingPaymentRequestId(null)
-          setShowForm(false)
+          replaceWithSection('mis-transportes')
           setNotice(
             'El pago está registrado. No necesitas volver a pagar; estamos actualizando la solicitud.',
           )
@@ -355,10 +358,10 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         }
         if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
           setPendingPaymentRequestId(null)
-          setShowForm(false)
+          replaceWithSection('mis-transportes')
           setNotice(
             transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-              'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+            'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
           )
           return
         }
@@ -372,8 +375,8 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   function openNewRequestForm() {
-    setPreselectedRouteId(undefined)
-    setShowForm(true)
+    setPendingPaymentRequestId(null)
+    navigateToRequestForm()
   }
 
   const unpaidRequest = requests.find((request) => request.status === 'pago_pendiente')
@@ -390,6 +393,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       pendingLetters={0}
       profileRole="user"
       displayName={profile.displayName}
+      title={isCreatingRequest ? 'Solicitar transporte' : undefined}
       onNavigate={navigateToSection}
       hrefForSection={navigation.hrefForSection}
       onSignOut={() => void signOut()}
@@ -521,7 +525,9 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         <>
           {!showForm && (
             <div className="client-portal-hero">
-              <div>
+              <PawPrint className="client-portal-hero-mark" aria-hidden="true" />
+              <div className="client-portal-hero-copy">
+                <span className="client-portal-hero-eyebrow">Transporte de mascotas</span>
                 <h2>El viaje de tu mascota, siempre a la vista.</h2>
                 <p>
                   Elige una salida programada, registra el pago y sigue cada actualización desde
@@ -552,7 +558,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                   disabled={Boolean(payingRequestId)}
                   onClick={() =>
                     pendingPaymentRequestId
-                      ? setShowForm(true)
+                      ? navigateToRequestForm()
                       : unpaidRequest && void continuePayment(unpaidRequest.id)
                   }
                 >
@@ -620,17 +626,19 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           )}
           {showForm && (!loading || routes.length > 0) && (
             <ClientRequestForm
-              key={preselectedRouteId ?? 'new'}
               routes={routes}
               contactName={profile.displayName}
               contactPhone={profile.phone}
               contactEmail={session?.user.email ?? ''}
               onSubmit={submitRequest}
-              onCancel={() => setShowForm(false)}
+              onCancel={() => navigateToSection('mis-transportes')}
               boxCatalog={boxCatalog}
               pendingPayment={Boolean(pendingPaymentRequestId)}
               onRetryPayment={() => submitRequest()}
               initialRouteId={preselectedRouteId}
+              onRouteChange={(selectedRouteId) =>
+                navigateToRequestForm(selectedRouteId || undefined, { replace: true })
+              }
             />
           )}
           {!showForm && (

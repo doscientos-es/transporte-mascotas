@@ -27,6 +27,7 @@ export const APP_PATHS = {
 } as const
 
 export const letterCreatePath = `${dashboardPaths.cartas}/nueva`
+export const transportRequestCreatePath = `${dashboardPaths['mis-transportes']}/nueva`
 
 export const DEFAULT_DASHBOARD_SECTIONS = {
   client: 'mis-transportes',
@@ -44,6 +45,7 @@ export const ROUTER_PATHS = {
   clientUpcoming: routePath(dashboardPaths['proximas-rutas']),
   clientUpcomingDetail: `${routePath(dashboardPaths['proximas-rutas'])}/:routeId`,
   clientTransports: routePath(dashboardPaths['mis-transportes']),
+  clientTransportCreate: routePath(transportRequestCreatePath),
   staffRoutes: routePath(dashboardPaths.rutas),
   staffRouteDetail: `${routePath(dashboardPaths.rutas)}/:routeId`,
   staffVan: routePath(dashboardPaths.furgoneta),
@@ -84,6 +86,7 @@ export function dashboardLocationForPath(
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { section: fallback }
   if (path === letterCreatePath) return { section: 'cartas' }
+  if (path === transportRequestCreatePath) return { section: 'mis-transportes' }
   if (path === dashboardPaths.cartas) return { section: 'cartas' }
   if (path === dashboardPaths.plantillas) return { section: 'plantillas' }
   if (path === dashboardPaths.furgoneta) return { section: 'furgoneta' }
@@ -119,6 +122,11 @@ export function routePathFor(routeId: string) {
 
 export function upcomingRoutePathFor(routeId: string) {
   return `${dashboardPaths['proximas-rutas']}/${encodeURIComponent(routeId)}`
+}
+
+export function transportRequestCreatePathFor(routeId?: string) {
+  if (!routeId) return transportRequestCreatePath
+  return `${transportRequestCreatePath}?${new URLSearchParams({ ruta: routeId }).toString()}`
 }
 
 export function vanPathFor(routeId: string) {

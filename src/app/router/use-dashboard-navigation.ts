@@ -8,6 +8,8 @@ import {
   dashboardPathFor,
   letterCreatePath,
   routePathFor,
+  transportRequestCreatePath,
+  transportRequestCreatePathFor,
   upcomingRoutePathFor,
   vanPathFor,
 } from './dashboard-routes'
@@ -16,6 +18,7 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { routeId } = useParams()
+  const normalizedPathname = pathname.replace(/\/+$/, '')
   const location = dashboardLocationForPath(pathname, fallback)
   const navigateTo = useCallback(
     (path: string, options?: { replace?: boolean; state?: unknown }) => navigate(path, options),
@@ -25,15 +28,16 @@ export function useDashboardNavigation(fallback: NavSection): DashboardNavigatio
   return {
     ...location,
     routeId: routeId ?? location.routeId,
-    isCreatingLetter: pathname.replace(/\/+$/, '') === letterCreatePath,
+    isCreatingLetter: normalizedPathname === letterCreatePath,
+    isCreatingRequest: normalizedPathname === transportRequestCreatePath,
     hrefForSection: dashboardPathFor,
     navigateToSection: (section) => void navigateTo(dashboardPathFor(section)),
     navigateToLetterCreate: () => void navigateTo(letterCreatePath),
     navigateToRoute: (id) => void navigateTo(routePathFor(id)),
     navigateToVan: (id) => void navigateTo(vanPathFor(id)),
     navigateToUpcomingRoute: (id) => void navigateTo(upcomingRoutePathFor(id)),
-    navigateToRequestForm: (id) =>
-      void navigateTo(dashboardPathFor('mis-transportes'), { state: { preselectRouteId: id } }),
+    navigateToRequestForm: (id, options) =>
+      void navigateTo(transportRequestCreatePathFor(id), options),
     replaceWithSection: (section) => void navigateTo(dashboardPathFor(section), { replace: true }),
   }
 }

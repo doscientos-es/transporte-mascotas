@@ -11,6 +11,7 @@ import {
   FieldLabel,
   Input,
   LinkButton,
+  PasswordInput,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -23,7 +24,6 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 
 import { getAuthFeedback, type AuthFeedback } from '../application/auth-feedback'
 import { authenticate, resendConfirmation } from '../application/authenticate'
-import { PasswordInput } from './password-input'
 
 type FieldErrors = Partial<Record<'displayName' | 'phone' | 'email' | 'password', string>>
 

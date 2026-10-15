@@ -7,6 +7,7 @@ import {
   Field,
   FieldLabel,
   LinkButton,
+  PasswordInput,
 } from '@doscientos/ui'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
@@ -16,7 +17,6 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 
 import { getPasswordResetFeedback, type AuthFeedback } from '../application/auth-feedback'
 import { updatePassword } from '../application/authenticate'
-import { PasswordInput } from './password-input'
 
 type ResetStatus = 'checking' | 'ready' | 'invalid' | 'unavailable' | 'success'
 

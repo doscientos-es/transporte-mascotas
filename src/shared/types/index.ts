@@ -39,13 +39,14 @@ export type DashboardNavigation = {
   section: NavSection
   routeId?: string
   isCreatingLetter: boolean
+  isCreatingRequest: boolean
   hrefForSection: (section: NavSection) => string
   navigateToSection: (section: NavSection) => void
   navigateToLetterCreate: () => void
   navigateToRoute: (routeId: string) => void
   navigateToVan: (routeId: string) => void
   navigateToUpcomingRoute: (routeId: string) => void
-  navigateToRequestForm: (routeId: string) => void
+  navigateToRequestForm: (routeId?: string, options?: { replace?: boolean }) => void
   replaceWithSection: (section: NavSection) => void
 }
 

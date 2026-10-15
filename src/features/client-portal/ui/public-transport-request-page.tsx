@@ -137,6 +137,12 @@ export function PublicTransportRequestPage() {
           onCancel={() => window.location.assign(AUTH_PATHS.clientAccess)}
           boxCatalog={boxCatalog}
           initialRouteId={initialRouteId}
+          onRouteChange={(routeId) => {
+            const url = new URL(window.location.href)
+            if (routeId) url.searchParams.set('ruta', routeId)
+            else url.searchParams.delete('ruta')
+            window.history.replaceState(null, '', url)
+          }}
         />
       )}
 
