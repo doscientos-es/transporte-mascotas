@@ -3,8 +3,6 @@ import type { Session } from '@supabase/supabase-js'
 import {
   CalendarDays,
   CheckCircle2,
-  CircleDollarSign,
-  ClipboardCheck,
   CreditCard,
   FilePlus2,
   PawPrint,

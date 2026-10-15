@@ -3535,38 +3535,6 @@
   line-height: 1.5;
 }
 
-.client-overview {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  max-width: 760px;
-  margin-bottom: 24px;
-}
-
-.client-overview [data-slot='card-content'] {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.client-overview svg {
-  color: #b51e27;
-}
-
-.client-overview span {
-  display: block;
-  color: #686868;
-  font-size: 11px;
-}
-
-.client-overview strong {
-  display: block;
-  margin-top: 2px;
-  color: #171717;
-  font-size: 22px;
-  letter-spacing: -0.04em;
-}
-
 .client-section-heading {
   display: flex;
   align-items: center;
