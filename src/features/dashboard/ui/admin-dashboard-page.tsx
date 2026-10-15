@@ -259,6 +259,7 @@ export function AdminDashboardPage({
         profileRole={profile.role}
         displayName={profile.displayName}
         title={isCreatingLetter ? 'Nueva carta de porte' : undefined}
+        hideTitle={section === 'facturas'}
         headerAction={
           section === 'rutas' ? (
             <Button onClick={() => dashboard.setShowNewRoute(true)}>

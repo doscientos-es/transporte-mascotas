@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { ClientInvoice, PaginatedResult } from '@/shared/types'
-import { FilterSelect, SearchFilter } from '@/shared/ui/filter-controls'
+import { SearchFilter, SelectField } from '@/shared/ui/filter-controls'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
@@ -49,7 +49,7 @@ const pageCopy: Record<
   },
   invoices: {
     status: 'emitida',
-    title: 'Documentos emitidos',
+    title: 'Facturas',
     description: 'Documentos emitidos y listos para consultar.',
     emptyTitle: 'No hay facturas disponibles',
     emptyDescription: 'Las facturas aparecerán automáticamente al confirmar los cobros.',
@@ -202,23 +202,15 @@ export function BillingDocumentsPage({
 
   return (
     <>
-      <section className="invoice-page-heading" aria-label={copy.title}>
-        <div>
-          <h2>{copy.title}</h2>
-          <p>{copy.description}</p>
-        </div>
-        <div className="invoice-page-total">
-          <strong>{loading ? '—' : result.total}</strong>
-          <span>{result.total === 1 ? 'documento' : 'documentos'}</span>
-        </div>
-      </section>
-
       <section
         className="invoice-filter-surface"
         aria-label={`Consulta de ${copy.title.toLowerCase()}`}
       >
         <div className="invoice-filter-heading">
-          <strong>Encuentra lo que necesitas</strong>
+          <div>
+            <h2>{copy.title}</h2>
+            <p>{copy.description}</p>
+          </div>
           <Button
             size="sm"
             variant="outline"
@@ -229,12 +221,15 @@ export function BillingDocumentsPage({
           </Button>
         </div>
         <div className="invoice-filters">
-          <SearchFilter
-            ariaLabel="Buscar documentos"
-            placeholder="Nº, cliente, carta o concepto"
-            value={query}
-            onChange={(value) => updateParams({ q: value, ...resetPage })}
-          />
+          <div className="invoice-filter-field is-search">
+            <span>Buscar</span>
+            <SearchFilter
+              ariaLabel="Buscar documentos"
+              placeholder="Nº, cliente, carta o concepto"
+              value={query}
+              onChange={(value) => updateParams({ q: value, ...resetPage })}
+            />
+          </div>
           <label>
             Desde
             <input
@@ -251,18 +246,21 @@ export function BillingDocumentsPage({
               onChange={(event) => updateParams({ hasta: event.target.value, ...resetPage })}
             />
           </label>
-          <FilterSelect
-            label="Ordenar por"
-            ariaLabel="Ordenar por"
-            value={sort}
-            onChange={(value) => updateParams({ orden: value as InvoiceSort, ...resetPage })}
-            options={[
-              { id: 'date', label: 'Fecha' },
-              { id: 'total', label: 'Importe' },
-              { id: 'client', label: 'Cliente' },
-              { id: 'status', label: 'Estado' },
-            ]}
-          />
+          <div className="invoice-filter-field is-sort">
+            <span>Ordenar por</span>
+            <SelectField
+              ariaLabel="Ordenar por"
+              value={sort}
+              onChange={(value) => updateParams({ orden: value as InvoiceSort, ...resetPage })}
+              className="min-h-9 min-w-36 bg-white"
+              options={[
+                { id: 'date', label: 'Fecha' },
+                { id: 'total', label: 'Importe' },
+                { id: 'client', label: 'Cliente' },
+                { id: 'status', label: 'Estado' },
+              ]}
+            />
+          </div>
           <div className="invoice-direction-toggle">
             <Tooltip
               label={`Orden ${direction === 'desc' ? 'descendente' : 'ascendente'}. Pulsa para cambiarla.`}

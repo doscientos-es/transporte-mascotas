@@ -4218,7 +4218,6 @@
 }
 
 .kache-dashboard-content .page-header,
-.kache-dashboard-content .invoice-page-heading,
 .kache-dashboard-content .route-catalog,
 .kache-dashboard-content .clients-workspace {
   width: 100%;
@@ -4239,56 +4238,6 @@
 
 .kache-dashboard-content .page-header [data-slot='page-header-description'] {
   max-width: 720px;
-}
-
-.invoice-page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  max-width: none;
-  margin-bottom: 14px;
-  padding: 2px 2px 0;
-}
-
-.invoice-page-heading h2 {
-  margin: 3px 0 4px;
-  color: #171717;
-  font-size: clamp(24px, 3vw, 32px);
-  letter-spacing: -0.045em;
-  line-height: 1;
-}
-
-.invoice-page-heading p:last-child {
-  margin: 0;
-  color: #686868;
-  font-size: 13px;
-}
-
-.invoice-page-kicker {
-  margin: 0;
-  color: #cf1f2a;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.invoice-page-total {
-  display: grid;
-  justify-items: end;
-  gap: 2px;
-  color: #686868;
-}
-
-.invoice-page-total strong {
-  color: #171717;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.invoice-page-total span {
-  font-size: 11px;
 }
 
 .invoice-brand-hero {
@@ -4432,19 +4381,66 @@
   margin: 0 1px 13px;
 }
 
-.invoice-filter-heading strong {
-  display: block;
-  margin-top: 2px;
-  color: #272725;
-  font-size: 14px;
+.invoice-filter-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.invoice-filter-heading h2 {
+  margin: 0;
+  color: #171717;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.invoice-filter-heading p {
+  margin: 3px 0 0;
+  color: #686868;
+  font-size: 13px;
 }
 
 .invoice-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
   max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 14px 0 0;
   border: 0;
+  border-top: 1px solid #f0f0ef;
   background: transparent;
+}
+
+.invoice-filter-field,
+.invoice-filters label {
+  display: grid;
+  gap: 5px;
+  color: #4b4b4b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.invoice-filter-field.is-search {
+  flex: 1 1 240px;
+}
+
+.invoice-filter-field.is-search > div {
+  max-width: none;
+}
+
+.invoice-filters label input[type='date'] {
+  min-width: 150px;
+}
+
+.invoice-filter-field.is-sort {
+  margin-left: auto;
+}
+
+.invoice-direction-toggle {
+  align-items: flex-end;
 }
 
 .invoices-list,
