@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -12,6 +12,8 @@ const stops = ['Madrid', 'Zaragoza', 'Madrid', 'Barcelona'].map((locality, index
   locality,
   place: '',
   mapUrl: '',
+  latitude: 40,
+  longitude: -3,
   minutes: 0,
   kind: 'parada' as const,
   dwellMinutes: 15,

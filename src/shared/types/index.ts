@@ -34,6 +34,7 @@ export type NavSection =
   | 'ajustes'
   | 'proximas-rutas'
   | 'mis-transportes'
+  | 'solicitar-transporte'
 
 export type DashboardNavigation = {
   section: NavSection
@@ -241,8 +242,8 @@ export interface RouteStop {
   postalCode?: string
   province?: string
   country?: string
-  latitude?: number
-  longitude?: number
+  latitude: number
+  longitude: number
 }
 
 export interface SavedMeetingPoint {

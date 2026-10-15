@@ -1,12 +1,15 @@
 import { Button, Card, CardContent } from '@doscientos/ui'
 import { ArrowLeft, FilePlus2, MapPin, Navigation } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 
 import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
 import { routeDays, routeDaysLabel, routeStopArrivals } from '@/shared/lib/route-days'
 import type { UpcomingRoute } from '@/shared/types'
 
 import { approximateArrivalPeriod } from '../application/route-arrival-window'
-import { itineraryDirectionsUrl, itineraryEmbedUrl } from '../application/route-maps'
+import { itineraryDirectionsUrl } from '../application/route-maps'
+
+const RouteMap = lazy(() => import('./route-map'))
 
 type Props = {
   route: UpcomingRoute
@@ -37,7 +40,6 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
     route.startTime ?? DEFAULT_ROUTE_START_TIME,
     route.stops,
   )
-  const embedUrl = itineraryEmbedUrl(route.stops)
   const directionsUrl = itineraryDirectionsUrl(route.stops)
 
   return (
@@ -65,26 +67,20 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
                 </div>
               </div>
             </div>
-            <div className="journey-actions">
-              <Button type="button" onClick={onSelect}>
-                <FilePlus2 size={16} /> Seleccionar
-              </Button>
-            </div>
           </div>
 
           <p className="text-muted-foreground mt-4 text-sm">
             Las franjas son orientativas. Confirmaremos la hora exacta al cerrar la ruta.
           </p>
 
-          {embedUrl && (
-            <section className="border-border bg-card mt-5 overflow-hidden rounded-xl border">
-              <iframe
-                className="h-64 w-full border-0"
-                loading="lazy"
-                referrerPolicy="no-referrer"
-                src={embedUrl}
-                title={`Mapa del recorrido de ${route.templateName || 'la ruta'}`}
-              />
+          {route.stops.length >= 2 && (
+            <section className="upcoming-route-map">
+              <Suspense fallback={null}>
+                <RouteMap
+                  stops={route.stops}
+                  label={`Mapa del recorrido de ${route.templateName || 'la ruta'}`}
+                />
+              </Suspense>
               {directionsUrl && (
                 <a
                   className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
@@ -97,6 +93,10 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
               )}
             </section>
           )}
+
+          <Button type="button" size="lg" className="upcoming-route-cta" onClick={onSelect}>
+            <FilePlus2 size={18} /> Solicitar transporte en esta ruta
+          </Button>
 
           <ol className="mt-5">
             {route.stops.map((stop, index) => {

@@ -1,10 +1,13 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+﻿import { Button } from '@doscientos/ui'
 import { CalendarDays, FilePlus2, MapPin, Navigation } from 'lucide-react'
+import { lazy, Suspense } from 'react'
 
 import { routeDays, routeDaysLabel } from '@/shared/lib/route-days'
 import type { UpcomingRoute } from '@/shared/types'
 
 import { formatDate } from '../application/route-maps'
+
+const RouteMap = lazy(() => import('./route-map'))
 
 type Props = {
   route: UpcomingRoute
@@ -12,89 +15,110 @@ type Props = {
   onSelect: (routeId: string) => void
 }
 
-function routeDateParts(serviceDate: string) {
-  const date = new Date(`${serviceDate}T12:00:00`)
-  return {
-    day: date.toLocaleDateString('es-ES', { day: 'numeric' }),
-    month: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
-    weekday: date.toLocaleDateString('es-ES', { weekday: 'long' }),
+function shortDate(isoDate: string, withMonth: boolean) {
+  const date = new Date(`${isoDate}T12:00:00Z`)
+  const day = date.getUTCDate()
+  if (!withMonth) return String(day)
+  const month = date
+    .toLocaleDateString('es-ES', { month: 'short', timeZone: 'UTC' })
+    .replace('.', '')
+  return `${day} ${month}`
+}
+
+/** "mar, 6 oct" for one day, "20 – 23 oct" or "30 oct – 2 nov" for a multi-day route. */
+function routeDateRange(serviceDate: string, endDate?: string | null) {
+  const days = routeDays(serviceDate, endDate)
+  const first = days[0]
+  const last = days[days.length - 1]
+  if (days.length === 1) {
+    const weekday = new Date(`${first}T12:00:00Z`)
+      .toLocaleDateString('es-ES', { weekday: 'short', timeZone: 'UTC' })
+      .replace('.', '')
+    return `${weekday}, ${shortDate(first, true)}`
   }
+  const sameMonth = first.slice(0, 7) === last.slice(0, 7)
+  return `${shortDate(first, !sameMonth)} – ${shortDate(last, true)}`
 }
 
 export function UpcomingRouteCard({ route, onDetails, onSelect }: Props) {
-  const { day, month, weekday } = routeDateParts(route.serviceDate)
   const stopCount = route.stops.length || route.localities.length
-  const multiDay = routeDays(route.serviceDate, route.endDate).length > 1
+  const days = routeDays(route.serviceDate, route.endDate).length
+  const localities = [...new Set(route.localities)]
+  const name = route.templateName || 'Ruta programada'
 
   return (
-    <li className="upcoming-route-list-item">
-      <Card className="upcoming-route-card">
-        <CardContent className="upcoming-route-card-content">
-          <div className="upcoming-route-date">
-            <CalendarDays size={17} aria-hidden="true" />
-            <time
-              dateTime={route.serviceDate}
-              aria-label={
-                multiDay
-                  ? `Ruta del ${routeDaysLabel(route.serviceDate, route.endDate)}`
-                  : `Salida el ${formatDate(route.serviceDate)}`
-              }
-            >
-              <strong>{multiDay ? routeDays(route.serviceDate, route.endDate).length : day}</strong>
-              <span>{multiDay ? 'días' : month}</span>
-            </time>
-            <small>{multiDay ? routeDaysLabel(route.serviceDate, route.endDate) : weekday}</small>
+    <li className="urc-item">
+      <article className="urc">
+        <div className="urc-main">
+          <time
+            className="urc-date"
+            dateTime={route.serviceDate}
+            aria-label={
+              days > 1
+                ? `Ruta del ${routeDaysLabel(route.serviceDate, route.endDate)}`
+                : `Salida el ${formatDate(route.serviceDate)}`
+            }
+          >
+            <CalendarDays size={15} aria-hidden="true" />
+            {routeDateRange(route.serviceDate, route.endDate)}
+          </time>
+          <h2>{name}</h2>
+          <div className="urc-tags">
+            <span>
+              {route.routeDirection === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'}
+            </span>
+            {days > 1 && <span>{days} días</span>}
+            {stopCount > 0 && (
+              <span>
+                {stopCount} {stopCount === 1 ? 'parada' : 'paradas'}
+              </span>
+            )}
           </div>
+        </div>
 
-          <div className="upcoming-route-summary">
-            <div className="upcoming-route-meta">
-              <span className="upcoming-route-direction">
-                {route.routeDirection === 'inversa' ? 'Sentido inverso' : 'Sentido habitual'}
-              </span>
-              {stopCount > 0 && (
-                <span className="upcoming-route-stop-count">
-                  {stopCount} {stopCount === 1 ? 'parada' : 'paradas'}
-                </span>
-              )}
-            </div>
-            <h2>{route.templateName || 'Ruta programada'}</h2>
-            <div className="upcoming-route-stops">
-              <MapPin size={16} aria-hidden="true" />
-              <span>{route.localities.join(' · ') || 'Paradas por definir'}</span>
-            </div>
-          </div>
+        <div className="urc-stops">
+          <span className="urc-stops-label">
+            <MapPin size={14} aria-hidden="true" /> Paradas
+          </span>
+          {localities.length ? (
+            <ol>
+              {localities.map((locality) => (
+                <li key={locality}>{locality}</li>
+              ))}
+            </ol>
+          ) : (
+            <span className="urc-stops-empty">Por definir</span>
+          )}
+        </div>
 
-          <div className="upcoming-route-actions">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="upcoming-route-details"
-              aria-label={`Ver recorrido de ${route.templateName || 'la ruta'}`}
-              onClick={() => onDetails(route.id)}
-            >
-              <Navigation size={15} />
-              <span className="upcoming-route-details-label">Ver recorrido</span>
-              <span className="upcoming-route-details-label-compact" aria-hidden="true">
-                Paradas
-              </span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="upcoming-route-request"
-              aria-label={`Solicitar transporte para ${route.templateName || 'la ruta'}`}
-              onClick={() => onSelect(route.id)}
-            >
-              <FilePlus2 size={15} />
-              <span className="upcoming-route-request-label">Solicitar transporte</span>
-              <span className="upcoming-route-request-label-compact" aria-hidden="true">
-                Solicitar
-              </span>
-            </Button>
+        <div className="urc-actions">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-label={`Ver recorrido de ${name}`}
+            onClick={() => onDetails(route.id)}
+          >
+            <Navigation size={15} /> Ver recorrido
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            aria-label={`Solicitar transporte para ${name}`}
+            onClick={() => onSelect(route.id)}
+          >
+            <FilePlus2 size={15} /> Solicitar transporte
+          </Button>
+        </div>
+
+        {route.stops.length >= 2 && (
+          <div className="urc-map">
+            <Suspense fallback={null}>
+              <RouteMap stops={route.stops} label={`Mapa del recorrido de ${name}`} />
+            </Suspense>
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </article>
     </li>
   )
 }

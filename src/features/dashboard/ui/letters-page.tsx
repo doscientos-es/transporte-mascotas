@@ -9,8 +9,15 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuItem,
+  FilterBar,
   IconButton,
   Pagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@doscientos/ui'
 import {
   ArrowLeft,
@@ -21,7 +28,6 @@ import {
   MoreHorizontal,
   PawPrint,
   ReceiptText,
-  Search,
   UserRound,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -34,6 +40,7 @@ import {
 import { paginate } from '@/shared/lib/pagination'
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { DailyRoute, Letter } from '@/shared/types'
+import { FilterSelect, SearchFilter } from '@/shared/ui/filter-controls'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { Stat } from '@/shared/ui/stat'
 import { StatusBadge } from '@/shared/ui/status-badge'
@@ -288,38 +295,31 @@ export function LettersPage({
                   <h3>Cartas de porte</h3>
                   <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
                 </div>
-                <div className="table-controls">
-                  <label className="search">
-                    <Search size={17} />
-                    <input
-                      value={search}
-                      onChange={(event) =>
-                        updateParams({ q: event.target.value, pagina: undefined })
-                      }
-                      placeholder="Buscar"
-                      aria-label="Buscar cartas"
-                      disabled={loading}
-                    />
-                  </label>
-                  <label className="status-filter" htmlFor="letters-status-filter">
-                    <span>Estado</span>
-                    <select
-                      id="letters-status-filter"
-                      value={statusFilter}
-                      onChange={(event) =>
-                        updateParams({
-                          estado: event.target.value === 'todos' ? undefined : event.target.value,
-                          pagina: undefined,
-                        })
-                      }
-                      aria-label="Filtrar cartas por estado"
-                      disabled={loading}
-                    >
-                      <option value="todos">Todos</option>
-                      <option value="pending">Pendientes de pago</option>
-                      <option value="paid">Pagadas</option>
-                    </select>
-                  </label>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <SearchFilter
+                    ariaLabel="Buscar cartas"
+                    placeholder="Buscar"
+                    value={search}
+                    onChange={(value) => updateParams({ q: value, pagina: undefined })}
+                    disabled={loading}
+                  />
+                  <FilterSelect
+                    label="Estado"
+                    ariaLabel="Filtrar cartas por estado"
+                    value={statusFilter}
+                    onChange={(value) =>
+                      updateParams({
+                        estado: value === 'todos' ? undefined : value,
+                        pagina: undefined,
+                      })
+                    }
+                    options={[
+                      { id: 'todos', label: 'Todos' },
+                      { id: 'pending', label: 'Pendientes de pago' },
+                      { id: 'paid', label: 'Pagadas' },
+                    ]}
+                    disabled={loading}
+                  />
                 </div>
               </div>
               {downloadError && (
@@ -341,18 +341,18 @@ export function LettersPage({
               ) : (
                 <>
                   <div className="responsive-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Referencia</th>
-                          <th>Trayecto</th>
-                          <th>Mascotas</th>
-                          <th>Fecha</th>
-                          <th>Estado</th>
-                          <th aria-label="Acciones" />
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Referencia</TableHead>
+                          <TableHead>Trayecto</TableHead>
+                          <TableHead>Mascotas</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead aria-label="Acciones" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {letterPagination.items.map((letter) => (
                           <LetterRow
                             key={letter.id}
@@ -365,8 +365,8 @@ export function LettersPage({
                             onOpenPaymentRequests={onOpenPaymentRequests}
                           />
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                   <div className="letter-cards">
                     {letterPagination.items.map((letter) => (
@@ -399,64 +399,40 @@ export function LettersPage({
       ) : (
         <>
           {!loading && !error && routeGroups.length > 0 && (
-            <search
-              className="mb-4 flex flex-wrap items-center gap-2.5"
-              aria-label="Filtros de rutas"
-            >
-              <label className="search" htmlFor="letters-route-search">
-                <Search size={17} aria-hidden="true" />
-                <input
-                  id="letters-route-search"
-                  aria-label="Buscar rutas por nombre o fecha"
-                  placeholder="Buscar ruta o fecha"
-                  value={routeSearch}
-                  onChange={(event) =>
-                    updateParams({
-                      'ruta-busqueda': event.target.value,
-                      'pagina-rutas': undefined,
-                    })
-                  }
-                />
-              </label>
-              <label className="route-status-filter" htmlFor="letters-route-template-filter">
-                <span>Plantilla</span>
-                <select
-                  id="letters-route-template-filter"
-                  aria-label="Filtrar rutas por plantilla"
-                  value={routeTemplateFilter}
-                  onChange={(event) =>
-                    updateParams({
-                      'ruta-plantilla': event.target.value,
-                      'pagina-rutas': undefined,
-                    })
-                  }
-                >
-                  <option value="">Todas</option>
-                  {routeTemplateOptions.map((routeName) => (
-                    <option key={routeName} value={routeName}>
-                      {routeName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="route-status-filter" htmlFor="letters-route-month-filter">
-                <span>Mes</span>
-                <select
-                  id="letters-route-month-filter"
-                  aria-label="Filtrar rutas por mes"
-                  value={routeMonthFilter}
-                  onChange={(event) =>
-                    updateParams({ 'ruta-mes': event.target.value, 'pagina-rutas': undefined })
-                  }
-                >
-                  <option value="">Todos</option>
-                  {routeMonthOptions.map((month) => (
-                    <option key={month} value={month}>
-                      {formatServiceMonth(month)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <FilterBar className="mb-4" aria-label="Filtros de rutas">
+              <SearchFilter
+                ariaLabel="Buscar rutas por nombre o fecha"
+                placeholder="Buscar ruta o fecha"
+                value={routeSearch}
+                onChange={(value) =>
+                  updateParams({ 'ruta-busqueda': value, 'pagina-rutas': undefined })
+                }
+              />
+              <FilterSelect
+                label="Plantilla"
+                ariaLabel="Filtrar rutas por plantilla"
+                value={routeTemplateFilter}
+                onChange={(value) =>
+                  updateParams({ 'ruta-plantilla': value, 'pagina-rutas': undefined })
+                }
+                options={[
+                  { id: '', label: 'Todas' },
+                  ...routeTemplateOptions.map((routeName) => ({ id: routeName, label: routeName })),
+                ]}
+              />
+              <FilterSelect
+                label="Mes"
+                ariaLabel="Filtrar rutas por mes"
+                value={routeMonthFilter}
+                onChange={(value) => updateParams({ 'ruta-mes': value, 'pagina-rutas': undefined })}
+                options={[
+                  { id: '', label: 'Todos' },
+                  ...routeMonthOptions.map((month) => ({
+                    id: month,
+                    label: formatServiceMonth(month),
+                  })),
+                ]}
+              />
               {(routeSearch || routeTemplateFilter || routeMonthFilter) && (
                 <Button
                   size="sm"
@@ -473,7 +449,7 @@ export function LettersPage({
                   Limpiar filtros
                 </Button>
               )}
-            </search>
+            </FilterBar>
           )}
           {loading ? (
             <LettersListSkeleton />
@@ -601,37 +577,37 @@ function LetterRow({
   onOpenPaymentRequests: (letterId: string) => void
 }) {
   return (
-    <tr>
-      <td>
+    <TableRow>
+      <TableCell>
         <strong>{letter.id}</strong>
         <small>Creada {letter.importedAt}</small>
-      </td>
-      <td>
+      </TableCell>
+      <TableCell>
         <span className="route-cell">
           <b>{letter.origin}</b>
           <ChevronRight size={14} />
           <b>{letter.destination}</b>
         </span>
         <small>{letter.route}</small>
-      </td>
-      <td>
+      </TableCell>
+      <TableCell>
         <span className="pet-list">
           <PawPrint size={15} /> {letter.animals.map((animal) => animal.breed).join(', ')}
         </span>
         <small>
           {letter.animals.length} animal{letter.animals.length !== 1 && 'es'}
         </small>
-      </td>
-      <td>
+      </TableCell>
+      <TableCell>
         {new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', {
           day: 'numeric',
           month: 'short',
         })}
-      </td>
-      <td>
+      </TableCell>
+      <TableCell>
         <LetterPaymentBadge letter={letter} />
-      </td>
-      <td>
+      </TableCell>
+      <TableCell>
         <div className="row-actions">
           <IconButton type="button" label="Ver detalles" onClick={() => onView(letter)}>
             <Eye size={17} />
@@ -645,8 +621,8 @@ function LetterRow({
             onOpenPaymentRequests={onOpenPaymentRequests}
           />
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }
 

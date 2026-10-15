@@ -5,9 +5,14 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Input,
+  Label,
+  Textarea,
 } from '@doscientos/ui'
 import { Save } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+
+import { SelectField } from '@/shared/ui/filter-controls'
 
 import {
   EXPENSE_DOCUMENT_MAX_BYTES,
@@ -108,89 +113,85 @@ export function ExpenseDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="expense-form" onSubmit={(event) => void submit(event)}>
-          <label>
+          <Label>
             Fecha
-            <input
+            <Input
               type="date"
               required
               value={expenseDate}
               onChange={(e) => setExpenseDate(e.target.value)}
             />
-          </label>
-          <label>
+          </Label>
+          <Label>
             Categoría
-            <select
+            <SelectField
+              ariaLabel="Categoría"
               value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-            >
-              {expenseCategories.map((id) => (
-                <option key={id} value={id}>
-                  {expenseCategoryLabels[id]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
+              onChange={(value) => setCategory(value as ExpenseCategory)}
+              options={expenseCategories.map((id) => ({ id, label: expenseCategoryLabels[id] }))}
+            />
+          </Label>
+          <Label>
             Proveedor
-            <input value={vendor} maxLength={160} onChange={(e) => setVendor(e.target.value)} />
-          </label>
-          <label>
+            <Input value={vendor} maxLength={160} onChange={(e) => setVendor(e.target.value)} />
+          </Label>
+          <Label>
             NIF/CIF del proveedor
-            <input
+            <Input
               value={vendorNif}
               maxLength={40}
               onChange={(e) => setVendorNif(e.target.value)}
             />
-          </label>
-          <label>
+          </Label>
+          <Label>
             Nº de factura
-            <input
+            <Input
               value={invoiceReference}
               maxLength={80}
               onChange={(e) => setInvoiceReference(e.target.value)}
             />
-          </label>
-          <label className="expense-form-wide">
+          </Label>
+          <Label className="expense-form-wide">
             Concepto
-            <input value={concept} maxLength={240} onChange={(e) => setConcept(e.target.value)} />
-          </label>
-          <label>
+            <Input value={concept} maxLength={240} onChange={(e) => setConcept(e.target.value)} />
+          </Label>
+          <Label>
             Base imponible (€)
-            <input
+            <Input
               inputMode="decimal"
               value={netAmount}
               onChange={(e) => setNetAmount(e.target.value)}
             />
-          </label>
-          <label>
+          </Label>
+          <Label>
             IVA (%)
-            <input
+            <Input
               inputMode="decimal"
               value={vatRate}
               onChange={(e) => setVatRate(e.target.value)}
             />
-          </label>
+          </Label>
           <p className="expense-form-total expense-form-wide">
             Total con IVA:{' '}
             <strong>{total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</strong>
           </p>
-          <label className="expense-form-wide">
+          <Label className="expense-form-wide">
             Notas
-            <textarea
+            <Textarea
               value={notes}
               maxLength={1000}
               rows={2}
               onChange={(e) => setNotes(e.target.value)}
             />
-          </label>
-          <label className="expense-form-wide">
+          </Label>
+          <Label className="expense-form-wide">
             Justificante (PDF o imagen, máx. 10 MB)
-            <input
+            <Input
               type="file"
               accept={EXPENSE_DOCUMENT_TYPES.join(',')}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
-          </label>
+          </Label>
           {expense?.documentName && !file && (
             <label className="expense-form-wide expense-form-check">
               <input

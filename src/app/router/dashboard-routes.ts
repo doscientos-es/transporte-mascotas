@@ -13,10 +13,12 @@ export const dashboardPaths: Record<NavSection, string> = {
   ajustes: '/ajustes',
   'proximas-rutas': '/proximas-rutas',
   'mis-transportes': '/mis-transportes',
+  'solicitar-transporte': '/mis-transportes/nueva',
 }
 
 export const APP_PATHS = {
   home: AUTH_PATHS.clientAccess,
+  login: AUTH_PATHS.clientAccess,
   staffAccess: AUTH_PATHS.staffAccess,
   passwordRecovery: AUTH_PATHS.passwordRecovery,
   passwordReset: AUTH_PATHS.passwordReset,
@@ -27,7 +29,7 @@ export const APP_PATHS = {
 } as const
 
 export const letterCreatePath = `${dashboardPaths.cartas}/nueva`
-export const transportRequestCreatePath = `${dashboardPaths['mis-transportes']}/nueva`
+export const transportRequestCreatePath = dashboardPaths['solicitar-transporte']
 
 export const DEFAULT_DASHBOARD_SECTIONS = {
   client: 'mis-transportes',
@@ -37,6 +39,7 @@ export const DEFAULT_DASHBOARD_SECTIONS = {
 const routePath = (path: string) => path.slice(1)
 
 export const ROUTER_PATHS = {
+  login: routePath(APP_PATHS.login),
   staffAccess: `${routePath(APP_PATHS.staffAccess)}/*`,
   passwordRecovery: routePath(APP_PATHS.passwordRecovery),
   passwordReset: routePath(APP_PATHS.passwordReset),
@@ -86,7 +89,7 @@ export function dashboardLocationForPath(
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/') return { section: fallback }
   if (path === letterCreatePath) return { section: 'cartas' }
-  if (path === transportRequestCreatePath) return { section: 'mis-transportes' }
+  if (path === dashboardPaths['solicitar-transporte']) return { section: 'solicitar-transporte' }
   if (path === dashboardPaths.cartas) return { section: 'cartas' }
   if (path === dashboardPaths.plantillas) return { section: 'plantillas' }
   if (path === dashboardPaths.furgoneta) return { section: 'furgoneta' }

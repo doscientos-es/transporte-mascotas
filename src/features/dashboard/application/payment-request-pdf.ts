@@ -32,7 +32,7 @@ async function addBrandLogo(doc: jsPDF) {
   try {
     const response = await fetch('/icon-512.png')
     if (!response.ok) return false
-    doc.addImage(new Uint8Array(await response.arrayBuffer()), 'PNG', 20, 13, 17, 14)
+    doc.addImage(new Uint8Array(await response.arrayBuffer()), 'PNG', 20, 11, 18, 18)
     return true
   } catch {
     return false

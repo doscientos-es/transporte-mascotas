@@ -188,3 +188,13 @@ export function movementsToCsv(income: FinanceIncome[], expenses: Expense[]) {
     ]),
   ])
 }
+
+export const money = (value: number) =>
+  value.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+export const percent = (value: number) => `${value.toLocaleString('es-ES')} %`
+const parseMonth = (month: string) => new Date(`${month}-01T12:00:00`)
+export const monthLabel = (month: string) =>
+  parseMonth(month).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+export const shortMonth = (month: string) =>
+  parseMonth(month).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
+export const dateLabel = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString('es-ES')

@@ -281,12 +281,10 @@ export function ManualPaymentDialog({
   invoice,
   onClose,
   onConfirm,
-  onConfirmed,
 }: {
   invoice: ClientInvoice
   onClose: () => void
   onConfirm: (invoice: ClientInvoice, method: ManualPaymentMethod) => Promise<void>
-  onConfirmed?: () => void
 }) {
   const [method, setMethod] = useState<ManualPaymentMethod>('Transferencia')
   const [saving, setSaving] = useState(false)
@@ -298,7 +296,6 @@ export function ManualPaymentDialog({
     try {
       await onConfirm(invoice, method)
       onClose()
-      onConfirmed?.()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido registrar el cobro.')
     } finally {

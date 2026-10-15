@@ -92,14 +92,16 @@ export async function findCanonicalInvoiceDocument(
 
 async function loadBrandLogo(pdf: PDFDocument) {
   const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
-  if (!appUrl) return null
-  try {
-    const response = await fetch(`${appUrl}/icon-512.png`)
-    if (!response.ok) return null
-    return await pdf.embedPng(new Uint8Array(await response.arrayBuffer()))
-  } catch {
-    return null
+  const sources = [...new Set([appUrl, 'https://www.kacheenvios.com'])].filter(Boolean)
+  for (const source of sources) {
+    try {
+      const response = await fetch(`${source}/icon-512.png`, { signal: AbortSignal.timeout(3000) })
+      if (response.ok) return await pdf.embedPng(new Uint8Array(await response.arrayBuffer()))
+    } catch {
+      // Try the next source; the invoice must still render without the logo.
+    }
   }
+  return null
 }
 
 async function renderInvoice(invoice: IssuedInvoice) {
@@ -167,12 +169,12 @@ async function renderInvoice(invoice: IssuedInvoice) {
   ) => values.forEach((value, index) => draw(value, x, y - index * gap, size, emphasis, color))
   const logo = await loadBrandLogo(pdf)
   const drawLogo = (x: number, y: number) => {
+    page.drawEllipse({ x, y, xScale: 40, yScale: 40, color: white })
     if (logo) {
-      page.drawImage(logo, { x: x - 32, y: y - 32, width: 64, height: 64 })
+      page.drawImage(logo, { x: x - 30, y: y - 30, width: 60, height: 60 })
       return
     }
-    page.drawEllipse({ x, y, width: 42, height: 42, color: white })
-    draw('K', x + 13, y + 12, 20, true, coral)
+    draw('K', x - 7, y - 8, 24, true, coral)
   }
   const clientLines = [
     clientNif && `NIF/CIF: ${clientNif}`,
@@ -183,9 +185,10 @@ async function renderInvoice(invoice: IssuedInvoice) {
   ].filter(Boolean)
 
   page.drawRectangle({ x: 0, y: 724, width: 595.28, height: 117.89, color: ink })
-  drawLogo(86, 776)
-  draw('KACHE ENVÍOS', 134, 786, 18, true, white)
-  draw('Transporte de mascotas', 134, 767, 10, false, white)
+  page.drawRectangle({ x: 0, y: 720, width: 595.28, height: 4, color: coral })
+  drawLogo(94, 782)
+  draw('KACHE ENVÍOS', 146, 790, 18, true, white)
+  draw('Transporte de mascotas', 146, 771, 10, false, white)
   drawRight('FACTURA', 541, 794, 21, true, coral)
   drawRight(`N.º ${number}`, 541, 774, 10, false, white)
   drawRight(date(invoice.issued_at), 541, 758, 9, false, white)
@@ -245,14 +248,10 @@ async function renderInvoice(invoice: IssuedInvoice) {
     draw(`Cobro confirmado: ${date(snapshot.payment_date)}`, 54, 296, 9)
 
   page.drawLine({ start: { x: 54, y: 82 }, end: { x: 541, y: 82 }, thickness: 0.7, color: cream })
-  draw(
-    'KACHE ENVÍOS  ·  Documento generado desde una instantánea fiscal inmutable',
-    54,
-    62,
-    8,
-    false,
-    muted,
-  )
+  draw(`${issuerName}  ·  NIF/CIF ${issuerTaxId}`, 54, 64, 8, true, muted)
+  draw(issuerAddress, 54, 52, 8, false, muted)
+  drawRight('Gracias por confiar en Kache Envíos', 541, 64, 8, true, coral)
+  drawRight('Documento generado desde una instantánea fiscal inmutable', 541, 52, 7, false, muted)
   return { body: await pdf.save(), fileName: `factura_${filePart(number)}.pdf` }
 }
 

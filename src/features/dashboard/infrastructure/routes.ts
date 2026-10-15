@@ -25,8 +25,8 @@ type StoredStop = {
   postal_code: string
   province: string
   country: string
-  latitude: number | null
-  longitude: number | null
+  latitude: number
+  longitude: number
 }
 type TemplateRow = { id: string; name: string; color: string; route_template_stops: StoredStop[] }
 type DailyRouteRow = {
@@ -103,8 +103,8 @@ function mapStop(stop: StoredStop) {
     postalCode: stop.postal_code,
     province: stop.province,
     country: stop.country,
-    latitude: stop.latitude ?? undefined,
-    longitude: stop.longitude ?? undefined,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
   }
 }
 

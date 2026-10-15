@@ -1,4 +1,6 @@
-import type { TransportRequest } from '@/shared/types'
+import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
+import { routeStopArrivals } from '@/shared/lib/route-days'
+import type { RouteStop, TransportRequest } from '@/shared/types'
 
 type CalendarRequest = Pick<
   TransportRequest,
@@ -7,6 +9,62 @@ type CalendarRequest = Pick<
 
 export const isConfirmedTransport = (status: TransportRequest['status']) =>
   status === 'confirmada' || status === 'en_ruta' || status === 'entregada'
+
+const madridParts = (now: Date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? ''
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}`,
+  }
+}
+
+/**
+ * Status shown to the client. A confirmed request moves to `en_ruta` once the departure
+ * moment (Europe/Madrid) has passed and to `entregada` once the last route day has passed.
+ */
+export function displayTransportStatus(
+  request: Pick<TransportRequest, 'status' | 'desiredDate'>,
+  now: Date,
+  route?: { startTime?: string; endDate?: string },
+): TransportRequest['status'] {
+  if (request.status !== 'confirmada' && request.status !== 'en_ruta') return request.status
+  const today = madridParts(now)
+  const lastDay =
+    route?.endDate && route.endDate > request.desiredDate ? route.endDate : request.desiredDate
+  if (today.date > lastDay) return 'entregada'
+  const departure = route?.startTime ?? '08:00'
+  if (
+    today.date > request.desiredDate ||
+    (today.date === request.desiredDate && today.time >= departure)
+  )
+    return 'en_ruta'
+  return request.status
+}
+
+/**
+ * Day and time the pet is picked up: arrival at the request's origin stop, not the route start.
+ * Without the route (or when the stop is not found) only the route date is known.
+ */
+export function pickupMoment(
+  request: Pick<TransportRequest, 'origin' | 'desiredDate'>,
+  route?: { serviceDate: string; startTime?: string; stops?: RouteStop[] },
+): { date: string; time?: string } {
+  const stops = route?.stops ?? []
+  const index = stops.findIndex((stop) => stop.locality === request.origin)
+  if (!route || index < 0) return { date: request.desiredDate }
+  return routeStopArrivals(route.serviceDate, route.startTime ?? DEFAULT_ROUTE_START_TIME, stops)[
+    index
+  ]
+}
 
 const compactDate = (value: string) => value.replaceAll('-', '')
 

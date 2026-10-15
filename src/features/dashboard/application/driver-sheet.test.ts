@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 
 import type { DailyRoute, DailyRouteStop } from '@/shared/types'
 
@@ -30,6 +30,8 @@ describe('driver sheet rows', () => {
         locality: 'Madrid',
         place: '',
         mapUrl: '',
+        latitude: 40,
+        longitude: -3,
         minutes: 0,
         kind: 'parada',
         dwellMinutes: 15,

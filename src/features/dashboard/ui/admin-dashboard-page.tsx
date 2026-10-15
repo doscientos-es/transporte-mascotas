@@ -36,11 +36,11 @@ function lazyWithRetry<T extends Record<string, unknown>, P>(
       if (!sessionStorage.getItem(reloadKey)) {
         sessionStorage.setItem(reloadKey, '1')
         window.location.reload()
-        throw new Error('Actualizando la aplicaciÃ³nâ€¦')
+        throw new Error('Actualizando la aplicación…')
       }
       sessionStorage.removeItem(reloadKey)
     }
-    throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la secciÃ³n.')
+    throw lastError instanceof Error ? lastError : new Error('No se ha podido cargar la sección.')
   })
 }
 
@@ -248,7 +248,7 @@ export function AdminDashboardPage({
   async function createManualTransport(values: RequestFormValues) {
     await createAdminTransportRequest(values)
     setCreatingTransport(false)
-    dashboard.toast('Solicitud creada sin cobro y pendiente de revisiÃ³n.')
+    dashboard.toast('Solicitud creada sin cobro y pendiente de revisión.')
   }
 
   return (
@@ -266,7 +266,7 @@ export function AdminDashboardPage({
             </Button>
           ) : section === 'furgoneta' && activeRoute ? (
             <Button disabled={printingManifest} onClick={() => void printVanManifest()}>
-              <Printer /> {printingManifest ? 'Preparando PDFâ€¦' : 'Imprimir tramo'}
+              <Printer /> {printingManifest ? 'Preparando PDF…' : 'Imprimir tramo'}
             </Button>
           ) : !isCreatingLetter && section === 'cartas' ? (
             <Button onClick={navigateToLetterCreate}>
@@ -420,7 +420,6 @@ export function AdminDashboardPage({
               <>
                 <PaymentRequestsPage
                   onConfirmManualPayment={dashboard.confirmManualPayment}
-                  onPaymentConfirmed={openBillingDocument}
                   onOpenClient={openClient}
                   onOpenLetter={openLetter}
                 />
@@ -491,5 +490,5 @@ export function AdminDashboardPage({
 }
 
 function PageLoading() {
-  return <output className="page-loading">Cargando secciÃ³nâ€¦</output>
+  return <output className="page-loading">Cargando sección…</output>
 }

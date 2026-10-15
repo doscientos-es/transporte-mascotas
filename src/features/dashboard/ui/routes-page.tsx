@@ -59,6 +59,7 @@ import type {
   SavedMeetingPoint,
   ServiceAction,
 } from '@/shared/types'
+import { FilterSelect, SearchFilter } from '@/shared/ui/filter-controls'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
@@ -191,49 +192,35 @@ export function RoutesCatalogPage({
       <Card className="route-catalog-card">
         <CardContent>
           <div className="route-catalog-tools">
-            <label className="route-search" htmlFor="route-search">
-              <Search size={16} />
-              <span className="sr-only">Buscar rutas</span>
-              <Input
-                aria-label="Buscar rutas"
-                id="route-search"
-                placeholder="Buscar por nombre, sentido o estado"
-                value={query}
-                onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
-              />
-            </label>
-            <label className="route-status-filter" htmlFor="route-status-filter">
-              <span>Estado</span>
-              <select
-                id="route-status-filter"
-                aria-label="Filtrar por estado"
-                value={statusFilter}
-                onChange={(event) =>
-                  updateParams({
-                    estado: event.target.value === 'todos' ? undefined : event.target.value,
-                    pagina: undefined,
-                  })
-                }
-              >
-                <option value="todos">Todas</option>
-                <option value="activa">Activas</option>
-                <option value="cerrada">Cerradas</option>
-              </select>
-            </label>
-            <label className="route-status-filter" htmlFor="route-sort-direction">
-              <span>Orden</span>
-              <select
-                id="route-sort-direction"
-                aria-label="Ordenar rutas por fecha"
-                value={direction}
-                onChange={(event) =>
-                  updateParams({ direccion: event.target.value, pagina: undefined })
-                }
-              >
-                <option value="asc">Más próximas</option>
-                <option value="desc">Más lejanas</option>
-              </select>
-            </label>
+            <SearchFilter
+              ariaLabel="Buscar rutas"
+              placeholder="Buscar por nombre, sentido o estado"
+              value={query}
+              onChange={(value) => updateParams({ q: value, pagina: undefined })}
+            />
+            <FilterSelect
+              label="Estado"
+              ariaLabel="Filtrar por estado"
+              value={statusFilter}
+              onChange={(value) =>
+                updateParams({ estado: value === 'todos' ? undefined : value, pagina: undefined })
+              }
+              options={[
+                { id: 'todos', label: 'Todas' },
+                { id: 'activa', label: 'Activas' },
+                { id: 'cerrada', label: 'Cerradas' },
+              ]}
+            />
+            <FilterSelect
+              label="Orden"
+              ariaLabel="Ordenar rutas por fecha"
+              value={direction}
+              onChange={(value) => updateParams({ direccion: value, pagina: undefined })}
+              options={[
+                { id: 'asc', label: 'Más próximas' },
+                { id: 'desc', label: 'Más lejanas' },
+              ]}
+            />
           </div>
           {filteredRoutes.length ? (
             <div className="route-table-wrap">

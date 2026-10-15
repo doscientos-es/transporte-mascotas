@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 
 import type { RouteTemplate } from '@/shared/types'
 
@@ -13,6 +13,8 @@ const template: RouteTemplate = {
     locality,
     place: '',
     mapUrl: '',
+    latitude: 40,
+    longitude: -3,
     minutes: 0,
   })),
 }

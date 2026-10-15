@@ -36,25 +36,6 @@ function stopsWithCoordinates(stops: RouteStop[]): GeoStop[] {
   )
 }
 
-/** Embed URL for a map showing the bounding box that covers every stop of the itinerary. */
-export function itineraryEmbedUrl(stops: RouteStop[]) {
-  const geoStops = stopsWithCoordinates(stops)
-  if (!geoStops.length) return null
-  const lats = geoStops.map((stop) => stop.latitude)
-  const lngs = geoStops.map((stop) => stop.longitude)
-  const minLat = Math.min(...lats)
-  const maxLat = Math.max(...lats)
-  const minLng = Math.min(...lngs)
-  const maxLng = Math.max(...lngs)
-  const latPad = Math.max((maxLat - minLat) * 0.15, 0.01)
-  const lngPad = Math.max((maxLng - minLng) * 0.15, 0.01)
-  return `https://www.openstreetmap.org/export/embed.html?${new URLSearchParams({
-    bbox: `${minLng - lngPad},${minLat - latPad},${maxLng + lngPad},${maxLat + latPad}`,
-    layer: 'mapnik',
-    marker: `${geoStops[0].latitude},${geoStops[0].longitude}`,
-  })}`
-}
-
 /** Google Maps directions URL following every stop of the itinerary in sequence. */
 export function itineraryDirectionsUrl(stops: RouteStop[]) {
   const geoStops = stopsWithCoordinates(stops)

@@ -28,6 +28,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { Client, ClientInvoice, InvoicePayer, Letter, PaginatedResult } from '@/shared/types'
+import { SearchFilter, SelectField } from '@/shared/ui/filter-controls'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
@@ -237,14 +238,12 @@ export function ClientsPage({
                 <span>{loading ? 'Cargando…' : `${result.total} clientes`}</span>
               </div>
               <div className="client-list-controls">
-                <label>
-                  Buscar
-                  <input
-                    value={query}
-                    onChange={(event) => updateParams({ q: event.target.value, pagina: undefined })}
-                    placeholder="Nombre, NIF, email o ciudad"
-                  />
-                </label>
+                <SearchFilter
+                  ariaLabel="Buscar clientes"
+                  placeholder="Nombre, NIF, email o ciudad"
+                  value={query}
+                  onChange={(value) => updateParams({ q: value, pagina: undefined })}
+                />
                 <PopoverTrigger>
                   <Button
                     type="button"
@@ -256,37 +255,35 @@ export function ClientsPage({
                     <ArrowDownUp size={16} />
                   </Button>
                   <PopoverContent placement="bottom end" className="client-list-sort-popover">
-                    <label>
-                      Ordenar por
-                      <select
+                    <div className="grid gap-1.5 text-xs font-bold text-[#454545]">
+                      <span aria-hidden="true">Ordenar por</span>
+                      <SelectField
+                        ariaLabel="Ordenar por"
                         value={sort}
-                        onChange={(event) =>
-                          updateParams({
-                            orden: event.target.value as ClientSort,
-                            pagina: undefined,
-                          })
+                        onChange={(value) =>
+                          updateParams({ orden: value as ClientSort, pagina: undefined })
                         }
-                      >
-                        <option value="name">Nombre</option>
-                        <option value="city">Ciudad</option>
-                        <option value="created_at">Alta</option>
-                      </select>
-                    </label>
-                    <label>
-                      Dirección
-                      <select
+                        options={[
+                          { id: 'name', label: 'Nombre' },
+                          { id: 'city', label: 'Ciudad' },
+                          { id: 'created_at', label: 'Alta' },
+                        ]}
+                      />
+                    </div>
+                    <div className="grid gap-1.5 text-xs font-bold text-[#454545]">
+                      <span aria-hidden="true">Dirección</span>
+                      <SelectField
+                        ariaLabel="Dirección"
                         value={direction}
-                        onChange={(event) =>
-                          updateParams({
-                            direccion: event.target.value as SortDirection,
-                            pagina: undefined,
-                          })
+                        onChange={(value) =>
+                          updateParams({ direccion: value as SortDirection, pagina: undefined })
                         }
-                      >
-                        <option value="asc">Ascendente</option>
-                        <option value="desc">Descendente</option>
-                      </select>
-                    </label>
+                        options={[
+                          { id: 'asc', label: 'Ascendente' },
+                          { id: 'desc', label: 'Descendente' },
+                        ]}
+                      />
+                    </div>
                   </PopoverContent>
                 </PopoverTrigger>
               </div>
@@ -510,7 +507,7 @@ export function ClientsPage({
           }
         }}
       >
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="w-[calc(100%-2.5rem)]! max-w-115!">
           <AlertDialogHeader className="gap-1">
             <AlertDialogTitle>Eliminar cliente</AlertDialogTitle>
             <AlertDialogDescription>

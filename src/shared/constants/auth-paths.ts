@@ -1,5 +1,5 @@
 export const AUTH_PATHS = {
-  clientAccess: '/',
+  clientAccess: '/login',
   staffAccess: '/admin',
   passwordRecovery: '/recuperar-contrasena',
   passwordReset: '/restablecer-contrasena',

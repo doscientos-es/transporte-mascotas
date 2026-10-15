@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -19,9 +19,19 @@ describe('TemplatesPage stop reordering', () => {
           alias: 'Clínica Sol',
           place: 'Entrada principal',
           mapUrl: '',
+          latitude: 40,
+          longitude: -3,
           minutes: 25,
         },
-        { id: 'stop-2', locality: 'Barcelona', place: '', mapUrl: '', minutes: 0 },
+        {
+          id: 'stop-2',
+          locality: 'Barcelona',
+          place: '',
+          mapUrl: '',
+          latitude: 40,
+          longitude: -3,
+          minutes: 0,
+        },
       ],
     }
     const markup = renderToStaticMarkup(

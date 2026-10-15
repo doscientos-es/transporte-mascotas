@@ -1,4 +1,4 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+import { Button } from '@doscientos/ui'
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 
 import { transportBoxCategoryLabel } from '@/shared/application/transport-boxes'
-import type { TransportRequest } from '@/shared/types'
+import type { TransportRequest, UpcomingRoute } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
 import {
@@ -19,10 +19,15 @@ import {
   transportPaymentAttemptNotice,
 } from '../application/payment-attempt'
 import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
-import { isConfirmedTransport } from '../application/transport-calendar'
+import {
+  displayTransportStatus,
+  isConfirmedTransport,
+  pickupMoment,
+} from '../application/transport-calendar'
 
 type Props = {
   request: TransportRequest
+  route?: Pick<UpcomingRoute, 'serviceDate' | 'startTime' | 'endDate' | 'stops'>
   formatCurrency: (cents: number) => string
   payingRequestId: string | null
   downloadingInvoiceId: string | null
@@ -33,7 +38,8 @@ type Props = {
 }
 
 export function ClientTransportCard({
-  request,
+  request: storedRequest,
+  route,
   formatCurrency,
   payingRequestId,
   downloadingInvoiceId,
@@ -42,167 +48,135 @@ export function ClientTransportCard({
   onDownloadInvoice,
   onDownloadCarriageLetter,
 }: Props) {
+  const request = {
+    ...storedRequest,
+    status: displayTransportStatus(storedRequest, new Date(), route),
+  }
   const confirmed = isConfirmedTransport(request.status)
+  const pickup = pickupMoment(storedRequest, route)
+  const needsAttention = ['pago_pendiente', 'por_verificar', 'rechazada', 'cancelada'].includes(
+    request.status,
+  )
+  const hint =
+    request.status === 'pago_pendiente'
+      ? clientStatusHint(request.status, request.paymentAttemptStatus)
+      : request.adminNote || (needsAttention ? clientStatusHint(request.status) : '')
 
   return (
-    <Card
-      className={`invoice-card client-transport-card client-transport-request-card ${
-        request.status === 'por_verificar'
-          ? '!border-l-[#ca8a04]'
-          : request.status === 'confirmada' || request.status === 'en_ruta'
-            ? '!border-l-[#cf1f2a]'
-            : ''
-      }`}
-    >
-      <CardContent>
-        <div className="client-transport-request-header">
-          <div className="client-transport-request-overview">
-            <div className="invoice-icon client-transport-request-icon">
-              <PawPrint size={19} aria-hidden="true" />
-            </div>
-            <div className="client-transport-request-copy">
-              <div className="client-transport-request-meta">
-                <span>
-                  {request.animals.length} mascota{request.animals.length === 1 ? '' : 's'}
-                </span>
-                <span aria-hidden="true">·</span>
-                <time dateTime={request.desiredDate}>{formatDate(request.desiredDate)}</time>
-              </div>
-              <h3 className="client-transport-request-route">
-                <span>{request.origin}</span>
-                <ArrowRight size={17} aria-hidden="true" />
-                <span>{request.destination}</span>
-              </h3>
-              <p className="client-transport-request-note">
-                {request.status === 'pago_pendiente'
-                  ? clientStatusHint(request.status, request.paymentAttemptStatus)
-                  : request.adminNote ||
-                    clientStatusHint(request.status, request.paymentAttemptStatus)}
-              </p>
-              {request.animals.length > 0 && (
-                <div className="client-transport-pets">
-                  {request.animals.map((animal) => (
-                    <span key={animal.id || `${request.id}-${animal.ordinal}`}>
-                      <PawPrint size={13} aria-hidden="true" />
-                      {animal.name.trim() || animal.species}
-                      <span aria-hidden="true">·</span>
-                      {transportBoxCategoryLabel(
-                        animal.assignedBoxCategory ??
-                          animal.requestedBoxCategory ??
-                          animal.minimumBoxCategory ??
-                          'pequeno',
-                      )}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+    <article className="ctr" data-status={request.status}>
+      <header className="ctr-head">
+        <div className="ctr-title">
+          <h3>
+            <span>{request.origin}</span>
+            <ArrowRight size={16} aria-hidden="true" />
+            <span>{request.destination}</span>
+          </h3>
+          {hint && <p>{hint}</p>}
+        </div>
+        <StatusBadge status={request.status} />
+      </header>
 
-          <div className="client-transport-request-summary">
-            <strong className="client-transport-request-price">
-              {formatCurrency(request.amountCents)}
-            </strong>
-            <StatusBadge status={request.status} className="client-transport-request-status" />
+      <dl className="ctr-facts">
+        <div>
+          <dt>Recogida</dt>
+          <dd className="ctr-pickup">
+            <time dateTime={pickup.time ? `${pickup.date}T${pickup.time}` : pickup.date}>
+              {formatDate(pickup.date)}
+            </time>
+            {pickup.time && <small>{pickup.time} h</small>}
+          </dd>
+        </div>
+        <div>
+          <dt>{request.animals.length === 1 ? 'Mascota' : 'Mascotas'}</dt>
+          <dd>
+            {request.animals.map((animal) => (
+              <span className="ctr-pet" key={animal.id || `${request.id}-${animal.ordinal}`}>
+                <PawPrint size={13} aria-hidden="true" />
+                {animal.name.trim() || animal.species}
+                <small>
+                  {transportBoxCategoryLabel(
+                    animal.assignedBoxCategory ??
+                      animal.requestedBoxCategory ??
+                      animal.minimumBoxCategory ??
+                      'pequeno',
+                  )}
+                </small>
+              </span>
+            ))}
+          </dd>
+        </div>
+        <div>
+          <dt>Importe</dt>
+          <dd>
+            <strong>{formatCurrency(request.amountCents)}</strong>
             {request.paidAt && (
-              <span className="client-transport-payment-state">
-                <CheckCircle2 size={14} aria-hidden="true" /> Pago registrado
+              <span className="ctr-paid">
+                <CheckCircle2 size={13} aria-hidden="true" /> Pago registrado
               </span>
             )}
-            {request.status === 'pago_pendiente' &&
-              canRetryTransportPayment(request.paymentAttemptStatus) && (
-                <Button
-                  className="client-transport-pay-button"
-                  size="sm"
-                  disabled={Boolean(payingRequestId)}
-                  onClick={() => onContinuePayment(request.id)}
-                >
-                  <CreditCard size={15} />{' '}
-                  {payingRequestId === request.id ? 'Abriendo pago…' : 'Continuar pago'}
-                </Button>
-              )}
-          </div>
+          </dd>
         </div>
+      </dl>
 
-        <TransportProgress status={request.status} />
-
-        <details className="client-transport-details">
-          <summary>
-            <MapPin size={14} aria-hidden="true" /> Ver recogida y entrega
-          </summary>
-          <div className="client-transport-locations">
-            <TransportLocationMap
-              label="Recogida"
-              location={request.origin}
-              latitude={request.originLatitude}
-              longitude={request.originLongitude}
-            />
-            <TransportLocationMap
-              label="Entrega"
-              location={request.destination}
-              latitude={request.destinationLatitude}
-              longitude={request.destinationLongitude}
-            />
-          </div>
-        </details>
-
-        {(request.paidAt || confirmed) && (
-          <div className="client-transport-documents">
-            {!confirmed && (
-              <p>La factura y la carta de porte estarán disponibles cuando confirmemos el pago.</p>
-            )}
-            <div className="client-transport-document-actions">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!confirmed || Boolean(downloadingInvoiceId)}
-                onClick={() => onDownloadInvoice(request.id)}
-              >
-                <FileText size={15} />{' '}
-                {downloadingInvoiceId === request.id ? 'Descargando…' : 'Descargar factura'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!confirmed || Boolean(downloadingLetterId)}
-                onClick={() => onDownloadCarriageLetter(request.id)}
-              >
-                <FileDown size={15} />{' '}
-                {downloadingLetterId === request.id ? 'Descargando…' : 'Descargar carta de porte'}
-              </Button>
-            </div>
+      {request.status === 'pago_pendiente' &&
+        canRetryTransportPayment(request.paymentAttemptStatus) && (
+          <div className="ctr-actions">
+            <Button
+              size="sm"
+              disabled={Boolean(payingRequestId)}
+              onClick={() => onContinuePayment(request.id)}
+            >
+              <CreditCard size={15} />{' '}
+              {payingRequestId === request.id
+                ? 'Abriendo pago…'
+                : `Continuar pago · ${formatCurrency(request.amountCents)}`}
+            </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
-  )
-}
 
-const progressSteps = ['Pago', 'Verificación', 'Confirmada', 'En ruta', 'Entregada'] as const
-const progressIndex: Partial<Record<TransportRequest['status'], number>> = {
-  pago_pendiente: 0,
-  por_verificar: 1,
-  confirmada: 2,
-  en_ruta: 3,
-  entregada: 4,
-}
+      <div className="ctr-links">
+        {confirmed && (
+          <>
+            <button
+              type="button"
+              disabled={Boolean(downloadingInvoiceId)}
+              onClick={() => onDownloadInvoice(request.id)}
+            >
+              <FileText size={14} aria-hidden="true" />
+              {downloadingInvoiceId === request.id ? 'Descargando…' : 'Descargar factura'}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(downloadingLetterId)}
+              onClick={() => onDownloadCarriageLetter(request.id)}
+            >
+              <FileDown size={14} aria-hidden="true" />
+              {downloadingLetterId === request.id ? 'Descargando…' : 'Descargar carta de porte'}
+            </button>
+          </>
+        )}
+      </div>
 
-function TransportProgress({ status }: { status: TransportRequest['status'] }) {
-  const current = progressIndex[status]
-  if (current === undefined) return null
-  return (
-    <ol className="client-transport-progress" aria-label="Progreso de la solicitud">
-      {progressSteps.map((step, index) => (
-        <li
-          key={step}
-          data-state={index < current ? 'done' : index === current ? 'current' : 'todo'}
-          aria-current={index === current ? 'step' : undefined}
-        >
-          <span aria-hidden="true" />
-          {step}
-        </li>
-      ))}
-    </ol>
+      <details className="ctr-details">
+        <summary>
+          <MapPin size={14} aria-hidden="true" /> Ver recogida y entrega
+        </summary>
+        <div className="client-transport-locations">
+          <TransportLocationMap
+            label="Recogida"
+            location={request.origin}
+            latitude={request.originLatitude}
+            longitude={request.originLongitude}
+          />
+          <TransportLocationMap
+            label="Entrega"
+            location={request.destination}
+            latitude={request.destinationLatitude}
+            longitude={request.destinationLongitude}
+          />
+        </div>
+      </details>
+    </article>
   )
 }
 
@@ -249,11 +223,11 @@ function TransportLocationMap({
 
 function clientStatusHint(
   status: TransportRequest['status'],
-  paymentAttemptStatus: TransportRequest['paymentAttemptStatus'],
+  paymentAttemptStatus?: TransportRequest['paymentAttemptStatus'],
 ) {
   if (status === 'pago_pendiente')
     return (
-      transportPaymentAttemptNotice(paymentAttemptStatus) ??
+      (paymentAttemptStatus ? transportPaymentAttemptNotice(paymentAttemptStatus) : undefined) ??
       'Estamos esperando la confirmación del pago.'
     )
   if (status === 'por_verificar')

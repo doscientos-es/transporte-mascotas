@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 
 import type { DailyRouteStop } from '@/shared/types'
 
@@ -9,6 +9,8 @@ const stops = ['Madrid', 'Valencia', 'Madrid'].map((locality, index): DailyRoute
   locality,
   place: '',
   mapUrl: '',
+  latitude: 40,
+  longitude: -3,
   minutes: 0,
   kind: 'parada',
   dwellMinutes: 15,

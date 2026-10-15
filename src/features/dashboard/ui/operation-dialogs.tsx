@@ -804,8 +804,8 @@ export function StopFormDialog({
         place: indications.trim(),
         dwellMinutes: Math.max(0, Number(dwellMinutes) || 0),
         minutes: Math.max(0, Number(minutesToNext) || 0),
-        latitude: latitude.trim() ? Number(latitude) : undefined,
-        longitude: longitude.trim() ? Number(longitude) : undefined,
+        latitude: Number(latitude),
+        longitude: Number(longitude),
       })
     } catch (reason) {
       setError(

@@ -30,6 +30,7 @@ import {
 } from '@/shared/application/transport-boxes'
 import { paginate } from '@/shared/lib/pagination'
 import type { AccompanyingDocument, DailyRoute, TransportRequest } from '@/shared/types'
+import { SelectField } from '@/shared/ui/filter-controls'
 import { PageIntro } from '@/shared/ui/page-intro'
 import { StatusBadge } from '@/shared/ui/status-badge'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
@@ -113,19 +114,19 @@ function SharedBoxSelect({
   }
   const label = `Compartir box de ${animal.name || animal.species}`
   return (
-    <select
+    <SelectField
+      ariaLabel={label}
       value={sharing?.id ?? ''}
-      onChange={(event) => void onChange(request, animal.id ?? '', event.target.value || null)}
+      onChange={(value) => void onChange(request, animal.id ?? '', value || null)}
       disabled={disabled}
-      aria-label={label}
-    >
-      <option value="">Box propio</option>
-      {others.map((other) => (
-        <option value={other.id} key={other.id}>
-          Comparte con {other.name || other.species}
-        </option>
-      ))}
-    </select>
+      options={[
+        { id: '', label: 'Box propio' },
+        ...others.map((other) => ({
+          id: other.id ?? '',
+          label: `Comparte con ${other.name || other.species}`,
+        })),
+      ]}
+    />
   )
 }
 
@@ -369,28 +370,24 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                                 {transportBoxCategoryLabel(minimumCategory)}
                               </span>
                               {animal.id && (
-                                <select
-                                  value={animal.assignedBoxCategory ?? animal.requestedBoxCategory}
-                                  onChange={(event) =>
-                                    void changeAnimalBox(
-                                      request,
-                                      animal.id ?? '',
-                                      event.target.value,
-                                    )
+                                <SelectField
+                                  ariaLabel={`Box de ${animal.name || animal.species}`}
+                                  value={
+                                    animal.assignedBoxCategory ?? animal.requestedBoxCategory ?? ''
+                                  }
+                                  onChange={(value) =>
+                                    void changeAnimalBox(request, animal.id ?? '', value)
                                   }
                                   disabled={Boolean(busy)}
-                                  aria-label={`Box de ${animal.name || animal.species}`}
-                                >
-                                  {transportBoxOptions(
+                                  options={transportBoxOptions(
                                     minimumCategory,
                                     animal.weightKg,
                                     boxCatalog,
-                                  ).map((category) => (
-                                    <option value={category} key={category}>
-                                      {transportBoxCategoryLabel(category)}
-                                    </option>
-                                  ))}
-                                </select>
+                                  ).map((category) => ({
+                                    id: category,
+                                    label: transportBoxCategoryLabel(category),
+                                  }))}
+                                />
                               )}
                               <SharedBoxSelect
                                 request={request}
@@ -426,35 +423,41 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                       </span>
                     )}
                   </div>
-                  <div className="mb-3 grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&_select]:min-h-10 [&>label]:grid [&>label]:gap-1.5 [&>label]:text-xs [&>label]:font-bold [&>label]:text-[#454545]">
-                    <label>
-                      Ruta diaria
-                      <select
+                  <div className="mb-3 grid gap-3 sm:grid-cols-2 [&_input]:min-h-10 [&>div]:grid [&>div]:gap-1.5 [&>div]:text-xs [&>div]:font-bold [&>div]:text-[#454545]">
+                    <div>
+                      <span aria-hidden="true">Ruta diaria</span>
+                      <SelectField
+                        ariaLabel="Ruta diaria"
                         value={assignment.routeId}
-                        onChange={(event) =>
+                        onChange={(value) =>
                           update(request.id, {
-                            routeId: event.target.value,
+                            routeId: value,
                             pickupStopId: '',
                             deliveryStopId: '',
                           })
                         }
                         disabled={Boolean(busy)}
-                      >
-                        <option value="">Selecciona una ruta</option>
-                        {availableRoutes.map((item) => (
-                          <option value={item.id} key={item.id}>
-                            {formatDate(item.date)} ·{' '}
-                            {item.direction === 'inversa' ? 'sentido inverso' : 'sentido habitual'}
-                          </option>
-                        ))}
-                        {!availableRoutes.length && (
-                          <option value="" disabled>
-                            No hay rutas activas para ese día
-                          </option>
-                        )}
-                      </select>
-                    </label>
-                    <label>
+                        options={[
+                          { id: '', label: 'Selecciona una ruta' },
+                          ...availableRoutes.map((item) => ({
+                            id: item.id,
+                            label: `${formatDate(item.date)} · ${
+                              item.direction === 'inversa' ? 'sentido inverso' : 'sentido habitual'
+                            }`,
+                          })),
+                          ...(availableRoutes.length
+                            ? []
+                            : [
+                                {
+                                  id: '__sin-rutas',
+                                  label: 'No hay rutas activas para ese día',
+                                  disabled: true,
+                                },
+                              ]),
+                        ]}
+                      />
+                    </div>
+                    <label className="grid gap-1.5 text-xs font-bold text-[#454545]">
                       Nota para el cliente
                       <input
                         value={assignment.note}
@@ -463,45 +466,36 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                         placeholder="Opcional"
                       />
                     </label>
-                    <label>
-                      Parada de recogida
-                      <select
+                    <div>
+                      <span aria-hidden="true">Parada de recogida</span>
+                      <SelectField
+                        ariaLabel="Parada de recogida"
                         value={assignment.pickupStopId}
-                        onChange={(event) =>
-                          update(request.id, {
-                            pickupStopId: event.target.value,
-                            deliveryStopId: '',
-                          })
+                        onChange={(value) =>
+                          update(request.id, { pickupStopId: value, deliveryStopId: '' })
                         }
                         disabled={!stops.length || Boolean(busy)}
-                      >
-                        <option value="">Selecciona una parada</option>
-                        {pickupStops.map((stop) => (
-                          <option value={stop.id} key={stop.id}>
-                            {stop.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Parada de entrega
-                      <select
+                        options={[
+                          { id: '', label: 'Selecciona una parada' },
+                          ...pickupStops.map((stop) => ({ id: stop.id, label: stop.label })),
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <span aria-hidden="true">Parada de entrega</span>
+                      <SelectField
+                        ariaLabel="Parada de entrega"
                         value={assignment.deliveryStopId}
-                        onChange={(event) =>
-                          update(request.id, { deliveryStopId: event.target.value })
-                        }
+                        onChange={(value) => update(request.id, { deliveryStopId: value })}
                         disabled={
                           !assignment.pickupStopId || !deliveryStops.length || Boolean(busy)
                         }
-                      >
-                        <option value="">Selecciona una parada</option>
-                        {deliveryStops.map((stop) => (
-                          <option value={stop.id} key={stop.id}>
-                            {stop.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                        options={[
+                          { id: '', label: 'Selecciona una parada' },
+                          ...deliveryStops.map((stop) => ({ id: stop.id, label: stop.label })),
+                        ]}
+                      />
+                    </div>
                   </div>
                   <div className="row-actions">
                     <Button
@@ -677,7 +671,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                           {request.animals.map((animal) => {
                             const minimumCategory = animal.minimumBoxCategory ?? 'pequeno'
                             return (
-                              <label
+                              <div
                                 className="grid gap-0.5 text-xs"
                                 key={animal.id ?? animal.ordinal}
                               >
@@ -685,30 +679,27 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                                   <PawPrint size={13} /> {animal.name || animal.species}
                                 </span>
                                 {animal.id && (
-                                  <select
+                                  <SelectField
+                                    ariaLabel={`Box de ${animal.name || animal.species}`}
                                     value={
-                                      animal.assignedBoxCategory ?? animal.requestedBoxCategory
+                                      animal.assignedBoxCategory ??
+                                      animal.requestedBoxCategory ??
+                                      ''
                                     }
-                                    onChange={(event) =>
-                                      void changeAnimalBox(
-                                        request,
-                                        animal.id ?? '',
-                                        event.target.value,
-                                      )
+                                    onChange={(value) =>
+                                      void changeAnimalBox(request, animal.id ?? '', value)
                                     }
                                     disabled={Boolean(busy)}
-                                    aria-label={`Box de ${animal.name || animal.species}`}
-                                  >
-                                    {transportBoxOptions(
+                                    className="min-h-9 bg-white"
+                                    options={transportBoxOptions(
                                       minimumCategory,
                                       animal.weightKg,
                                       boxCatalog,
-                                    ).map((category) => (
-                                      <option value={category} key={category}>
-                                        {transportBoxCategoryLabel(category)}
-                                      </option>
-                                    ))}
-                                  </select>
+                                    ).map((category) => ({
+                                      id: category,
+                                      label: transportBoxCategoryLabel(category),
+                                    }))}
+                                  />
                                 )}
                                 <SharedBoxSelect
                                   request={request}
@@ -716,7 +707,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                                   disabled={Boolean(busy)}
                                   onChange={changeSharedBox}
                                 />
-                              </label>
+                              </div>
                             )
                           })}
                         </div>
@@ -748,7 +739,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           if (!open && !busy) setRejecting(null)
         }}
       >
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="w-[calc(100%-2.5rem)]! max-w-115!">
           <AlertDialogHeader className="gap-1">
             <AlertDialogTitle>Rechazar solicitud</AlertDialogTitle>
             <AlertDialogDescription>
@@ -775,7 +766,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           if (!open && !busy) setMarkingPaid(null)
         }}
       >
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="w-[calc(100%-2.5rem)]! max-w-115!">
           <AlertDialogHeader className="gap-1">
             <AlertDialogTitle>Marcar como pagada</AlertDialogTitle>
             <AlertDialogDescription>
@@ -784,20 +775,16 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
                 : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <label className="grid gap-1.5 text-xs font-bold text-[#454545]">
-            Método de cobro
-            <select
+          <div className="grid gap-1.5 text-xs font-bold text-[#454545]">
+            <span aria-hidden="true">Método de cobro</span>
+            <SelectField
+              ariaLabel="Método de cobro"
               value={paymentMethod}
-              onChange={(event) => setPaymentMethod(event.target.value)}
+              onChange={setPaymentMethod}
               disabled={Boolean(busy)}
-            >
-              {manualPaymentMethods.map((method) => (
-                <option value={method} key={method}>
-                  {method}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={manualPaymentMethods.map((method) => ({ id: method, label: method }))}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={Boolean(busy)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction

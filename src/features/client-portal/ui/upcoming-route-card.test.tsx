@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -18,6 +18,8 @@ const route: UpcomingRoute = {
     locality,
     place: locality,
     mapUrl: '',
+    latitude: 40,
+    longitude: -3,
     minutes: 0,
   })),
 }
@@ -34,7 +36,8 @@ describe('UpcomingRouteCard', () => {
 
     expect(markup).toContain('aria-label="Salida el')
     expect(markup).toContain('Norte')
-    expect(markup).toContain('Pozoblanco · Madrid · Burgos')
+    expect(markup).toContain('Pozoblanco')
+    expect(markup).toContain('Burgos')
     expect(markup).toContain('3 paradas')
     expect(markup).toContain('Ver recorrido')
     expect(markup).toContain('Solicitar transporte')

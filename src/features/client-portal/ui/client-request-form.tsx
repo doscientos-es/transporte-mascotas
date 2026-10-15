@@ -33,6 +33,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import {
   minimumTransportBoxCategory,
+  oversizedTransportBoxMeasure,
+  oversizedTransportBoxMessage,
   requestedTransportBoxCategory,
   transportAnimalsTotalCents,
   transportBoxCategoryLabel,
@@ -411,6 +413,40 @@ export function ClientRequestForm({
   const travelDate = values.desiredDate || today
   const [originSuggestion, setOriginSuggestion] = useState('')
   const originSuggestionRequest = useRef(0)
+  const errorRef = useRef<HTMLParagraphElement>(null)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null)
+  const [errorFieldId, setErrorFieldId] = useState('')
+  const [errorAttempt, setErrorAttempt] = useState(0)
+  const mounted = useRef(false)
+  // Al fallar la validación, el foco va al campo con error; si no hay campo, al mensaje.
+  useEffect(() => {
+    if (!errorAttempt) return
+    const field = errorFieldId ? document.getElementById(errorFieldId) : null
+    if (field) field.focus()
+    else errorRef.current?.focus()
+    // Solo se reacciona a un nuevo intento fallido, no a cambios posteriores del campo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorAttempt])
+  // Al cambiar de paso, el foco pasa al título del paso nuevo para anunciarlo.
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    stepHeadingRef.current?.focus()
+  }, [step])
+
+  function fail(message: string, fieldId = '') {
+    setError(message)
+    setErrorFieldId(fieldId)
+    setErrorAttempt((current) => current + 1)
+  }
+
+  function fieldA11y(id: string) {
+    return error && errorFieldId === id
+      ? ({ 'aria-invalid': true, 'aria-describedby': 'request-form-error' } as const)
+      : {}
+  }
   const suggestedCities = useRef({ senderCity: '', recipientCity: '' })
 
   useEffect(() => {
@@ -484,71 +520,112 @@ export function ClientRequestForm({
     return routeSelectionError(routes, values)
   }
 
-  function validateCurrentStep() {
+  // Devuelve el mensaje de error y, si se conoce, el id del campo que falla.
+  function validateCurrentStep(): { message: string; fieldId?: string } {
     if (step === 1) {
-      const requiredPartyFields: Array<[string, string]> = [
-        ['nombre de quien envía', values.contactName],
-        ['DNI/NIE de quien envía', values.senderNif],
-        ['teléfono de quien envía', values.contactPhone],
-        ['correo de quien envía', values.contactEmail],
-        ['dirección de quien envía', values.senderAddress],
-        ['código postal de quien envía', values.senderPostalCode],
-        ['localidad de quien envía', values.senderCity],
-        ['provincia de quien envía', values.senderProvince],
-        ['nombre de quien recibe', values.recipientName],
-        ['DNI/NIE de quien recibe', values.recipientNif],
-        ['teléfono de quien recibe', values.recipientPhone],
-        ['correo de quien recibe', values.recipientEmail],
-        ['dirección de quien recibe', values.recipientAddress],
-        ['código postal de quien recibe', values.recipientPostalCode],
-        ['localidad de quien recibe', values.recipientCity],
-        ['provincia de quien recibe', values.recipientProvince],
+      const requiredPartyFields: Array<[string, string, string]> = [
+        ['nombre de quien envía', values.contactName, 'request-contact-name'],
+        ['DNI/NIE de quien envía', values.senderNif, 'request-sender-nif'],
+        ['teléfono de quien envía', values.contactPhone, 'request-contact-phone'],
+        ['correo de quien envía', values.contactEmail, 'request-contact-email'],
+        ['dirección de quien envía', values.senderAddress, 'request-sender-address'],
+        ['código postal de quien envía', values.senderPostalCode, 'request-sender-postal-code'],
+        ['localidad de quien envía', values.senderCity, 'request-sender-city'],
+        ['provincia de quien envía', values.senderProvince, 'request-sender-province'],
+        ['nombre de quien recibe', values.recipientName, 'request-recipient-name'],
+        ['DNI/NIE de quien recibe', values.recipientNif, 'request-recipient-nif'],
+        ['teléfono de quien recibe', values.recipientPhone, 'request-recipient-phone'],
+        ['correo de quien recibe', values.recipientEmail, 'request-recipient-email'],
+        ['dirección de quien recibe', values.recipientAddress, 'request-recipient-address'],
+        [
+          'código postal de quien recibe',
+          values.recipientPostalCode,
+          'request-recipient-postal-code',
+        ],
+        ['localidad de quien recibe', values.recipientCity, 'request-recipient-city'],
+        ['provincia de quien recibe', values.recipientProvince, 'request-recipient-province'],
       ]
       const missingPartyField = requiredPartyFields.find(([, value]) => !value.trim())
-      if (missingPartyField) return `Completa el ${missingPartyField[0]}.`
+      if (missingPartyField)
+        return { message: `Completa el ${missingPartyField[0]}.`, fieldId: missingPartyField[2] }
       if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
-        return 'Escribe un correo electrónico válido.'
+        return {
+          message: 'Escribe un correo electrónico válido.',
+          fieldId: 'request-contact-email',
+        }
       if (!/^\S+@\S+\.\S+$/.test(values.recipientEmail))
-        return 'Escribe un correo válido para quien recibe.'
-      const requiredFiscalFields: Array<[string, string]> =
+        return {
+          message: 'Escribe un correo válido para quien recibe.',
+          fieldId: 'request-recipient-email',
+        }
+      const requiredFiscalFields: Array<[string, string, string]> =
         values.billingPayer === 'manual'
           ? [
-              ['nombre o razón social', values.billingClient.fullName],
-              ['NIF/CIF', values.billingClient.nif],
-              ['dirección fiscal', values.billingClient.address],
-              ['código postal', values.billingClient.postalCode],
-              ['ciudad', values.billingClient.city],
-              ['correo del pagador', values.billingClient.email],
-              ['teléfono del pagador', values.billingClient.phone],
+              ['nombre o razón social', values.billingClient.fullName, 'request-billing-name'],
+              ['NIF/CIF', values.billingClient.nif, 'request-billing-nif'],
+              ['dirección fiscal', values.billingClient.address, 'request-billing-address'],
+              ['código postal', values.billingClient.postalCode, 'request-billing-postal-code'],
+              ['ciudad', values.billingClient.city, 'request-billing-city'],
+              ['correo del pagador', values.billingClient.email, 'request-billing-email'],
+              ['teléfono del pagador', values.billingClient.phone, 'request-billing-phone'],
             ]
           : []
       const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
-      if (missingFiscalField) return `Completa los datos fiscales: ${missingFiscalField[0]}.`
+      if (missingFiscalField)
+        return {
+          message: `Completa los datos fiscales: ${missingFiscalField[0]}.`,
+          fieldId: missingFiscalField[2],
+        }
       if (values.billingPayer === 'manual' && !/^\S+@\S+\.\S+$/.test(values.billingClient.email))
-        return 'Escribe un correo válido para el pagador.'
+        return {
+          message: 'Escribe un correo válido para el pagador.',
+          fieldId: 'request-billing-email',
+        }
     }
-    if (step === 0) return validateRoute()
+    if (step === 0) return { message: validateRoute() }
     if (step === 2) {
-      const incompleteAnimal = values.animals.some(
-        (animal) =>
-          !animal.name.trim() ||
-          !animal.species.trim() ||
-          !animal.breed.trim() ||
-          !animal.birthDate ||
-          !hasMeasurements(animal),
-      )
-      if (incompleteAnimal)
-        return 'Completa el nombre, especie, raza, fecha de nacimiento, peso y medidas de cada mascota.'
+      for (const animal of values.animals) {
+        const missing = !animal.name.trim()
+          ? 'name'
+          : !animal.species.trim()
+            ? 'species'
+            : !animal.breed.trim()
+              ? 'breed'
+              : !animal.birthDate
+                ? 'birth-date'
+                : !(animal.weightKg > 0)
+                  ? 'weight'
+                  : !(animal.lengthCm > 0)
+                    ? 'length'
+                    : !(animal.heightCm > 0)
+                      ? 'height'
+                      : !(animal.widthCm > 0)
+                        ? 'width'
+                        : ''
+        if (missing)
+          return {
+            message:
+              'Completa el nombre, especie, raza, fecha de nacimiento, peso y medidas de cada mascota.',
+            fieldId: `animal-${animal.ordinal}-${missing}`,
+          }
+        const oversized = oversizedTransportBoxMeasure(animal, boxCatalog)
+        if (oversized)
+          return {
+            message: oversizedTransportBoxMessage(boxCatalog),
+            fieldId: `animal-${animal.ordinal}-${oversized}`,
+          }
+      }
       if (!values.accompanyingDocuments.length)
-        return 'Selecciona al menos un documento que aportarás para el viaje.'
+        return { message: 'Selecciona al menos un documento que aportarás para el viaje.' }
     }
-    return ''
+    return { message: '' }
   }
 
   function next() {
-    const message = validateCurrentStep()
-    if (message) return setError(message)
+    const { message, fieldId } = validateCurrentStep()
+    if (message) return fail(message, fieldId)
     setError('')
+    setErrorFieldId('')
     // Al salir de Trayecto, la localidad de recogida y la de entrega sirven de punto
     // de partida para quien envía y quien recibe (solo si siguen vacías).
     if (step === 0) {
@@ -563,8 +640,9 @@ export function ClientRequestForm({
     event.preventDefault()
     // Pulsar Intro en un paso intermedio avanza de paso; solo el último envía la solicitud.
     if (step < steps.length - 1) return next()
-    const message = validateCurrentStep() || validateRoute()
-    if (message) return setError(message)
+    const stepResult = validateCurrentStep()
+    const message = stepResult.message || validateRoute()
+    if (message) return fail(message, stepResult.message ? stepResult.fieldId : undefined)
     setSending(true)
     setError('')
     try {
@@ -718,12 +796,7 @@ export function ClientRequestForm({
       <form className="request-form" onSubmit={(event) => void submit(event)} noValidate>
         <div className="request-form-heading">
           <div>
-            <div className="request-form-kicker">
-              {adminMode ? 'Alta interna · sin cobro' : 'Nueva solicitud'}
-            </div>
-            <h2>
-              {adminMode ? 'Crear transporte manualmente' : 'Organiza el viaje en cuatro pasos'}
-            </h2>
+            <h2>{adminMode ? 'Crear transporte manualmente' : 'Solicitar transporte'}</h2>
             <p>
               {adminMode
                 ? 'Completa los datos del cliente como si lo hiciera desde el portal. La solicitud quedará lista para revisar, sin pasar por la pasarela de pago.'
@@ -742,6 +815,7 @@ export function ClientRequestForm({
             <li
               key={label}
               className={index === step ? 'is-current' : index < step ? 'is-complete' : ''}
+              aria-current={index === step ? 'step' : undefined}
             >
               <span>{index < step ? <Check size={13} /> : index + 1}</span>
               {label}
@@ -750,26 +824,19 @@ export function ClientRequestForm({
         </ol>
 
         {step === 1 && (
-          <section className="request-step-panel border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
-            <div className="request-step-hero mb-5 flex items-start gap-3">
-              <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
-                <ShieldCheck size={17} />
-              </span>
-              <div>
-                <span className="request-step-eyebrow">Paso 1 de 4</span>
-                <h3 className="text-foreground text-base font-semibold">
-                  {adminMode ? 'Datos del cliente' : 'Datos de contacto'}
-                </h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {adminMode
-                    ? 'Los usaremos para que operaciones pueda contactar con la persona responsable del transporte.'
-                    : 'Los usaremos para gestionar la reserva y resolver cualquier incidencia.'}
-                </p>
-              </div>
+          <section className="request-step-panel">
+            <div className="request-step-hero">
+              <h3 ref={stepHeadingRef} tabIndex={-1}>
+                {adminMode ? 'Datos del cliente' : 'Datos de contacto'}
+              </h3>
+              <p>
+                {adminMode
+                  ? 'Los usaremos para que operaciones pueda contactar con la persona responsable del transporte.'
+                  : 'Los usaremos para gestionar la reserva y resolver cualquier incidencia.'}
+              </p>
             </div>
             <div className="request-form-block">
               <div className="request-form-block-heading">
-                <span className="request-form-block-icon">01</span>
                 <div>
                   <h4>Quién envía la mascota</h4>
                   <p>La confirmación y cualquier incidencia llegarán a estos datos.</p>
@@ -780,6 +847,8 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-contact-name">Nombre y apellidos</FieldLabel>
                   <Input
                     id="request-contact-name"
+                    {...fieldA11y('request-contact-name')}
+                    autoCapitalize="words"
                     value={values.contactName}
                     onChange={(event) => updateContact('contactName', event.target.value)}
                     autoComplete="name"
@@ -792,6 +861,9 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-sender-nif">DNI/NIE</FieldLabel>
                   <Input
                     id="request-sender-nif"
+                    {...fieldA11y('request-sender-nif')}
+                    autoCapitalize="characters"
+                    spellCheck={false}
                     value={values.senderNif}
                     onChange={(event) => updateContact('senderNif', event.target.value)}
                     placeholder="12345678Z"
@@ -803,6 +875,7 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-contact-phone">Teléfono de contacto</FieldLabel>
                   <Input
                     id="request-contact-phone"
+                    {...fieldA11y('request-contact-phone')}
                     type="tel"
                     value={values.contactPhone}
                     onChange={(event) => updateContact('contactPhone', event.target.value)}
@@ -817,7 +890,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-contact-email">Correo electrónico</FieldLabel>
                   <Input
                     id="request-contact-email"
+                    {...fieldA11y('request-contact-email')}
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     value={values.contactEmail}
                     onChange={(event) => updateContact('contactEmail', event.target.value)}
                     autoComplete="email"
@@ -835,6 +912,7 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-sender-address">Dirección completa</FieldLabel>
                   <Input
                     id="request-sender-address"
+                    {...fieldA11y('request-sender-address')}
                     value={values.senderAddress}
                     onChange={(event) => updateContact('senderAddress', event.target.value)}
                     autoComplete="street-address"
@@ -847,9 +925,12 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-sender-postal-code">Código postal</FieldLabel>
                   <Input
                     id="request-sender-postal-code"
+                    {...fieldA11y('request-sender-postal-code')}
                     value={values.senderPostalCode}
                     onChange={(event) => updateContact('senderPostalCode', event.target.value)}
                     autoComplete="postal-code"
+                    inputMode="numeric"
+                    placeholder="14001"
                     className="min-h-11"
                     required
                   />
@@ -858,9 +939,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-sender-city">Localidad</FieldLabel>
                   <Input
                     id="request-sender-city"
+                    {...fieldA11y('request-sender-city')}
                     value={values.senderCity}
                     onChange={(event) => updateContact('senderCity', event.target.value)}
                     autoComplete="address-level2"
+                    placeholder="Por ejemplo, Córdoba"
                     className="min-h-11"
                     required
                   />
@@ -869,9 +952,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-sender-province">Provincia</FieldLabel>
                   <Input
                     id="request-sender-province"
+                    {...fieldA11y('request-sender-province')}
                     value={values.senderProvince}
                     onChange={(event) => updateContact('senderProvince', event.target.value)}
                     autoComplete="address-level1"
+                    placeholder="Por ejemplo, Córdoba"
                     className="min-h-11"
                     required
                   />
@@ -880,7 +965,6 @@ export function ClientRequestForm({
             </div>
             <div className="request-form-block">
               <div className="request-form-block-heading">
-                <span className="request-form-block-icon">02</span>
                 <div>
                   <h4>Quién recibe la mascota</h4>
                   <p>Persona que recogerá la mascota en destino.</p>
@@ -891,6 +975,8 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-name">Nombre y apellidos</FieldLabel>
                   <Input
                     id="request-recipient-name"
+                    {...fieldA11y('request-recipient-name')}
+                    autoCapitalize="words"
                     value={values.recipientName}
                     onChange={(event) => updateContact('recipientName', event.target.value)}
                     placeholder="Nombre completo"
@@ -902,6 +988,9 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-nif">DNI/NIE</FieldLabel>
                   <Input
                     id="request-recipient-nif"
+                    {...fieldA11y('request-recipient-nif')}
+                    autoCapitalize="characters"
+                    spellCheck={false}
                     value={values.recipientNif}
                     onChange={(event) => updateContact('recipientNif', event.target.value)}
                     placeholder="12345678Z"
@@ -913,6 +1002,7 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-phone">Teléfono</FieldLabel>
                   <Input
                     id="request-recipient-phone"
+                    {...fieldA11y('request-recipient-phone')}
                     type="tel"
                     value={values.recipientPhone}
                     onChange={(event) => updateContact('recipientPhone', event.target.value)}
@@ -926,7 +1016,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-email">Correo electrónico</FieldLabel>
                   <Input
                     id="request-recipient-email"
+                    {...fieldA11y('request-recipient-email')}
                     type="email"
+                    inputMode="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     value={values.recipientEmail}
                     onChange={(event) => updateContact('recipientEmail', event.target.value)}
                     autoComplete="email"
@@ -939,6 +1033,7 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-address">Dirección completa</FieldLabel>
                   <Input
                     id="request-recipient-address"
+                    {...fieldA11y('request-recipient-address')}
                     value={values.recipientAddress}
                     onChange={(event) => updateContact('recipientAddress', event.target.value)}
                     autoComplete="street-address"
@@ -951,9 +1046,12 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-postal-code">Código postal</FieldLabel>
                   <Input
                     id="request-recipient-postal-code"
+                    {...fieldA11y('request-recipient-postal-code')}
                     value={values.recipientPostalCode}
                     onChange={(event) => updateContact('recipientPostalCode', event.target.value)}
                     autoComplete="postal-code"
+                    inputMode="numeric"
+                    placeholder="28001"
                     className="min-h-11"
                     required
                   />
@@ -962,9 +1060,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-city">Localidad</FieldLabel>
                   <Input
                     id="request-recipient-city"
+                    {...fieldA11y('request-recipient-city')}
                     value={values.recipientCity}
                     onChange={(event) => updateContact('recipientCity', event.target.value)}
                     autoComplete="address-level2"
+                    placeholder="Por ejemplo, Madrid"
                     className="min-h-11"
                     required
                   />
@@ -973,9 +1073,11 @@ export function ClientRequestForm({
                   <FieldLabel htmlFor="request-recipient-province">Provincia</FieldLabel>
                   <Input
                     id="request-recipient-province"
+                    {...fieldA11y('request-recipient-province')}
                     value={values.recipientProvince}
                     onChange={(event) => updateContact('recipientProvince', event.target.value)}
                     autoComplete="address-level1"
+                    placeholder="Por ejemplo, Madrid"
                     className="min-h-11"
                     required
                   />
@@ -984,7 +1086,6 @@ export function ClientRequestForm({
             </div>
             <div className="request-form-block request-billing-block">
               <div className="request-form-block-heading">
-                <span className="request-form-block-icon">03</span>
                 <div>
                   <h4>Datos para la factura</h4>
                   <p className="text-muted-foreground mt-1 text-sm">
@@ -1015,6 +1116,7 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-name">Nombre o razón social</FieldLabel>
                       <Input
                         id="request-billing-name"
+                        {...fieldA11y('request-billing-name')}
                         value={values.billingClient.fullName}
                         onChange={(event) => updateBillingClient('fullName', event.target.value)}
                         autoComplete="organization"
@@ -1027,6 +1129,9 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-nif">NIF/CIF</FieldLabel>
                       <Input
                         id="request-billing-nif"
+                        {...fieldA11y('request-billing-nif')}
+                        autoCapitalize="characters"
+                        spellCheck={false}
                         value={values.billingClient.nif}
                         onChange={(event) => updateBillingClient('nif', event.target.value)}
                         placeholder="NIF o CIF"
@@ -1038,6 +1143,7 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-address">Dirección fiscal</FieldLabel>
                       <Input
                         id="request-billing-address"
+                        {...fieldA11y('request-billing-address')}
                         value={values.billingClient.address}
                         onChange={(event) => updateBillingClient('address', event.target.value)}
                         autoComplete="street-address"
@@ -1050,9 +1156,12 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-postal-code">Código postal</FieldLabel>
                       <Input
                         id="request-billing-postal-code"
+                        {...fieldA11y('request-billing-postal-code')}
                         value={values.billingClient.postalCode}
                         onChange={(event) => updateBillingClient('postalCode', event.target.value)}
                         autoComplete="postal-code"
+                        inputMode="numeric"
+                        placeholder="28001"
                         className="min-h-11"
                         required
                       />
@@ -1061,9 +1170,11 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-city">Localidad</FieldLabel>
                       <Input
                         id="request-billing-city"
+                        {...fieldA11y('request-billing-city')}
                         value={values.billingClient.city}
                         onChange={(event) => updateBillingClient('city', event.target.value)}
                         autoComplete="address-level2"
+                        placeholder="Por ejemplo, Madrid"
                         className="min-h-11"
                         required
                       />
@@ -1072,10 +1183,15 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-email">Correo del pagador</FieldLabel>
                       <Input
                         id="request-billing-email"
+                        {...fieldA11y('request-billing-email')}
                         type="email"
                         value={values.billingClient.email}
                         onChange={(event) => updateBillingClient('email', event.target.value)}
                         autoComplete="email"
+                        inputMode="email"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        placeholder="facturas@empresa.com"
                         className="min-h-11"
                         required
                       />
@@ -1084,10 +1200,13 @@ export function ClientRequestForm({
                       <FieldLabel htmlFor="request-billing-phone">Teléfono del pagador</FieldLabel>
                       <Input
                         id="request-billing-phone"
+                        {...fieldA11y('request-billing-phone')}
                         type="tel"
                         value={values.billingClient.phone}
                         onChange={(event) => updateBillingClient('phone', event.target.value)}
                         autoComplete="tel"
+                        inputMode="tel"
+                        placeholder="600 000 000"
                         className="min-h-11"
                         required
                       />
@@ -1121,116 +1240,139 @@ export function ClientRequestForm({
         )}
 
         {step === 0 && (
-          <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
-                <ArrowRight size={17} />
-              </span>
-              <div>
-                <h3 className="text-foreground text-base font-semibold">
-                  Elige una salida publicada
-                </h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  La fecha y las paradas disponibles dependen de la ruta seleccionada.
-                </p>
+          <section className="request-step-panel">
+            <div className="request-step-hero">
+              <h3 ref={stepHeadingRef} tabIndex={-1}>
+                Elige una salida publicada
+              </h3>
+              <p>La fecha y las paradas disponibles dependen de la ruta seleccionada.</p>
+            </div>
+            <div className="request-form-block">
+              <div className="grid gap-4">
+                <Field>
+                  <FieldLabel>Ruta y fecha</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Ruta y fecha"
+                    value={values.dailyRouteId}
+                    onChange={selectRoute}
+                    placeholder="Selecciona una salida"
+                    options={routes.map((route) => ({
+                      id: route.id,
+                      label: `${route.templateName || 'Ruta programada'} · ${routeDaysLabel(route.serviceDate, route.endDate)} de ${route.serviceDate.slice(0, 4)} · ${route.routeDirection === 'inversa' ? 'sentido inverso' : 'sentido habitual'}`,
+                    }))}
+                  />
+                  {originSuggestion && (
+                    <output className="text-muted-foreground mt-2 block text-xs" aria-live="polite">
+                      {originSuggestion}
+                    </output>
+                  )}
+                </Field>
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field className="sm:col-span-2">
-                <FieldLabel>Ruta y fecha</FieldLabel>
-                <FormSelect
-                  ariaLabel="Ruta y fecha"
-                  value={values.dailyRouteId}
-                  onChange={selectRoute}
-                  placeholder="Selecciona una salida"
-                  options={routes.map((route) => ({
-                    id: route.id,
-                    label: `${route.templateName || 'Ruta programada'} · ${routeDaysLabel(route.serviceDate, route.endDate)} de ${route.serviceDate.slice(0, 4)} · ${route.routeDirection === 'inversa' ? 'sentido inverso' : 'sentido habitual'}`,
-                  }))}
-                />
-                {originSuggestion && (
-                  <output className="text-muted-foreground mt-2 block text-xs" aria-live="polite">
-                    {originSuggestion}
-                  </output>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel>Recogida</FieldLabel>
-                <FormSelect
-                  ariaLabel="Recogida"
-                  value={values.originStopId}
-                  onChange={(originStopId) => {
-                    const stop = routeStops.find((item) => item.id === originStopId)
-                    setValues((current) => ({
-                      ...current,
-                      origin: stop?.locality ?? '',
-                      originStopId,
-                      destination: '',
-                      destinationStopId: '',
-                    }))
-                  }}
-                  placeholder="Selecciona una parada"
-                  options={originStops.map((stop) => ({ id: stop.id, label: stop.label }))}
-                  disabled={!selectedRoute}
-                />
-                {pickupStop && <StopMapLink stop={pickupStop} />}
-                {pickupArrival && (
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    Recogida aproximada: {formatDepartureDate(pickupArrival.date)} ·{' '}
-                    {approximateArrivalPeriod(pickupArrival.time)}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel>Entrega</FieldLabel>
-                <FormSelect
-                  ariaLabel="Entrega"
-                  value={values.destinationStopId}
-                  onChange={(destinationStopId) => {
-                    const stop = routeStops.find((item) => item.id === destinationStopId)
-                    setValues((current) => ({
-                      ...current,
-                      destination: stop?.locality ?? '',
-                      destinationStopId,
-                    }))
-                  }}
-                  placeholder="Selecciona una parada"
-                  options={destinationStops.map((stop) => ({ id: stop.id, label: stop.label }))}
-                  disabled={!values.originStopId}
-                />
-                {deliveryStop && <StopMapLink stop={deliveryStop} />}
-                {deliveryArrival && (
-                  <p className="text-muted-foreground mt-2 text-xs">
-                    Entrega aproximada: {formatDepartureDate(deliveryArrival.date)} ·{' '}
-                    {approximateArrivalPeriod(deliveryArrival.time)}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel id="request-desired-date-label" htmlFor="request-desired-date">
-                  Fecha de salida
-                </FieldLabel>
-                <output
-                  id="request-desired-date"
-                  aria-labelledby="request-desired-date-label"
-                  aria-live="polite"
-                  className="bg-muted/40 text-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5"
-                >
-                  <CalendarDays className="text-accent size-5 shrink-0" aria-hidden="true" />
-                  <span className="grid gap-0.5">
-                    <strong className="text-sm font-semibold">
-                      {values.desiredDate
-                        ? formatDepartureDate(values.desiredDate)
-                        : 'Selecciona una salida'}
-                    </strong>
-                    <span className="text-muted-foreground text-xs">
-                      Franja orientativa; confirmaremos la hora exacta al cerrar la ruta.
+            <div className="request-form-block">
+              <div className="request-form-block-heading">
+                <div>
+                  <h4>Recogida y entrega</h4>
+                  <p>Elige las paradas de la ruta donde recogemos y dejamos a tu mascota.</p>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel>Recogida</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Recogida"
+                    value={values.originStopId}
+                    onChange={(originStopId) => {
+                      const stop = routeStops.find((item) => item.id === originStopId)
+                      setValues((current) => ({
+                        ...current,
+                        origin: stop?.locality ?? '',
+                        originStopId,
+                        destination: '',
+                        destinationStopId: '',
+                      }))
+                    }}
+                    placeholder="Selecciona una parada"
+                    options={originStops.map((stop) => ({ id: stop.id, label: stop.label }))}
+                    disabled={!selectedRoute}
+                  />
+                  {pickupStop && <StopMapLink stop={pickupStop} />}
+                  {pickupArrival && (
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Recogida aproximada: {formatDepartureDate(pickupArrival.date)} ·{' '}
+                      {approximateArrivalPeriod(pickupArrival.time)}
+                    </p>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel>Entrega</FieldLabel>
+                  <FormSelect
+                    ariaLabel="Entrega"
+                    value={values.destinationStopId}
+                    onChange={(destinationStopId) => {
+                      const stop = routeStops.find((item) => item.id === destinationStopId)
+                      setValues((current) => ({
+                        ...current,
+                        destination: stop?.locality ?? '',
+                        destinationStopId,
+                      }))
+                    }}
+                    placeholder="Selecciona una parada"
+                    options={destinationStops.map((stop) => ({ id: stop.id, label: stop.label }))}
+                    disabled={!values.originStopId}
+                  />
+                  {deliveryStop && <StopMapLink stop={deliveryStop} />}
+                  {deliveryArrival && (
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Entrega aproximada: {formatDepartureDate(deliveryArrival.date)} ·{' '}
+                      {approximateArrivalPeriod(deliveryArrival.time)}
+                    </p>
+                  )}
+                </Field>
+                <Field className="sm:col-span-2">
+                  <FieldLabel id="request-desired-date-label" htmlFor="request-desired-date">
+                    Fecha de salida
+                  </FieldLabel>
+                  <output
+                    id="request-desired-date"
+                    aria-labelledby="request-desired-date-label"
+                    aria-live="polite"
+                    className="bg-muted/40 text-foreground flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5"
+                  >
+                    <CalendarDays className="text-accent size-5 shrink-0" aria-hidden="true" />
+                    <span className="grid gap-0.5">
+                      <strong className="text-sm font-semibold">
+                        {values.desiredDate
+                          ? formatDepartureDate(values.desiredDate)
+                          : 'Selecciona una salida'}
+                      </strong>
+                      <span className="text-muted-foreground text-xs">
+                        Franja orientativa; confirmaremos la hora exacta al cerrar la ruta.
+                      </span>
                     </span>
-                  </span>
-                </output>
-              </Field>
-              <Field className="sm:col-span-2">
-                <FieldLabel htmlFor="request-notes">Algo que debamos tener en cuenta</FieldLabel>
+                  </output>
+                  {pickupArrival &&
+                    values.desiredDate &&
+                    pickupArrival.date !== values.desiredDate && (
+                      <p className="mt-2 text-xs font-medium text-amber-700">
+                        La salida es el {formatDepartureDate(values.desiredDate)}, pero tu recogida
+                        es el {formatDepartureDate(pickupArrival.date)}.
+                      </p>
+                    )}
+                </Field>
+              </div>
+            </div>
+            <div className="request-form-block">
+              <div className="request-form-block-heading">
+                <div>
+                  <h4>Observaciones</h4>
+                  <p>Opcional. Cuéntanos lo que debamos tener en cuenta.</p>
+                </div>
+              </div>
+              <Field>
+                <FieldLabel className="sr-only" htmlFor="request-notes">
+                  Algo que debamos tener en cuenta
+                </FieldLabel>
                 <Textarea
                   id="request-notes"
                   value={values.notes}
@@ -1244,17 +1386,12 @@ export function ClientRequestForm({
         )}
 
         {step === 2 && (
-          <section className="border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
-                <PawPrint size={17} />
-              </span>
-              <div>
-                <h3 className="text-foreground text-base font-semibold">Tu mascota</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  Con estas medidas reservamos un espacio adecuado en la furgoneta.
-                </p>
-              </div>
+          <section className="request-step-panel">
+            <div className="request-step-hero">
+              <h3 ref={stepHeadingRef} tabIndex={-1}>
+                Tu mascota
+              </h3>
+              <p>Con estas medidas reservamos un espacio adecuado en la furgoneta.</p>
             </div>
             {values.animals.map((animal, index) => (
               <div
@@ -1287,6 +1424,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-name`}>Nombre</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-name`}
+                      {...fieldA11y(`animal-${animal.ordinal}-name`)}
                       value={animal.name}
                       onChange={(event) => updateAnimal(index, { name: event.target.value })}
                       placeholder="Por ejemplo, Luna"
@@ -1298,6 +1436,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-species`}>Especie</FieldLabel>
                     <select
                       id={`animal-${animal.ordinal}-species`}
+                      {...fieldA11y(`animal-${animal.ordinal}-species`)}
                       value={animal.species}
                       onChange={(event) => updateAnimal(index, { species: event.target.value })}
                       className="border-input bg-background text-foreground focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm shadow-sm outline-none focus-visible:ring-2"
@@ -1316,6 +1455,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-breed`}>Raza</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-breed`}
+                      {...fieldA11y(`animal-${animal.ordinal}-breed`)}
                       value={animal.breed}
                       onChange={(event) => updateAnimal(index, { breed: event.target.value })}
                       placeholder="Mestiza, Labrador…"
@@ -1329,6 +1469,7 @@ export function ClientRequestForm({
                     </FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-birth-date`}
+                      {...fieldA11y(`animal-${animal.ordinal}-birth-date`)}
                       type="date"
                       max={today}
                       value={animal.birthDate}
@@ -1352,6 +1493,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-weight`}>Peso (kg)</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-weight`}
+                      {...fieldA11y(`animal-${animal.ordinal}-weight`)}
                       type="number"
                       min="0.1"
                       step="0.1"
@@ -1359,6 +1501,8 @@ export function ClientRequestForm({
                       onChange={(event) =>
                         updateAnimal(index, { weightKg: Number(event.target.value) })
                       }
+                      inputMode="decimal"
+                      placeholder="Por ejemplo, 8,5"
                       className="min-h-11"
                       required
                     />
@@ -1367,6 +1511,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-length`}>Largo (cm)</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-length`}
+                      {...fieldA11y(`animal-${animal.ordinal}-length`)}
                       type="number"
                       min="1"
                       step="1"
@@ -1374,6 +1519,8 @@ export function ClientRequestForm({
                       onChange={(event) =>
                         updateAnimal(index, { lengthCm: Number(event.target.value) })
                       }
+                      inputMode="numeric"
+                      placeholder="Por ejemplo, 60"
                       className="min-h-11"
                       required
                     />
@@ -1382,6 +1529,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-height`}>Alto (cm)</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-height`}
+                      {...fieldA11y(`animal-${animal.ordinal}-height`)}
                       type="number"
                       min="1"
                       step="1"
@@ -1389,6 +1537,8 @@ export function ClientRequestForm({
                       onChange={(event) =>
                         updateAnimal(index, { heightCm: Number(event.target.value) })
                       }
+                      inputMode="numeric"
+                      placeholder="Por ejemplo, 45"
                       className="min-h-11"
                       required
                     />
@@ -1397,6 +1547,7 @@ export function ClientRequestForm({
                     <FieldLabel htmlFor={`animal-${animal.ordinal}-width`}>Ancho (cm)</FieldLabel>
                     <Input
                       id={`animal-${animal.ordinal}-width`}
+                      {...fieldA11y(`animal-${animal.ordinal}-width`)}
                       type="number"
                       min="1"
                       step="1"
@@ -1404,6 +1555,8 @@ export function ClientRequestForm({
                       onChange={(event) =>
                         updateAnimal(index, { widthCm: Number(event.target.value) })
                       }
+                      inputMode="numeric"
+                      placeholder="Por ejemplo, 35"
                       className="min-h-11"
                       required
                     />
@@ -1419,6 +1572,25 @@ export function ClientRequestForm({
                   )
                   return (
                     <div className="mt-3 grid gap-3">
+                      {measured && oversizedTransportBoxMeasure(animal, boxCatalog) && (
+                        <p
+                          className="flex items-start gap-1.5 rounded-md border border-red-300 bg-red-50 px-2.5 py-2 text-xs leading-5 text-red-900"
+                          role="alert"
+                        >
+                          <TriangleAlert size={14} className="mt-0.5 shrink-0" />
+                          <span>
+                            {oversizedTransportBoxMessage(boxCatalog)}{' '}
+                            <a
+                              className="font-bold underline"
+                              href={`https://wa.me/34658604933?text=${encodeURIComponent('Hola Stella, mi mascota supera las medidas del box más grande y quiero consultar el transporte.')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Escribir a Stella por WhatsApp
+                            </a>
+                          </span>
+                        </p>
+                      )}
                       <p className="text-muted-foreground text-xs">
                         {measured ? (
                           <>
@@ -1495,21 +1667,16 @@ export function ClientRequestForm({
         )}
 
         {step === 3 && (
-          <section className="request-review border-border bg-muted/20 rounded-xl border p-4 shadow-sm sm:p-5">
-            <div className="mb-5 flex items-start gap-3">
-              <span className="bg-accent/10 text-accent flex size-9 shrink-0 items-center justify-center rounded-full">
-                {adminMode ? <ClipboardCheck size={17} /> : <CreditCard size={17} />}
-              </span>
-              <div>
-                <h3 className="text-foreground text-base font-semibold">
-                  {adminMode ? 'Revisa y registra' : 'Revisa y confirma'}
-                </h3>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {adminMode
-                    ? 'Comprueba que todo está correcto antes de crear la solicitud interna.'
-                    : 'Tu solicitud se enviará a operaciones después de registrar el pago.'}
-                </p>
-              </div>
+          <section className="request-step-panel request-review">
+            <div className="request-step-hero">
+              <h3 ref={stepHeadingRef} tabIndex={-1}>
+                {adminMode ? 'Revisa y registra' : 'Revisa y confirma'}
+              </h3>
+              <p>
+                {adminMode
+                  ? 'Comprueba que todo está correcto antes de crear la solicitud interna.'
+                  : 'Tu solicitud se enviará a operaciones después de registrar el pago.'}
+              </p>
             </div>
             <div className="request-review-grid">
               <div>
@@ -1596,7 +1763,13 @@ export function ClientRequestForm({
         )}
 
         {error && (
-          <p className="form-error" role="alert">
+          <p
+            id="request-form-error"
+            className="form-error"
+            role="alert"
+            ref={errorRef}
+            tabIndex={-1}
+          >
             {error}
           </p>
         )}
@@ -1616,11 +1789,11 @@ export function ClientRequestForm({
             <span />
           )}
           {step < steps.length - 1 ? (
-            <Button type="button" onClick={next}>
+            <Button key="continue" type="button" onClick={next}>
               Continuar <ArrowRight size={16} />
             </Button>
           ) : (
-            <Button type="submit" disabled={sending}>
+            <Button key="submit" type="submit" disabled={sending}>
               {adminMode ? <ClipboardCheck size={16} /> : <CreditCard size={16} />}{' '}
               {sending
                 ? adminMode

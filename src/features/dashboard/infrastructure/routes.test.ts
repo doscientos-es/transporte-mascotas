@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+﻿import { describe, expect, it, vi } from 'vitest'
 
 import type { DailyRouteStop, RouteTemplate } from '@/shared/types'
 
@@ -53,6 +53,8 @@ const stop = (id: string): DailyRouteStop => ({
   locality: id,
   place: '',
   mapUrl: '',
+  latitude: 40,
+  longitude: -3,
   minutes: 0,
   kind: 'parada',
   dwellMinutes: 15,
@@ -149,9 +151,33 @@ describe('duplicateRouteTemplate', () => {
       name: 'Levante',
       color: '#123456',
       stops: [
-        { id: 'stop-a', locality: 'Alicante', place: '', mapUrl: '', minutes: 10 },
-        { id: 'stop-b', locality: 'Valencia', place: '', mapUrl: '', minutes: 20 },
-        { id: 'stop-c', locality: 'Barcelona', place: '', mapUrl: '', minutes: 0 },
+        {
+          id: 'stop-a',
+          locality: 'Alicante',
+          place: '',
+          mapUrl: '',
+          latitude: 40,
+          longitude: -3,
+          minutes: 10,
+        },
+        {
+          id: 'stop-b',
+          locality: 'Valencia',
+          place: '',
+          mapUrl: '',
+          latitude: 40,
+          longitude: -3,
+          minutes: 20,
+        },
+        {
+          id: 'stop-c',
+          locality: 'Barcelona',
+          place: '',
+          mapUrl: '',
+          latitude: 40,
+          longitude: -3,
+          minutes: 0,
+        },
       ],
     }
 

@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { TransportRequest } from '@/shared/types'
+import type { TransportRequest, UpcomingRoute } from '@/shared/types'
 
 import { ClientTransportCard } from './client-transport-card'
 
@@ -37,7 +37,7 @@ const request: TransportRequest = {
   },
   origin: 'Cádiz-Jerez de la Frontera',
   destination: 'Córdoba',
-  desiredDate: '2026-09-23',
+  desiredDate: '2999-09-23',
   dailyRouteId: 'route-1',
   originLatitude: 36.7,
   originLongitude: -6.1,
@@ -97,6 +97,38 @@ describe('ClientTransportCard', () => {
     expect(markup).toContain('Entrega: Córdoba')
     expect(markup).toContain('Descargar factura')
     expect(markup).toContain('Descargar carta de porte')
+  })
+
+  it('shows the real pickup day and time at the origin stop, not the route start', () => {
+    const markup = renderToStaticMarkup(
+      createElement(ClientTransportCard, {
+        request: { ...request, desiredDate: '2999-09-23' },
+        route: {
+          serviceDate: '2999-09-23',
+          startTime: '23:00',
+          stops: [
+            { id: 's1', locality: 'Sevilla', minutes: 90, dwellMinutes: 0 },
+            { id: 's2', locality: 'Cádiz-Jerez de la Frontera', minutes: 60 },
+          ] as UpcomingRoute['stops'],
+        },
+        formatCurrency: () => '120,00 €',
+        payingRequestId: null,
+        downloadingInvoiceId: null,
+        downloadingLetterId: null,
+        onContinuePayment: vi.fn(),
+        onDownloadInvoice: vi.fn(),
+        onDownloadCarriageLetter: vi.fn(),
+      }),
+    )
+
+    expect(markup).toContain('dateTime="2999-09-24T00:30"')
+    expect(markup).toContain('00:30 h')
+  })
+
+  it('shows a confirmed request as delivered once its route date has passed', () => {
+    const markup = renderCard({ ...request, desiredDate: '2020-01-01' })
+
+    expect(markup).toContain('data-status="entregada"')
   })
 
   it('offers payment for an unpaid request and keeps documents unavailable', () => {

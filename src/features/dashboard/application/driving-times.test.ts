@@ -7,7 +7,7 @@ import { calculateDrivingTimes } from './driving-times'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('calculateDrivingTimes', () => {
-  it('uses saved stop coordinates to calculate and estimate each driving leg', async () => {
+  it('uses saved stop coordinates and OSRM car durations without a van adjustment', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ code: 'Ok', routes: [{ legs: [{ duration: 600 }] }] }), {
         status: 200,
@@ -44,6 +44,6 @@ describe('calculateDrivingTimes', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toContain('/driving/2.1,41.3;2.2,41.4?')
-    expect(updatedStops.map((stop) => stop.minutes)).toEqual([13, 0])
+    expect(updatedStops.map((stop) => stop.minutes)).toEqual([10, 0])
   })
 })

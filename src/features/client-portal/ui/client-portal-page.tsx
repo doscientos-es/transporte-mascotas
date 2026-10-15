@@ -85,7 +85,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [paymentRequests, setPaymentRequests] = useState<ClientPaymentRequest[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
-  const showForm = isCreatingRequest
+  const showForm = isCreatingRequest || section === 'solicitar-transporte'
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -281,7 +281,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (request && !canRetryTransportPayment(request.paymentAttemptStatus)) {
       setError(
         transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-        'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+          'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
       )
       return
     }
@@ -297,7 +297,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         setError(
           currentRequest && !canRetryTransportPayment(currentRequest.paymentAttemptStatus)
             ? (transportPaymentAttemptNotice(currentRequest.paymentAttemptStatus) ??
-              'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
+                'No podemos confirmar aún el resultado. No vuelvas a pagar y contacta con Kache Envíos.')
             : reason instanceof Error
               ? reason.message
               : 'No se ha podido abrir el pago.',
@@ -359,7 +359,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
           replaceWithSection('mis-transportes')
           setNotice(
             transportPaymentAttemptNotice(request.paymentAttemptStatus) ??
-            'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
+              'No podemos confirmar aún el resultado del pago. No vuelvas a pagarlo; contacta con Kache Envíos.',
           )
           return
         }
@@ -378,12 +378,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   const unpaidRequest = requests.find((request) => request.status === 'pago_pendiente')
-  const awaitingReview = requests.filter(
-    (request) => request.status === 'por_verificar' || request.status === 'pago_pendiente',
-  ).length
-  const confirmed = requests.filter(
-    (request) => request.status === 'confirmada' || request.status === 'en_ruta',
-  ).length
 
   return (
     <DashboardLayout
@@ -392,6 +386,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       profileRole="user"
       displayName={profile.displayName}
       title={isCreatingRequest ? 'Solicitar transporte' : undefined}
+      hideTitle={showForm}
       onNavigate={navigateToSection}
       hrefForSection={navigation.hrefForSection}
       onSignOut={() => void signOut()}
@@ -454,11 +449,6 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
                 <p>
                   Encuentra una salida que te venga bien y solicita el transporte de tu mascota.
                 </p>
-                <span className="upcoming-routes-count">
-                  <CalendarDays size={15} aria-hidden="true" />
-                  {routes.length}{' '}
-                  {routes.length === 1 ? 'salida disponible' : 'salidas disponibles'}
-                </span>
               </div>
               {routes.length ? (
                 <ul className="upcoming-routes-list">
@@ -519,206 +509,162 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
         </output>
       )}
 
-      {section === 'mis-transportes' && !paymentSuccess && !invoicePaymentSuccess && (
-        <>
-          {!showForm && (
-            <div className="client-portal-hero">
-              <PawPrint className="client-portal-hero-mark" aria-hidden="true" />
-              <div className="client-portal-hero-copy">
-                <span className="client-portal-hero-eyebrow">Transporte de mascotas</span>
-                <h2>El viaje de tu mascota, siempre a la vista.</h2>
-                <p>
-                  Elige una salida programada, registra el pago y sigue cada actualización desde
-                  aquí.
-                </p>
+      {(section === 'mis-transportes' || section === 'solicitar-transporte') &&
+        !paymentSuccess &&
+        !invoicePaymentSuccess && (
+          <>
+            {!showForm && (
+              <div className="client-portal-hero">
+                <PawPrint className="client-portal-hero-mark" aria-hidden="true" />
+                <div className="client-portal-hero-copy">
+                  <h2>El viaje de tu mascota, siempre a la vista.</h2>
+                  <p>
+                    Elige una salida programada, registra el pago y sigue cada actualización desde
+                    aquí.
+                  </p>
+                </div>
+                <Button disabled={!routes.length} onClick={openNewRequestForm}>
+                  <FilePlus2 /> Solicitar transporte
+                </Button>
               </div>
-              <Button disabled={!routes.length} onClick={openNewRequestForm}>
-                <FilePlus2 /> Solicitar transporte
-              </Button>
-            </div>
-          )}
-          {!routes.length && !loading && (
-            <p className="availability-hint">
-              No hay salidas publicadas por ahora. Te avisaremos cuando haya una disponible.
-            </p>
-          )}
-          {!showForm && (pendingPaymentRequestId || unpaidRequest) && (
-            <div className="inline-feedback is-warning" aria-live="polite">
-              <p>
-                {unpaidRequest
-                  ? (transportPaymentAttemptNotice(unpaidRequest.paymentAttemptStatus) ??
-                    'Tienes una solicitud guardada pendiente de registrar el pago.')
-                  : 'Tienes una solicitud guardada pendiente de registrar el pago.'}
+            )}
+            {!routes.length && !loading && (
+              <p className="availability-hint">
+                No hay salidas publicadas por ahora. Te avisaremos cuando haya una disponible.
               </p>
-              {(!unpaidRequest || canRetryTransportPayment(unpaidRequest.paymentAttemptStatus)) && (
-                <Button
-                  type="button"
-                  disabled={Boolean(payingRequestId)}
-                  onClick={() =>
-                    pendingPaymentRequestId
-                      ? navigateToRequestForm()
-                      : unpaidRequest && void continuePayment(unpaidRequest.id)
-                  }
-                >
-                  <CreditCard size={15} />{' '}
-                  {payingRequestId && payingRequestId === unpaidRequest?.id
-                    ? 'Abriendo pago…'
-                    : 'Continuar pago'}
+            )}
+            {!showForm && pendingPaymentRequestId && !unpaidRequest && (
+              <div className="inline-feedback is-warning" aria-live="polite">
+                <p>Tienes una solicitud guardada pendiente de registrar el pago.</p>
+                <Button type="button" onClick={() => navigateToRequestForm()}>
+                  <CreditCard size={15} /> Continuar pago
                 </Button>
-              )}
-            </div>
-          )}
-          {!showForm && guestAccountEmail && !accountPromptDismissed && (
-            <OptionalClientAccountCard
-              displayName={profile.displayName}
-              email={guestAccountEmail}
-              phone={profile.phone}
-              title="Guarda tus transportes en una cuenta"
-              description="Es opcional. Ahora mismo solo puedes ver tus solicitudes desde este navegador."
-              onSkip={() => setAccountPromptDismissed(true)}
-              onCreated={(result) => {
-                setAccountPromptDismissed(true)
-                setNotice(
-                  result === 'created'
-                    ? 'Cuenta creada. Ya puedes acceder desde cualquier dispositivo.'
-                    : 'Te hemos enviado un correo para confirmar tu cuenta.',
-                )
-              }}
-            />
-          )}
-          {!showForm && (
-            <div className="client-overview" aria-label="Resumen de tus transportes">
-              <Card>
-                <CardContent>
-                  <CircleDollarSign size={19} />
-                  <div>
-                    <span>En revisión</span>
-                    <strong>{awaitingReview}</strong>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <ClipboardCheck size={19} />
-                  <div>
-                    <span>Confirmados</span>
-                    <strong>{confirmed}</strong>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent>
-                  <PawPrint size={19} />
-                  <div>
-                    <span>Total solicitudes</span>
-                    <strong>{requests.length}</strong>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          {showForm && loading && !routes.length && (
-            <p className="availability-hint" aria-busy="true">
-              Cargando salidas disponibles…
-            </p>
-          )}
-          {showForm && (!loading || routes.length > 0) && (
-            <ClientRequestForm
-              routes={routes}
-              contactName={profile.displayName}
-              contactPhone={profile.phone}
-              contactEmail={session?.user.email ?? ''}
-              onSubmit={submitRequest}
-              onCancel={() => navigateToSection('mis-transportes')}
-              boxCatalog={boxCatalog}
-              pendingPayment={Boolean(pendingPaymentRequestId)}
-              onRetryPayment={() => submitRequest()}
-              initialRouteId={preselectedRouteId}
-              onRouteChange={(selectedRouteId) =>
-                navigateToRequestForm(selectedRouteId || undefined, { replace: true })
-              }
-            />
-          )}
-          {!showForm && (
-            <div className="client-section-heading">
-              <div>
-                <h3>Mis solicitudes</h3>
-                <p>
-                  {requests.length
-                    ? 'Consulta el estado y los detalles de cada transporte.'
-                    : 'Cuando envíes una solicitud aparecerá aquí.'}
-                </p>
               </div>
-              {requests.length > 0 && (
-                <Button variant="outline" disabled={!routes.length} onClick={openNewRequestForm}>
-                  <FilePlus2 size={16} /> Nueva solicitud
-                </Button>
-              )}
-            </div>
-          )}
-          {!showForm && paymentRequests.length > 0 && (
-            <div className="invoices-list">
-              {paymentRequests.map((paymentRequest) => (
-                <Card key={paymentRequest.id} className="invoice-card client-transport-card">
-                  <CardContent>
-                    <div className="invoice-icon">
-                      <FilePlus2 size={19} />
-                    </div>
-                    <div>
-                      <span>Solicitud de pago pendiente</span>
-                      <strong>{paymentRequest.concept}</strong>
-                      <small>{formatCurrency(paymentRequest.totalAmount * 100)}</small>
-                    </div>
-                    <Button
-                      disabled={Boolean(payingRequestId)}
-                      onClick={() => void continueClientPaymentRequest(paymentRequest.id)}
-                    >
-                      {payingRequestId === paymentRequest.id ? 'Abriendo pago…' : 'Pagar'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-          {!showForm && (
-            <div className="invoices-list">
-              {requests.length ? (
-                requests.map((request) => (
-                  <ClientTransportCard
-                    key={request.id}
-                    request={request}
-                    formatCurrency={formatCurrency}
-                    payingRequestId={payingRequestId}
-                    downloadingInvoiceId={downloadingInvoiceId}
-                    downloadingLetterId={downloadingLetterId}
-                    onContinuePayment={(requestId) => void continuePayment(requestId)}
-                    onDownloadInvoice={(requestId) => void downloadRequestInvoice(requestId)}
-                    onDownloadCarriageLetter={(requestId) =>
-                      void downloadRequestCarriageLetter(requestId)
-                    }
-                  />
-                ))
-              ) : (
-                <Card className="invoice-empty">
-                  <CardContent>
-                    <PawPrint size={22} />
-                    <div>
-                      <h3>Todavía no tienes solicitudes</h3>
-                      <p>
-                        Elige una salida publicada y las necesidades de tu mascota; podrás seguirlo
-                        todo desde aquí.
-                      </p>
-                      <Button disabled={!routes.length} onClick={openNewRequestForm}>
-                        <FilePlus2 size={16} /> Crear solicitud
+            )}
+            {!showForm && guestAccountEmail && !accountPromptDismissed && (
+              <OptionalClientAccountCard
+                displayName={profile.displayName}
+                email={guestAccountEmail}
+                phone={profile.phone}
+                title="Guarda tus transportes en una cuenta"
+                description="Es opcional. Ahora mismo solo puedes ver tus solicitudes desde este navegador."
+                onSkip={() => setAccountPromptDismissed(true)}
+                onCreated={(result) => {
+                  setAccountPromptDismissed(true)
+                  setNotice(
+                    result === 'created'
+                      ? 'Cuenta creada. Ya puedes acceder desde cualquier dispositivo.'
+                      : 'Te hemos enviado un correo para confirmar tu cuenta.',
+                  )
+                }}
+              />
+            )}
+            {showForm && loading && !routes.length && (
+              <p className="availability-hint" aria-busy="true">
+                Cargando salidas disponibles…
+              </p>
+            )}
+            {showForm && (!loading || routes.length > 0) && (
+              <ClientRequestForm
+                routes={routes}
+                contactName={profile.displayName}
+                contactPhone={profile.phone}
+                contactEmail={session?.user.email ?? ''}
+                onSubmit={submitRequest}
+                onCancel={() => navigateToSection('mis-transportes')}
+                boxCatalog={boxCatalog}
+                pendingPayment={Boolean(pendingPaymentRequestId)}
+                onRetryPayment={() => submitRequest()}
+                initialRouteId={preselectedRouteId}
+                onRouteChange={(selectedRouteId) =>
+                  navigateToRequestForm(selectedRouteId || undefined, { replace: true })
+                }
+              />
+            )}
+            {!showForm && (
+              <div className="client-section-heading">
+                <div>
+                  <h3>Mis solicitudes</h3>
+                  <p>
+                    {requests.length
+                      ? 'Consulta el estado y los detalles de cada transporte.'
+                      : 'Cuando envíes una solicitud aparecerá aquí.'}
+                  </p>
+                </div>
+                {requests.length > 0 && (
+                  <Button variant="outline" disabled={!routes.length} onClick={openNewRequestForm}>
+                    <FilePlus2 size={16} /> Nueva solicitud
+                  </Button>
+                )}
+              </div>
+            )}
+            {!showForm && paymentRequests.length > 0 && (
+              <div className="invoices-list">
+                {paymentRequests.map((paymentRequest) => (
+                  <Card key={paymentRequest.id} className="invoice-card client-transport-card">
+                    <CardContent>
+                      <div className="invoice-icon">
+                        <FilePlus2 size={19} />
+                      </div>
+                      <div>
+                        <span>Solicitud de pago pendiente</span>
+                        <strong>{paymentRequest.concept}</strong>
+                        <small>
+                          {paymentRequest.letterId} ·{' '}
+                          {formatCurrency(paymentRequest.totalAmount * 100)}
+                        </small>
+                      </div>
+                      <Button
+                        disabled={Boolean(payingRequestId)}
+                        onClick={() => void continueClientPaymentRequest(paymentRequest.id)}
+                      >
+                        {payingRequestId === paymentRequest.id ? 'Abriendo pago…' : 'Pagar'}
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-        </>
-      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {!showForm && (
+              <div className="invoices-list">
+                {requests.length ? (
+                  requests.map((request) => (
+                    <ClientTransportCard
+                      key={request.id}
+                      request={request}
+                      route={routes.find((route) => route.id === request.dailyRouteId)}
+                      formatCurrency={formatCurrency}
+                      payingRequestId={payingRequestId}
+                      downloadingInvoiceId={downloadingInvoiceId}
+                      downloadingLetterId={downloadingLetterId}
+                      onContinuePayment={(requestId) => void continuePayment(requestId)}
+                      onDownloadInvoice={(requestId) => void downloadRequestInvoice(requestId)}
+                      onDownloadCarriageLetter={(requestId) =>
+                        void downloadRequestCarriageLetter(requestId)
+                      }
+                    />
+                  ))
+                ) : (
+                  <Card className="invoice-empty">
+                    <CardContent>
+                      <PawPrint size={22} />
+                      <div>
+                        <h3>Todavía no tienes solicitudes</h3>
+                        <p>
+                          Elige una salida publicada y las necesidades de tu mascota; podrás
+                          seguirlo todo desde aquí.
+                        </p>
+                        <Button disabled={!routes.length} onClick={openNewRequestForm}>
+                          <FilePlus2 size={16} /> Crear solicitud
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
       {notice && (
         <output className="toast" aria-live="polite">

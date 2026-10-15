@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -8,7 +8,7 @@ import type { DailyRoute, RouteTemplate } from '@/shared/types'
 import { RoutesCatalogPage, RoutesPage } from './routes-page'
 
 describe('RoutesCatalogPage filters', () => {
-  it('associates the status and sort labels with their native selects', () => {
+  it('labels the status and sort selects for assistive technology', () => {
     const markup = renderToStaticMarkup(
       createElement(
         MemoryRouter,
@@ -17,10 +17,8 @@ describe('RoutesCatalogPage filters', () => {
       ),
     )
 
-    expect(markup).toContain('for="route-status-filter"')
-    expect(markup).toContain('id="route-status-filter"')
-    expect(markup).toContain('for="route-sort-direction"')
-    expect(markup).toContain('id="route-sort-direction"')
+    expect(markup).toContain('aria-label="Filtrar por estado"')
+    expect(markup).toContain('aria-label="Ordenar rutas por fecha"')
   })
 })
 
@@ -39,6 +37,8 @@ describe('RoutesPage header', () => {
           alias: 'Clínica Sol',
           place: 'Entrada principal',
           mapUrl: '',
+          latitude: 40,
+          longitude: -3,
           minutes: 35,
           kind: 'recogida',
           dwellMinutes: 10,
@@ -48,6 +48,8 @@ describe('RoutesPage header', () => {
           locality: 'Madrid',
           place: '',
           mapUrl: '',
+          latitude: 40,
+          longitude: -3,
           minutes: 0,
           kind: 'entrega',
           dwellMinutes: 5,

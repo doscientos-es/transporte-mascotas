@@ -1,6 +1,4 @@
 import {
-  Avatar,
-  AvatarFallback,
   Button,
   MobileNavigation,
   MobileNavigationItem,
@@ -9,7 +7,9 @@ import {
 } from '@doscientos/ui'
 import {
   CalendarDays,
+  ChevronsUpDown,
   ClipboardList,
+  FilePlus2,
   FileText,
   GitFork,
   Landmark,
@@ -18,7 +18,6 @@ import {
   ReceiptText,
   Route,
   Settings,
-  ShieldCheck,
   Truck,
   UsersRound,
 } from 'lucide-react'
@@ -40,11 +39,13 @@ const navigationItems = [
   ['ajustes', 'Ajustes', Settings],
   ['proximas-rutas', 'Próximas rutas', CalendarDays],
   ['mis-transportes', 'Mis transportes', PawPrint],
+  ['solicitar-transporte', 'Solicitar transporte', FilePlus2],
 ] as const satisfies ReadonlyArray<readonly [NavSection, string, typeof Route]>
 
 const mobileNavigationLabels: Partial<Record<NavSection, string>> = {
   'proximas-rutas': 'Rutas',
   'mis-transportes': 'Transportes',
+  'solicitar-transporte': 'Solicitar',
 }
 
 type Props = {
@@ -56,6 +57,8 @@ type Props = {
   hrefForSection: (section: NavSection) => string
   onSignOut: () => void
   title?: string
+  /** Oculta visualmente el título de página (sigue disponible para lectores de pantalla). */
+  hideTitle?: boolean
   headerAction?: ReactNode
   children: ReactNode
 }
@@ -69,6 +72,7 @@ export function DashboardLayout({
   hrefForSection,
   onSignOut,
   title,
+  hideTitle,
   headerAction,
   children,
 }: Props) {
@@ -137,37 +141,45 @@ export function DashboardLayout({
     <PopoverTrigger>
       <Button
         type="button"
-        className="flex min-h-[52px] w-full cursor-pointer items-center gap-2.5 rounded-[10px] bg-transparent p-2 text-left text-inherit transition-colors hover:bg-[#303030] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:bg-[#303030]"
+        className="flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-2.5 text-left text-inherit transition-colors hover:border-white/20 hover:bg-white/[0.08] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[popup-open]:border-white/20 data-[popup-open]:bg-white/[0.08]"
         aria-label="Abrir menú de perfil"
       >
-        <Avatar className="grid size-9 shrink-0 place-items-center rounded-full bg-[#303030] text-xs font-bold text-white">
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-        <span className="min-w-0 flex-1">
-          <strong className="block truncate text-[13px] text-[#f1f6ef]">{displayName}</strong>
-          <span className="mt-0.5 flex items-center gap-[5px] text-[#bdbdbd]">
-            <ShieldCheck size={13} /> {roleLabel}
-          </span>
+        <span
+          className="kache-account-initials hidden size-8 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white"
+          aria-hidden="true"
+        >
+          {initials}
         </span>
-        <span className="text-xs text-[#bdbdbd]">Cuenta</span>
+        <span className="min-w-0 flex-1">
+          <strong className="block truncate text-[13px] font-semibold text-white">
+            {displayName}
+          </strong>
+          <span className="mt-0.5 block truncate text-xs text-[#a3a3a3]">{roleLabel}</span>
+        </span>
+        <ChevronsUpDown size={16} className="shrink-0 text-[#8a8a8a]" aria-hidden="true" />
       </Button>
       <PopoverContent
         placement={placement}
-        className="min-w-[220px] rounded-xl border-[#4a4a4a] bg-[#171717] p-2 text-white shadow-[0_14px_30px_rgb(0_0_0_/_42%)]"
+        className="w-[240px] min-w-[240px] rounded-xl border border-white/10 bg-[#171717] p-1.5 text-white shadow-[0_16px_40px_rgb(0_0_0_/_50%)]"
       >
-        <div className="grid gap-0.5 border-b border-[#3b3b3b] px-2 pt-1 pb-2.5">
-          <span className="text-[10px] font-[750] tracking-[0.1em] text-[#bdbdbd] uppercase">
-            Cuenta activa
+        <div className="flex items-center gap-3 px-2.5 py-2.5">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-xs font-bold text-white">
+            {initials}
           </span>
-          <strong className="text-[13px] text-[#f1f6ef]">{displayName}</strong>
-          <span className="text-xs text-[#bdbdbd]">{roleLabel}</span>
+          <span className="min-w-0">
+            <strong className="block truncate text-sm font-semibold text-white">
+              {displayName}
+            </strong>
+            <span className="block text-xs text-[#a3a3a3]">{roleLabel}</span>
+          </span>
         </div>
+        <div className="my-1 h-px bg-white/10" />
         <button
           type="button"
-          className="mt-1.5 flex min-h-[42px] w-full items-center gap-2 rounded-md bg-transparent px-[9px] text-left text-sm text-white hover:bg-[#3b2022] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[highlighted]:bg-[#3b2022]"
+          className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg bg-transparent px-2.5 text-left text-sm font-medium text-[#e5e5e5] transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] data-[highlighted]:bg-white/10"
           onClick={onSignOut}
         >
-          <LogOut size={16} /> Cambiar de cuenta / cerrar sesión
+          <LogOut size={16} className="text-[var(--accent)]" /> Cerrar sesión
         </button>
       </PopoverContent>
     </PopoverTrigger>
@@ -194,17 +206,21 @@ export function DashboardLayout({
               : 'MI JORNADA'}
         </div>
         <nav className="grid gap-1">{renderDesktopNavigation()}</nav>
-        <div className="mt-auto grid gap-3 border-t border-[#3b3b3b] px-2.5 pt-4 pb-1 text-xs">
+        <div className="mt-auto grid gap-3 px-2.5 pt-4 pb-1 text-xs">
           <div className="relative">{renderAccountMenu('top start')}</div>
         </div>
       </aside>
       <main className="min-w-0">
-        <header className="kache-dashboard-header mx-auto flex w-full max-w-[1200px] items-center gap-2.5 px-6 pt-7 max-[850px]:px-[18px] max-[850px]:pt-[17px]">
-          <h1 className="m-0 text-[25px] tracking-[-0.04em] text-[#171717] max-[850px]:text-[21px]">
-            {pageTitle}
-          </h1>
-          {headerAction && <div className="ml-auto">{headerAction}</div>}
-        </header>
+        {hideTitle ? (
+          <h1 className="sr-only">{pageTitle}</h1>
+        ) : (
+          <header className="kache-dashboard-header mx-auto flex w-full max-w-[1200px] items-center gap-2.5 px-6 pt-7 max-[850px]:px-[18px] max-[850px]:pt-[17px]">
+            <h1 className="m-0 text-[25px] tracking-[-0.04em] text-[#171717] max-[850px]:text-[21px]">
+              {pageTitle}
+            </h1>
+            {headerAction && <div className="ml-auto">{headerAction}</div>}
+          </header>
+        )}
         <div
           data-dashboard-content
           className="kache-dashboard-content mx-auto max-w-[1200px] px-6 pt-4 pb-14 max-[850px]:px-4 max-[850px]:pt-[22px] max-[850px]:pb-9"

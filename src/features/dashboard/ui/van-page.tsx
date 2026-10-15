@@ -24,6 +24,7 @@ import type {
   ServiceAction,
   TransportBoxCategory,
 } from '@/shared/types'
+import { SelectField } from '@/shared/ui/filter-controls'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
 import {
@@ -203,23 +204,19 @@ export function VanPage({
   return (
     <>
       <section className="mb-3 grid gap-3 md:grid-cols-[minmax(220px,0.8fr)_minmax(0,1fr)] md:items-end">
-        <label className="grid min-w-0 gap-1">
+        <div className="grid min-w-0 gap-1">
           <span className="text-[11px] font-bold text-[#6b6b6b]">Ruta mostrada</span>
-          <select
-            className="min-h-8 w-full rounded-lg border border-[#d8d8d8] bg-white py-0 pr-7 pl-2.5 text-[13px] text-[#171717] outline-none focus:border-[#cf1f2a] focus:outline-2 focus:outline-offset-1 focus:outline-[#cf1f2a]/15"
+          <SelectField
+            ariaLabel="Ruta mostrada"
+            className="min-h-8 w-full bg-white"
             value={route.id}
-            onChange={(event) => {
-              const selected = routes.find((item) => item.id === event.target.value)
+            onChange={(value) => {
+              const selected = routes.find((item) => item.id === value)
               if (selected) onSelectRoute(selected)
             }}
-          >
-            {routes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {routeOptionLabel(item)}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={routes.map((item) => ({ id: item.id, label: routeOptionLabel(item) }))}
+          />
+        </div>
         <section
           className="grid grid-cols-3 gap-1.5 md:justify-self-end"
           aria-label={`Resumen de ocupación de ${routeName(route)}`}
@@ -503,23 +500,19 @@ function AddLetterToBoxControl({
         <p>Las mascotas de la carta elegida viajarán en el box {box} junto a las actuales.</p>
       </div>
       <div className="box-reassignment-controls">
-        <label>
-          Carta
-          <select
+        <div>
+          <span aria-hidden="true">Carta</span>
+          <SelectField
+            ariaLabel="Carta"
             value={selected}
-            onChange={(event) => {
-              setLetterId(event.target.value)
+            onChange={(value) => {
+              setLetterId(value)
               setError('')
             }}
             disabled={saving}
-          >
-            {letters.map((candidate) => (
-              <option key={candidate} value={candidate}>
-                {candidate}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={letters.map((candidate) => ({ id: candidate, label: candidate }))}
+          />
+        </div>
         <Button
           type="button"
           size="sm"
@@ -581,23 +574,22 @@ function ReassignBoxControl({
         )}
       </div>
       <div className="box-reassignment-controls">
-        <label>
-          Nuevo box
-          <select
+        <div>
+          <span aria-hidden="true">Nuevo box</span>
+          <SelectField
+            ariaLabel="Nuevo box"
             value={targetBox}
-            onChange={(event) => {
-              setTargetBox(event.target.value)
+            onChange={(value) => {
+              setTargetBox(value)
               setError('')
             }}
             disabled={saving}
-          >
-            {compatibleBoxes.map((candidate) => (
-              <option key={candidate} value={candidate}>
-                Box {candidate} · {boxSizeLabel[boxSize(candidate)]}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={compatibleBoxes.map((candidate) => ({
+              id: String(candidate),
+              label: `Box ${candidate} · ${boxSizeLabel[boxSize(candidate)]}`,
+            }))}
+          />
+        </div>
         <Button
           type="button"
           size="sm"

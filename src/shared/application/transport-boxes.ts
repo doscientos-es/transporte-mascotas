@@ -129,6 +129,31 @@ export function minimumTransportBoxCategory(
   return 'mediano'
 }
 
+/** The measure that does not fit the large box, mirroring `box_category_for_measurements` in the database. */
+export function oversizedTransportBoxMeasure(
+  {
+    lengthCm,
+    heightCm,
+    widthCm,
+  }: Pick<TransportRequestAnimal, 'lengthCm' | 'heightCm' | 'widthCm'>,
+  catalog: TransportBoxCatalog = defaultTransportBoxCatalog,
+): 'length' | 'height' | 'width' | null {
+  const large = catalog.grande
+  if (lengthCm > (large.maxLengthCm ?? Infinity)) return 'length'
+  if (heightCm > (large.maxHeightCm ?? Infinity)) return 'height'
+  if (widthCm > (large.maxWidthCm ?? Infinity)) return 'width'
+  return null
+}
+
+export function oversizedTransportBoxMessage(catalog: TransportBoxCatalog) {
+  const large = catalog.grande
+  const limits =
+    large.maxLengthCm && large.maxHeightCm && large.maxWidthCm
+      ? ` (máximo ${number.format(large.maxLengthCm)} × ${number.format(large.maxWidthCm)} × ${number.format(large.maxHeightCm)} cm de largo, ancho y alto)`
+      : ''
+  return `Las medidas superan el box más grande que tenemos${limits}. Si son correctas, mejor contacta con Stella (658 60 49 33) para valorar el transporte.`
+}
+
 export function transportBoxPriceCents(
   category: TransportBoxCategory,
   animal: Pick<TransportRequestAnimal, 'weightKg'>,

@@ -1,12 +1,14 @@
 import type { TransportPaymentAttemptStatus } from '@/shared/types'
 
 export function canRetryTransportPayment(status: TransportPaymentAttemptStatus) {
-  return status === 'not_started' || status === 'failed'
+  // 'started' se marca al abrir la pasarela, aunque el cliente no llegue a pagar. El backend
+  // reutiliza el mismo pedido (misma referencia), así que reintentar no duplica el cobro.
+  return status === 'not_started' || status === 'started' || status === 'failed'
 }
 
 export function transportPaymentAttemptNotice(status: TransportPaymentAttemptStatus) {
   if (status === 'started')
-    return 'El pago se ha iniciado y esperamos la confirmación de CaixaBank. No vuelvas a pagar mientras comprobamos el resultado.'
+    return 'Todavía no hemos recibido el pago. Si lo acabas de hacer, espera unos minutos; si no, puedes completarlo ahora.'
   if (status === 'confirmation_pending')
     return 'CaixaBank ha notificado el pago. Estamos terminando de confirmar la solicitud; no necesitas volver a pagar.'
   if (status === 'review_required')

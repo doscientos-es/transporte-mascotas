@@ -37,7 +37,7 @@ describe('dashboard routes', () => {
     expect(transportRequestCreatePath).toBe('/mis-transportes/nueva')
     expect(ROUTER_PATHS.clientTransportCreate).toBe('mis-transportes/nueva')
     expect(dashboardLocationForPath(transportRequestCreatePath)).toEqual({
-      section: 'mis-transportes',
+      section: 'solicitar-transporte',
     })
     expect(transportRequestCreatePathFor()).toBe('/mis-transportes/nueva')
     expect(transportRequestCreatePathFor('ruta norte')).toBe(
@@ -53,7 +53,7 @@ describe('dashboard routes', () => {
   })
 
   it('maps every dashboard section and safely falls back for unknown paths', () => {
-    expect(Object.entries(dashboardPaths)).toHaveLength(11)
+    expect(Object.entries(dashboardPaths)).toHaveLength(12)
     for (const [section, path] of Object.entries(dashboardPaths)) {
       expect(dashboardLocationForPath(path)).toEqual({ section })
       expect(dashboardPathFor(section as NavSection)).toBe(path)

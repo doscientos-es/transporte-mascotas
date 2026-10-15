@@ -8,6 +8,7 @@ import {
   Outlet,
   RouterProvider,
   ScrollRestoration,
+  useLocation,
   useNavigation,
   useOutletContext,
   useRouteError,
@@ -15,7 +16,12 @@ import {
 
 import { isClientRole, type DashboardNavigation, type UserProfile } from '@/shared/types'
 
-import { APP_PATHS, DEFAULT_DASHBOARD_SECTIONS, ROUTER_PATHS } from './router/dashboard-routes'
+import {
+  APP_PATHS,
+  DEFAULT_DASHBOARD_SECTIONS,
+  paymentReturnStateFromSearch,
+  ROUTER_PATHS,
+} from './router/dashboard-routes'
 import { useDashboardNavigation } from './router/use-dashboard-navigation'
 
 type AuthState = { session: Session | null; profile: UserProfile | null }
@@ -39,9 +45,13 @@ const router = createBrowserRouter([
         errorElement: <RouteErrorBoundary returnTo={APP_PATHS.home} />,
         children: [
           {
-            index: true,
+            path: ROUTER_PATHS.login,
             lazy: () => import('./router/login-route'),
             HydrateFallback: LoadingRoute,
+          },
+          {
+            index: true,
+            element: <HomeRoute />,
           },
           // Old staff login URL: kept so saved links still land on the single login.
           { path: ROUTER_PATHS.staffAccess, element: <Navigate to={APP_PATHS.home} replace /> },
@@ -191,6 +201,21 @@ function RootLayout() {
 
 function PublicRoute() {
   return <Outlet context={useAuth()} />
+}
+
+function HomeRoute() {
+  const auth = useAuth()
+  const location = useLocation()
+  const paymentState = paymentReturnStateFromSearch(location.search)
+  if (auth.session && auth.profile)
+    return (
+      <Navigate
+        to={isClientRole(auth.profile.role) ? APP_PATHS.clientHome : APP_PATHS.staffHome}
+        state={paymentState}
+        replace
+      />
+    )
+  return <Navigate to={`${APP_PATHS.login}${location.search}${location.hash}`} replace />
 }
 
 function ClientRouteGuard() {

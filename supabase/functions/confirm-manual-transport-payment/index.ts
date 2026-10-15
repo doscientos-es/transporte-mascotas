@@ -197,7 +197,12 @@ async function confirmPayment(request: Request, attempt: Attempt) {
     {
       p_request_id: requestId,
       p_paid_at: paidAt,
-      p_gateway_response: { paymentMethod, manualConfirmation: true, registeredAt: paidAt },
+      p_gateway_response: {
+        paymentMethod,
+        manualConfirmation: true,
+        registeredAt: paidAt,
+        amountCents: await loadAmountCents(requestId),
+      },
       p_issuer_snapshot: issuer,
     },
     'FINALIZE_FAILED',
@@ -265,6 +270,24 @@ async function loadRequestStatus(requestId: string) {
   }
   if (!rows[0]) throw new ManualPaymentError('REQUEST_NOT_FOUND', 'load_request')
   return rows[0].status
+}
+
+async function loadAmountCents(requestId: string) {
+  let rows: Array<{ amount_cents: number }>
+  try {
+    const response = await rest(
+      `transport_requests?id=eq.${encodeURIComponent(requestId)}&select=amount_cents`,
+    )
+    rows = (await response.json()) as Array<{ amount_cents: number }>
+  } catch (error) {
+    throw new ManualPaymentError(
+      'REQUEST_LOOKUP_FAILED',
+      'load_request',
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+  if (!rows[0]) throw new ManualPaymentError('REQUEST_NOT_FOUND', 'load_request')
+  return rows[0].amount_cents
 }
 
 /** Calls a database function keeping the PostgREST error body, which the shared helper discards. */

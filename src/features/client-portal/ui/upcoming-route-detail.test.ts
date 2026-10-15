@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+﻿import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -22,6 +22,8 @@ describe('UpcomingRouteDetail', () => {
           locality: 'Córdoba',
           place: 'Estación',
           mapUrl: '',
+          latitude: 40,
+          longitude: -3,
           minutes: 960,
           dwellMinutes: 15,
         },
@@ -30,6 +32,8 @@ describe('UpcomingRouteDetail', () => {
           locality: 'Madrid',
           place: 'Centro',
           mapUrl: '',
+          latitude: 40,
+          longitude: -3,
           minutes: 0,
           dwellMinutes: 0,
         },

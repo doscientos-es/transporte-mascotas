@@ -1,4 +1,4 @@
-/* Product-specific mobile refinements, loaded after the legacy stylesheet. */
+﻿/* Product-specific mobile refinements, loaded after the legacy stylesheet. */
 @media (max-width: 850px) {
   .kache-dashboard-layout {
     display: block;
@@ -39,13 +39,12 @@
     color: #171717;
   }
 
-  .kache-mobile-account [data-slot='button'] > span:nth-child(2) {
-    display: none;
+  .kache-mobile-account [data-slot='button'] > .kache-account-initials {
+    display: grid;
   }
 
-  .kache-mobile-account [data-slot='button'] > span:last-child {
-    color: #525252;
-    font-size: 10px;
+  .kache-mobile-account [data-slot='button'] > span:nth-child(2) {
+    display: none;
   }
 
   .kache-dashboard-mobile-navigation [data-slot='mobile-navigation-item'] {
@@ -265,93 +264,49 @@
 }
 
 @media (max-width: 600px) {
-  .client-transport-request-card > [data-slot='card-content'] {
-    padding: 15px;
+  .ctr {
+    padding: 16px;
+    gap: 14px;
   }
 
-  .client-transport-request-header {
-    display: grid;
-    gap: 15px;
-  }
-
-  .client-transport-request-overview {
+  .ctr-head {
+    flex-direction: column-reverse;
     gap: 10px;
   }
 
-  .client-transport-request-icon {
-    width: 34px;
-    height: 34px;
+  .ctr-title {
+    flex: 0 0 auto;
   }
 
-  .client-transport-request-copy {
-    gap: 7px;
+  .ctr-head > [data-status] {
+    align-self: flex-start;
   }
 
-  .client-transport-request-route {
-    gap: 5px;
+  .ctr-title h3 {
     font-size: 17px;
   }
 
-  .client-transport-request-route svg {
-    width: 14px;
+  .ctr-facts {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .client-transport-request-note {
-    font-size: 12px;
+  .ctr-facts {
+    gap: 12px;
   }
 
-  .client-transport-request-summary {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    justify-items: start;
-    gap: 8px 12px;
-    min-width: 0;
-    padding: 12px 0 0;
-    border-top: 1px solid #ece8e6;
-    border-left: 0;
-  }
-
-  .client-transport-request-price {
-    grid-column: 1;
-    grid-row: 1;
-    font-size: 18px !important;
-  }
-
-  .client-transport-request-status {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
-  }
-
-  .client-transport-payment-state,
-  .client-transport-request-summary .client-transport-pay-button {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
-  .client-transport-request-summary .client-transport-pay-button {
+  .ctr-actions [data-slot='button'] {
     width: 100%;
-    margin-top: 0;
+    justify-content: center;
+    white-space: normal;
   }
 
   .client-transport-locations {
     grid-template-columns: minmax(0, 1fr);
     gap: 9px;
-    margin-top: 15px;
+    margin-top: 12px;
   }
 
   .client-transport-location-map {
     height: 118px;
-  }
-
-  .client-transport-document-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .client-transport-document-actions [data-slot='button'] {
-    width: 100%;
-    justify-content: center;
-    white-space: normal;
   }
 }

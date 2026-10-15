@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
 import type { ClientInvoice, PaginatedResult } from '@/shared/types'
+import { FilterSelect, SearchFilter } from '@/shared/ui/filter-controls'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
@@ -59,7 +60,6 @@ const pageCopy: Record<
 export function BillingDocumentsPage({
   mode,
   onConfirmManualPayment,
-  onPaymentConfirmed,
   onOpenClient,
   onOpenLetter,
 }: BillingDocumentsPageProps & { mode: BillingDocumentMode }) {
@@ -197,6 +197,8 @@ export function BillingDocumentsPage({
 
   const updatePage = (page: number) => updateParams({ pagina: page === 1 ? undefined : page })
   const resetPage = { pagina: undefined }
+  // The preview can be opened with either `factura` or the legacy `invoice` param.
+  const closePreview = () => updateParams({ factura: undefined, invoice: undefined })
 
   return (
     <>
@@ -227,14 +229,12 @@ export function BillingDocumentsPage({
           </Button>
         </div>
         <div className="invoice-filters">
-          <label>
-            Buscar
-            <input
-              value={query}
-              onChange={(event) => updateParams({ q: event.target.value, ...resetPage })}
-              placeholder="Nº, cliente, carta o concepto"
-            />
-          </label>
+          <SearchFilter
+            ariaLabel="Buscar documentos"
+            placeholder="Nº, cliente, carta o concepto"
+            value={query}
+            onChange={(value) => updateParams({ q: value, ...resetPage })}
+          />
           <label>
             Desde
             <input
@@ -251,20 +251,18 @@ export function BillingDocumentsPage({
               onChange={(event) => updateParams({ hasta: event.target.value, ...resetPage })}
             />
           </label>
-          <label>
-            Ordenar por
-            <select
-              value={sort}
-              onChange={(event) =>
-                updateParams({ orden: event.target.value as InvoiceSort, ...resetPage })
-              }
-            >
-              <option value="date">Fecha</option>
-              <option value="total">Importe</option>
-              <option value="client">Cliente</option>
-              <option value="status">Estado</option>
-            </select>
-          </label>
+          <FilterSelect
+            label="Ordenar por"
+            ariaLabel="Ordenar por"
+            value={sort}
+            onChange={(value) => updateParams({ orden: value as InvoiceSort, ...resetPage })}
+            options={[
+              { id: 'date', label: 'Fecha' },
+              { id: 'total', label: 'Importe' },
+              { id: 'client', label: 'Cliente' },
+              { id: 'status', label: 'Estado' },
+            ]}
+          />
           <div className="invoice-direction-toggle">
             <Tooltip
               label={`Orden ${direction === 'desc' ? 'descendente' : 'ascendente'}. Pulsa para cambiarla.`}
@@ -337,16 +335,13 @@ export function BillingDocumentsPage({
         />
       )}
       {previewing?.issuedInvoice ? (
-        <InvoicePreviewDialog
-          invoice={previewing.issuedInvoice}
-          onClose={() => updateParams({ factura: undefined })}
-        />
+        <InvoicePreviewDialog invoice={previewing.issuedInvoice} onClose={closePreview} />
       ) : (
         previewing && (
           <PaymentRequestPreviewDialog
             invoice={previewing}
             clientName={previewing.clientName || 'Cliente'}
-            onClose={() => updateParams({ factura: undefined })}
+            onClose={closePreview}
           />
         )
       )}
@@ -358,7 +353,6 @@ export function BillingDocumentsPage({
             await onConfirmManualPayment(invoice, method)
             setRefreshKey((current) => current + 1)
           }}
-          onConfirmed={() => onPaymentConfirmed?.({ ...manualPayment, status: 'emitida' })}
         />
       )}
     </>

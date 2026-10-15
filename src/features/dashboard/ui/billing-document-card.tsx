@@ -93,8 +93,13 @@ export function BillingDocumentCard({
               variant="outline"
               className="invoice-preview-button"
               onClick={onPreview}
+              title={isIssued ? 'Ver factura' : 'Ver solicitud'}
+              aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
             >
-              <Eye size={15} /> {isIssued ? 'Ver factura' : 'Ver solicitud'}
+              <Eye size={15} />
+              <span className="invoice-action-label">
+                {isIssued ? 'Ver factura' : 'Ver solicitud'}
+              </span>
             </Button>
             <Button
               size="sm"
@@ -102,9 +107,17 @@ export function BillingDocumentCard({
               className="invoice-download-button"
               disabled={downloading}
               onClick={onDownload}
+              title={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+              aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
             >
-              <Download size={15} />{' '}
-              {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+              <Download size={15} />
+              <span className="invoice-download-label">
+                {downloading
+                  ? 'Preparando…'
+                  : isIssued
+                    ? 'Descargar factura'
+                    : 'Descargar solicitud'}
+              </span>
             </Button>
             {!isIssued && onManualPayment && (
               <Button size="sm" variant="outline" onClick={onManualPayment}>
