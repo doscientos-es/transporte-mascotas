@@ -166,7 +166,10 @@ export function CategoryPanel({ categories }: { categories: CategoryTotal[] }) {
           ))}
         </ul>
       ) : (
-        <p className="finance-empty">Sin gastos que repartir en este periodo.</p>
+        <div className="finance-empty-state">
+          <strong>Sin gastos en este periodo</strong>
+          <span>Cuando registres gastos verás aquí cómo se reparten por categoría.</span>
+        </div>
       )}
     </section>
   )

@@ -7677,6 +7677,7 @@ a.whatsapp-link:hover {
 
 /* Finanzas */
 .finance-page {
+  container-type: inline-size;
   display: grid;
   gap: 16px;
 }
@@ -7778,7 +7779,7 @@ a.whatsapp-link:hover {
 .finance-kpis {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .finance-kpi {
   background: #fff;
@@ -7787,8 +7788,19 @@ a.whatsapp-link:hover {
   box-shadow: 0 1px 2px rgb(23 23 23 / 3%);
   display: grid;
   gap: 2px;
+  min-width: 0;
   padding: 16px;
   position: relative;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.finance-kpi:hover {
+  border-color: #d6d6d4;
+  box-shadow: 0 4px 12px rgb(23 23 23 / 6%);
+}
+.finance-kpi-label {
+  padding-right: 44px;
 }
 .finance-kpi-icon {
   background: #f3f3f2;
@@ -7814,6 +7826,10 @@ a.whatsapp-link:hover {
 .finance-kpi-profit .finance-kpi-icon {
   background: #e9f7ec;
   color: #1a7f37;
+}
+.finance-kpi-vat .finance-kpi-icon {
+  background: #eef1f6;
+  color: #3d4f73;
 }
 .finance-kpi-label {
   color: #686868;
@@ -7906,34 +7922,45 @@ a.whatsapp-link:hover {
 .finance-chart {
   align-items: stretch;
   display: flex;
-  gap: 6px;
-  height: 190px;
-  margin-bottom: 14px;
+  gap: 8px;
+  height: 200px;
+  justify-content: center;
+  margin-bottom: 16px;
   overflow-x: auto;
   padding-bottom: 2px;
 }
 .finance-chart-col {
+  border-radius: 8px;
   display: grid;
-  flex: 1 0 40px;
+  flex: 1 0 44px;
   gap: 6px;
   grid-template-rows: 1fr auto;
+  max-width: 110px;
 }
 .finance-chart-bars {
   align-items: end;
-  border-bottom: 1px solid #e5e5e5;
+  background: repeating-linear-gradient(
+    to top,
+    transparent 0,
+    transparent calc(25% - 1px),
+    #f0f0ef calc(25% - 1px),
+    #f0f0ef 25%
+  );
+  border-bottom: 1px solid #d9d9d7;
   display: flex;
-  gap: 3px;
+  gap: 4px;
   justify-content: center;
 }
 .finance-chart i {
-  border-radius: 4px 4px 0 0;
+  border-radius: 5px 5px 0 0;
   display: block;
-  max-width: 18px;
+  max-width: 22px;
+  min-width: 10px;
   transition: height 0.3s ease;
-  width: 42%;
+  width: 36%;
 }
 .finance-chart-col:hover .finance-chart-bars {
-  background: #faf7f6;
+  background-color: #faf7f6;
 }
 .finance-chart-col > span {
   color: #686868;
@@ -7952,7 +7979,8 @@ a.whatsapp-link:hover {
 .finance-table th,
 .finance-table td {
   border-bottom: 1px solid #f0f0ef;
-  padding: 10px 8px;
+  font-size: 13.5px;
+  padding: 11px 10px;
   text-align: left;
   vertical-align: middle;
   white-space: nowrap;
@@ -7977,8 +8005,8 @@ a.whatsapp-link:hover {
 .finance-table .is-strong {
   font-weight: 700;
 }
-.finance-table .is-capitalized {
-  text-transform: capitalize;
+.finance-table .is-capitalized::first-letter {
+  text-transform: uppercase;
 }
 .finance-cell-main,
 .finance-cell-sub {
@@ -8099,10 +8127,28 @@ a.whatsapp-link:hover {
 .finance-empty-state button {
   margin-top: 6px;
 }
-@media (max-width: 960px) {
+.finance-table th:first-child,
+.finance-table td:first-child {
+  padding-left: 0;
+}
+.finance-table th:last-child,
+.finance-table td:last-child {
+  padding-right: 0;
+}
+@container (max-width: 900px) {
   .finance-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  .finance-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 420px) {
+  .finance-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 960px) {
   .finance-actions {
     margin-left: 0;
   }
