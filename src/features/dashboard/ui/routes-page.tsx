@@ -39,7 +39,16 @@ import {
   Trash2,
   Truck,
 } from 'lucide-react'
-import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type KeyboardEvent,
+  lazy,
+  type PointerEvent,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import {
   DEFAULT_ROUTE_START_TIME,
@@ -71,6 +80,8 @@ import { transportReminderMessage, type ReminderPoint } from '../application/ser
 import { mergedStopInstructions } from '../application/stop-instructions'
 import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { StopFormDialog } from './operation-dialogs'
+
+const RouteMap = lazy(() => import('@/features/client-portal/ui/route-map'))
 
 type Props = {
   route: DailyRoute
@@ -471,6 +482,12 @@ export function RoutesPage({
     () => groupedServices(route, stops, letters),
     [route, stops, letters],
   )
+  // Stable reference while coordinates and order are unchanged, so the map is not rebuilt on every render.
+  const mapSignature = stops
+    .map((stop) => `${stop.locality}|${stop.latitude}|${stop.longitude}`)
+    .join(';')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const mapStops = useMemo(() => stops, [mapSignature])
   const travelMinutes = stops.slice(0, -1).reduce((total, stop) => total + stop.minutes, 0)
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
@@ -832,6 +849,16 @@ export function RoutesPage({
               <Button size="sm" onClick={() => setOrganizing(false)}>
                 Terminar
               </Button>
+            </div>
+          )}
+          {stops.length >= 2 && (
+            <div className="upcoming-route-map route-admin-map">
+              <Suspense fallback={null}>
+                <RouteMap
+                  stops={mapStops}
+                  label={`Mapa del recorrido de la ruta ${template.name}`}
+                />
+              </Suspense>
             </div>
           )}
           <ol>
