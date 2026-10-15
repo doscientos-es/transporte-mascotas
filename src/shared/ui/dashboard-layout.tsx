@@ -108,7 +108,7 @@ export function DashboardLayout({
         href={hrefForSection(id)}
         className={
           section === id
-            ? 'flex min-h-11 items-center gap-[11px] rounded-[9px] bg-[var(--accent)] px-[11px] text-sm font-bold text-white no-underline'
+            ? 'flex min-h-11 items-center gap-[11px] rounded-[9px] bg-[var(--accent)] px-[11px] text-sm font-medium text-white no-underline'
             : 'flex min-h-11 items-center gap-[11px] rounded-[9px] px-[11px] text-sm text-[#bdbdbd] no-underline hover:bg-[#303030] hover:text-white'
         }
         aria-current={section === id ? 'page' : undefined}

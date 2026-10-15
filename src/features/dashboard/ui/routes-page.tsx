@@ -52,6 +52,7 @@ import {
 } from 'react'
 
 import { itineraryDirectionsLinks } from '@/features/client-portal'
+import type { StopDetail } from '@/features/client-portal/ui/route-map'
 import {
   DEFAULT_ROUTE_START_TIME,
   DEFAULT_STOP_DWELL_MINUTES,
@@ -495,14 +496,28 @@ export function RoutesPage({
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
   const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
-  const mapDetails = stops.map((stop, index) => {
+  let onboard = 0
+  const mapDetails: StopDetail[] = stops.map((stop, index) => {
     const next = stops[index + 1]
-    return [
-      kindLabels[stop.kind],
-      `Llegada aprox.: ${formatArrival(route.date, stopArrivals[index] ?? { date: route.date, time: startTime })}`,
-      `Espera: ${formatDuration(stop.dwellMinutes)}`,
-      next ? `Siguiente: ${next.locality} · ${formatDuration(stop.minutes)}` : 'Fin de ruta',
-    ]
+    const groups = servicesByStop.get(stop.id) ?? []
+    const labelsOf = (type: ServiceAction['type']) =>
+      groups
+        .filter((group) => group.actions[0].type === type)
+        .flatMap((group) => group.animalLabels)
+    const pickups = labelsOf('recogida')
+    const deliveries = labelsOf('entrega')
+    onboard = Math.max(0, onboard + pickups.length - deliveries.length)
+    return {
+      lines: [
+        kindLabels[stop.kind],
+        `Llegada aprox.: ${formatArrival(route.date, stopArrivals[index] ?? { date: route.date, time: startTime })}`,
+        `Espera: ${formatDuration(stop.dwellMinutes)}`,
+        next ? `Siguiente: ${next.locality} · ${formatDuration(stop.minutes)}` : 'Fin de ruta',
+      ],
+      pickups,
+      deliveries,
+      onboard,
+    }
   })
   function showStopInList(index: number) {
     const item = document.getElementById(`route-stop-${index}`)

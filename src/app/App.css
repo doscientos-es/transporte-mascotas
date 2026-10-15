@@ -8265,13 +8265,13 @@ a.whatsapp-link:hover {
   background: linear-gradient(180deg, #faf7f6 0%, #f4f2f1 100%);
 }
 
-.kache-dashboard-layout[data-role='user'] .kache-dashboard-sidebar {
+.kache-dashboard-layout .kache-dashboard-sidebar {
   background: linear-gradient(180deg, #1c1c1c 0%, #121212 100%);
   box-shadow: 1px 0 0 rgb(255 255 255 / 4%);
 }
 
-.kache-dashboard-layout[data-role='user'] .kache-dashboard-sidebar nav a[aria-current='page'],
-.kache-dashboard-layout[data-role='user'] .kache-dashboard-sidebar nav a.is-active {
+.kache-dashboard-layout .kache-dashboard-sidebar nav a[aria-current='page'],
+.kache-dashboard-layout .kache-dashboard-sidebar nav a.is-active {
   background: linear-gradient(90deg, rgb(207 31 42 / 28%), rgb(207 31 42 / 6%));
   box-shadow: inset 3px 0 0 #cf1f2a;
   color: #fff;
@@ -8749,6 +8749,46 @@ a.whatsapp-link:hover {
 }
 .route-map-stop span.is-edge {
   background: #111;
+}
+.route-map-stop {
+  overflow: visible;
+}
+.route-map-badges {
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  display: flex;
+  gap: 2px;
+  pointer-events: none;
+}
+.route-map-badges em {
+  padding: 0 4px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 35%);
+}
+.route-map-badges em.is-in,
+.route-map-popup .is-in {
+  background: #15803d;
+}
+.route-map-badges em.is-out,
+.route-map-popup .is-out {
+  background: #1d4ed8;
+}
+.route-map-popup .is-in,
+.route-map-popup .is-out {
+  width: fit-content;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: #fff;
+}
+.route-map-popup .is-onboard {
+  margin-top: 2px;
+  font-weight: 600;
 }
 .route-map-popup {
   display: grid;

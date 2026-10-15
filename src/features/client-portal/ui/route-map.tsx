@@ -10,22 +10,45 @@ type Props = {
   label: string
   /** Numbered, clickable markers. Reports the clicked stop index. */
   onStopClick?: (index: number) => void
-  /** Popup lines per stop (same order as `stops`), read when a popup opens. */
-  details?: string[][]
+  /** Popup content per stop (same order as `stops`), read when a popup opens. */
+  details?: StopDetail[]
 }
 
-function stopPopup(index: number, locality: string, lines: string[] = []) {
+export type StopDetail = {
+  lines: string[]
+  /** Animals picked up (boarding) and delivered (leaving) at this stop. */
+  pickups?: string[]
+  deliveries?: string[]
+  /** Animals on the van after this stop. */
+  onboard?: number
+}
+
+function stopPopup(index: number, locality: string, detail?: StopDetail) {
   const element = document.createElement('div')
   element.className = 'route-map-popup'
-  const title = document.createElement('strong')
-  title.textContent = `${index + 1}. ${locality}`
-  element.append(title)
-  for (const line of lines) {
-    const row = document.createElement('span')
-    row.textContent = line
-    element.append(row)
+  const add = (tag: string, text: string, className?: string) => {
+    const node = document.createElement(tag)
+    node.textContent = text
+    if (className) node.className = className
+    element.append(node)
+  }
+  add('strong', `${index + 1}. ${locality}`)
+  for (const line of detail?.lines ?? []) add('span', line)
+  for (const animal of detail?.pickups ?? []) add('span', `+ ${animal}`, 'is-in')
+  for (const animal of detail?.deliveries ?? []) add('span', `− ${animal}`, 'is-out')
+  if (detail?.onboard !== undefined) {
+    add('span', `En la furgoneta tras la parada: ${detail.onboard}`, 'is-onboard')
   }
   return element
+}
+
+function stopMarkerHtml(index: number, edge: boolean, detail?: StopDetail) {
+  const pickups = detail?.pickups?.length ?? 0
+  const deliveries = detail?.deliveries?.length ?? 0
+  const badges =
+    (pickups ? `<em class="is-in">+${pickups}</em>` : '') +
+    (deliveries ? `<em class="is-out">−${deliveries}</em>` : '')
+  return `<span class="${edge ? 'is-edge' : ''}">${index + 1}</span>${badges ? `<div class="route-map-badges">${badges}</div>` : ''}`
 }
 
 const RED = '#cf1f2a'
@@ -69,7 +92,7 @@ export default function RouteMap({ stops, label, onStopClick: onClick, details: 
             className: 'route-map-stop',
             iconSize: [22, 22],
             iconAnchor: [11, 11],
-            html: `<span class="${edge ? 'is-edge' : ''}">${index + 1}</span>`,
+            html: stopMarkerHtml(index, edge, details.current[index]),
           }),
         })
           .bindTooltip(stops[index].locality)
