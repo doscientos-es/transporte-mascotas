@@ -435,9 +435,6 @@ export function AdminDashboardPage({
               <SettingsPage
                 currentUserId={session?.user.id}
                 onNotify={dashboard.toast}
-                invitations={dashboard.staffInvitations}
-                onInvite={dashboard.inviteStaffMember}
-                onRevokeInvitation={dashboard.revokeStaffInvitation}
                 boxCatalog={dashboard.boxCatalog}
                 onSaveBoxCatalog={dashboard.updateBoxCatalog}
                 meetingPoints={dashboard.meetingPoints}

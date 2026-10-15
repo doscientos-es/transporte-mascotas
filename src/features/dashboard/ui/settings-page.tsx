@@ -1,14 +1,6 @@
 import { Button, Input } from '@doscientos/ui'
-import {
-  CircleAlert,
-  CircleDollarSign,
-  CheckCircle2,
-  MailPlus,
-  Send,
-  ShieldCheck,
-  X,
-} from 'lucide-react'
-import { type FormEvent, useEffect, useState } from 'react'
+import { CircleAlert, CircleDollarSign, CheckCircle2, Send, ShieldCheck } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import {
   transportBoxCategories,
@@ -18,7 +10,7 @@ import {
   type TransportBoxCatalogItem,
   type TransportBoxCategory,
 } from '@/shared/application/transport-boxes'
-import type { SavedMeetingPoint, StaffInvitation } from '@/shared/types'
+import type { SavedMeetingPoint } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { sendEmailTest } from '../application/email-test'
@@ -28,9 +20,6 @@ import { UserRolesSettings } from './user-roles-settings'
 type Props = {
   currentUserId?: string
   onNotify: (message: string) => void
-  invitations: StaffInvitation[]
-  onInvite: (email: string) => Promise<void>
-  onRevokeInvitation: (email: string) => Promise<void>
   boxCatalog: TransportBoxCatalog
   onSaveBoxCatalog: (catalog: TransportBoxCatalog) => Promise<void>
   meetingPoints: SavedMeetingPoint[]
@@ -48,19 +37,12 @@ const sizeFields = [
 export function SettingsPage({
   currentUserId,
   onNotify,
-  invitations,
-  onInvite,
-  onRevokeInvitation,
   boxCatalog,
   onSaveBoxCatalog,
   meetingPoints,
   onSaveMeetingPoint,
   onDeleteMeetingPoint,
 }: Props) {
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviting, setInviting] = useState(false)
-  const [inviteError, setInviteError] = useState('')
-  const [revokingEmail, setRevokingEmail] = useState<string | null>(null)
   const [draftCatalog, setDraftCatalog] = useState(boxCatalog)
   const [savingPrices, setSavingPrices] = useState(false)
   const [priceError, setPriceError] = useState('')
@@ -70,33 +52,6 @@ export function SettingsPage({
     message: string
   } | null>(null)
   useEffect(() => setDraftCatalog(boxCatalog), [boxCatalog])
-
-  async function inviteMember(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setInviting(true)
-    setInviteError('')
-    try {
-      await onInvite(inviteEmail)
-      setInviteEmail('')
-    } catch (reason) {
-      setInviteError(
-        reason instanceof Error ? reason.message : 'No se ha podido crear la invitación.',
-      )
-    } finally {
-      setInviting(false)
-    }
-  }
-
-  async function revokeInvitation(email: string) {
-    setRevokingEmail(email)
-    try {
-      await onRevokeInvitation(email)
-    } catch {
-      // The dashboard already reports the failure.
-    } finally {
-      setRevokingEmail(null)
-    }
-  }
 
   function updateDraftItem(
     category: TransportBoxCategory,
@@ -170,53 +125,6 @@ export function SettingsPage({
         </span>
       </PageIntro>
       <UserRolesSettings currentUserId={currentUserId} onNotify={onNotify} />
-      <section className="settings-support settings-invitations">
-        <div>
-          <h2>Invitar administrador</h2>
-          <p>
-            Solo los correos invitados obtienen acceso al equipo. Tras invitarle, la persona debe
-            crear su cuenta en el acceso normal y confirmar su correo.
-          </p>
-        </div>
-        <form className="team-invite-form" onSubmit={(event) => void inviteMember(event)}>
-          <Input
-            type="email"
-            value={inviteEmail}
-            onChange={(event) => setInviteEmail(event.target.value)}
-            placeholder="correo@ejemplo.com"
-            aria-label="Correo del administrador"
-            autoComplete="off"
-            required
-            disabled={inviting}
-          />
-          <Button type="submit" disabled={inviting}>
-            <MailPlus size={16} /> {inviting ? 'Invitando…' : 'Invitar'}
-          </Button>
-        </form>
-        {inviteError && (
-          <p className="form-error" role="alert">
-            {inviteError}
-          </p>
-        )}
-        {invitations.length > 0 && (
-          <ul className="team-invitation-list" aria-label="Invitaciones pendientes">
-            {invitations.map((invitation) => (
-              <li key={invitation.email}>
-                <span>{invitation.email}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={revokingEmail === invitation.email}
-                  onClick={() => void revokeInvitation(invitation.email)}
-                  aria-label={`Retirar invitación de ${invitation.email}`}
-                >
-                  <X size={14} /> Retirar
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
       <section className="settings-support settings-pricing">
         <div className="settings-pricing-heading">
           <h2>Catálogo de boxes</h2>

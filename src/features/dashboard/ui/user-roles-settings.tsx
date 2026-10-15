@@ -53,13 +53,18 @@ export function UserRolesSettings({ currentUserId, onNotify }: Props) {
     }
   }
 
+  // Sin búsqueda solo se muestran los administradores (para quitarlos con facilidad);
+  // el resto de cuentas se encuentran buscando por nombre o correo.
+  const searching = query.trim().length > 0
+  const visibleUsers = searching ? users : users.filter((user) => user.role === 'admin')
+
   return (
     <section className="settings-support settings-invitations">
       <div>
         <h2>Usuarios y roles</h2>
         <p>
-          Busca una cuenta y conviértela en administrador. Los trabajadores solo tienen que crear su
-          cuenta como cualquier cliente.
+          Aquí ves los administradores actuales. Para hacer administrador a otra cuenta, búscala por
+          nombre o correo. Los trabajadores solo tienen que crear su cuenta como cualquier cliente.
         </p>
       </div>
       <Input
@@ -75,10 +80,15 @@ export function UserRolesSettings({ currentUserId, onNotify }: Props) {
           {error}
         </p>
       )}
-      {!error && !loading && users.length === 0 && <p>No hay usuarios que coincidan.</p>}
-      {users.length > 0 && (
-        <ul className="team-invitation-list" aria-label="Usuarios">
-          {users.map((user) => (
+      {!error && !loading && visibleUsers.length === 0 && (
+        <p>{searching ? 'No hay usuarios que coincidan.' : 'Todavía no hay administradores.'}</p>
+      )}
+      {visibleUsers.length > 0 && (
+        <ul
+          className="team-invitation-list"
+          aria-label={searching ? 'Resultados de la búsqueda' : 'Administradores'}
+        >
+          {visibleUsers.map((user) => (
             <li key={user.id}>
               <span>
                 {user.displayName ? <strong>{user.displayName} · </strong> : null}

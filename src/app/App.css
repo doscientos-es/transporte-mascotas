@@ -5369,17 +5369,6 @@
   gap: 14px;
 }
 
-.team-invite-form {
-  display: flex;
-  gap: 10px;
-  max-width: 520px;
-}
-
-.team-invite-form input {
-  flex: 1;
-  min-width: 0;
-}
-
 .team-invitation-list {
   display: grid;
   gap: 6px;

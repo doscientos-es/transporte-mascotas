@@ -59,11 +59,6 @@ export interface UserProfile {
   role: AppRole
 }
 
-export interface StaffInvitation {
-  email: string
-  createdAt: string
-}
-
 export interface UserRoleEntry {
   id: string
   email: string

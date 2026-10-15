@@ -31,7 +31,6 @@ import {
   type SavedMeetingPoint,
   type RouteTemplate,
   type ServiceAction,
-  type StaffInvitation,
 } from '@/shared/types'
 
 import {
@@ -64,9 +63,6 @@ import {
   duplicateRouteTemplate as persistRouteTemplateCopy,
   loadDailyRoutes,
   loadRouteTemplates,
-  createStaffInvitation,
-  deleteStaffInvitation,
-  loadPendingStaffInvitations,
   reassignVanBox,
   saveDailyRoute,
   saveRouteTemplate,
@@ -258,7 +254,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
   const [lettersError, setLettersError] = useState('')
   const [routeTemplates, setRouteTemplates] = useState<RouteTemplate[]>([])
   const [meetingPoints, setMeetingPoints] = useState<SavedMeetingPoint[]>([])
-  const [staffInvitations, setStaffInvitations] = useState<StaffInvitation[]>([])
   const [boxCatalog, setBoxCatalog] = useState<TransportBoxCatalog>(defaultTransportBoxCatalog)
   const [dailyRoutes, setDailyRoutes] = useState<DailyRoute[]>([])
   const [routesLoading, setRoutesLoading] = useState(Boolean(session))
@@ -316,7 +311,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!userId) {
       setRouteTemplates([])
       setMeetingPoints([])
-      setStaffInvitations([])
       setDailyRoutes([])
       setSelectedTemplate(null)
       setSelectedRoute(null)
@@ -357,13 +351,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
         if (active) setRoutesLoading(false)
       })
     if (role === 'admin') {
-      loadPendingStaffInvitations()
-        .then((loadedInvitations) => {
-          if (active) setStaffInvitations(loadedInvitations)
-        })
-        .catch(() => {
-          if (active) toast('No se han podido cargar las invitaciones del equipo.')
-        })
       loadTransportBoxCatalog()
         .then((loadedCatalog) => {
           if (active) setBoxCatalog(loadedCatalog)
@@ -390,27 +377,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     if (!supabase || !session) return toast('No hay una sesión autenticada que cerrar.')
     const { error } = await supabase.auth.signOut()
     if (error) toast('No se ha podido cerrar la sesión.')
-  }
-
-  async function inviteStaffMember(email: string) {
-    const { invitation, accepted } = await createStaffInvitation(email)
-    if (accepted) {
-      toast(`${invitation.email} ya tenía cuenta y ahora es administrador.`)
-      return
-    }
-    setStaffInvitations((current) => [invitation, ...current])
-    toast(`Invitación creada para ${invitation.email}.`)
-  }
-
-  async function revokeStaffInvitation(email: string) {
-    try {
-      await deleteStaffInvitation(email)
-      setStaffInvitations((current) => current.filter((item) => item.email !== email))
-      toast(`Invitación de ${email} retirada.`)
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'No se ha podido retirar la invitación.')
-      throw error
-    }
   }
 
   async function updateBoxCatalog(catalog: TransportBoxCatalog) {
@@ -1289,7 +1255,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     ensureLetters,
     routeTemplates,
     meetingPoints,
-    staffInvitations,
     boxCatalog,
     dailyRoutes,
     routesLoading,
@@ -1308,8 +1273,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     notice,
     toast,
     signOut,
-    inviteStaffMember,
-    revokeStaffInvitation,
     updateBoxCatalog,
     saveMeetingPoint,
     removeMeetingPoint,
