@@ -7,7 +7,7 @@ import { routeDays, routeDaysLabel, routeStopArrivals } from '@/shared/lib/route
 import type { UpcomingRoute } from '@/shared/types'
 
 import { approximateArrivalPeriod } from '../application/route-arrival-window'
-import { itineraryDirectionsUrl } from '../application/route-maps'
+import { itineraryDirectionsLinks } from '../application/route-maps'
 
 const RouteMap = lazy(() => import('./route-map'))
 

@@ -51,6 +51,7 @@ import {
   useState,
 } from 'react'
 
+import { itineraryDirectionsLinks } from '@/features/client-portal'
 import {
   DEFAULT_ROUTE_START_TIME,
   DEFAULT_STOP_DWELL_MINUTES,
@@ -861,6 +862,20 @@ export function RoutesPage({
                   label={`Mapa del recorrido de la ruta ${template.name}`}
                 />
               </Suspense>
+              {directionsLinks.map((link) => (
+                <a
+                  key={link.url}
+                  className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Navigation size={14} />
+                  {directionsLinks.length === 1
+                    ? 'Abrir recorrido completo en Google Maps'
+                    : `Abrir en Google Maps: paradas ${link.from} a ${link.to}`}
+                </a>
+              ))}
             </div>
           )}
           <ol>
