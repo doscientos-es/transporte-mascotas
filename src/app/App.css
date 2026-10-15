@@ -1379,6 +1379,14 @@
   margin-bottom: 24px;
 }
 
+.login-card .auth-brand-lockup {
+  margin-bottom: 24px;
+}
+
+.auth-professional-link {
+  margin-top: 14px;
+}
+
 .login-card h1 {
   margin: 5px 0 10px;
   font-size: clamp(28px, 5vw, 38px);

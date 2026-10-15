@@ -8,6 +8,7 @@ import type {
   RouteTemplate,
   ServiceAction,
   StaffInvitation,
+  UserRoleEntry,
 } from '@/shared/types'
 
 type StoredStop = {
@@ -356,6 +357,33 @@ export async function deleteStaffInvitation(email: string) {
     .eq('email', email)
     .is('accepted_at', null)
   if (error) throw error
+}
+
+export async function loadUserRoles(query: string): Promise<UserRoleEntry[]> {
+  const { data, error } = await requireSupabase().rpc('list_user_roles', {
+    p_query: query.trim() || undefined,
+  })
+  if (error) throw error
+  const rows = (data ?? []) as {
+    id: string
+    email: string
+    display_name: string
+    role: string
+  }[]
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role === 'admin' ? 'admin' : 'user',
+  }))
+}
+
+export async function updateUserRole(userId: string, role: UserRoleEntry['role']) {
+  const { error } = await requireSupabase().rpc('set_user_role', {
+    p_user_id: userId,
+    p_role: role,
+  })
+  if (error) throw new Error(error.message)
 }
 
 export async function loadDailyRoutes() {

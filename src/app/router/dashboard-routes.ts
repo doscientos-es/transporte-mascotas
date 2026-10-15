@@ -124,7 +124,3 @@ export function upcomingRoutePathFor(routeId: string) {
 export function vanPathFor(routeId: string) {
   return `${dashboardPaths.furgoneta}/${encodeURIComponent(routeId)}`
 }
-
-export function isStaffAccessPath(pathname: string) {
-  return pathname === APP_PATHS.staffAccess || pathname.startsWith(`${APP_PATHS.staffAccess}/`)
-}

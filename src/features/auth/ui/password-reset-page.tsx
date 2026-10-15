@@ -1,5 +1,14 @@
-import { Button } from '@doscientos/ui'
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Card,
+  CardContent,
+  Field,
+  FieldLabel,
+  LinkButton,
+} from '@doscientos/ui'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
 import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import { supabase } from '@/shared/infrastructure/supabase'
@@ -7,18 +16,18 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 
 import { getPasswordResetFeedback, type AuthFeedback } from '../application/auth-feedback'
 import { updatePassword } from '../application/authenticate'
+import { PasswordInput } from './password-input'
 
-type Props = { audience: 'client' | 'staff' }
 type ResetStatus = 'checking' | 'ready' | 'invalid' | 'unavailable' | 'success'
 
-export function PasswordResetPage({ audience }: Props) {
+export function PasswordResetPage() {
   const [status, setStatus] = useState<ResetStatus>('checking')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null)
   const [sending, setSending] = useState(false)
-  const accessPath = audience === 'client' ? AUTH_PATHS.clientAccess : AUTH_PATHS.staffAccess
-  const recoveryPath = `${AUTH_PATHS.passwordRecovery}${audience === 'staff' ? '?audience=staff' : ''}`
+  const accessPath = AUTH_PATHS.clientAccess
+  const recoveryPath = AUTH_PATHS.passwordRecovery
 
   useEffect(() => {
     if (!supabase) {
@@ -109,45 +118,50 @@ export function PasswordResetPage({ audience }: Props) {
   }
 
   return (
-    <main className="login-screen auth-flow-screen">
-      <section className="login-card">
-        <BrandLogo />
-        <h1>Crea una contraseña nueva</h1>
-        <p>Elige una contraseña segura de al menos 8 caracteres.</p>
-        <form onSubmit={(event) => void resetPassword(event)}>
-          <label>
-            Nueva contraseña
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </label>
-          <label>
-            Repite la contraseña
-            <input
-              type="password"
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
-          </label>
-          {feedback && (
-            <div className={`form-feedback form-feedback-${feedback.tone}`} role="alert">
-              <p>{feedback.message}</p>
-            </div>
-          )}
-          <Button type="submit" disabled={sending}>
-            {sending ? 'Guardando…' : 'Guardar contraseña'}
-          </Button>
-        </form>
-      </section>
-    </main>
+    <AuthShell
+      title="Crea una contraseña nueva"
+      description="Elige una contraseña segura de al menos 8 caracteres."
+    >
+      <form
+        className="grid gap-4"
+        onSubmit={(event) => void resetPassword(event)}
+        aria-busy={sending}
+      >
+        <Field>
+          <FieldLabel htmlFor="reset-password">Nueva contraseña</FieldLabel>
+          <PasswordInput
+            id="reset-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            enterKeyHint="next"
+            minLength={8}
+            placeholder="Al menos 8 caracteres"
+            required
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="reset-confirmation">Repite la contraseña</FieldLabel>
+          <PasswordInput
+            id="reset-confirmation"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+            autoComplete="new-password"
+            enterKeyHint="go"
+            minLength={8}
+            required
+          />
+        </Field>
+        {feedback && (
+          <Alert variant={feedback.tone === 'error' ? 'destructive' : feedback.tone} role="alert">
+            <AlertDescription>{feedback.message}</AlertDescription>
+          </Alert>
+        )}
+        <Button type="submit" size="lg" className="w-full" disabled={sending}>
+          {sending ? 'Guardando…' : 'Guardar contraseña'}
+        </Button>
+      </form>
+    </AuthShell>
   )
 }
 
@@ -163,17 +177,42 @@ function ResetState({
   message: string
 }) {
   return (
-    <main className="login-screen auth-flow-screen">
-      <section className="login-card auth-state-card">
-        <BrandLogo />
-        <h1>{isError ? 'No podemos continuar' : 'Un momento'}</h1>
-        <p>{message}</p>
-        {actionHref && (
-          <a className="auth-flow-link" href={actionHref}>
-            {actionLabel}
-          </a>
-        )}
-      </section>
+    <AuthShell title={isError ? 'No podemos continuar' : 'Un momento'} description={message}>
+      {actionHref && (
+        <LinkButton size="lg" className="w-full" href={actionHref}>
+          {actionLabel}
+        </LinkButton>
+      )}
+    </AuthShell>
+  )
+}
+
+function AuthShell({
+  children,
+  description,
+  title,
+}: {
+  children?: ReactNode
+  description: string
+  title: string
+}) {
+  return (
+    <main className="login-screen">
+      <Card className="w-full max-w-110 py-0 shadow-[0_20px_60px_rgb(0_0_0_/_8%)]">
+        <CardContent className="grid gap-6 p-6 sm:p-9">
+          <div className="grid gap-3">
+            <div className="flex items-center gap-2.5">
+              <BrandLogo className="h-9 w-11 object-contain" />
+              <span className="text-[15px] leading-[1.05] font-[650]">Kache Envíos</span>
+            </div>
+            <h1 className="m-0 text-[clamp(26px,5vw,34px)] leading-[1.05] font-bold tracking-[-0.045em]">
+              {title}
+            </h1>
+            <p className="text-muted-foreground m-0 text-sm leading-6">{description}</p>
+          </div>
+          {children}
+        </CardContent>
+      </Card>
     </main>
   )
 }

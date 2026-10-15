@@ -180,7 +180,7 @@ export function DashboardLayout({
         aria-label="Navegación principal"
       >
         <div className="flex items-center gap-[11px] px-2.5 pt-0.5 pb-7 text-sm leading-[1.05] font-[650] text-white">
-          <BrandLogo variant="dark" className="h-[34px] w-[42px] rounded-md object-contain" />
+          <BrandLogo className="h-[34px] w-[42px] rounded-md object-contain" />
           <span>Kache Envíos</span>
         </div>
         <div className="px-2.5 pb-2.5 text-[10px] font-[750] tracking-[0.12em] text-[#bdbdbd] uppercase">

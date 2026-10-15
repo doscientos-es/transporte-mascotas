@@ -1,1 +1,6 @@
-export { authenticate, requestPasswordReset, updatePassword } from '../infrastructure/authenticate'
+export {
+  authenticate,
+  requestPasswordReset,
+  resendConfirmation,
+  updatePassword,
+} from '../infrastructure/authenticate'

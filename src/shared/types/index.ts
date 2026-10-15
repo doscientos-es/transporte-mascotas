@@ -62,6 +62,13 @@ export interface StaffInvitation {
   createdAt: string
 }
 
+export interface UserRoleEntry {
+  id: string
+  email: string
+  displayName: string
+  role: 'admin' | 'user'
+}
+
 export interface Animal {
   id: string
   species: string

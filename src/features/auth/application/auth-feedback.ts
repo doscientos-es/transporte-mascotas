@@ -5,7 +5,7 @@ export type AuthFailure = {
 }
 
 export type AuthFeedback = {
-  action?: 'login'
+  action?: 'login' | 'resend'
   message: string
   tone: 'error' | 'info' | 'success'
 }
@@ -34,6 +34,7 @@ export function getAuthFeedback(error: AuthFailure, mode: 'login' | 'signup'): A
     return {
       tone: 'info',
       message: 'Confirma el correo que te enviamos antes de iniciar sesión.',
+      action: 'resend',
     }
   }
 

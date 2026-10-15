@@ -7,7 +7,6 @@ import {
   dashboardLocationForPath,
   dashboardPathFor,
   dashboardPaths,
-  isStaffAccessPath,
   letterCreatePath,
   paymentReturnStateFromSearch,
   routePathFor,
@@ -52,10 +51,9 @@ describe('dashboard routes', () => {
     expect(dashboardLocationForPath('/')).toEqual({ section: 'cartas' })
   })
 
-  it('recognises only the staff access path and its children', () => {
-    expect(isStaffAccessPath(APP_PATHS.staffAccess)).toBe(true)
-    expect(isStaffAccessPath('/admin/acceso')).toBe(true)
-    expect(isStaffAccessPath('/administracion')).toBe(false)
+  it('keeps the old staff access path matching its children so it can redirect to the login', () => {
+    expect(APP_PATHS.staffAccess).toBe('/admin')
+    expect(ROUTER_PATHS.staffAccess).toBe('admin/*')
   })
 
   it('preserves the payment kind identifier when returning from the gateway', () => {

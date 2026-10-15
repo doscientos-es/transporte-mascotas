@@ -1,4 +1,15 @@
-import { Button } from '@doscientos/ui'
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Card,
+  CardContent,
+  Field,
+  FieldLabel,
+  Input,
+  LinkButton,
+  Separator,
+} from '@doscientos/ui'
 import { useState, type FormEvent } from 'react'
 
 import { AUTH_PATHS } from '@/shared/constants/auth-paths'
@@ -7,20 +18,17 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 import { getPasswordRecoveryFeedback, type AuthFeedback } from '../application/auth-feedback'
 import { requestPasswordReset } from '../application/authenticate'
 
-type Props = { audience: 'client' | 'staff' }
-
-export function PasswordRecoveryPage({ audience }: Props) {
+export function PasswordRecoveryPage() {
   const [email, setEmail] = useState('')
   const [feedback, setFeedback] = useState<AuthFeedback | null>(null)
   const [sending, setSending] = useState(false)
-  const accessPath = audience === 'client' ? AUTH_PATHS.clientAccess : AUTH_PATHS.staffAccess
 
   async function requestReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSending(true)
     setFeedback(null)
     try {
-      const response = await requestPasswordReset({ email, audience })
+      const response = await requestPasswordReset({ email })
       if (response.unavailable) {
         setFeedback({ tone: 'error', message: 'El acceso no está configurado en este entorno.' })
       } else if (response.error) {
@@ -43,39 +51,61 @@ export function PasswordRecoveryPage({ audience }: Props) {
   }
 
   return (
-    <main className="login-screen auth-flow-screen">
-      <section className="login-card">
-        <BrandLogo />
-        <h1>Recupera tu acceso</h1>
-        <p>Te enviaremos un enlace para crear una contraseña nueva.</p>
-        <form onSubmit={(event) => void requestReset(event)}>
-          <label>
-            Correo electrónico
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              placeholder="tu@email.com"
-              required
-            />
-          </label>
-          {feedback && (
-            <div
-              className={`form-feedback form-feedback-${feedback.tone}`}
-              role={feedback.tone === 'error' ? 'alert' : 'status'}
-            >
-              <p>{feedback.message}</p>
+    <main className="login-screen">
+      <Card className="w-full max-w-110 py-0 shadow-[0_20px_60px_rgb(0_0_0_/_8%)]">
+        <CardContent className="grid gap-6 p-6 sm:p-9">
+          <div className="grid gap-3">
+            <div className="flex items-center gap-2.5">
+              <BrandLogo className="h-9 w-11 object-contain" />
+              <span className="text-[15px] leading-[1.05] font-[650]">Kache Envíos</span>
             </div>
-          )}
-          <Button type="submit" disabled={sending}>
-            {sending ? 'Enviando…' : 'Enviar enlace'}
-          </Button>
-        </form>
-        <a className="auth-flow-link" href={accessPath}>
-          Volver a iniciar sesión
-        </a>
-      </section>
+            <h1 className="m-0 text-[clamp(26px,5vw,34px)] leading-[1.05] font-bold tracking-[-0.045em]">
+              Recupera tu acceso
+            </h1>
+            <p className="text-muted-foreground m-0 text-sm leading-6">
+              Te enviaremos un enlace para crear una contraseña nueva.
+            </p>
+          </div>
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => void requestReset(event)}
+            aria-busy={sending}
+          >
+            <Field>
+              <FieldLabel htmlFor="recovery-email">Correo electrónico</FieldLabel>
+              <Input
+                id="recovery-email"
+                className="min-h-11"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                inputMode="email"
+                enterKeyHint="send"
+                placeholder="tu@email.com"
+                required
+              />
+            </Field>
+            {feedback && (
+              <Alert
+                variant={feedback.tone === 'error' ? 'destructive' : feedback.tone}
+                role={feedback.tone === 'error' ? 'alert' : 'status'}
+              >
+                <AlertDescription>{feedback.message}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" size="lg" className="w-full" disabled={sending}>
+              {sending ? 'Enviando…' : 'Enviar enlace'}
+            </Button>
+          </form>
+          <Separator />
+          <LinkButton variant="ghost" className="w-full" href={AUTH_PATHS.clientAccess}>
+            Volver a iniciar sesión
+          </LinkButton>
+        </CardContent>
+      </Card>
     </main>
   )
 }

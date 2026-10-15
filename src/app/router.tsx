@@ -43,11 +43,8 @@ const router = createBrowserRouter([
             lazy: () => import('./router/login-route'),
             HydrateFallback: LoadingRoute,
           },
-          {
-            path: ROUTER_PATHS.staffAccess,
-            lazy: () => import('./router/login-route'),
-            HydrateFallback: LoadingRoute,
-          },
+          // Old staff login URL: kept so saved links still land on the single login.
+          { path: ROUTER_PATHS.staffAccess, element: <Navigate to={APP_PATHS.home} replace /> },
           {
             path: ROUTER_PATHS.passwordRecovery,
             lazy: () => import('./router/password-recovery-route'),
@@ -205,7 +202,7 @@ function ClientRouteGuard() {
 
 function StaffRouteGuard() {
   const auth = useAuth()
-  if (!auth.session || !auth.profile) return <Navigate to={APP_PATHS.staffAccess} replace />
+  if (!auth.session || !auth.profile) return <Navigate to={APP_PATHS.home} replace />
   if (isClientRole(auth.profile.role)) return <Navigate to={APP_PATHS.clientHome} replace />
   return (
     <DashboardRouteOutlet

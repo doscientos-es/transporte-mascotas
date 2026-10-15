@@ -18,14 +18,16 @@ import {
   type TransportBoxCatalogItem,
   type TransportBoxCategory,
 } from '@/shared/application/transport-boxes'
-import { AUTH_PATHS } from '@/shared/constants/auth-paths'
 import type { SavedMeetingPoint, StaffInvitation } from '@/shared/types'
 import { PageIntro } from '@/shared/ui/page-intro'
 
 import { sendEmailTest } from '../application/email-test'
 import { MeetingPointsSettings } from './meeting-points-settings'
+import { UserRolesSettings } from './user-roles-settings'
 
 type Props = {
+  currentUserId?: string
+  onNotify: (message: string) => void
   invitations: StaffInvitation[]
   onInvite: (email: string) => Promise<void>
   onRevokeInvitation: (email: string) => Promise<void>
@@ -44,6 +46,8 @@ const sizeFields = [
 ] as const
 
 export function SettingsPage({
+  currentUserId,
+  onNotify,
   invitations,
   onInvite,
   onRevokeInvitation,
@@ -165,12 +169,13 @@ export function SettingsPage({
           <ShieldCheck size={16} /> Solo administradores
         </span>
       </PageIntro>
+      <UserRolesSettings currentUserId={currentUserId} onNotify={onNotify} />
       <section className="settings-support settings-invitations">
         <div>
           <h2>Invitar administrador</h2>
           <p>
             Solo los correos invitados obtienen acceso al equipo. Tras invitarle, la persona debe
-            crear su cuenta en <strong>{AUTH_PATHS.staffAccess}</strong> y confirmar su correo.
+            crear su cuenta en el acceso normal y confirmar su correo.
           </p>
         </div>
         <form className="team-invite-form" onSubmit={(event) => void inviteMember(event)}>

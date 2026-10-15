@@ -20,6 +20,10 @@ describe('getAuthFeedback', () => {
     })
   })
 
+  it('offers to resend the confirmation email when the account is unconfirmed', () => {
+    expect(getAuthFeedback({ code: 'email_not_confirmed' }, 'login').action).toBe('resend')
+  })
+
   it.each([
     [
       { message: 'Too many requests' },

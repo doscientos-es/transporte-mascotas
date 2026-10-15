@@ -4,13 +4,13 @@ import { Navigate, useLocation, useOutletContext } from 'react-router-dom'
 import { LoginRoutePage } from '@/pages/login'
 import { isClientRole, type UserProfile } from '@/shared/types'
 
-import { APP_PATHS, isStaffAccessPath, paymentReturnStateFromSearch } from './dashboard-routes'
+import { APP_PATHS, paymentReturnStateFromSearch } from './dashboard-routes'
 
 type PublicRouteContext = { session: Session | null; profile: UserProfile | null }
 
 export function Component() {
   const { session, profile } = useOutletContext<PublicRouteContext>()
-  const { pathname, search } = useLocation()
+  const { search } = useLocation()
   const paymentState = paymentReturnStateFromSearch(search)
   if (session && profile)
     return (
@@ -20,5 +20,5 @@ export function Component() {
         replace
       />
     )
-  return <LoginRoutePage audience={isStaffAccessPath(pathname) ? 'staff' : 'client'} />
+  return <LoginRoutePage />
 }

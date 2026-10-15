@@ -433,6 +433,8 @@ export function AdminDashboardPage({
             )}
             {profile.role === 'admin' && section === 'ajustes' && (
               <SettingsPage
+                currentUserId={session?.user.id}
+                onNotify={dashboard.toast}
                 invitations={dashboard.staffInvitations}
                 onInvite={dashboard.inviteStaffMember}
                 onRevokeInvitation={dashboard.revokeStaffInvitation}

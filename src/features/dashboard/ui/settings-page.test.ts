@@ -24,6 +24,8 @@ describe('SettingsPage', () => {
     }
     const markup = renderToStaticMarkup(
       createElement(SettingsPage, {
+        currentUserId: 'admin-1',
+        onNotify: () => {},
         invitations: [],
         onInvite: async () => {},
         onRevokeInvitation: async () => {},
@@ -35,6 +37,7 @@ describe('SettingsPage', () => {
       }),
     )
 
+    expect(markup).toContain('Usuarios y roles')
     expect(markup).toContain('Prueba de email')
     expect(markup).toContain('Enviar prueba de email')
     expect(markup).toContain('Puntos de encuentro')
