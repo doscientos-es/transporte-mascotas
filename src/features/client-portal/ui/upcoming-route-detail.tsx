@@ -40,7 +40,7 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
     route.startTime ?? DEFAULT_ROUTE_START_TIME,
     route.stops,
   )
-  const directionsUrl = itineraryDirectionsUrl(route.stops)
+  const directionsLinks = itineraryDirectionsLinks(route.stops)
 
   return (
     <div className="upcoming-route-detail">
@@ -81,16 +81,20 @@ export function UpcomingRouteDetail({ route, onBack, onSelect }: Props) {
                   label={`Mapa del recorrido de ${route.templateName || 'la ruta'}`}
                 />
               </Suspense>
-              {directionsUrl && (
+              {directionsLinks.map((link) => (
                 <a
+                  key={link.url}
                   className="text-accent flex items-center gap-1.5 px-3 py-2 text-xs font-bold hover:underline"
-                  href={directionsUrl}
+                  href={link.url}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <Navigation size={14} /> Abrir recorrido completo en Google Maps
+                  <Navigation size={14} />
+                  {directionsLinks.length === 1
+                    ? 'Abrir recorrido completo en Google Maps'
+                    : `Abrir en Google Maps: paradas ${link.from} a ${link.to}`}
                 </a>
-              )}
+              ))}
             </section>
           )}
 

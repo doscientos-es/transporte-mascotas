@@ -30,6 +30,7 @@ import {
   Lock,
   MapPin,
   MoreHorizontal,
+  Navigation,
   PackageOpen,
   PawPrint,
   Pencil,
@@ -488,6 +489,7 @@ export function RoutesPage({
     .join(';')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const mapStops = useMemo(() => stops, [mapSignature])
+  const directionsLinks = useMemo(() => itineraryDirectionsLinks(mapStops), [mapStops])
   const travelMinutes = stops.slice(0, -1).reduce((total, stop) => total + stop.minutes, 0)
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)

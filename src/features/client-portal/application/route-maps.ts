@@ -36,19 +36,41 @@ function stopsWithCoordinates(stops: RouteStop[]): GeoStop[] {
   )
 }
 
-/** Google Maps directions URL following every stop of the itinerary in sequence. */
-export function itineraryDirectionsUrl(stops: RouteStop[]) {
+// Google Maps URLs accept at most 9 waypoints (origin + 9 + destination = 11 points).
+const MAX_POINTS_PER_LINK = 11
+
+export type ItineraryDirectionsLink = { url: string; from: number; to: number }
+
+/**
+ * Google Maps directions links covering every stop in sequence. A single link cannot hold
+ * more than 11 points, so longer itineraries are split in consecutive legs that share the
+ * boundary stop (the last stop of one link is the first of the next).
+ */
+export function itineraryDirectionsLinks(stops: RouteStop[]): ItineraryDirectionsLink[] {
   const geoStops = stopsWithCoordinates(stops)
-  if (geoStops.length < 2) return null
-  const first = geoStops[0]
-  const last = geoStops[geoStops.length - 1]
-  const waypoints = geoStops.slice(1, -1)
-  const params = new URLSearchParams({
-    api: '1',
-    origin: `${first.latitude},${first.longitude}`,
-    destination: `${last.latitude},${last.longitude}`,
-  })
-  if (waypoints.length)
-    params.set('waypoints', waypoints.map((stop) => `${stop.latitude},${stop.longitude}`).join('|'))
-  return `https://www.google.com/maps/dir/?${params}`
+  const links: ItineraryDirectionsLink[] = []
+  for (let start = 0; start < geoStops.length - 1; start += MAX_POINTS_PER_LINK - 1) {
+    const chunk = geoStops.slice(start, start + MAX_POINTS_PER_LINK)
+    const first = chunk[0]
+    const last = chunk[chunk.length - 1]
+    const params = new URLSearchParams({
+      api: '1',
+      origin: `${first.latitude},${first.longitude}`,
+      destination: `${last.latitude},${last.longitude}`,
+    })
+    if (chunk.length > 2)
+      params.set(
+        'waypoints',
+        chunk
+          .slice(1, -1)
+          .map((stop) => `${stop.latitude},${stop.longitude}`)
+          .join('|'),
+      )
+    links.push({
+      url: `https://www.google.com/maps/dir/?${params}`,
+      from: start + 1,
+      to: start + chunk.length,
+    })
+  }
+  return links
 }
