@@ -26,9 +26,6 @@ describe('SettingsPage', () => {
       createElement(SettingsPage, {
         currentUserId: 'admin-1',
         onNotify: () => {},
-        invitations: [],
-        onInvite: async () => {},
-        onRevokeInvitation: async () => {},
         boxCatalog: defaultTransportBoxCatalog,
         onSaveBoxCatalog: async () => {},
         meetingPoints: [meetingPoint],

@@ -93,7 +93,6 @@ export function BillingDocumentCard({
               variant="outline"
               className="invoice-preview-button"
               onClick={onPreview}
-              title={isIssued ? 'Ver factura' : 'Ver solicitud'}
               aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
             >
               <Eye size={15} />
@@ -107,7 +106,6 @@ export function BillingDocumentCard({
               className="invoice-download-button"
               disabled={downloading}
               onClick={onDownload}
-              title={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
               aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
             >
               <Download size={15} />
