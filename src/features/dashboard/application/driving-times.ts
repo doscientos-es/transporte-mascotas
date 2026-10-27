@@ -136,14 +136,34 @@ const toLocation = ([lon, lat]: Coordinates) => ({ lon, lat })
 const toOsrmPath = (coordinates: Coordinates[]) =>
   coordinates.map(([lon, lat]) => lon + ',' + lat).join(';')
 
-async function valhallaPost<T>(path: string, body: object) {
-  const response = await fetch(valhallaUrl + '/' + path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ costing: 'auto', ...body }),
+// The public server allows one request per second per user; requests are queued to respect it.
+const valhallaMinGapMs = 1100
+const valhallaTimeoutMs = 8000
+let valhallaQueue: Promise<unknown> = Promise.resolve()
+let lastValhallaRequestAt = 0
+
+function throttledValhalla<T>(task: () => Promise<T>) {
+  const run = valhallaQueue.then(async () => {
+    const wait = lastValhallaRequestAt + valhallaMinGapMs - Date.now()
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+    lastValhallaRequestAt = Date.now()
+    return task()
   })
-  if (!response.ok) throw new Error('Valhalla ' + response.status)
-  return (await response.json()) as T
+  valhallaQueue = run.catch(() => undefined)
+  return run
+}
+
+function valhallaPost<T>(path: string, body: object) {
+  return throttledValhalla(async () => {
+    const response = await fetch(valhallaUrl + '/' + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Client-Id': 'kache-envios' },
+      body: JSON.stringify({ costing: 'auto', ...body }),
+      signal: AbortSignal.timeout(valhallaTimeoutMs),
+    })
+    if (!response.ok) throw new Error('Valhalla ' + response.status)
+    return (await response.json()) as T
+  })
 }
 
 /** Driving seconds for each consecutive pair of coordinates. */
