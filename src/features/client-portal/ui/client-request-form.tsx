@@ -138,8 +138,34 @@ const invoiceClient = (fullName = '', email = '', phone = '', nif = ''): Invoice
   postalCode: '',
 })
 
-const hasMeasurements = (animal: TransportRequestAnimal) =>
-  animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
+const STELLA_WHATSAPP = 'https://wa.me/34658604933'
+const isDogOrCat = (species: string) => species === 'Canina' || species === 'Felina'
+
+/** Only the weight is needed to pick the box; the measurements refine it when given. */
+const hasWeight = (animal: TransportRequestAnimal) => animal.weightKg > 0
+
+function OtherSpeciesNotice({ name }: { name: string }) {
+  return (
+    <div className="mt-4 grid gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <p className="flex items-start gap-2 font-semibold">
+        <PawPrint size={16} className="mt-0.5 shrink-0" />
+        <span>Solo gestionamos aquí el viaje de perros y gatos</span>
+      </p>
+      <p className="leading-6">
+        Para aves, reptiles, roedores u otras especies, escribe directamente a Stella y te ayudará a
+        organizar el transporte.
+      </p>
+      <a
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-600 px-4 text-sm font-bold text-white no-underline hover:bg-green-700"
+        href={`${STELLA_WHATSAPP}?text=${encodeURIComponent(`Hola Stella, quiero consultar el transporte de ${name.trim() || 'mi mascota'}, que no es ni un perro ni un gato.`)}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Escribir a Stella por WhatsApp (658 60 49 33)
+      </a>
+    </div>
+  )
+}
 
 const initialValues = (
   contactName: string,
@@ -595,17 +621,16 @@ export function ClientRequestForm({
                 ? 'birth-date'
                 : !(animal.weightKg > 0)
                   ? 'weight'
-                  : !(animal.lengthCm > 0)
-                    ? 'length'
-                    : !(animal.heightCm > 0)
-                      ? 'height'
-                      : !(animal.widthCm > 0)
-                        ? 'width'
-                        : ''
+                  : ''
+        if (!isDogOrCat(animal.species) && animal.species.trim())
+          return {
+            message: 'Para esta especie, escribe a Stella por WhatsApp para gestionar el viaje.',
+            fieldId: `animal-${animal.ordinal}-species`,
+          }
         if (missing)
           return {
             message:
-              'Completa el nombre, especie, raza, fecha de nacimiento, peso y medidas de cada mascota.',
+              'Completa el nombre, especie, raza, fecha de nacimiento y peso de cada mascota.',
             fieldId: `animal-${animal.ordinal}-${missing}`,
           }
         const oversized = oversizedTransportBoxMeasure(animal, boxCatalog)
@@ -656,8 +681,14 @@ export function ClientRequestForm({
             minimumCategory,
             boxCatalog,
           )
+          // La base de datos exige medidas: si no se indican, usamos el máximo del box
+          // que corresponde por peso, que mantiene la misma categoría y precio.
+          const box = boxCatalog[minimumCategory]
           return {
             ...animal,
+            lengthCm: animal.lengthCm || box.maxLengthCm || 1,
+            heightCm: animal.heightCm || box.maxHeightCm || 1,
+            widthCm: animal.widthCm || box.maxWidthCm || 1,
             minimumBoxCategory: minimumCategory,
             requestedBoxCategory: requestedCategory,
           }
@@ -1380,7 +1411,10 @@ export function ClientRequestForm({
               <h3 ref={stepHeadingRef} tabIndex={-1}>
                 Tu mascota
               </h3>
-              <p>Con estas medidas reservamos un espacio adecuado en la furgoneta.</p>
+              <p>
+                Con el peso reservamos un espacio adecuado en la furgoneta. Las medidas son
+                opcionales.
+              </p>
             </div>
             {values.animals.map((animal, index) => (
               <div
@@ -1440,196 +1474,214 @@ export function ClientRequestForm({
                       <option value="Otra">Otra</option>
                     </select>
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-breed`}>Raza</FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-breed`}
-                      {...fieldA11y(`animal-${animal.ordinal}-breed`)}
-                      value={animal.breed}
-                      onChange={(event) => updateAnimal(index, { breed: event.target.value })}
-                      placeholder="Mestiza, Labrador…"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-birth-date`}>
-                      Fecha de nacimiento
-                    </FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-birth-date`}
-                      {...fieldA11y(`animal-${animal.ordinal}-birth-date`)}
-                      type="date"
-                      max={today}
-                      value={animal.birthDate}
-                      onChange={(event) => updateAnimal(index, { birthDate: event.target.value })}
-                      className="min-h-11"
-                      required
-                    />
-                    {(() => {
-                      const notice = petAgeNotice(animal.birthDate, travelDate)
-                      return (
-                        notice && (
-                          <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900">
-                            <TriangleAlert size={14} className="mt-0.5 shrink-0" />
-                            {notice}
-                          </p>
-                        )
-                      )
-                    })()}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-weight`}>Peso (kg)</FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-weight`}
-                      {...fieldA11y(`animal-${animal.ordinal}-weight`)}
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      value={animal.weightKg || ''}
-                      onChange={(event) =>
-                        updateAnimal(index, { weightKg: Number(event.target.value) })
-                      }
-                      inputMode="decimal"
-                      placeholder="Por ejemplo, 8,5"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-length`}>Largo (cm)</FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-length`}
-                      {...fieldA11y(`animal-${animal.ordinal}-length`)}
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={animal.lengthCm || ''}
-                      onChange={(event) =>
-                        updateAnimal(index, { lengthCm: Number(event.target.value) })
-                      }
-                      inputMode="numeric"
-                      placeholder="Por ejemplo, 60"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-height`}>Alto (cm)</FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-height`}
-                      {...fieldA11y(`animal-${animal.ordinal}-height`)}
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={animal.heightCm || ''}
-                      onChange={(event) =>
-                        updateAnimal(index, { heightCm: Number(event.target.value) })
-                      }
-                      inputMode="numeric"
-                      placeholder="Por ejemplo, 45"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`animal-${animal.ordinal}-width`}>Ancho (cm)</FieldLabel>
-                    <Input
-                      id={`animal-${animal.ordinal}-width`}
-                      {...fieldA11y(`animal-${animal.ordinal}-width`)}
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={animal.widthCm || ''}
-                      onChange={(event) =>
-                        updateAnimal(index, { widthCm: Number(event.target.value) })
-                      }
-                      inputMode="numeric"
-                      placeholder="Por ejemplo, 35"
-                      className="min-h-11"
-                      required
-                    />
-                  </Field>
                 </div>
-                {(() => {
-                  const measured = hasMeasurements(animal)
-                  const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
-                  const requestedCategory = requestedTransportBoxCategory(
-                    animal,
-                    minimumCategory,
-                    boxCatalog,
-                  )
-                  return (
-                    <div className="mt-3 grid gap-3">
-                      {measured && oversizedTransportBoxMeasure(animal, boxCatalog) && (
-                        <p
-                          className="flex items-start gap-1.5 rounded-md border border-red-300 bg-red-50 px-2.5 py-2 text-xs leading-5 text-red-900"
-                          role="alert"
-                        >
-                          <TriangleAlert size={14} className="mt-0.5 shrink-0" />
-                          <span>
-                            {oversizedTransportBoxMessage(boxCatalog)}{' '}
-                            <a
-                              className="font-bold underline"
-                              href={`https://wa.me/34658604933?text=${encodeURIComponent('Hola Stella, mi mascota supera las medidas del box más grande y quiero consultar el transporte.')}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Escribir a Stella por WhatsApp
-                            </a>
-                          </span>
-                        </p>
-                      )}
-                      <p className="text-muted-foreground text-xs">
-                        {measured ? (
-                          <>
-                            Recomendación automática: {transportBoxCategoryLabel(minimumCategory)} ·{' '}
-                            {boxCatalog[minimumCategory].dimensions}
-                          </>
-                        ) : (
-                          'Indica el peso y las medidas para elegir la categoría de box.'
-                        )}
-                      </p>
+                {animal.species && !isDogOrCat(animal.species) ? (
+                  <OtherSpeciesNotice name={animal.name} />
+                ) : (
+                  <>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor={`animal-${animal.ordinal}-box-category`}>
-                          Categoría de box
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-breed`}>Raza</FieldLabel>
+                        <Input
+                          id={`animal-${animal.ordinal}-breed`}
+                          {...fieldA11y(`animal-${animal.ordinal}-breed`)}
+                          value={animal.breed}
+                          onChange={(event) => updateAnimal(index, { breed: event.target.value })}
+                          placeholder="Mestiza, Labrador…"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-birth-date`}>
+                          Fecha de nacimiento
                         </FieldLabel>
-                        <select
-                          id={`animal-${animal.ordinal}-box-category`}
-                          className="border-input bg-background min-h-11 rounded-md border px-3 text-sm"
-                          value={requestedCategory}
-                          disabled={!measured}
+                        <Input
+                          id={`animal-${animal.ordinal}-birth-date`}
+                          {...fieldA11y(`animal-${animal.ordinal}-birth-date`)}
+                          type="date"
+                          max={today}
+                          value={animal.birthDate}
                           onChange={(event) =>
-                            updateAnimal(index, {
-                              requestedBoxCategory: event.target
-                                .value as TransportRequestAnimal['requestedBoxCategory'],
-                            })
+                            updateAnimal(index, { birthDate: event.target.value })
                           }
-                        >
-                          {transportBoxOptions(minimumCategory, animal.weightKg, boxCatalog).map(
-                            (category) => (
-                              <option value={category} key={category}>
-                                {transportBoxCategoryLabel(category)} ·{' '}
-                                {currency(
-                                  transportBoxPriceCents(
-                                    category,
-                                    { weightKg: animal.weightKg },
-                                    boxCatalog,
-                                  ) / 100,
-                                )}
-                                {transportBoxCategoryRank(category) >
-                                transportBoxCategoryRank(minimumCategory)
-                                  ? ' · extra por comodidad'
-                                  : ''}
-                              </option>
-                            ),
-                          )}
-                        </select>
+                          className="min-h-11"
+                          required
+                        />
+                        {(() => {
+                          const notice = petAgeNotice(animal.birthDate, travelDate)
+                          return (
+                            notice && (
+                              <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900">
+                                <TriangleAlert size={14} className="mt-0.5 shrink-0" />
+                                {notice}
+                              </p>
+                            )
+                          )
+                        })()}
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-weight`}>
+                          Peso (kg)
+                        </FieldLabel>
+                        <Input
+                          id={`animal-${animal.ordinal}-weight`}
+                          {...fieldA11y(`animal-${animal.ordinal}-weight`)}
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={animal.weightKg || ''}
+                          onChange={(event) =>
+                            updateAnimal(index, { weightKg: Number(event.target.value) })
+                          }
+                          inputMode="decimal"
+                          placeholder="Por ejemplo, 8,5"
+                          className="min-h-11"
+                          required
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-length`}>
+                          Largo (cm) · opcional
+                        </FieldLabel>
+                        <Input
+                          id={`animal-${animal.ordinal}-length`}
+                          {...fieldA11y(`animal-${animal.ordinal}-length`)}
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={animal.lengthCm || ''}
+                          onChange={(event) =>
+                            updateAnimal(index, { lengthCm: Number(event.target.value) })
+                          }
+                          inputMode="numeric"
+                          placeholder="Por ejemplo, 60"
+                          className="min-h-11"
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-height`}>
+                          Alto (cm) · opcional
+                        </FieldLabel>
+                        <Input
+                          id={`animal-${animal.ordinal}-height`}
+                          {...fieldA11y(`animal-${animal.ordinal}-height`)}
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={animal.heightCm || ''}
+                          onChange={(event) =>
+                            updateAnimal(index, { heightCm: Number(event.target.value) })
+                          }
+                          inputMode="numeric"
+                          placeholder="Por ejemplo, 45"
+                          className="min-h-11"
+                        />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor={`animal-${animal.ordinal}-width`}>
+                          Ancho (cm) · opcional
+                        </FieldLabel>
+                        <Input
+                          id={`animal-${animal.ordinal}-width`}
+                          {...fieldA11y(`animal-${animal.ordinal}-width`)}
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={animal.widthCm || ''}
+                          onChange={(event) =>
+                            updateAnimal(index, { widthCm: Number(event.target.value) })
+                          }
+                          inputMode="numeric"
+                          placeholder="Por ejemplo, 35"
+                          className="min-h-11"
+                        />
                       </Field>
                     </div>
-                  )
-                })()}
-                <PetDocumentsNotice animals={[animal]} travelDate={travelDate} />
+                    {(() => {
+                      const measured = hasWeight(animal)
+                      const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
+                      const requestedCategory = requestedTransportBoxCategory(
+                        animal,
+                        minimumCategory,
+                        boxCatalog,
+                      )
+                      return (
+                        <div className="mt-3 grid gap-3">
+                          {measured && oversizedTransportBoxMeasure(animal, boxCatalog) && (
+                            <p
+                              className="flex items-start gap-1.5 rounded-md border border-red-300 bg-red-50 px-2.5 py-2 text-xs leading-5 text-red-900"
+                              role="alert"
+                            >
+                              <TriangleAlert size={14} className="mt-0.5 shrink-0" />
+                              <span>
+                                {oversizedTransportBoxMessage(boxCatalog)}{' '}
+                                <a
+                                  className="font-bold underline"
+                                  href={`https://wa.me/34658604933?text=${encodeURIComponent('Hola Stella, mi mascota supera las medidas del box más grande y quiero consultar el transporte.')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  Escribir a Stella por WhatsApp
+                                </a>
+                              </span>
+                            </p>
+                          )}
+                          <p className="text-muted-foreground text-xs">
+                            {measured ? (
+                              <>
+                                Recomendación automática:{' '}
+                                {transportBoxCategoryLabel(minimumCategory)} ·{' '}
+                                {boxCatalog[minimumCategory].dimensions}
+                              </>
+                            ) : (
+                              'Indica el peso para elegir la categoría de box.'
+                            )}
+                          </p>
+                          <Field>
+                            <FieldLabel htmlFor={`animal-${animal.ordinal}-box-category`}>
+                              Categoría de box
+                            </FieldLabel>
+                            <select
+                              id={`animal-${animal.ordinal}-box-category`}
+                              className="border-input bg-background min-h-11 rounded-md border px-3 text-sm"
+                              value={requestedCategory}
+                              disabled={!measured}
+                              onChange={(event) =>
+                                updateAnimal(index, {
+                                  requestedBoxCategory: event.target
+                                    .value as TransportRequestAnimal['requestedBoxCategory'],
+                                })
+                              }
+                            >
+                              {transportBoxOptions(
+                                minimumCategory,
+                                animal.weightKg,
+                                boxCatalog,
+                              ).map((category) => (
+                                <option value={category} key={category}>
+                                  {transportBoxCategoryLabel(category)} ·{' '}
+                                  {currency(
+                                    transportBoxPriceCents(
+                                      category,
+                                      { weightKg: animal.weightKg },
+                                      boxCatalog,
+                                    ) / 100,
+                                  )}
+                                  {transportBoxCategoryRank(category) >
+                                  transportBoxCategoryRank(minimumCategory)
+                                    ? ' · extra por comodidad'
+                                    : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                        </div>
+                      )
+                    })()}
+                    <PetDocumentsNotice animals={[animal]} travelDate={travelDate} />
+                  </>
+                )}
               </div>
             ))}
             {values.animals.length > 1 && <SharedBoxNotice />}
