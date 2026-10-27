@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   Input,
   Pagination,
+  Spinner,
 } from '@doscientos/ui'
 import {
   ArrowLeft,
@@ -596,8 +597,10 @@ export function RoutesPage({
     try {
       const updatedStops = await calculateDrivingTimes(stops)
       await onUpdateStops(route.id, updatedStops, false)
+      return true
     } catch (error) {
       reportOperationError(error, 'No se han podido recalcular los tiempos de trayecto.')
+      return false
     } finally {
       setRecalculatingTimes(false)
     }
@@ -852,7 +855,7 @@ export function RoutesPage({
                 </div>
               )}
             </div>
-            {operationError && (
+            {operationError && !editingRoute && (
               <p className="form-error route-operation-error" role="alert">
                 {operationError}
               </p>
@@ -993,10 +996,8 @@ export function RoutesPage({
             setEditingRoute(false)
             setOrganizing((current) => !current)
           }}
-          onRecalculate={() => {
-            setEditingRoute(false)
-            void recalculateRouteTimes()
-          }}
+          error={operationError}
+          onRecalculate={recalculateRouteTimes}
           onDelete={() => {
             setEditingRoute(false)
             setDeleteRouteOpen(true)
@@ -1229,6 +1230,7 @@ function RouteSettingsDialog({
   onStartTimeChange,
   onReorder,
   onToggleOrganizing,
+  error,
   onRecalculate,
   onDelete,
 }: {
@@ -1244,14 +1246,19 @@ function RouteSettingsDialog({
   onStartTimeChange: (value: string) => Promise<void>
   onReorder: () => void
   onToggleOrganizing: () => void
-  onRecalculate: () => void
+  error: string
+  onRecalculate: () => Promise<boolean>
   onDelete: () => void
 }) {
+  async function recalculate() {
+    if (await onRecalculate()) onClose()
+  }
+
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose()
+        if (!open && !recalculating) onClose()
       }}
     >
       <DialogContent className="dialog-card route-create-dialog w-[calc(100%-2.5rem)]! max-w-115! p-6.5!">
@@ -1269,6 +1276,7 @@ function RouteSettingsDialog({
             className="route-start-input route-date-input"
             value={date}
             onChange={(event) => void onDateChange(event.target.value)}
+            disabled={recalculating}
           />
         </div>
         <div className="route-start-field">
@@ -1279,6 +1287,7 @@ function RouteSettingsDialog({
             className="route-start-input"
             value={startTime}
             onChange={(event) => void onStartTimeChange(event.target.value)}
+            disabled={recalculating}
           />
         </div>
         <div className="route-header-primary-actions">
@@ -1291,14 +1300,35 @@ function RouteSettingsDialog({
           <Button
             variant="outline"
             size="sm"
-            onClick={onRecalculate}
+            onClick={() => void recalculate()}
             disabled={recalculating || busy || !canRecalculate}
           >
-            <Clock3 /> Recalcular tiempos
+            <Clock3 /> {recalculating ? 'Calculando tiempos…' : 'Recalcular tiempos'}
           </Button>
         </div>
+        {recalculating && (
+          <div className="route-recalculation-progress">
+            <Spinner
+              className="route-recalculation-spinner"
+              label="Calculando tiempos de trayecto"
+              size="md"
+            />
+            <div className="route-recalculation-copy">
+              <strong>Calculando y guardando los tiempos de trayecto…</strong>
+              <small>
+                Las rutas con muchas paradas pueden tardar un poco. El diálogo se cerrará cuando
+                termine.
+              </small>
+            </div>
+          </div>
+        )}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         {canDelete && (
-          <Button variant="destructive" size="sm" onClick={onDelete}>
+          <Button variant="destructive" size="sm" onClick={onDelete} disabled={recalculating}>
             <Trash2 /> Eliminar ruta
           </Button>
         )}

@@ -43,6 +43,7 @@ import {
   getCachedLetters,
   invalidateLettersCache,
   loadLetters,
+  createPaidManualLetter,
   saveManualLetter,
   sendPaymentRequestEmail,
   updateLetter,
@@ -545,7 +546,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     const nextStop = stops.find((stop) => !existingIds.has(stop.id))
     if (!nextStop) throw new Error('No se ha encontrado la nueva parada para guardar.')
     // findBestStopInsertion already calculates every consecutive leg from the
-    // OSRM duration matrix, so it is safe to persist those values directly.
+    // routing duration matrix, so it is safe to persist those values directly.
     const timedStops = stops
     try {
       await addDailyRouteStop(routeId, nextStop, stops.length)
@@ -909,7 +910,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function createLetter(draft: LetterDraft) {
+  async function createLetter(draft: LetterDraft, paymentMethod?: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para crear una carta de porte.')
     try {
       const dailyRoute = dailyRoutes.find((route) => route.id === draft.routeId)
@@ -977,15 +978,36 @@ export function useDashboard(session: Session | null, role: AppRole) {
         throw new Error(
           'Elige un origen anterior al destino entre las paradas de la ruta seleccionada.',
         )
-      const savedId = await saveManualLetter(
-        letter,
-        dailyRoute,
-        routeActions,
-        reference,
-        draft.signatureConfirmed,
-        transportAnimalsTotalCents(draft.animals, boxCatalog) / 100,
-      )
-      const savedLetter = { ...letter, id: savedId ?? letter.id }
+      const billingTotal = transportAnimalsTotalCents(draft.animals, boxCatalog) / 100
+      let savedId: string | null = null
+      let documentPending = false
+      if (paymentMethod) {
+        const result = await createPaidManualLetter(
+          letter,
+          dailyRoute,
+          routeActions,
+          reference,
+          draft.signatureConfirmed,
+          billingTotal,
+          paymentMethod,
+        )
+        savedId = result.letterId
+        documentPending = result.documentPending
+      } else {
+        savedId = await saveManualLetter(
+          letter,
+          dailyRoute,
+          routeActions,
+          reference,
+          draft.signatureConfirmed,
+          billingTotal,
+        )
+      }
+      const savedLetter = {
+        ...letter,
+        id: savedId ?? letter.id,
+        ...(paymentMethod ? { paymentStatus: 'paid' as const } : {}),
+      }
       const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
       invalidateLettersCache(session.user.id)
       setLetters((current) => [savedLetter, ...current])
@@ -995,6 +1017,14 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
+      if (paymentMethod) {
+        toast(
+          documentPending
+            ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'
+            : 'Carta creada y marcada como pagada. La factura se ha emitido.',
+        )
+        return
+      }
       let emailNote = ''
       try {
         emailNote = (await sendPaymentRequestEmail(savedLetter.id))

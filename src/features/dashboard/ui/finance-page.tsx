@@ -14,7 +14,7 @@ import {
 } from '../application/finance'
 import {
   dateLabel,
-  expenseCategoryLabels,
+  expenseCategoryLabel,
   expensesByCategory,
   expensesToCsv,
   incomeToCsv,
@@ -95,6 +95,10 @@ export function FinancePage({ userId }: { userId?: string }) {
   const totals = useMemo(() => summarizeFinance(income, expenses), [income, expenses])
   const months = useMemo(() => monthlyBreakdown(income, expenses), [income, expenses])
   const categories = useMemo(() => expensesByCategory(expenses), [expenses])
+  const categoryOptions = useMemo(
+    () => [...new Set([...expenseCategories, ...expenses.map((expense) => expense.category)])],
+    [expenses],
+  )
   const stamp = `${from || 'inicio'}_${to || 'hoy'}`
   const activePreset = presets.find((preset) => preset.from === from && preset.to === to)?.id
   const invalidRange = Boolean(from && to && from > to)
@@ -292,9 +296,9 @@ export function FinancePage({ userId }: { userId?: string }) {
               onChange={(e) => setCategory(e.target.value)}
             >
               <option value="">Todas las categorías</option>
-              {expenseCategories.map((value) => (
+              {categoryOptions.map((value) => (
                 <option key={value} value={value}>
-                  {expenseCategoryLabels[value]}
+                  {expenseCategoryLabel(value)}
                 </option>
               ))}
             </select>
@@ -330,7 +334,7 @@ export function FinancePage({ userId }: { userId?: string }) {
                     </td>
                     <td>
                       <span className="finance-badge">
-                        {expenseCategoryLabels[expense.category]}
+                        {expenseCategoryLabel(expense.category)}
                       </span>
                     </td>
                     <td className="is-number">{money(expense.netAmount)}</td>

@@ -12,7 +12,7 @@ export const expenseCategories = [
   'impuestos',
   'otros',
 ] as const
-export type ExpenseCategory = (typeof expenseCategories)[number]
+export type ExpenseCategory = string
 
 export const EXPENSE_BUCKET = 'expense-documents'
 export const EXPENSE_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024

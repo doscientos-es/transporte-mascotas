@@ -174,7 +174,7 @@ export async function loadPaymentRequestLetterName(letterId: string) {
   return originalName?.replace(/\.[^.]+$/, '') || letterId
 }
 
-export async function saveManualLetter(
+function manualLetterRpcArguments(
   letter: Letter,
   route: DailyRoute,
   actions: ServiceAction[],
@@ -182,7 +182,7 @@ export async function saveManualLetter(
   signatureConfirmed: boolean,
   billingTotal: number,
 ) {
-  const { data, error } = await requireSupabase().rpc('create_manual_carriage_letter', {
+  return {
     p_daily_route_id: route.id,
     p_reference: reference,
     p_sender: {
@@ -234,9 +234,68 @@ export async function saveManualLetter(
       type: action.type,
     })),
     p_box_number: actions.find((action) => action.type === 'recogida')?.box ?? null,
-  })
+  }
+}
+
+export async function saveManualLetter(
+  letter: Letter,
+  route: DailyRoute,
+  actions: ServiceAction[],
+  reference: string,
+  signatureConfirmed: boolean,
+  billingTotal: number,
+) {
+  const { data, error } = await requireSupabase().rpc(
+    'create_manual_carriage_letter',
+    manualLetterRpcArguments(letter, route, actions, reference, signatureConfirmed, billingTotal),
+  )
   if (error) throw error
   return data
+}
+
+export async function createPaidManualLetter(
+  letter: Letter,
+  route: DailyRoute,
+  actions: ServiceAction[],
+  reference: string,
+  signatureConfirmed: boolean,
+  billingTotal: number,
+  paymentMethod: 'Transferencia' | 'Bizum' | 'Tarjeta',
+) {
+  const { data, error } = await requireSupabase().functions.invoke(
+    'create-paid-manual-carriage-letter',
+    {
+      body: {
+        letterArguments: manualLetterRpcArguments(
+          letter,
+          route,
+          actions,
+          reference,
+          signatureConfirmed,
+          billingTotal,
+        ),
+        paymentMethod,
+      },
+    },
+  )
+  if (error) {
+    const response =
+      'context' in error &&
+      error.context &&
+      typeof error.context === 'object' &&
+      'json' in error.context &&
+      typeof error.context.json === 'function'
+        ? (error.context as Response)
+        : null
+    const details = response
+      ? ((await response.json().catch(() => null)) as { error?: string } | null)
+      : null
+    throw new Error(details?.error || error.message || 'No se ha podido crear y emitir la carta.')
+  }
+  const result = data as { letterId?: string; documentPending?: boolean } | null
+  if (!result?.letterId)
+    throw new Error('No se ha podido confirmar la creación de la carta pagada.')
+  return { letterId: result.letterId, documentPending: result.documentPending === true }
 }
 
 /** Emails the payer the payment link; returns false when the payer has no email. */

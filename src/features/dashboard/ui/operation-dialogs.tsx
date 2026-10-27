@@ -26,7 +26,7 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 import {
   minimumTransportBoxCategory,
@@ -48,6 +48,7 @@ import type {
   InvoicePayer,
   Letter,
   LetterDraft,
+  ManualPaymentMethod,
   RouteDirection,
   RouteStop,
   SavedMeetingPoint,
@@ -211,7 +212,7 @@ export type LetterFormProps = {
   templates: RouteTemplate[]
   boxCatalog: TransportBoxCatalog
   onClose: () => void
-  onCreate: (draft: LetterDraft) => Promise<void>
+  onCreate: (draft: LetterDraft, paymentMethod?: ManualPaymentMethod) => Promise<void>
   onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>
   letter?: Letter
   routeId?: string
@@ -296,9 +297,12 @@ export function LetterForm({
         }
       : emptyLetter,
   )
-  const [saving, setSaving] = useState(false)
+  const [savingMode, setSavingMode] = useState<'request' | 'paid' | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<ManualPaymentMethod>('Transferencia')
   const [error, setError] = useState('')
   const [addingStopFor, setAddingStopFor] = useState<'origin' | 'destination' | null>(null)
+  const creationMode = useRef<'request' | 'paid'>('request')
+  const isSaving = savingMode !== null
   const selectedRoute = routes.find((route) => route.id === draft.routeId)
   const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
   const stops = useMemo(
@@ -320,8 +324,10 @@ export function LetterForm({
         itemIndex === index ? { ...animal, [field]: value } : animal,
       ),
     }))
-  async function submit(event: { preventDefault: () => void }) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const createAsPaid = !isEditing && creationMode.current === 'paid'
+    creationMode.current = 'request'
     if (!isWhatsAppPhone(draft.senderPhone) || !isWhatsAppPhone(draft.recipientPhone)) {
       setError('Indica teléfonos válidos para remitente y destinatario.')
       return
@@ -335,13 +341,13 @@ export function LetterForm({
       return
     }
     setError('')
-    setSaving(true)
+    setSavingMode(createAsPaid ? 'paid' : 'request')
     try {
-      await onCreate(draft)
+      await onCreate(draft, createAsPaid ? paymentMethod : undefined)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido guardar la carta.')
     } finally {
-      setSaving(false)
+      setSavingMode(null)
     }
   }
   function selectRoute(routeId: string) {
@@ -402,6 +408,9 @@ export function LetterForm({
           ? 'space-y-4 pb-2.5'
           : 'max-h-[min(69vh,620px)] space-y-4 overflow-y-auto px-2.5 pb-2.5 sm:max-h-[min(68vh,670px)]'
       }
+      onInvalidCapture={() => {
+        creationMode.current = 'request'
+      }}
       onSubmit={(event) => void submit(event)}
     >
       <TripSection
@@ -452,15 +461,43 @@ export function LetterForm({
           {error}
         </p>
       )}
-      <div className="bg-card border-border sticky bottom-0 flex justify-end gap-2 border-t pt-3 max-sm:[&_button]:flex-1">
-        <Button type="submit" disabled={saving}>
+      <div className="bg-card border-border sticky bottom-0 flex flex-wrap items-end justify-end gap-2 border-t pt-3 max-sm:[&_button]:flex-1">
+        {!isEditing && (
+          <Label className="w-full sm:w-auto sm:min-w-40">
+            Método de cobro (si ya está pagada)
+            <select
+              className={letterSelect}
+              value={paymentMethod}
+              disabled={isSaving}
+              onChange={(event) => setPaymentMethod(event.target.value as ManualPaymentMethod)}
+            >
+              <option>Transferencia</option>
+              <option>Bizum</option>
+              <option>Tarjeta</option>
+            </select>
+          </Label>
+        )}
+        <Button type="submit" disabled={isSaving}>
           <ShieldCheck />{' '}
-          {saving
+          {savingMode === 'request'
             ? 'Guardando carta…'
             : isEditing
               ? 'Firmar y guardar cambios'
               : 'Firmar y crear carta'}
         </Button>
+        {!isEditing && (
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={isSaving}
+            onClick={() => {
+              creationMode.current = 'paid'
+            }}
+          >
+            <ShieldCheck />{' '}
+            {savingMode === 'paid' ? 'Creando y emitiendo…' : 'Crear y marcar como pagada'}
+          </Button>
+        )}
       </div>
     </form>
   )
@@ -1731,7 +1768,7 @@ function BillingAndSignatureSection({
       step={5}
       icon={<CreditCard size={16} />}
       title="¿Quién paga el servicio?"
-      description="Al guardar, se creará una solicitud de pago para la persona elegida."
+      description="Elige quién paga. Si el cliente ya ha pagado, podrás emitir la factura al crear la carta."
     >
       <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-16 [&_button]:gap-1 [&_button]:rounded-lg [&_button]:border [&_button]:p-3 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button]:transition-colors [&_button:hover]:bg-[#fafafa] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:truncate [&_strong]:text-xs">
         {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (

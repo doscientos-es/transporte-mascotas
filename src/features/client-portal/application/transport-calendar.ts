@@ -58,9 +58,24 @@ export function pickupMoment(
   request: Pick<TransportRequest, 'origin' | 'desiredDate'>,
   route?: { serviceDate: string; startTime?: string; stops?: RouteStop[] },
 ): { date: string; time?: string } {
+  return stopMoment(request.origin, request.desiredDate, route)
+}
+
+export function deliveryMoment(
+  request: Pick<TransportRequest, 'destination' | 'desiredDate'>,
+  route?: { serviceDate: string; startTime?: string; stops?: RouteStop[] },
+): { date: string; time?: string } {
+  return stopMoment(request.destination, request.desiredDate, route)
+}
+
+function stopMoment(
+  locality: string,
+  fallbackDate: string,
+  route?: { serviceDate: string; startTime?: string; stops?: RouteStop[] },
+): { date: string; time?: string } {
   const stops = route?.stops ?? []
-  const index = stops.findIndex((stop) => stop.locality === request.origin)
-  if (!route || index < 0) return { date: request.desiredDate }
+  const index = stops.findIndex((stop) => stop.locality === locality)
+  if (!route || index < 0) return { date: fallbackDate }
   return routeStopArrivals(route.serviceDate, route.startTime ?? DEFAULT_ROUTE_START_TIME, stops)[
     index
   ]

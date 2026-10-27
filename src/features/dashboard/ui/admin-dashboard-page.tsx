@@ -299,8 +299,8 @@ export function AdminDashboardPage({
                 templates={dashboard.routeTemplates}
                 boxCatalog={dashboard.boxCatalog}
                 onClose={() => navigateToSection('cartas')}
-                onCreate={async (draft) => {
-                  await dashboard.createLetter(draft)
+                onCreate={async (draft, paymentMethod) => {
+                  await dashboard.createLetter(draft, paymentMethod)
                   void navigate(navigation.hrefForSection('solicitudes'))
                 }}
                 onAddStop={dashboard.addLetterRouteStop}

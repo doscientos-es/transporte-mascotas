@@ -12,17 +12,15 @@ import {
 import { Save } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
-import { SelectField } from '@/shared/ui/filter-controls'
-
 import {
   EXPENSE_DOCUMENT_MAX_BYTES,
   EXPENSE_DOCUMENT_TYPES,
-  expenseCategories,
   type Expense,
   type ExpenseCategory,
   type ExpenseInput,
 } from '../application/finance'
-import { expenseCategoryLabels } from '../application/finance-summary'
+import { expenseCategoryLabel, expenseCategoryValue } from '../application/finance-summary'
+import { ExpenseCategoryField } from './expense-category-field'
 
 export type ExpenseSubmit = {
   input: ExpenseInput
@@ -46,7 +44,9 @@ export function ExpenseDialog({
   const [vendorNif, setVendorNif] = useState(expense?.vendorNif ?? '')
   const [invoiceReference, setInvoiceReference] = useState(expense?.invoiceReference ?? '')
   const [concept, setConcept] = useState(expense?.concept ?? '')
-  const [category, setCategory] = useState<ExpenseCategory>(expense?.category ?? 'otros')
+  const [category, setCategory] = useState<ExpenseCategory>(
+    expense ? expenseCategoryLabel(expense.category) : expenseCategoryLabel('otros'),
+  )
   const [netAmount, setNetAmount] = useState(expense ? String(expense.netAmount) : '')
   const [vatRate, setVatRate] = useState(expense ? String(expense.vatRate) : '21')
   const [notes, setNotes] = useState(expense?.notes ?? '')
@@ -62,6 +62,7 @@ export function ExpenseDialog({
   function validate() {
     if (!vendor.trim()) return 'Indica el proveedor.'
     if (!concept.trim()) return 'Indica el concepto del gasto.'
+    if (!category.trim()) return 'Indica la categoría del gasto.'
     if (!netAmount.trim() || !Number.isFinite(net) || net < 0)
       return 'La base imponible no es válida.'
     if (!Number.isFinite(rate) || rate < 0 || rate > 100) return 'El IVA debe estar entre 0 y 100.'
@@ -87,7 +88,7 @@ export function ExpenseDialog({
           vendorNif,
           invoiceReference,
           concept,
-          category,
+          category: expenseCategoryValue(category),
           netAmount: Math.round(net * 100) / 100,
           vatRate: rate,
           notes,
@@ -122,15 +123,7 @@ export function ExpenseDialog({
               onChange={(e) => setExpenseDate(e.target.value)}
             />
           </Label>
-          <Label>
-            Categoría
-            <SelectField
-              ariaLabel="Categoría"
-              value={category}
-              onChange={(value) => setCategory(value as ExpenseCategory)}
-              options={expenseCategories.map((id) => ({ id, label: expenseCategoryLabels[id] }))}
-            />
-          </Label>
+          <ExpenseCategoryField value={category} onChange={setCategory} />
           <Label>
             Proveedor
             <Input value={vendor} maxLength={160} onChange={(e) => setVendor(e.target.value)} />

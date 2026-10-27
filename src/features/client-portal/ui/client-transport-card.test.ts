@@ -69,10 +69,14 @@ const request: TransportRequest = {
   ],
 }
 
-const renderCard = (transportRequest: TransportRequest) =>
+const renderCard = (
+  transportRequest: TransportRequest,
+  route?: Pick<UpcomingRoute, 'serviceDate' | 'startTime' | 'endDate' | 'stops'>,
+) =>
   renderToStaticMarkup(
     createElement(ClientTransportCard, {
       request: transportRequest,
+      route,
       formatCurrency: () => '120,00 €',
       payingRequestId: null,
       downloadingInvoiceId: null,
@@ -95,6 +99,7 @@ describe('ClientTransportCard', () => {
     expect(markup).toContain('Pago registrado')
     expect(markup).toContain('Recogida: Cádiz-Jerez de la Frontera')
     expect(markup).toContain('Entrega: Córdoba')
+    expect(markup).not.toContain('Franja aproximada:')
     expect(markup).toContain('Descargar factura')
     expect(markup).toContain('Descargar carta de porte')
   })
@@ -123,6 +128,20 @@ describe('ClientTransportCard', () => {
 
     expect(markup).toContain('dateTime="2999-09-24T00:30"')
     expect(markup).toContain('00:30 h')
+  })
+
+  it('shows approximate pickup and delivery windows at their locations', () => {
+    const markup = renderCard(request, {
+      serviceDate: request.desiredDate,
+      startTime: '11:00',
+      stops: [
+        { id: 'origin', locality: request.origin, minutes: 120, dwellMinutes: 0 },
+        { id: 'destination', locality: request.destination, minutes: 0 },
+      ] as UpcomingRoute['stops'],
+    })
+
+    expect(markup).toContain('Franja aproximada: mañana (06:00–12:00)')
+    expect(markup).toContain('Franja aproximada: mediodía (12:00–15:00)')
   })
 
   it('shows a confirmed request as delivered once its route date has passed', () => {

@@ -133,6 +133,26 @@ describe('LetterForm contact emails', () => {
   })
 })
 
+describe('LetterForm paid manual letter creation', () => {
+  it('offers a paid creation action and a payment method for new letters', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn().mockResolvedValue(undefined),
+        onAddStop: vi.fn().mockResolvedValue(stops[0]),
+      }),
+    )
+
+    expect(markup).toContain('Crear y marcar como pagada')
+    expect(markup).toContain('Método de cobro (si ya está pagada)')
+    expect(markup).toContain('<option>Bizum</option>')
+  })
+})
+
 describe('LetterForm saved transport-box category', () => {
   it('keeps the configured category when editing a letter', () => {
     const markup = renderToStaticMarkup(

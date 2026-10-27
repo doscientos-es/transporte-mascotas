@@ -1255,6 +1255,10 @@
   color: var(--foreground);
 }
 
+.login-screen {
+  justify-content: center;
+}
+
 .route-error-state {
   position: relative;
   overflow: hidden;
@@ -7345,6 +7349,13 @@ a.whatsapp-link:hover {
   overflow-wrap: anywhere;
 }
 
+.client-transport-location-window {
+  margin: 0;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .client-transport-location-map {
   display: block;
   width: 100%;
@@ -7625,6 +7636,38 @@ a.whatsapp-link:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+.route-recalculation-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgb(199 32 42 / 18%);
+  border-radius: 11px;
+  padding: 12px 14px;
+  background: linear-gradient(120deg, #fff5f5, #fff 75%);
+  color: #3e3031;
+}
+
+.route-recalculation-spinner {
+  flex: 0 0 auto;
+  color: #c7202a;
+}
+
+.route-recalculation-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.route-recalculation-copy strong {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.route-recalculation-copy small {
+  color: #716768;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .route-header-primary-actions [data-slot='button'],

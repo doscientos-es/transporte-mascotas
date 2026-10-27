@@ -190,21 +190,17 @@ export function LoginPage() {
   const recoveryPath = AUTH_PATHS.passwordRecovery
 
   return (
-    <main
-      className="login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px]"
-      // Anchored to the top so switching tabs only grows the card downwards.
-      style={{ alignContent: 'start', alignItems: 'start', paddingTop: 'max(24px, 9vh)' }}
-    >
+    <main className="login-screen grid-cols-[minmax(280px,490px)_minmax(320px,440px)] gap-[clamp(28px,8vw,120px)] [background:radial-gradient(circle_at_18%_20%,#f8c9cd,transparent_28%),radial-gradient(circle_at_74%_78%,#f6e3bb,transparent_31%),#fffaf8] max-[820px]:grid-cols-[minmax(0,440px)] max-[820px]:gap-[26px] max-[640px]:gap-4">
       <aside className="max-w-[490px] text-[#171717] max-[820px]:max-w-[440px]">
         <BrandLogo className="mb-8 h-24 w-auto object-contain max-[820px]:mb-4 max-[820px]:h-16" />
         <h2 className="my-2 mr-0 mb-4 ml-0 max-w-[440px] text-[clamp(35px,5vw,58px)] leading-[0.96] tracking-[-0.065em] max-[820px]:text-[clamp(32px,10vw,48px)]">
           Una forma tranquila de organizar tu próximo viaje.
         </h2>
-        <p className="m-0 max-w-[420px] text-base leading-[1.6] text-[#555]">
+        <p className="m-0 max-w-[420px] text-base leading-[1.6] text-[#555] max-[640px]:hidden">
           Solicita el transporte, guarda los datos de tus mascotas y recibe todas las
           actualizaciones en un único lugar.
         </p>
-        <div className="mt-8 grid gap-2.5">
+        <div className="mt-8 grid gap-2.5 max-[640px]:hidden">
           <Benefit icon={PawPrint} text="Una o varias mascotas por solicitud" />
           <Benefit icon={CheckCircle2} text="Seguimiento privado de cada transporte" />
         </div>

@@ -6,8 +6,16 @@ type PhotonFeature = {
 }
 type OsrmRoute = { legs?: Array<{ duration?: number }> }
 type OsrmTable = { code?: string; durations?: Array<Array<number | null>> }
+type ValhallaRoute = { trip?: { legs?: Array<{ summary?: { time?: number } }> } }
+type ValhallaMatrix = { sources_to_targets?: Array<Array<{ time?: number | null }>> }
 type Coordinates = [number, number]
+type Seconds = number | null | undefined
 
+const valhallaUrl = 'https://valhalla1.openstreetmap.de'
+const osrmUrl = 'https://router.project-osrm.org'
+// Valhalla (OpenStreetMap data, no API key) models road class and turns and is the primary source.
+// OSRM is only the fallback: its car profile runs about 7% slower than real driving.
+const osrmTimeFactor = 0.93
 const maxCoordinateCacheEntries = 200
 const coordinatesByAddress = new Map<string, Promise<Coordinates>>()
 
@@ -122,23 +130,77 @@ function minutesFor(seconds: number | null | undefined) {
   return Math.max(1, Math.round(seconds / 60))
 }
 
+const isSeconds = (value: Seconds): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+const toLocation = ([lon, lat]: Coordinates) => ({ lon, lat })
+const toOsrmPath = (coordinates: Coordinates[]) =>
+  coordinates.map(([lon, lat]) => lon + ',' + lat).join(';')
+
+async function valhallaPost<T>(path: string, body: object) {
+  const response = await fetch(valhallaUrl + '/' + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ costing: 'auto', ...body }),
+  })
+  if (!response.ok) throw new Error('Valhalla ' + response.status)
+  return (await response.json()) as T
+}
+
+/** Driving seconds for each consecutive pair of coordinates. */
+async function legSeconds(coordinates: Coordinates[]): Promise<Seconds[]> {
+  const fromValhalla = await valhallaPost<ValhallaRoute>('route', {
+    locations: coordinates.map(toLocation),
+  })
+    .then((result) => result.trip?.legs?.map((leg) => leg.summary?.time))
+    .catch(() => undefined)
+  if (fromValhalla?.length === coordinates.length - 1 && fromValhalla.every(isSeconds))
+    return fromValhalla
+
+  const response = await fetch(
+    osrmUrl + '/route/v1/driving/' + toOsrmPath(coordinates) + '?overview=false&steps=false',
+  )
+  if (!response.ok) throw new Error('No se han podido calcular los trayectos en coche.')
+  const result = (await response.json()) as { code?: string; routes?: OsrmRoute[] }
+  const legs = result.routes?.[0]?.legs
+  if (result.code !== 'Ok' || !legs || legs.length !== coordinates.length - 1)
+    throw new Error('No se han podido calcular los trayectos en coche.')
+  return legs.map((leg) => (isSeconds(leg.duration) ? leg.duration * osrmTimeFactor : undefined))
+}
+
+/** Driving seconds between every pair of coordinates. */
+async function durationMatrix(coordinates: Coordinates[]): Promise<Seconds[][]> {
+  const locations = coordinates.map(toLocation)
+  const fromValhalla = await valhallaPost<ValhallaMatrix>('sources_to_targets', {
+    sources: locations,
+    targets: locations,
+  })
+    .then((result) => result.sources_to_targets?.map((row) => row.map((cell) => cell.time)))
+    .catch(() => undefined)
+  if (fromValhalla?.length === coordinates.length) return fromValhalla
+
+  const response = await fetch(
+    osrmUrl + '/table/v1/driving/' + toOsrmPath(coordinates) + '?annotations=duration',
+  )
+  if (!response.ok) throw new Error('No se ha podido proponer la posición de la parada.')
+  const result = (await response.json()) as OsrmTable
+  const durations = result.durations
+  if (result.code !== 'Ok' || !durations?.length)
+    throw new Error('No se ha podido proponer la posición de la parada.')
+  return durations.map((row) =>
+    row.map((value) => (isSeconds(value) ? value * osrmTimeFactor : value)),
+  )
+}
+
 /** Calculates consecutive driving legs; the final stop has no following journey. */
 export async function calculateDrivingTimes(stops: DailyRouteStop[]) {
   if (stops.length < 2) return stops.map((stop) => ({ ...stop, minutes: 0 }))
 
   const coordinates = await coordinatesForStops(stops)
-  const response = await fetch(
-    `https://router.project-osrm.org/route/v1/driving/${coordinates.map(([longitude, latitude]) => `${longitude},${latitude}`).join(';')}?overview=false&steps=false`,
-  )
-  if (!response.ok) throw new Error('No se han podido calcular los trayectos en coche.')
-  const result = (await response.json()) as { code?: string; routes?: OsrmRoute[] }
-  const legs = result.routes?.[0]?.legs
-  if (result.code !== 'Ok' || !legs || legs.length !== stops.length - 1)
-    throw new Error('No se han podido calcular los trayectos en coche.')
+  const seconds = await legSeconds(coordinates)
 
   return stops.map((stop, index) => ({
     ...stop,
-    minutes: index === stops.length - 1 ? 0 : minutesFor(legs[index].duration),
+    minutes: index === stops.length - 1 ? 0 : minutesFor(seconds[index]),
   }))
 }
 
@@ -148,14 +210,7 @@ export async function findBestStopInsertion(stops: DailyRouteStop[], newStop: Da
 
   const allStops = [...stops, newStop]
   const coordinates = await coordinatesForStops(allStops)
-  const response = await fetch(
-    `https://router.project-osrm.org/table/v1/driving/${coordinates.map(([longitude, latitude]) => `${longitude},${latitude}`).join(';')}?annotations=duration`,
-  )
-  if (!response.ok) throw new Error('No se ha podido proponer la posición de la parada.')
-  const result = (await response.json()) as OsrmTable
-  const durations = result.durations
-  if (result.code !== 'Ok' || !durations?.length)
-    throw new Error('No se ha podido proponer la posición de la parada.')
+  const durations = await durationMatrix(coordinates)
 
   const duration = (from: DailyRouteStop, to: DailyRouteStop) =>
     minutesFor(

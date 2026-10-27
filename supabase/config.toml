@@ -432,6 +432,9 @@ verify_jwt = false
 [functions.confirm-manual-invoice-payment]
 verify_jwt = true
 
+[functions.create-paid-manual-carriage-letter]
+verify_jwt = true
+
 [functions.confirm-manual-transport-payment]
 verify_jwt = true
 

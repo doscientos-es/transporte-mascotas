@@ -7,7 +7,7 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 1. Contratad con CaixaBank la pasarela online **Cyberpac/TPV Virtual para comercios** y solicitad acceso de pruebas y producción.
 2. Configurad los secretos de CaixaBank: `CAIXABANK_CYBERPAC_MERCHANT_CODE`, `CAIXABANK_CYBERPAC_TERMINAL`, `CAIXABANK_CYBERPAC_SECRET`, `CAIXABANK_CYBERPAC_ENDPOINT` y `PUBLIC_APP_URL`.
 3. En Cyberpac configurad la notificación HTTP a `https://<project-ref>.supabase.co/functions/v1/caixabank-webhook` para el terminal. La integración usa redirección alojada y tarjetas; no se envían datos de tarjeta a la aplicación.
-4. Desplegad `invoice-payment`, `transport-payment`, `payment-redirect`, `caixabank-webhook`, `issued-invoice`, `confirm-manual-invoice-payment`, `send-payment-request-email` (email con el enlace de pago al crear una carta manual) y `client-payment-request` (botón Pagar en la cuenta del cliente), aplicad las migraciones y realizad primero una operación en pruebas. Las funciones de notificación transaccional no son necesarias.
+4. Desplegad `invoice-payment`, `transport-payment`, `payment-redirect`, `caixabank-webhook`, `issued-invoice`, `confirm-manual-invoice-payment`, `create-paid-manual-carriage-letter`, `send-payment-request-email` (email con el enlace de pago al crear una carta manual) y `client-payment-request` (botón Pagar en la cuenta del cliente), aplicad las migraciones y realizad primero una operación en pruebas. Las funciones de notificación transaccional no son necesarias.
 
 `CAIXABANK_CYBERPAC_ENDPOINT` debe ser la URL que entregue CaixaBank para cada entorno; en test suele ser `https://sis-t.redsys.es:25443/sis/realizarPago`. No se debe adivinar ni guardar ninguna clave en el frontend. Para restringir métodos opcionalmente se puede usar `CAIXABANK_CYBERPAC_PAYMETHODS`; si se deja vacío, Cyberpac muestra los métodos habilitados para el terminal.
 
@@ -83,6 +83,6 @@ Los enlaces de pago y de factura expiran en 30 días. La factura conserva una in
 
 ## Cobros manuales y documentos fiscales
 
-Una solicitud de pago no es una factura y no se puede descargar como tal. Para un cobro que se gestione fuera de Cyberpac, un administrador debe usar **Registrar cobro** e indicar el método empleado. Esa operación emite y numera la factura en una única transacción.
+Una solicitud de pago no es una factura y no se puede descargar como tal. Para un cobro que se gestione fuera de Cyberpac, un administrador puede usar **Registrar cobro** e indicar el método empleado. Al crear una carta manual con un pago ya recibido, **Crear y marcar como pagada** registra el método elegido y crea la carta, el cobro y la factura emitida en una única transacción.
 
 Los datos fiscales del destinatario (nombre/razón social, NIF/CIF y dirección) son obligatorios antes de crear el cobro. Las facturas emitidas quedan inmutables: cualquier corrección posterior debe gestionarse mediante una rectificativa o anulación, no editando el documento original.

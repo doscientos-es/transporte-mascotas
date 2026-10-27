@@ -1,6 +1,6 @@
 import type { Expense, ExpenseCategory, FinanceIncome } from '../infrastructure/finance'
 
-export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
+export const expenseCategoryLabels: Partial<Record<ExpenseCategory, string>> = {
   combustible: 'Combustible',
   vehiculo: 'Vehículo y mantenimiento',
   peajes: 'Peajes y parking',
@@ -11,6 +11,17 @@ export const expenseCategoryLabels: Record<ExpenseCategory, string> = {
   suscripciones: 'Suscripciones y software',
   impuestos: 'Impuestos y tasas',
   otros: 'Otros',
+}
+
+export const expenseCategoryLabel = (category: ExpenseCategory) =>
+  expenseCategoryLabels[category] ?? category
+
+export const expenseCategoryValue = (value: string): ExpenseCategory => {
+  const trimmed = value.trim()
+  const existing = Object.entries(expenseCategoryLabels).find(
+    ([, label]) => label?.toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
+  )
+  return existing?.[0] ?? trimmed
 }
 
 export type FinanceTotals = {
@@ -141,7 +152,7 @@ export function expensesToCsv(expenses: Expense[]) {
       item.vendorNif,
       item.invoiceReference,
       item.concept,
-      expenseCategoryLabels[item.category],
+      expenseCategoryLabel(item.category),
       item.netAmount.toFixed(2),
       item.vatRate,
       item.vatAmount.toFixed(2),

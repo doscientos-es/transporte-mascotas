@@ -5,7 +5,7 @@ import { useState } from 'react'
 import type { FinanceIncome } from '../application/finance'
 import {
   dateLabel,
-  expenseCategoryLabels,
+  expenseCategoryLabel,
   monthLabel,
   money,
   percent,
@@ -155,7 +155,7 @@ export function CategoryPanel({ categories }: { categories: CategoryTotal[] }) {
           {categories.map((row) => (
             <li key={row.category}>
               <div>
-                <span>{expenseCategoryLabels[row.category]}</span>
+                <span>{expenseCategoryLabel(row.category)}</span>
                 <strong>{money(row.netAmount)}</strong>
               </div>
               <div className="finance-meter" aria-hidden="true">

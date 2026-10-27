@@ -18,8 +18,10 @@ import {
   canRetryTransportPayment,
   transportPaymentAttemptNotice,
 } from '../application/payment-attempt'
+import { approximateArrivalPeriod } from '../application/route-arrival-window'
 import { formatDate, mapsEmbedUrl, transportLocationMapsUrl } from '../application/route-maps'
 import {
+  deliveryMoment,
   displayTransportStatus,
   isConfirmedTransport,
   pickupMoment,
@@ -54,6 +56,7 @@ export function ClientTransportCard({
   }
   const confirmed = isConfirmedTransport(request.status)
   const pickup = pickupMoment(storedRequest, route)
+  const delivery = deliveryMoment(storedRequest, route)
   const needsAttention = ['pago_pendiente', 'por_verificar', 'rechazada', 'cancelada'].includes(
     request.status,
   )
@@ -167,12 +170,14 @@ export function ClientTransportCard({
             location={request.origin}
             latitude={request.originLatitude}
             longitude={request.originLongitude}
+            approximateTime={pickup.time ? approximateArrivalPeriod(pickup.time) : undefined}
           />
           <TransportLocationMap
             label="Entrega"
             location={request.destination}
             latitude={request.destinationLatitude}
             longitude={request.destinationLongitude}
+            approximateTime={delivery.time ? approximateArrivalPeriod(delivery.time) : undefined}
           />
         </div>
       </details>
@@ -185,11 +190,13 @@ function TransportLocationMap({
   location,
   latitude,
   longitude,
+  approximateTime,
 }: {
   label: string
   location: string
   latitude?: number
   longitude?: number
+  approximateTime?: string
 }) {
   return (
     <section className="client-transport-location" aria-label={`${label}: ${location}`}>
@@ -198,6 +205,9 @@ function TransportLocationMap({
           <MapPin size={14} aria-hidden="true" /> {label}
         </span>
         <strong>{location}</strong>
+        {approximateTime && (
+          <p className="client-transport-location-window">Franja aproximada: {approximateTime}</p>
+        )}
       </div>
       {typeof latitude === 'number' && typeof longitude === 'number' && (
         <iframe
