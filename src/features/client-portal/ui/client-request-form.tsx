@@ -1331,7 +1331,7 @@ export function ClientRequestForm({
                 </Field>
                 <Field className="sm:col-span-2">
                   <FieldLabel id="request-desired-date-label" htmlFor="request-desired-date">
-                    Fecha de salida
+                    Fecha de recogida
                   </FieldLabel>
                   <output
                     id="request-desired-date"
@@ -1343,22 +1343,11 @@ export function ClientRequestForm({
                     <span className="grid gap-0.5">
                       <strong className="text-sm font-semibold">
                         {values.desiredDate
-                          ? formatDepartureDate(values.desiredDate)
+                          ? formatDepartureDate(pickupArrival?.date ?? values.desiredDate)
                           : 'Selecciona una salida'}
                       </strong>
-                      <span className="text-muted-foreground text-xs">
-                        Franja orientativa; confirmaremos la hora exacta al cerrar la ruta.
-                      </span>
                     </span>
                   </output>
-                  {pickupArrival &&
-                    values.desiredDate &&
-                    pickupArrival.date !== values.desiredDate && (
-                      <p className="mt-2 text-xs font-medium text-amber-700">
-                        La salida es el {formatDepartureDate(values.desiredDate)}, pero tu recogida
-                        es el {formatDepartureDate(pickupArrival.date)}.
-                      </p>
-                    )}
                 </Field>
               </div>
             </div>
