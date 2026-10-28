@@ -16,15 +16,12 @@ import {
   CreditCard,
   FilePenLine,
   FilePlus2,
-  MapPin,
-  PawPrint,
   Pencil,
   Plus,
   Printer,
   Route,
   ShieldCheck,
   Trash2,
-  UserRound,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
@@ -61,6 +58,14 @@ import { letterDestinationOptions, letterOriginOptions } from '../application/le
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
+import {
+  PaperBand,
+  PaperCell,
+  PaperHeader,
+  PaperParty,
+  PaperSheet,
+  paperControl,
+} from './letter-paper'
 
 type OperationDialogProps = {
   children: ReactNode
@@ -180,7 +185,7 @@ function LetterFormSection({
   action,
   children,
 }: {
-  step: number
+  step?: number
   icon: ReactNode
   title: string
   description: string
@@ -195,7 +200,7 @@ function LetterFormSection({
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="text-foreground m-0 text-sm font-semibold">
-            <span className="text-muted-foreground mr-1.5 font-normal">{step}.</span>
+            {step && <span className="text-muted-foreground mr-1.5 font-normal">{step}.</span>}
             {title}
           </h3>
           <p className="text-muted-foreground mt-0.5 mb-0 text-xs">{description}</p>
@@ -413,37 +418,62 @@ export function LetterForm({
       }}
       onSubmit={(event) => void submit(event)}
     >
-      <TripSection
-        draft={draft}
-        routes={routeOptions}
-        templates={templates}
-        selectedRoute={selectedRoute}
-        stops={stops}
-        update={update}
-        onRouteChange={selectRoute}
-        onAddStop={setAddingStopFor}
-        lockReference={isEditing}
-      />
-      <ContactsSection draft={draft} update={update} />
-      <AnimalsSection
-        animals={draft.animals}
-        boxCatalog={boxCatalog}
-        updateAnimal={updateAnimal}
-        onCountChange={updateAnimalCount}
-        onAdd={() => updateAnimalCount(draft.animals.length + 1)}
-        onRemove={(index) =>
-          setDraft((current) => ({
-            ...current,
-            animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
-          }))
-        }
-      />
-      <DocumentsSection
-        documents={draft.accompanyingDocuments}
-        onChange={(documents) =>
-          setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
-        }
-      />
+      <PaperSheet>
+        <PaperHeader
+          reference={draft.reference}
+          referenceLocked={isEditing}
+          onReferenceChange={(value) => update('reference', value)}
+          serviceDate={
+            selectedRoute
+              ? new Date(`${selectedRoute.date}T12:00:00`).toLocaleDateString('es-ES', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })
+              : undefined
+          }
+        />
+        <TripSection
+          draft={draft}
+          routes={routeOptions}
+          templates={templates}
+          selectedRoute={selectedRoute}
+          stops={stops}
+          update={update}
+          onRouteChange={selectRoute}
+          onAddStop={setAddingStopFor}
+        />
+        <ContactsSection draft={draft} update={update} />
+        <div className="grid md:grid-cols-[1.4fr_1fr]">
+          <AnimalsSection
+            animals={draft.animals}
+            boxCatalog={boxCatalog}
+            updateAnimal={updateAnimal}
+            onCountChange={updateAnimalCount}
+            onAdd={() => updateAnimalCount(draft.animals.length + 1)}
+            onRemove={(index) =>
+              setDraft((current) => ({
+                ...current,
+                animals: current.animals.filter((_, itemIndex) => itemIndex !== index),
+              }))
+            }
+          />
+          <DocumentsSection
+            documents={draft.accompanyingDocuments}
+            onChange={(documents) =>
+              setDraft((current) => ({ ...current, accompanyingDocuments: documents }))
+            }
+          />
+        </div>
+        <div className="grid grid-cols-2 border-t-2 border-black text-center text-[11px]">
+          <p className="m-0 border-r border-neutral-600 px-2 py-5">Firma del remitente</p>
+          <p className="m-0 px-2 py-5">Firma del destinatario</p>
+        </div>
+        <p className="m-0 border-t border-neutral-600 px-2 py-1.5 text-center text-[11px]">
+          Al guardar, la carta queda firmada.
+        </p>
+      </PaperSheet>
       <BillingAndSignatureSection
         draft={draft}
         totalCents={transportAnimalsTotalCents(draft.animals, boxCatalog)}
@@ -534,7 +564,6 @@ function TripSection({
   update,
   onRouteChange,
   onAddStop,
-  lockReference,
 }: {
   draft: LetterDraft
   routes: DailyRoute[]
@@ -544,7 +573,6 @@ function TripSection({
   update: <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => void
   onRouteChange: (routeId: string) => void
   onAddStop: (field: 'origin' | 'destination') => void
-  lockReference: boolean
 }) {
   const itineraryClosed = Boolean(selectedRoute?.closedAt)
   const today = madridIsoDate()
@@ -585,103 +613,77 @@ function TripSection({
     )
   }
   return (
-    <LetterFormSection
-      step={1}
-      icon={<MapPin size={16} />}
-      title="Trayecto"
-      description="Elige la ruta diaria y las paradas de recogida y entrega."
-    >
-      <div className={letterFieldGrid}>
-        <Label className="sm:col-span-2">
-          Ruta diaria
-          <select
-            className={letterSelect}
-            value={draft.routeId}
-            onChange={(event) => onRouteChange(event.target.value)}
-            required
-          >
-            <option value="">
-              {routes.length ? 'Selecciona una ruta…' : 'No hay rutas disponibles'}
+    <div className="grid grid-cols-1 border-b-2 border-black sm:grid-cols-2">
+      <PaperCell label="Ruta diaria" className="sm:col-span-2">
+        <select
+          className={paperControl}
+          value={draft.routeId}
+          onChange={(event) => onRouteChange(event.target.value)}
+          required
+        >
+          <option value="">
+            {routes.length ? 'Selecciona una ruta…' : 'No hay rutas disponibles'}
+          </option>
+          {upcomingRoutes.length > 0 && (
+            <optgroup label="Próximas salidas">{upcomingRoutes.map(routeOption)}</optgroup>
+          )}
+          {recentRoutes.length > 0 && (
+            <optgroup label="Últimos días">{recentRoutes.map(routeOption)}</optgroup>
+          )}
+        </select>
+      </PaperCell>
+      {selectedRoute && (
+        <ol
+          className="m-0 flex list-none flex-wrap items-center gap-1.5 border border-neutral-600 bg-neutral-50 p-2 sm:col-span-2"
+          aria-label="Paradas de la ruta"
+        >
+          {stops.map((stop, index) => (
+            <li
+              className="inline-flex items-center gap-1 rounded-full border border-neutral-500 bg-white px-2 py-0.5 text-[11px]"
+              key={stop.id}
+            >
+              <span className="font-bold">{index + 1}</span>
+              {stop.locality}
+            </li>
+          ))}
+          {itineraryClosed && <li className="text-[11px] text-neutral-700">Itinerario cerrado</li>}
+        </ol>
+      )}
+      <PaperCell label="Origen (recogida)">
+        <select
+          className={paperControl}
+          value={draft.originStopId ?? ''}
+          onChange={(event) => selectStop('origin', event.target.value)}
+          disabled={!selectedRoute}
+          required
+        >
+          <option value="">{stopPlaceholder}</option>
+          {originStops.map((stop) => (
+            <option value={stop.id} key={stop.id}>
+              {stop.label}
             </option>
-            {upcomingRoutes.length > 0 && (
-              <optgroup label="Próximas salidas">{upcomingRoutes.map(routeOption)}</optgroup>
-            )}
-            {recentRoutes.length > 0 && (
-              <optgroup label="Últimos días">{recentRoutes.map(routeOption)}</optgroup>
-            )}
-          </select>
-        </Label>
-        {selectedRoute && (
-          <ol
-            className="m-0 flex list-none flex-wrap items-center gap-1.5 rounded-lg border border-[#f0cdd0] bg-[#fffafa] p-2.5 sm:col-span-2"
-            aria-label="Paradas de la ruta"
-          >
-            {stops.map((stop, index) => (
-              <li
-                className="bg-card inline-flex items-center gap-1 rounded-full border border-[#f0cdd0] px-2 py-0.5 text-[11px] text-[#4d4d4d]"
-                key={stop.id}
-              >
-                <span className="text-accent font-semibold">{index + 1}</span>
-                {stop.locality}
-              </li>
-            ))}
-            {itineraryClosed && (
-              <li className="text-muted-foreground text-[11px]">Itinerario cerrado</li>
-            )}
-          </ol>
-        )}
-        <Label>
-          Origen
-          <select
-            className={letterSelect}
-            value={draft.originStopId ?? ''}
-            onChange={(event) => selectStop('origin', event.target.value)}
-            disabled={!selectedRoute}
-            required
-          >
-            <option value="">{stopPlaceholder}</option>
-            {originStops.map((stop) => (
-              <option value={stop.id} key={stop.id}>
-                {stop.label}
-              </option>
-            ))}
-            {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
-          </select>
-        </Label>
-        <Label>
-          Destino
-          <select
-            className={letterSelect}
-            value={draft.destinationStopId ?? ''}
-            onChange={(event) => selectStop('destination', event.target.value)}
-            disabled={!selectedRoute || !draft.originStopId}
-            required
-          >
-            <option value="">{stopPlaceholder}</option>
-            {destinationStops.map((stop) => (
-              <option value={stop.id} key={stop.id}>
-                {stop.label}
-              </option>
-            ))}
-            {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
-          </select>
-        </Label>
-        <Label className="sm:col-span-2">
-          Número de carta
-          <Input
-            value={draft.reference}
-            onChange={(event) => update('reference', event.target.value)}
-            placeholder="Ej. 2026-0142 (opcional, se asigna automáticamente)"
-            disabled={lockReference}
-          />
-          <span className="text-muted-foreground text-[11px] font-normal">
-            {lockReference
-              ? 'La referencia no se puede cambiar una vez creada.'
-              : 'Déjalo vacío si no tienes una referencia propia.'}
-          </span>
-        </Label>
-      </div>
-    </LetterFormSection>
+          ))}
+          {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
+        </select>
+      </PaperCell>
+      <PaperCell label="Destino (entrega)">
+        <select
+          className={paperControl}
+          value={draft.destinationStopId ?? ''}
+          onChange={(event) => selectStop('destination', event.target.value)}
+          disabled={!selectedRoute || !draft.originStopId}
+          required
+        >
+          <option value="">{stopPlaceholder}</option>
+          {destinationStops.map((stop) => (
+            <option value={stop.id} key={stop.id}>
+              {stop.label}
+            </option>
+          ))}
+          {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
+        </select>
+      </PaperCell>
+    </div>
   )
 }
 
@@ -1231,29 +1233,22 @@ function ContactsSection({ draft, update }: { draft: LetterDraft; update: Letter
       value,
     )
   return (
-    <LetterFormSection
-      step={2}
-      icon={<UserRound size={16} />}
-      title="Remitente y destinatario"
-      description="Datos de contacto para la recogida, la entrega y la factura."
-    >
-      <div className="grid gap-3">
-        <ContactDetails
-          title="Remitente"
-          subtitle="Quien entrega la mascota"
-          person="sender"
-          draft={draft}
-          onChange={updatePerson}
-        />
-        <ContactDetails
-          title="Destinatario"
-          subtitle="Quien recibe la mascota"
-          person="recipient"
-          draft={draft}
-          onChange={updatePerson}
-        />
-      </div>
-    </LetterFormSection>
+    <div className="grid border-b-2 border-black md:grid-cols-2">
+      <ContactDetails
+        title="Remitente"
+        subtitle="Quien entrega la mascota"
+        person="sender"
+        draft={draft}
+        onChange={updatePerson}
+      />
+      <ContactDetails
+        title="Destinatario"
+        subtitle="Quien recibe la mascota"
+        person="recipient"
+        draft={draft}
+        onChange={updatePerson}
+      />
+    </div>
   )
 }
 
@@ -1331,136 +1326,127 @@ function ContactDetails({
     setAddressLookupState('idle')
   }
 
+  const tone = person
+  const status =
+    addressLookupState === 'searching'
+      ? 'Buscando la dirección…'
+      : addressLookupState === 'empty'
+        ? 'No hemos encontrado esa dirección. Puedes completar los campos manualmente.'
+        : addressLookupState === 'failed'
+          ? 'No se ha podido comprobar la dirección. Puedes completar los campos manualmente.'
+          : ''
   return (
-    <fieldset className="m-0 min-w-0 rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4">
-      <legend className="float-left mb-3 flex w-full items-baseline gap-2 p-0">
-        <strong className="text-foreground text-[13px]">{title}</strong>
-        <span className="text-muted-foreground text-[11px]">{subtitle}</span>
-      </legend>
-      <div className={`clear-both grid gap-3 sm:grid-cols-6 ${letterLabelStyles}`}>
-        <Label className="sm:col-span-3">
-          Nombre y apellidos
-          <Input
-            value={value('Name')}
-            onChange={(event) => onChange(person, 'Name', event.target.value)}
-            placeholder="Ej. María García López"
-            autoComplete="name"
+    <PaperParty role={person} title={title} hint={subtitle}>
+      <PaperCell label="Nombre y apellidos" tone={tone} className="col-span-2">
+        <input
+          className={paperControl}
+          value={value('Name')}
+          onChange={(event) => onChange(person, 'Name', event.target.value)}
+          placeholder="Ej. María García López"
+          autoComplete="name"
+          required
+        />
+      </PaperCell>
+      <div className="relative flex min-w-0 flex-col" aria-busy={lookingUpAddress}>
+        <PaperCell label="Domicilio" tone={tone} className="flex-1">
+          <input
+            className={paperControl}
+            value={address}
+            onChange={(event) => updateAddress(event.target.value)}
+            placeholder="Ej. Calle Mayor 12"
+            autoComplete="street-address"
             required
           />
-        </Label>
-        <Label className="sm:col-span-3">
-          Teléfono
-          <Input
-            type="tel"
-            value={value('Phone')}
-            onChange={(event) => onChange(person, 'Phone', event.target.value)}
-            placeholder="Ej. 612 345 678"
-            autoComplete="tel"
-            inputMode="tel"
-            required
-          />
-        </Label>
-        <Label className="sm:col-span-3">
-          DNI / NIF
-          <Input
-            value={value('Nif')}
-            onChange={(event) => onChange(person, 'Nif', event.target.value)}
-            placeholder="Ej. 12345678Z"
-            required
-          />
-        </Label>
-        <Label className="sm:col-span-3">
-          Email (obligatorio)
-          <Input
-            type="email"
-            value={value('Email')}
-            onChange={(event) => onChange(person, 'Email', event.target.value)}
-            placeholder="nombre@correo.com"
-            autoComplete="email"
-            required
-          />
-        </Label>
-        <div className="relative sm:col-span-6" aria-busy={lookingUpAddress}>
-          <Label>
-            Dirección
-            <Input
-              value={address}
-              onChange={(event) => updateAddress(event.target.value)}
-              placeholder="Ej. Calle Mayor 12, Madrid"
-              autoComplete="street-address"
-              required
-            />
-          </Label>
-          {lookingUpAddress && (
-            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-              Buscando la dirección…
-            </output>
+          {status && (
+            <output className="text-[11px] leading-tight text-neutral-800">{status}</output>
           )}
-          {addressLookupState === 'empty' && (
-            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-              No hemos encontrado esa dirección. Puedes completar los campos manualmente.
-            </output>
-          )}
-          {addressLookupState === 'failed' && (
-            <output className="text-muted-foreground mt-[7px] block text-xs leading-[1.4]">
-              No se ha podido comprobar la dirección. Puedes completar los campos manualmente.
-            </output>
-          )}
-          {addressSuggestions.length > 0 && (
-            <div className="border-border bg-card [&_button]:border-border [&_button]:bg-card [&_span]:text-muted-foreground absolute top-[calc(100%+4px)] right-0 left-0 z-5 overflow-hidden rounded-lg border shadow-[0_10px_24px_rgb(0_0_0_/_12%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:px-2.5 [&_button]:py-[9px] [&_button]:text-left [&_button:focus-visible]:bg-[#fff0f1] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#fff0f1] [&_button:last-child]:border-b-0 [&_span]:text-[11px]">
-              {addressSuggestions.map((suggestion) => (
-                <button
-                  type="button"
-                  key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.postalCode}`}
-                  onClick={() => selectAddress(suggestion)}
-                >
-                  <strong>
-                    {suggestion.street}
-                    {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
-                  </strong>
-                  <span>
-                    {[suggestion.locality, suggestion.postalCode, suggestion.province]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <Label className="sm:col-span-2">
-          Código postal
-          <Input
-            value={value('PostalCode')}
-            onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
-            placeholder="Ej. 28013"
-            autoComplete="postal-code"
-            inputMode="numeric"
-            required
-          />
-        </Label>
-        <Label className="sm:col-span-2">
-          Municipio
-          <Input
-            value={value('City')}
-            onChange={(event) => onChange(person, 'City', event.target.value)}
-            placeholder="Ej. Madrid"
-            autoComplete="address-level2"
-            required
-          />
-        </Label>
-        <Label className="sm:col-span-2">
-          Provincia
-          <Input
-            value={value('Province')}
-            onChange={(event) => onChange(person, 'Province', event.target.value)}
-            placeholder="Ej. Madrid"
-            autoComplete="address-level1"
-            required
-          />
-        </Label>
+        </PaperCell>
+        {addressSuggestions.length > 0 && (
+          <div className="absolute top-full right-0 left-0 z-10 overflow-hidden border border-black bg-white shadow-[0_10px_24px_rgb(0_0_0_/_16%)] [&_button]:grid [&_button]:w-full [&_button]:gap-0.5 [&_button]:border-0 [&_button]:border-b [&_button]:border-neutral-300 [&_button]:bg-white [&_button]:px-2.5 [&_button]:py-2 [&_button]:text-left [&_button:focus-visible]:bg-[#ffd9cf] [&_button:focus-visible]:outline-none [&_button:hover]:bg-[#ffd9cf] [&_button:last-child]:border-b-0 [&_span]:text-[11px] [&_span]:text-neutral-700">
+            {addressSuggestions.map((suggestion) => (
+              <button
+                type="button"
+                key={`${suggestion.street}-${suggestion.streetNumber}-${suggestion.postalCode}`}
+                onClick={() => selectAddress(suggestion)}
+              >
+                <strong className="text-xs">
+                  {suggestion.street}
+                  {suggestion.streetNumber ? `, ${suggestion.streetNumber}` : ''}
+                </strong>
+                <span>
+                  {[suggestion.locality, suggestion.postalCode, suggestion.province]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-    </fieldset>
+      <PaperCell label="DNI / NIF" tone={tone}>
+        <input
+          className={paperControl}
+          value={value('Nif')}
+          onChange={(event) => onChange(person, 'Nif', event.target.value)}
+          placeholder="Ej. 12345678Z"
+          required
+        />
+      </PaperCell>
+      <PaperCell label="Población" tone={tone}>
+        <input
+          className={paperControl}
+          value={value('City')}
+          onChange={(event) => onChange(person, 'City', event.target.value)}
+          placeholder="Ej. Madrid"
+          autoComplete="address-level2"
+          required
+        />
+      </PaperCell>
+      <PaperCell label="Provincia" tone={tone}>
+        <input
+          className={paperControl}
+          value={value('Province')}
+          onChange={(event) => onChange(person, 'Province', event.target.value)}
+          placeholder="Ej. Madrid"
+          autoComplete="address-level1"
+          required
+        />
+      </PaperCell>
+      <PaperCell label="C.P." tone={tone}>
+        <input
+          className={paperControl}
+          value={value('PostalCode')}
+          onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
+          placeholder="Ej. 28013"
+          autoComplete="postal-code"
+          inputMode="numeric"
+          required
+        />
+      </PaperCell>
+      <PaperCell label="Teléfono" tone={tone}>
+        <input
+          className={paperControl}
+          type="tel"
+          value={value('Phone')}
+          onChange={(event) => onChange(person, 'Phone', event.target.value)}
+          placeholder="Ej. 612 345 678"
+          autoComplete="tel"
+          inputMode="tel"
+          required
+        />
+      </PaperCell>
+      <PaperCell label="Email" tone={tone} className="col-span-2">
+        <input
+          className={paperControl}
+          type="email"
+          value={value('Email')}
+          onChange={(event) => onChange(person, 'Email', event.target.value)}
+          placeholder="nombre@correo.com"
+          autoComplete="email"
+          required
+        />
+      </PaperCell>
+    </PaperParty>
   )
 }
 
@@ -1484,215 +1470,193 @@ function AnimalsSection({
   onRemove: (index: number) => void
 }) {
   return (
-    <LetterFormSection
-      step={3}
-      icon={<PawPrint size={16} />}
-      title="Mascotas que viajan"
-      description="El peso y las medidas recomiendan el box y calculan el precio, igual que en el portal del cliente."
-      action={
-        <Label className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs font-semibold">
+    <div className="flex min-w-0 flex-col">
+      <PaperBand className="flex items-center justify-between gap-2">
+        <span>ESPECIE</span>
+        <label className="flex items-center gap-1.5 text-[11px] font-bold tracking-normal">
           Nº animales
-          <Input
-            className="h-9 w-16 text-center"
+          <input
+            className="h-7 w-14 border border-neutral-600 bg-white px-1 text-center text-sm font-normal"
             type="number"
             min="1"
             max="12"
             value={animals.length}
             onChange={(event) => onCountChange(Number(event.target.value))}
-            aria-label="Número de animales"
           />
-        </Label>
-      }
-    >
-      <div className="grid gap-3">
-        {animals.map((animal, index) => {
-          const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
-          const requestedCategory = requestedTransportBoxCategory(
-            animal,
-            minimumCategory,
-            boxCatalog,
-          )
-          const hasMeasurements =
-            animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
-          return (
-            <article
-              className="rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4"
-              key={index}
-            >
-              <div className="mb-3 flex items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2">
-                  <strong className="text-foreground text-[13px]">Animal {index + 1}</strong>
-                  {hasMeasurements && (
-                    <span className="border-border bg-card text-muted-foreground rounded-full border px-2 py-0.5 text-[11px] font-semibold">
-                      {transportBoxCategoryLabel(requestedCategory)}
-                    </span>
-                  )}
-                </div>
-                {animals.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    className="text-accent h-7 px-2 text-[11px]"
-                    onClick={() => onRemove(index)}
-                  >
-                    <Trash2 size={14} /> Quitar
-                  </Button>
+        </label>
+      </PaperBand>
+      {animals.map((animal, index) => {
+        const minimumCategory = minimumTransportBoxCategory(animal, boxCatalog)
+        const requestedCategory = requestedTransportBoxCategory(animal, minimumCategory, boxCatalog)
+        const hasMeasurements =
+          animal.weightKg > 0 && animal.lengthCm > 0 && animal.heightCm > 0 && animal.widthCm > 0
+        return (
+          <article className="min-w-0" key={index} aria-label={`Animal ${index + 1}`}>
+            <div className="flex items-center justify-between gap-2 border border-neutral-600 bg-neutral-100 px-2 py-0.5">
+              <div className="flex items-center gap-2">
+                <strong className="text-xs">Animal {index + 1}</strong>
+                {hasMeasurements && (
+                  <span className="rounded-full border border-neutral-500 bg-white px-2 py-0.5 text-[11px] font-semibold">
+                    {transportBoxCategoryLabel(requestedCategory)}
+                  </span>
                 )}
               </div>
-              <div className={`grid grid-cols-2 gap-3 sm:grid-cols-4 ${letterLabelStyles}`}>
-                <Label className="col-span-2">
-                  Especie
-                  <select
-                    className={letterSelect}
-                    value={animal.species}
-                    onChange={(event) => updateAnimal(index, 'species', event.target.value)}
-                    required
-                  >
-                    <option value="">Selecciona una especie</option>
-                    {animal.species &&
-                      !speciesOptions.some(([value]) => value === animal.species) && (
-                        <option value={animal.species}>{animal.species}</option>
-                      )}
-                    {speciesOptions.map(([value, label]) => (
-                      <option value={value} key={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Label>
-                <Label className="col-span-2">
-                  Raza
-                  <Input
-                    value={animal.breed}
-                    onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
-                    placeholder="Opcional · Ej. Labrador, Mestizo…"
-                  />
-                </Label>
-                <Label className="col-span-2">
-                  Fecha de nacimiento
-                  <Input
-                    type="date"
-                    max={todayIso()}
-                    value={animal.birthDate}
-                    onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
-                    required
-                  />
-                </Label>
-                <Label className="col-span-2">
-                  Peso (kg)
-                  <Input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={animal.weightKg || ''}
-                    onChange={(event) =>
-                      updateAnimal(index, 'weightKg', Number(event.target.value))
-                    }
-                    placeholder="Ej. 12,5"
-                    inputMode="decimal"
-                    required
-                  />
-                </Label>
-                <Label>
-                  Largo (cm)
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={animal.lengthCm || ''}
-                    onChange={(event) =>
-                      updateAnimal(index, 'lengthCm', Number(event.target.value))
-                    }
-                    placeholder="Ej. 70"
-                    inputMode="numeric"
-                    required
-                  />
-                </Label>
-                <Label>
-                  Alto (cm)
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={animal.heightCm || ''}
-                    onChange={(event) =>
-                      updateAnimal(index, 'heightCm', Number(event.target.value))
-                    }
-                    placeholder="Ej. 55"
-                    inputMode="numeric"
-                    required
-                  />
-                </Label>
-                <Label className="col-span-2">
-                  Ancho (cm)
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={animal.widthCm || ''}
-                    onChange={(event) => updateAnimal(index, 'widthCm', Number(event.target.value))}
-                    placeholder="Ej. 30"
-                    inputMode="numeric"
-                    required
-                  />
-                </Label>
-              </div>
+              {animals.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => onRemove(index)}
+                >
+                  <Trash2 size={14} /> Quitar<span className="sr-only"> animal {index + 1}</span>
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-2">
+              <PaperCell label="Especie" className="col-span-2">
+                <select
+                  className={paperControl}
+                  value={animal.species}
+                  onChange={(event) => updateAnimal(index, 'species', event.target.value)}
+                  required
+                >
+                  <option value="">Selecciona una especie</option>
+                  {animal.species &&
+                    !speciesOptions.some(([value]) => value === animal.species) && (
+                      <option value={animal.species}>{animal.species}</option>
+                    )}
+                  {speciesOptions.map(([value, label]) => (
+                    <option value={value} key={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </PaperCell>
+              <PaperCell label="Raza" className="col-span-2">
+                <input
+                  className={paperControl}
+                  value={animal.breed}
+                  onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
+                  placeholder="Opcional · Ej. Labrador, Mestizo…"
+                />
+              </PaperCell>
+              <PaperCell label="Fecha de nacimiento">
+                <input
+                  className={paperControl}
+                  type="date"
+                  max={todayIso()}
+                  value={animal.birthDate}
+                  onChange={(event) => updateAnimal(index, 'birthDate', event.target.value)}
+                  required
+                />
+              </PaperCell>
+              <PaperCell label="Peso (kg)">
+                <input
+                  className={paperControl}
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  value={animal.weightKg || ''}
+                  onChange={(event) => updateAnimal(index, 'weightKg', Number(event.target.value))}
+                  placeholder="Ej. 12,5"
+                  inputMode="decimal"
+                  required
+                />
+              </PaperCell>
+              <PaperCell label="Largo (cm)">
+                <input
+                  className={paperControl}
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={animal.lengthCm || ''}
+                  onChange={(event) => updateAnimal(index, 'lengthCm', Number(event.target.value))}
+                  placeholder="Ej. 70"
+                  inputMode="numeric"
+                  required
+                />
+              </PaperCell>
+              <PaperCell label="Alto (cm)">
+                <input
+                  className={paperControl}
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={animal.heightCm || ''}
+                  onChange={(event) => updateAnimal(index, 'heightCm', Number(event.target.value))}
+                  placeholder="Ej. 55"
+                  inputMode="numeric"
+                  required
+                />
+              </PaperCell>
+              <PaperCell label="Ancho (cm)" className="col-span-2">
+                <input
+                  className={paperControl}
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={animal.widthCm || ''}
+                  onChange={(event) => updateAnimal(index, 'widthCm', Number(event.target.value))}
+                  placeholder="Ej. 30"
+                  inputMode="numeric"
+                  required
+                />
+              </PaperCell>
               {hasMeasurements && (
-                <div className={`mt-3 grid gap-1.5 ${letterLabelStyles}`}>
-                  <Label>
-                    Categoría de box
-                    <select
-                      className={letterSelect}
-                      value={requestedCategory}
-                      onChange={(event) =>
-                        updateAnimal(
-                          index,
-                          'requestedBoxCategory',
-                          event.target.value as TransportBoxCategory,
-                        )
-                      }
-                    >
-                      {transportBoxOptions(minimumCategory, animal.weightKg, boxCatalog).map(
-                        (category) => (
-                          <option value={category} key={category}>
-                            {transportBoxCategoryLabel(category)} ·{' '}
-                            {euros(
-                              transportBoxPriceCents(
-                                category,
-                                { weightKg: animal.weightKg },
-                                boxCatalog,
-                              ),
-                            )}
-                            {transportBoxCategoryRank(category) >
-                            transportBoxCategoryRank(minimumCategory)
-                              ? ' · extra por comodidad'
-                              : ''}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </Label>
-                  <p className="text-muted-foreground m-0 text-[11px]">
+                <PaperCell label="Categoría de box" className="col-span-2">
+                  <select
+                    className={paperControl}
+                    value={requestedCategory}
+                    onChange={(event) =>
+                      updateAnimal(
+                        index,
+                        'requestedBoxCategory',
+                        event.target.value as TransportBoxCategory,
+                      )
+                    }
+                  >
+                    {transportBoxOptions(minimumCategory, animal.weightKg, boxCatalog).map(
+                      (category) => (
+                        <option value={category} key={category}>
+                          {transportBoxCategoryLabel(category)} ·{' '}
+                          {euros(
+                            transportBoxPriceCents(
+                              category,
+                              { weightKg: animal.weightKg },
+                              boxCatalog,
+                            ),
+                          )}
+                          {transportBoxCategoryRank(category) >
+                          transportBoxCategoryRank(minimumCategory)
+                            ? ' · extra por comodidad'
+                            : ''}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                  <span className="text-[11px] text-neutral-700">
                     Recomendación automática: {transportBoxCategoryLabel(minimumCategory)} ·{' '}
                     {boxCatalog[minimumCategory].dimensions}
-                  </p>
-                </div>
+                  </span>
+                </PaperCell>
               )}
-            </article>
-          )
-        })}
+            </div>
+          </article>
+        )
+      })}
+      <div className="border border-neutral-600 p-2">
+        <Button
+          variant="outline"
+          type="button"
+          className="h-9 w-full border-dashed"
+          onClick={onAdd}
+          disabled={animals.length >= 12}
+        >
+          <Plus size={16} /> Añadir otro animal
+        </Button>
       </div>
-      <Button
-        variant="outline"
-        type="button"
-        className="text-accent mt-3 h-10 w-full border-dashed"
-        onClick={onAdd}
-        disabled={animals.length >= 12}
-      >
-        <Plus size={16} /> Añadir otro animal
-      </Button>
-    </LetterFormSection>
+    </div>
   )
 }
 
@@ -1720,28 +1684,32 @@ function DocumentsSection({
         : [...documents, document],
     )
   return (
-    <LetterFormSection
-      step={4}
-      icon={<FilePenLine size={16} />}
-      title="Documentación que acompaña"
-      description="Marca todo lo que viaja con los animales (mínimo uno)."
-    >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
+      <legend className="sr-only">Documento que acompaña. Marca al menos uno.</legend>
+      <PaperBand>
+        <span aria-hidden="true">DOCUMENTO QUE ACOMPAÑA</span>
+        <span aria-hidden="true" className="block text-[11px] font-normal tracking-normal">
+          Marca al menos uno
+        </span>
+      </PaperBand>
+      <div className="grid flex-1 grid-flow-col grid-rows-4">
         {accompanyingDocumentOptions.map(([value, label]) => (
-          <label className="relative block cursor-pointer" key={value}>
+          <label
+            className="flex min-h-10 cursor-pointer items-center justify-between gap-2 border border-neutral-600 px-2 text-xs font-semibold focus-within:ring-2 focus-within:ring-black focus-within:ring-inset has-checked:bg-[#ffd9cf]"
+            key={value}
+          >
+            {label}
             <input
-              className="peer sr-only"
+              className="size-5 shrink-0 accent-black"
               type="checkbox"
               checked={documents.includes(value)}
               onChange={() => toggle(value)}
             />
-            <span className="border-border bg-card peer-checked:border-accent peer-focus-visible:ring-ring/50 grid h-10 place-items-center rounded-lg border p-1.5 text-center text-xs font-semibold text-[#555] transition-colors peer-checked:bg-[#fff0f1] peer-checked:text-[#9d1921] peer-focus-visible:ring-3 hover:bg-[#fafafa]">
-              {label}
-            </span>
           </label>
         ))}
+        <div aria-hidden="true" className="min-h-10 border border-neutral-600" />
       </div>
-    </LetterFormSection>
+    </fieldset>
   )
 }
 
@@ -1765,7 +1733,6 @@ function BillingAndSignatureSection({
   }
   return (
     <LetterFormSection
-      step={5}
       icon={<CreditCard size={16} />}
       title="¿Quién paga el servicio?"
       description="Elige quién paga. Si el cliente ya ha pagado, podrás emitir la factura al crear la carta."

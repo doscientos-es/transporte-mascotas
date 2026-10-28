@@ -127,7 +127,7 @@ describe('LetterForm contact emails', () => {
     )
     const emailInputs = markup.match(/<input[^>]*type="email"[^>]*>/g) ?? []
 
-    expect(markup).toContain('Email (obligatorio)')
+    expect(markup).toContain('>Email</span>')
     expect(emailInputs).toHaveLength(2)
     expect(emailInputs.every((input) => input.includes('required=""'))).toBe(true)
   })
