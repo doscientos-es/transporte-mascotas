@@ -148,7 +148,7 @@ describe('LetterForm paid manual letter creation', () => {
     )
 
     expect(markup).toContain('Crear y marcar como pagada')
-    expect(markup).toContain('Método de cobro (si ya está pagada)')
+    expect(markup).toContain('Si ya está pagada, método de cobro')
     expect(markup).toContain('<option>Bizum</option>')
   })
 })

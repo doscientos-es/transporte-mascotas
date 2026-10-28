@@ -491,42 +491,50 @@ export function LetterForm({
           {error}
         </p>
       )}
-      <div className="bg-card border-border sticky bottom-0 flex flex-wrap items-end justify-end gap-2 border-t pt-3 max-sm:[&_button]:flex-1">
-        {!isEditing && (
-          <Label className="w-full sm:w-auto sm:min-w-40">
-            Método de cobro (si ya está pagada)
-            <select
-              className={letterSelect}
-              value={paymentMethod}
-              disabled={isSaving}
-              onChange={(event) => setPaymentMethod(event.target.value as ManualPaymentMethod)}
-            >
-              <option>Transferencia</option>
-              <option>Bizum</option>
-              <option>Tarjeta</option>
-            </select>
-          </Label>
-        )}
-        <Button type="submit" disabled={isSaving}>
-          <ShieldCheck />{' '}
-          {savingMode === 'request'
-            ? 'Guardando carta…'
-            : isEditing
-              ? 'Firmar y guardar cambios'
-              : 'Firmar y crear carta'}
-        </Button>
-        {!isEditing && (
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={isSaving}
-            onClick={() => {
-              creationMode.current = 'paid'
-            }}
-          >
+      <div className="bg-card border-border sticky bottom-0 z-10 grid gap-3 rounded-xl border p-3 shadow-[0_-6px_18px_rgb(0_0_0/6%)] sm:grid-cols-2 sm:p-4">
+        <div className="flex flex-col justify-between gap-2">
+          <p className="text-muted-foreground m-0 text-xs">
+            {isEditing
+              ? 'Guarda los cambios y vuelve a firmar la carta.'
+              : 'Crea la carta y deja el cobro pendiente.'}
+          </p>
+          <Button type="submit" disabled={isSaving} className="h-10 w-full">
             <ShieldCheck />{' '}
-            {savingMode === 'paid' ? 'Creando y emitiendo…' : 'Crear y marcar como pagada'}
+            {savingMode === 'request'
+              ? 'Guardando carta…'
+              : isEditing
+                ? 'Firmar y guardar cambios'
+                : 'Firmar y crear carta'}
           </Button>
+        </div>
+        {!isEditing && (
+          <div className="border-border flex flex-col gap-2 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+            <Label className="text-xs font-semibold text-[#454545]">
+              Si ya está pagada, método de cobro
+              <select
+                className={letterSelect}
+                value={paymentMethod}
+                disabled={isSaving}
+                onChange={(event) => setPaymentMethod(event.target.value as ManualPaymentMethod)}
+              >
+                <option>Transferencia</option>
+                <option>Bizum</option>
+                <option>Tarjeta</option>
+              </select>
+            </Label>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isSaving}
+              className="h-10 w-full"
+              onClick={() => {
+                creationMode.current = 'paid'
+              }}
+            >
+              <ShieldCheck />{' '}
+              {savingMode === 'paid' ? 'Creando y emitiendo…' : 'Crear y marcar como pagada'}
+            </Button>
+          </div>
         )}
       </div>
     </form>
