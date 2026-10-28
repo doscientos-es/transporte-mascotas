@@ -169,12 +169,14 @@ async function renderInvoice(invoice: IssuedInvoice) {
   ) => values.forEach((value, index) => draw(value, x, y - index * gap, size, emphasis, color))
   const logo = await loadBrandLogo(pdf)
   const drawLogo = (x: number, y: number) => {
-    page.drawEllipse({ x, y, xScale: 40, yScale: 40, color: white })
+    // A coral ring and a white disc make the dark logo stand out on the ink header.
+    page.drawEllipse({ x, y, xScale: 52, yScale: 52, color: coral })
+    page.drawEllipse({ x, y, xScale: 49, yScale: 49, color: white })
     if (logo) {
-      page.drawImage(logo, { x: x - 30, y: y - 30, width: 60, height: 60 })
+      page.drawImage(logo, { x: x - 37, y: y - 37, width: 74, height: 74 })
       return
     }
-    draw('K', x - 7, y - 8, 24, true, coral)
+    draw('K', x - 12, y - 14, 40, true, coral)
   }
   const clientLines = [
     clientNif && `NIF/CIF: ${clientNif}`,
@@ -186,9 +188,9 @@ async function renderInvoice(invoice: IssuedInvoice) {
 
   page.drawRectangle({ x: 0, y: 724, width: 595.28, height: 117.89, color: ink })
   page.drawRectangle({ x: 0, y: 720, width: 595.28, height: 4, color: coral })
-  drawLogo(94, 782)
-  draw('KACHE ENVÍOS', 146, 790, 18, true, white)
-  draw('Transporte de mascotas', 146, 771, 10, false, white)
+  drawLogo(112, 782)
+  draw('KACHE ENVÍOS', 178, 790, 22, true, white)
+  draw('Transporte de mascotas', 178, 769, 11, false, white)
   drawRight('FACTURA', 541, 794, 21, true, coral)
   drawRight(`N.º ${number}`, 541, 774, 10, false, white)
   drawRight(date(invoice.issued_at), 541, 758, 9, false, white)
