@@ -54,6 +54,7 @@ import type {
 } from '@/shared/types'
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
+import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
@@ -160,6 +161,7 @@ const emptyLetter: LetterDraft = {
   recipientCity: '',
   recipientProvince: '',
   accompanyingDocuments: [],
+  atesNumber: DEFAULT_ATES_NUMBER,
   billingPayer: 'remitente',
   otherPayer: emptyInvoiceClient(),
   signatureConfirmed: true,
@@ -272,6 +274,7 @@ export function LetterForm({
           originPoint: letter.originPoint,
           destinationPoint: letter.destinationPoint,
           accompanyingDocuments: letter.accompanyingDocuments,
+          atesNumber: letter.atesNumber ?? DEFAULT_ATES_NUMBER,
           billingPayer: letter.billingPayer,
           otherPayer:
             letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
@@ -423,16 +426,10 @@ export function LetterForm({
           reference={draft.reference}
           referenceLocked={isEditing}
           onReferenceChange={(value) => update('reference', value)}
-          serviceDate={
-            selectedRoute
-              ? new Date(`${selectedRoute.date}T12:00:00`).toLocaleDateString('es-ES', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric',
-                })
-              : undefined
-          }
+          boxNumber={draft.boxNumber}
+          onBoxNumberChange={(value) => update('boxNumber', value)}
+          atesNumber={draft.atesNumber}
+          onAtesNumberChange={(value) => update('atesNumber', value)}
         />
         <TripSection
           draft={draft}
@@ -640,22 +637,10 @@ function TripSection({
           )}
         </select>
       </PaperCell>
-      {selectedRoute && (
-        <ol
-          className="m-0 flex list-none flex-wrap items-center gap-1.5 border border-neutral-600 bg-neutral-50 p-2 sm:col-span-2"
-          aria-label="Paradas de la ruta"
-        >
-          {stops.map((stop, index) => (
-            <li
-              className="inline-flex items-center gap-1 rounded-full border border-neutral-500 bg-white px-2 py-0.5 text-[11px]"
-              key={stop.id}
-            >
-              <span className="font-bold">{index + 1}</span>
-              {stop.locality}
-            </li>
-          ))}
-          {itineraryClosed && <li className="text-[11px] text-neutral-700">Itinerario cerrado</li>}
-        </ol>
+      {itineraryClosed && (
+        <p className="m-0 border border-neutral-600 bg-neutral-50 px-2 py-1.5 text-[11px] text-neutral-700 sm:col-span-2">
+          Itinerario cerrado
+        </p>
       )}
       <PaperCell label="Origen (recogida)">
         <select
@@ -1572,7 +1557,7 @@ function AnimalsSection({
                   required
                 />
               </PaperCell>
-              <PaperCell label="Largo (cm)">
+              <PaperCell label="Largo (cm, opcional)">
                 <input
                   className={paperControl}
                   type="number"
@@ -1582,10 +1567,9 @@ function AnimalsSection({
                   onChange={(event) => updateAnimal(index, 'lengthCm', Number(event.target.value))}
                   placeholder="Ej. 70"
                   inputMode="numeric"
-                  required
                 />
               </PaperCell>
-              <PaperCell label="Alto (cm)">
+              <PaperCell label="Alto (cm, opcional)">
                 <input
                   className={paperControl}
                   type="number"
@@ -1595,10 +1579,9 @@ function AnimalsSection({
                   onChange={(event) => updateAnimal(index, 'heightCm', Number(event.target.value))}
                   placeholder="Ej. 55"
                   inputMode="numeric"
-                  required
                 />
               </PaperCell>
-              <PaperCell label="Ancho (cm)" className="col-span-2">
+              <PaperCell label="Ancho (cm, opcional)" className="col-span-2">
                 <input
                   className={paperControl}
                   type="number"
@@ -1608,7 +1591,6 @@ function AnimalsSection({
                   onChange={(event) => updateAnimal(index, 'widthCm', Number(event.target.value))}
                   placeholder="Ej. 30"
                   inputMode="numeric"
-                  required
                 />
               </PaperCell>
               {hasMeasurements && (

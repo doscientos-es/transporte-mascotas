@@ -108,6 +108,8 @@ export interface Letter {
   destinationLatitude?: number
   destinationLongitude?: number
   accompanyingDocuments: AccompanyingDocument[]
+  /** ATES document number printed on the carriage letter. */
+  atesNumber?: string
   billingPayer: InvoicePayer
   billingClient: InvoiceClientInput
   route: string
@@ -147,9 +149,12 @@ export interface LetterDraft {
   originPoint: string
   destinationPoint: string
   accompanyingDocuments: AccompanyingDocument[]
+  atesNumber: string
   billingPayer: InvoicePayer
   otherPayer: InvoiceClientInput
   signatureConfirmed: boolean
+  /** Manual van box; when empty a free compatible box is assigned automatically. */
+  boxNumber?: number | undefined
   animals: Array<Omit<Animal, 'id'> & { requestedBoxCategory?: TransportBoxCategory }>
 }
 

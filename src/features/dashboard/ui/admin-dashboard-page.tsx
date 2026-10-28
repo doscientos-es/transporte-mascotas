@@ -300,8 +300,13 @@ export function AdminDashboardPage({
                 boxCatalog={dashboard.boxCatalog}
                 onClose={() => navigateToSection('cartas')}
                 onCreate={async (draft, paymentMethod) => {
-                  await dashboard.createLetter(draft, paymentMethod)
-                  void navigate(navigation.hrefForSection('solicitudes'))
+                  const created = await dashboard.createLetter(draft, paymentMethod)
+                  // A paid letter already has its invoice issued; unpaid ones wait as payment requests.
+                  void navigate(
+                    created?.paid
+                      ? `${navigation.hrefForSection('facturas')}${created.invoiceId ? `?invoice=${encodeURIComponent(created.invoiceId)}` : ''}`
+                      : navigation.hrefForSection('solicitudes'),
+                  )
                 }}
                 onAddStop={dashboard.addLetterRouteStop}
               />

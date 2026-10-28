@@ -44,6 +44,7 @@ export type LayoutLetter = {
   destination_point: string
   accompanying_documents: string[] | null
   transport_box_number?: number | null
+  ates_number?: string | null
   animals: Array<{
     species: string
     breed: string
@@ -144,9 +145,14 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
   canvas.text(
     fit(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 7, 70, true),
     198,
-    12,
+    10,
     { size: 7, bold: true, align: 'right' },
   )
+  if (letter.ates_number?.trim())
+    canvas.text(fit(`ATES: ${letter.ates_number.trim()}`, 6.5, 70), 198, 15.5, {
+      size: 6.5,
+      align: 'right',
+    })
   canvas.text(fit(`Identificación: ${identification || 'No especificado'}`, 6.5, 70), 198, 21, {
     size: 6.5,
     align: 'right',

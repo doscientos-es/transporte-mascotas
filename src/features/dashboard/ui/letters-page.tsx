@@ -208,13 +208,17 @@ export function LettersPage({
   const letterPagination = paginate(letters, requestedPage, pageSize)
   const [downloadError, setDownloadError] = useState('')
 
+  function boxForLetter(letter: Letter) {
+    return dailyRoutes
+      .filter((route) => route.date === letter.serviceDate)
+      .flatMap((route) => route.actions)
+      .find((action) => action.letterId === letter.id && action.type === 'recogida')?.box
+  }
+
   async function downloadLetterPdf(letter: Letter) {
     setDownloadError('')
     try {
-      const transportBoxNumber = dailyRoutes
-        .filter((route) => route.date === letter.serviceDate)
-        .flatMap((route) => route.actions)
-        .find((action) => action.letterId === letter.id && action.type === 'recogida')?.box
+      const transportBoxNumber = boxForLetter(letter)
       const document = letterToCarriageLetter(letter, transportBoxNumber ?? null)
       downloadBlob(await createCarriageLetterPdf(document), carriageLetterFileName(document))
     } catch {
@@ -347,6 +351,7 @@ export function LettersPage({
                           <TableHead>Referencia</TableHead>
                           <TableHead>Trayecto</TableHead>
                           <TableHead>Mascotas</TableHead>
+                          <TableHead>Box</TableHead>
                           <TableHead>Fecha</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead aria-label="Acciones" />
@@ -357,6 +362,7 @@ export function LettersPage({
                           <LetterRow
                             key={letter.id}
                             letter={letter}
+                            box={boxForLetter(letter)}
                             onView={(letter) => updateParams({ carta: letter.id }, false)}
                             onEdit={onEdit}
                             onDownload={(letter) => void downloadLetterPdf(letter)}
@@ -561,6 +567,7 @@ function LetterPaymentBadge({ letter }: { letter: Letter }) {
 
 function LetterRow({
   letter,
+  box,
   onView,
   onEdit,
   onDownload,
@@ -569,6 +576,7 @@ function LetterRow({
   onOpenPaymentRequests,
 }: {
   letter: Letter
+  box?: number | undefined
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
   onDownload: (letter: Letter) => void
@@ -598,6 +606,7 @@ function LetterRow({
           {letter.animals.length} animal{letter.animals.length !== 1 && 'es'}
         </small>
       </TableCell>
+      <TableCell>{box ?? '—'}</TableCell>
       <TableCell>
         {new Date(`${letter.serviceDate}T12:00:00`).toLocaleDateString('es-ES', {
           day: 'numeric',

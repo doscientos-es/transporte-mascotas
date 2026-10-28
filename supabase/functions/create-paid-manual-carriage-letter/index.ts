@@ -43,7 +43,11 @@ Deno.serve(async (request) => {
     } catch (error) {
       console.error('Payment confirmation email not sent', errorMessage(error))
     }
-    return json({ letterId: result.letterId, documentPending })
+    return json({
+      letterId: result.letterId,
+      invoiceDraftId: result.invoiceDraftId,
+      documentPending,
+    })
   } catch (error) {
     const message = errorMessage(error)
     return json({ error: message }, message === 'No autenticado.' ? 401 : 500)

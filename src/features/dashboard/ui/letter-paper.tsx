@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
+
 /**
  * Building blocks that make the manual carriage letter form look like the paper
  * half-sheet the admins already know (see client-portal/application/carriage-letter-layout.ts).
@@ -63,12 +65,18 @@ export function PaperHeader({
   reference,
   referenceLocked,
   onReferenceChange,
-  serviceDate,
+  boxNumber,
+  onBoxNumberChange,
+  atesNumber,
+  onAtesNumberChange,
 }: {
   reference: string
   referenceLocked: boolean
   onReferenceChange: (value: string) => void
-  serviceDate?: string
+  boxNumber?: number | undefined
+  onBoxNumberChange: (value: number | undefined) => void
+  atesNumber: string
+  onAtesNumberChange: (value: string) => void
 }) {
   return (
     <header className="grid items-stretch border-b-2 border-black sm:grid-cols-[1fr_auto_1fr]">
@@ -95,9 +103,34 @@ export function PaperHeader({
         <img src="/icon-512.png" alt="Kache Envíos" className="size-20 object-contain" />
         <span className="text-[11px]">kacheenvios.com</span>
       </div>
-      <div className="flex flex-col justify-center gap-0.5 p-3 sm:items-end sm:text-right">
-        <span className="text-[11px] font-bold tracking-wide">FECHA DEL SERVICIO</span>
-        <span className="text-sm">{serviceDate ?? 'Elige una ruta'}</span>
+      <div className="flex flex-col justify-center gap-1 p-3 sm:items-end sm:text-right">
+        <label className="flex items-baseline gap-1.5 text-sm font-bold">
+          Nº Box
+          <input
+            className={`${paperControl} w-20 border-b border-neutral-500 focus-visible:border-black sm:text-right`}
+            type="number"
+            min="1"
+            inputMode="numeric"
+            value={boxNumber ?? ''}
+            onChange={(event) =>
+              onBoxNumberChange(event.target.value ? Number(event.target.value) : undefined)
+            }
+            placeholder="Auto"
+            aria-describedby="letter-box-hint"
+          />
+        </label>
+        <span id="letter-box-hint" className="text-[11px] text-neutral-700">
+          Vacío: se asigna un box libre automáticamente.
+        </span>
+        <label className="flex items-baseline gap-1.5 text-sm font-bold">
+          ATES
+          <input
+            className={`w-44 border-b border-neutral-500 focus-visible:border-black sm:text-right`}
+            value={atesNumber}
+            onChange={(event) => onAtesNumberChange(event.target.value)}
+            placeholder={DEFAULT_ATES_NUMBER}
+          />
+        </label>
       </div>
     </header>
   )

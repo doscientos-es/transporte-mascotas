@@ -409,6 +409,7 @@ export type TransportCarriageLetter = {
   destination_point: string
   accompanying_documents: string[] | null
   transport_box_number?: number | null
+  ates_number?: string | null
   animals: Array<{
     ordinal: number
     species: string

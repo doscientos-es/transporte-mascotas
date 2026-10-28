@@ -41,6 +41,7 @@ export type CarriageLetter = {
   destination_point: string
   accompanying_documents: string[] | null
   transport_box_number: number | null
+  ates_number?: string | null
   animals: Animal[]
 }
 
@@ -69,6 +70,7 @@ export async function loadCarriageLetter(letterId: string): Promise<CarriageLett
     'origin_point',
     'destination_point',
     'accompanying_documents',
+    'ates_number',
     'animals(ordinal,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm)',
   ].join(',')
   const response = await rest(
@@ -84,14 +86,11 @@ export async function loadCarriageLetter(letterId: string): Promise<CarriageLett
     daily_route_id: string | null
     transport_request_animals: Array<{ ordinal: number; shared_box_group: string | null }>
   }>
-  const assignmentResponse = request?.daily_route_id
-    ? await rest(
-        `van_assignments?daily_route_id=eq.${encodeURIComponent(request.daily_route_id)}&letter_id=eq.${encodeURIComponent(letterId)}&select=box_number&order=created_at.desc&limit=1`,
-      )
-    : null
-  const [assignment] = assignmentResponse
-    ? ((await assignmentResponse.json()) as Array<{ box_number: number }>)
-    : []
+  // Manual letters have no transport request, so the box is looked up by letter alone.
+  const assignmentResponse = await rest(
+    `van_assignments?letter_id=eq.${encodeURIComponent(letterId)}${request?.daily_route_id ? `&daily_route_id=eq.${encodeURIComponent(request.daily_route_id)}` : ''}&select=box_number&order=created_at.desc&limit=1`,
+  )
+  const [assignment] = (await assignmentResponse.json()) as Array<{ box_number: number }>
   const groups = [
     ...new Set(
       (request?.transport_request_animals ?? [])
@@ -141,14 +140,20 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
   const { width, height } = CARRIAGE_LETTER_PAGE
   const page = pdf.addPage([mm(width), mm(height)])
-  const logoBytes = await fetch('https://www.kacheenvios.com/icon-512.png', {
-    signal: AbortSignal.timeout(3000),
-  })
-    .then(async (response) =>
-      response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined,
-    )
-    .catch(() => undefined)
-  const logo = logoBytes ? await pdf.embedPng(logoBytes).catch(() => undefined) : undefined
+  const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+  let logoBytes: Uint8Array | undefined
+  let logo: Awaited<ReturnType<typeof pdf.embedPng>> | undefined
+  for (const source of [...new Set([appUrl, 'https://www.kacheenvios.com'])].filter(Boolean)) {
+    try {
+      const response = await fetch(`${source}/icon-512.png`, { signal: AbortSignal.timeout(5000) })
+      if (!response.ok) continue
+      logoBytes = new Uint8Array(await response.arrayBuffer())
+      logo = await pdf.embedPng(logoBytes)
+      break
+    } catch {
+      // Try the next source; the letter must still render without the logo.
+    }
+  }
   const pick = (isBold?: boolean) => (isBold ? bold : regular)
 
   drawCarriageLetter(

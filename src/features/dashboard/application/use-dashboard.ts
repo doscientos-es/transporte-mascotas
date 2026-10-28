@@ -926,6 +926,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
           id: crypto.randomUUID(),
           breed: animal.breed.trim() || 'Sin clasificar',
           size: sizeForMeasurements(animal),
+          ...(draft.boxNumber ? { box: draft.boxNumber } : {}),
           boxCategory: requestedTransportBoxCategory(
             { ...animal, requestedBoxCategory },
             minimumCategory,
@@ -958,6 +959,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         originPoint: draft.originPoint.trim() || draft.senderAddress.trim(),
         destinationPoint: draft.destinationPoint.trim() || draft.recipientAddress.trim(),
         accompanyingDocuments: draft.accompanyingDocuments,
+        atesNumber: draft.atesNumber.trim(),
         billingPayer: draft.billingPayer,
         billingClient: billingClientForDraft(draft),
         route: routeTemplate.name,
@@ -981,6 +983,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       const billingTotal = transportAnimalsTotalCents(draft.animals, boxCatalog) / 100
       let savedId: string | null = null
       let documentPending = false
+      let paidInvoiceId: string | undefined
       if (paymentMethod) {
         const result = await createPaidManualLetter(
           letter,
@@ -993,6 +996,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         )
         savedId = result.letterId
         documentPending = result.documentPending
+        paidInvoiceId = result.invoiceDraftId
       } else {
         savedId = await saveManualLetter(
           letter,
@@ -1023,7 +1027,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
             ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'
             : 'Carta creada y marcada como pagada. La factura se ha emitido.',
         )
-        return
+        return { paid: true as const, invoiceId: paidInvoiceId }
       }
       let emailNote = ''
       try {
@@ -1034,6 +1038,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         emailNote = ` ${emailError instanceof Error ? emailError.message : 'No se ha podido enviar el email de cobro.'}`
       }
       toast(`Carta creada y solicitud de pago vinculada a ${routeTemplate.name}.${emailNote}`)
+      return { paid: false as const, invoiceId: undefined }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se ha podido crear la carta.'
       toast(message)
@@ -1090,6 +1095,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         originPoint: draft.originPoint.trim() || draft.senderAddress.trim(),
         destinationPoint: draft.destinationPoint.trim() || draft.recipientAddress.trim(),
         accompanyingDocuments: draft.accompanyingDocuments,
+        atesNumber: draft.atesNumber.trim(),
         billingPayer: draft.billingPayer,
         billingClient: billingClientForDraft(draft),
         route: routeTemplate.name,

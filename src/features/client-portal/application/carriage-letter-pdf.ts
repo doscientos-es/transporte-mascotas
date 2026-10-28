@@ -1,4 +1,4 @@
-﻿import type { Letter } from '@/shared/types'
+import type { Letter } from '@/shared/types'
 
 import { CARRIAGE_LETTER_PAGE, drawCarriageLetter } from './carriage-letter-layout'
 import type { TransportCarriageLetter } from './transport-requests'
@@ -32,6 +32,7 @@ export function letterToCarriageLetter(
     destination_point: letter.destinationPoint,
     accompanying_documents: letter.accompanyingDocuments,
     transport_box_number: transportBoxNumber,
+    ates_number: letter.atesNumber ?? null,
     animals: letter.animals.map((animal, index) => ({
       ordinal: index + 1,
       species: animal.species,

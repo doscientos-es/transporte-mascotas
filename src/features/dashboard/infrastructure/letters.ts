@@ -31,6 +31,7 @@ type LetterRow = {
   destination_latitude: number | null
   destination_longitude: number | null
   accompanying_documents: Letter['accompanyingDocuments']
+  ates_number: string | null
   billing_payer: Letter['billingPayer']
   billing_client: unknown
   signed_at: string | null
@@ -86,7 +87,7 @@ async function fetchLetters(): Promise<Letter[]> {
   const { data, error } = await requireSupabase()
     .from('carriage_letters')
     .select(
-      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm,size,box_category)',
+      'id,service_date,status,sender_name,sender_nif,sender_email,sender_address,sender_postal_code,sender_city,sender_province,sender_phone,recipient_name,recipient_nif,recipient_email,recipient_address,recipient_postal_code,recipient_city,recipient_province,recipient_phone,origin_text,destination_text,origin_point,destination_point,origin_latitude,origin_longitude,destination_latitude,destination_longitude,accompanying_documents,ates_number,billing_payer,billing_client,signed_at,imported_at,route_templates(name,color),invoice_drafts(status),animals(id,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm,size,box_category)',
     )
     .order('imported_at', { ascending: false })
   if (error) throw error
@@ -117,6 +118,7 @@ async function fetchLetters(): Promise<Letter[]> {
     destinationLatitude: letter.destination_latitude ?? undefined,
     destinationLongitude: letter.destination_longitude ?? undefined,
     accompanyingDocuments: letter.accompanying_documents ?? [],
+    ...(letter.ates_number ? { atesNumber: letter.ates_number } : {}),
     billingPayer: letter.billing_payer ?? 'remitente',
     billingClient: invoiceClientFrom(letter.billing_client),
     signedAt: letter.signed_at ?? undefined,
@@ -210,6 +212,7 @@ function manualLetterRpcArguments(
     p_origin_point: letter.originPoint,
     p_destination_point: letter.destinationPoint,
     p_accompanying_documents: letter.accompanyingDocuments,
+    p_ates_number: letter.atesNumber ?? null,
     p_billing_payer: letter.billingPayer,
     p_billing_client: letter.billingClient,
     p_billing_total: billingTotal,
@@ -221,9 +224,9 @@ function manualLetterRpcArguments(
         breed,
         birth_date: birthDate,
         weight_kg: weightKg,
-        length_cm: lengthCm,
-        height_cm: heightCm,
-        width_cm: widthCm,
+        length_cm: lengthCm || null,
+        height_cm: heightCm || null,
+        width_cm: widthCm || null,
         box_category: boxCategory,
       }),
     ),
@@ -292,10 +295,18 @@ export async function createPaidManualLetter(
       : null
     throw new Error(details?.error || error.message || 'No se ha podido crear y emitir la carta.')
   }
-  const result = data as { letterId?: string; documentPending?: boolean } | null
+  const result = data as {
+    letterId?: string
+    invoiceDraftId?: string
+    documentPending?: boolean
+  } | null
   if (!result?.letterId)
     throw new Error('No se ha podido confirmar la creación de la carta pagada.')
-  return { letterId: result.letterId, documentPending: result.documentPending === true }
+  return {
+    letterId: result.letterId,
+    invoiceDraftId: result.invoiceDraftId,
+    documentPending: result.documentPending === true,
+  }
 }
 
 /** Emails the payer the payment link; returns false when the payer has no email. */
@@ -343,6 +354,7 @@ export async function updateLetter(
       origin_point: letter.originPoint,
       destination_point: letter.destinationPoint,
       accompanying_documents: letter.accompanyingDocuments,
+      ...(letter.atesNumber ? { ates_number: letter.atesNumber } : {}),
       billing_payer: letter.billingPayer,
       billing_client: letter.billingClient,
       signed_at: signatureConfirmed ? new Date().toISOString() : undefined,
