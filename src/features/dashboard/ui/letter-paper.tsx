@@ -105,9 +105,9 @@ export function PaperHeader({
       </div>
       <div className="flex flex-col justify-center gap-1 p-3 sm:items-end sm:text-right">
         <label className="flex items-baseline gap-1.5 text-sm font-bold">
-          Nº Box
+          <span className="shrink-0 whitespace-nowrap">Nº Box</span>
           <input
-            className={`${paperControl} w-20 border-b border-neutral-500 focus-visible:border-black sm:text-right`}
+            className={`${paperControl} w-20 min-w-0 border-b border-neutral-500 focus-visible:border-black sm:text-right`}
             type="number"
             min="1"
             inputMode="numeric"
