@@ -30,9 +30,10 @@ const colors = {
 
 async function addBrandLogo(doc: jsPDF) {
   try {
-    const response = await fetch('/icon-512.png')
+    const response = await fetch('/logo-white.png')
     if (!response.ok) return false
-    doc.addImage(new Uint8Array(await response.arrayBuffer()), 'PNG', 20, 11, 18, 18)
+    // logo-white.png is 3385x2722, so the width keeps that ratio.
+    doc.addImage(new Uint8Array(await response.arrayBuffer()), 'PNG', 20, 11, 22.4, 18)
     return true
   } catch {
     return false
@@ -72,10 +73,10 @@ export async function createPaymentRequestDocument({
   doc.setTextColor(...colors.white)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
-  doc.text('KACHE ENVÍOS', 42, 21)
+  doc.text('KACHE ENVÍOS', 47, 21)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(7.5)
-  doc.text('Transporte de mascotas', 42, 28)
+  doc.text('Transporte de mascotas', 47, 28)
   doc.setTextColor(...colors.coral)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(8)

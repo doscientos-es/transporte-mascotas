@@ -27,7 +27,7 @@ describe('createPaymentRequestDocument', () => {
 
       const header = new TextDecoder().decode((await document.blob.arrayBuffer()).slice(0, 5))
 
-      expect(fetchMock).toHaveBeenCalledWith('/icon-512.png')
+      expect(fetchMock).toHaveBeenCalledWith('/logo-white.png')
       expect(header).toBe('%PDF-')
       expect(document.fileName).toBe('solicitud-pago-Ruta-Madrid-Barcelona.pdf')
     } finally {
