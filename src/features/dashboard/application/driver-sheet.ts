@@ -5,7 +5,7 @@ export const DRIVER_SHEET_HEADER = [
   'RECOGIDA/ENTREGA',
   'NOMBRE',
   'BOX',
-  'TIPO MASCOTA',
+  'RAZA',
   'TELÉFONO',
   'HORA',
   'ESTADO',
@@ -24,12 +24,14 @@ export function driverSheetRows(
         action.stopId ? action.stopId === stop.id : action.stop === stop.locality,
       )
       .map((action) => {
+        // The label is "breed · species", or just the species when there is no breed,
+        // so it only counts as a breed when it has both parts.
+        const labelParts = action.animalLabel?.split(' · ') ?? []
         const breed =
           letters
             .find((letter) => letter.id === action.letterId)
-            ?.animals.find((animal) => animal.id === action.animalId)?.breed ??
-          action.animalLabel?.split(' · ')[0] ??
-          ''
+            ?.animals.find((animal) => animal.id === action.animalId)?.breed ||
+          (labelParts.length > 1 ? labelParts[0] : '')
         return [
           stop.locality.toUpperCase(),
           action.type === 'recogida' ? 'Recogida' : 'Entrega',
