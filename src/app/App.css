@@ -8980,6 +8980,70 @@ a.whatsapp-link:hover {
 .route-verify-legs li small {
   color: #b45309;
 }
+.route-verify.is-checking-steps {
+  gap: 8px;
+}
+.route-verify-notice {
+  display: block;
+  padding: 8px 14px;
+  border-bottom: 1px solid #eae8e6;
+  font-size: 12px;
+  font-weight: 600;
+}
+.route-verify-notice.is-success {
+  background: #f0faf3;
+  color: #15803d;
+}
+.route-verify-notice.is-warning {
+  background: #fff8eb;
+  color: #b45309;
+}
+
+/* Step list shown while a route is being calculated (locating stops, Google, saving). */
+.calc-steps ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.calc-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9a948f;
+  font-size: 12px;
+}
+.calc-steps li.is-active {
+  color: #111;
+  font-weight: 600;
+}
+.calc-steps li.is-done {
+  color: #15803d;
+}
+.calc-steps li.is-warning {
+  color: #b45309;
+}
+.calc-step-icon {
+  display: grid;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+}
+.calc-step-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.stop-form-progress {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid #eae8e6;
+  border-radius: 10px;
+  background: #faf9f8;
+  font-size: 13px;
+}
 
 /* Route detail: stops on the left, map pinned on the right when the card is wide enough. */
 .route-layout-map {

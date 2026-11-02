@@ -78,7 +78,11 @@ import {
 } from '../infrastructure/routes'
 import { sizeForMeasurements } from './animal-size'
 import { dailyRouteStopsForTemplate } from './daily-route-stops'
-import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
+import {
+  calculateDrivingTimes,
+  findBestStopInsertion,
+  type DrivingProgressHandler,
+} from './driving-times'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize, vanBoxSizeForAnimal } from './van'
 
@@ -524,6 +528,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function suggestRouteStop(
     routeId: string,
     stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
+    onProgress?: DrivingProgressHandler,
   ) {
     const route = dailyRoutes.find((item) => item.id === routeId)
     if (!route) throw new Error('No se ha encontrado la ruta seleccionada.')
@@ -534,7 +539,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       kind: 'parada',
       mapUrl: mapUrlForStop(stop),
     }
-    return findBestStopInsertion(stopsForRoute(route, routeTemplates), nextStop)
+    return findBestStopInsertion(stopsForRoute(route, routeTemplates), nextStop, onProgress)
   }
 
   async function addRouteStop(routeId: string, stops: DailyRouteStop[]) {

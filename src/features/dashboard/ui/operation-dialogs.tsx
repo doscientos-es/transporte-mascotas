@@ -55,10 +55,12 @@ import type {
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
+import type { DrivingProgress } from '../application/driving-times'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
+import { CalculationProgress } from './calculation-progress'
 import {
   PaperBand,
   PaperCell,
@@ -694,6 +696,7 @@ export function StopFormDialog({
   insertionIndex,
   stopCount,
   onInsertionIndexChange,
+  progress,
   onClose,
   onAdd,
 }: {
@@ -703,6 +706,8 @@ export function StopFormDialog({
   insertionIndex?: number
   stopCount?: number
   onInsertionIndexChange?: (index: number) => void
+  /** What the route calculation behind `onAdd` is doing, shown while saving. */
+  progress?: DrivingProgress | null
   onClose: () => void
   onAdd: (stop: StopFormValues) => Promise<void>
 }) {
@@ -1110,6 +1115,12 @@ export function StopFormDialog({
             )}
           </div>
           <div className="stop-form-actions">
+            {saving && progress !== undefined && (
+              <div className="stop-form-progress">
+                <strong>Buscando la mejor posición con Google Maps…</strong>
+                <CalculationProgress progress={progress} />
+              </div>
+            )}
             {error && (
               <p className="form-error" role="alert">
                 {error}

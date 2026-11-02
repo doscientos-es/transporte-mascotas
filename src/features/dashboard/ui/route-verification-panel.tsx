@@ -1,20 +1,21 @@
-import { Button, Spinner } from '@doscientos/ui'
+import { Button } from '@doscientos/ui'
 import { BadgeCheck, CircleAlert, TriangleAlert } from 'lucide-react'
 
-import type { DrivingSource } from '../application/driving-times'
+import type { DrivingProgress, DrivingSource } from '../application/driving-times'
 import type { VerificationSummary } from '../application/route-verification'
+import { CalculationProgress } from './calculation-progress'
 
 export type VerificationStatus =
-  /** Waiting for Google's answer. */
-  | { kind: 'checking' }
+  /** Waiting for Google's answer; `saving` adds the step of storing the result. */
+  | { kind: 'checking'; progress: DrivingProgress | null; saving?: boolean }
   /** Nothing could be asked or calculated (Google not configured, offline...). */
   | { kind: 'unavailable' }
   | {
-    kind: 'ready'
-    source: DrivingSource
-    calculatedAt: number
-    summary: VerificationSummary
-  }
+      kind: 'ready'
+      source: DrivingSource
+      calculatedAt: number
+      summary: VerificationSummary
+    }
 
 type Props = {
   status: VerificationStatus
@@ -38,13 +39,10 @@ const clock = (timestamp: number) =>
 export function RouteVerificationPanel({ status, stopNames, canApply, applying, onApply }: Props) {
   if (status.kind === 'checking') {
     return (
-      <output className="route-verify is-checking">
-        <Spinner />
-        <div>
-          <strong>Comprobando con Google Maps…</strong>
-          <span>Calculando el recorrido real por carretera.</span>
-        </div>
-      </output>
+      <div className="route-verify is-checking-steps">
+        <strong>Comprobando con Google Maps…</strong>
+        <CalculationProgress progress={status.progress} withSaving={status.saving} />
+      </div>
     )
   }
 

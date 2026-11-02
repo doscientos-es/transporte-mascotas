@@ -20,7 +20,6 @@ import {
   DropdownMenuSeparator,
   Input,
   Pagination,
-  Spinner,
 } from '@doscientos/ui'
 import {
   ArrowLeft,
@@ -82,6 +81,7 @@ import {
   calculateDrivingRoute,
   calculateDrivingTimes,
   verifyDrivingRoute,
+  type DrivingProgress,
   type RouteVerification,
 } from '../application/driving-times'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
@@ -89,6 +89,7 @@ import { legLabel, summarizeVerification } from '../application/route-verificati
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
 import { mergedStopInstructions } from '../application/stop-instructions'
 import { moveItemAtInsertionIndex } from '../application/stop-order'
+import { CalculationProgress } from './calculation-progress'
 import { StopFormDialog } from './operation-dialogs'
 import { RouteVerificationPanel, type VerificationStatus } from './route-verification-panel'
 
@@ -108,6 +109,7 @@ type Props = {
   onSuggestStop: (
     routeId: string,
     stop: Omit<DailyRouteStop, 'id' | 'kind' | 'mapUrl'>,
+    onProgress?: (progress: DrivingProgress) => void,
   ) => Promise<{ index: number; stops: DailyRouteStop[] }>
   onAddStop: (routeId: string, stops: DailyRouteStop[]) => Promise<void>
   onRemoveStop: (routeId: string, stopId: string) => Promise<void>
@@ -483,6 +485,8 @@ export function RoutesPage({
   const [verification, setVerification] = useState<RouteVerification | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [applyingVerification, setApplyingVerification] = useState(false)
+  const [progress, setProgress] = useState<DrivingProgress | null>(null)
+  const [notice, setNotice] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [editingRoute, setEditingRoute] = useState(false)
   const [deleteRouteOpen, setDeleteRouteOpen] = useState(false)
@@ -507,16 +511,21 @@ export function RoutesPage({
   // Google checks the route whenever the stops or their order change; it never edits anything.
   useEffect(() => {
     setVerification(null)
+    setNotice(null)
     if (mapStops.length < 2) {
       setVerifying(false)
       return
     }
     let cancelled = false
     setVerifying(true)
-    void verifyDrivingRoute(mapStops).then((result) => {
+    setProgress(null)
+    void verifyDrivingRoute(mapStops, (phase) => {
+      if (!cancelled) setProgress(phase)
+    }).then((result) => {
       if (cancelled) return
       setVerification(result)
       setVerifying(false)
+      setProgress(null)
     })
     return () => {
       cancelled = true
@@ -533,20 +542,20 @@ export function RoutesPage({
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const verificationSummary = verification
     ? summarizeVerification(
-        verification,
-        stops.slice(0, -1).map((stop) => stop.minutes),
-      )
+      verification,
+      stops.slice(0, -1).map((stop) => stop.minutes),
+    )
     : null
   const verificationStatus: VerificationStatus =
     verifying || recalculatingTimes
-      ? { kind: 'checking' }
+      ? { kind: 'checking', progress, saving: recalculatingTimes }
       : verification && verificationSummary
         ? {
-            kind: 'ready',
-            source: verification.source,
-            calculatedAt: verification.calculatedAt,
-            summary: verificationSummary,
-          }
+          kind: 'ready',
+          source: verification.source,
+          calculatedAt: verification.calculatedAt,
+          summary: verificationSummary,
+        }
         : { kind: 'unavailable' }
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
   const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
@@ -646,17 +655,29 @@ export function RoutesPage({
   async function recalculateRouteTimes() {
     setRecalculatingTimes(true)
     setOperationError('')
+    setNotice(null)
+    setProgress(null)
     setOrganizing(false)
     try {
-      const result = await calculateDrivingRoute(stops)
+      const result = await calculateDrivingRoute(stops, setProgress)
+      setProgress({ phase: 'saving' })
       await onUpdateStops(route.id, result.stops, false)
       setVerification(result.verification ?? null)
+      setNotice(
+        result.verification?.source === 'google'
+          ? { tone: 'success', text: 'Tiempos recalculados y guardados con Google Maps.' }
+          : {
+            tone: 'warning',
+            text: 'Google Maps no ha respondido: los tiempos se han guardado con un servicio alternativo y son aproximados.',
+          },
+      )
       return true
     } catch (error) {
       reportOperationError(error, 'No se han podido recalcular los tiempos de trayecto.')
       return false
     } finally {
       setRecalculatingTimes(false)
+      setProgress(null)
     }
   }
   /** Saves the minutes Google just returned, without asking Google again. */
@@ -668,12 +689,14 @@ export function RoutesPage({
     }))
     if (plannedStops) {
       setPlannedStops(verifiedStops)
+      setNotice({ tone: 'success', text: 'Tiempos de Google aplicados a la propuesta.' })
       return
     }
     setApplyingVerification(true)
     setOperationError('')
     try {
       await onUpdateStops(route.id, verifiedStops, false)
+      setNotice({ tone: 'success', text: 'Tiempos de Google guardados en la ruta.' })
     } catch (error) {
       reportOperationError(error, 'No se han podido guardar los tiempos de Google.')
     } finally {
@@ -1014,6 +1037,9 @@ export function RoutesPage({
                 applying={applyingVerification}
                 onApply={() => void applyVerifiedTimes()}
               />
+              {notice && (
+                <output className={`route-verify-notice is-${notice.tone}`}>{notice.text}</output>
+              )}
               <Suspense fallback={null}>
                 <RouteMap
                   stops={mapStops}
@@ -1044,11 +1070,17 @@ export function RoutesPage({
       {addingStop && (
         <StopFormDialog
           meetingPoints={meetingPoints}
+          progress={progress}
           onClose={() => setAddingStop(false)}
           onAdd={async (stop) => {
-            const plan = await onSuggestStop(route.id, stop)
-            setPlannedStops(plan.stops)
-            setAddingStop(false)
+            setProgress(null)
+            try {
+              const plan = await onSuggestStop(route.id, stop, setProgress)
+              setPlannedStops(plan.stops)
+              setAddingStop(false)
+            } finally {
+              setProgress(null)
+            }
           }}
         />
       )}
@@ -1065,6 +1097,7 @@ export function RoutesPage({
           startTime={startTime}
           organizing={organizing}
           recalculating={recalculatingTimes}
+          progress={progress}
           busy={savingPlan || Boolean(plannedStops)}
           canRecalculate={stops.length > 1}
           canDelete={Boolean(onDeleteRoute)}
@@ -1305,6 +1338,7 @@ function RouteSettingsDialog({
   startTime,
   organizing,
   recalculating,
+  progress,
   busy,
   canRecalculate,
   canDelete,
@@ -1321,6 +1355,7 @@ function RouteSettingsDialog({
   startTime: string
   organizing: boolean
   recalculating: boolean
+  progress: DrivingProgress | null
   busy: boolean
   canRecalculate: boolean
   canDelete: boolean
@@ -1391,13 +1426,9 @@ function RouteSettingsDialog({
         </div>
         {recalculating && (
           <div className="route-recalculation-progress">
-            <Spinner
-              className="route-recalculation-spinner"
-              label="Calculando tiempos de trayecto"
-              size="md"
-            />
             <div className="route-recalculation-copy">
-              <strong>Calculando y guardando los tiempos de trayecto…</strong>
+              <strong>Calculando los tiempos de trayecto…</strong>
+              <CalculationProgress progress={progress} withSaving />
               <small>
                 Las rutas con muchas paradas pueden tardar un poco. El diálogo se cerrará cuando
                 termine.

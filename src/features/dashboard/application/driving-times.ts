@@ -123,10 +123,25 @@ function coordinatesFor(stop: DailyRouteStop) {
   return request
 }
 
-async function coordinatesForStops(stops: DailyRouteStop[]) {
+/** What a calculation is doing right now, so the UI can tell the user instead of a bare spinner. */
+export type DrivingProgress =
+  | { phase: 'locating'; done: number; total: number }
+  | { phase: 'google' }
+  /** Google did not answer; a free, less precise service is being used instead. */
+  | { phase: 'fallback' }
+  /** Reported by the caller once the calculation is done and the result is being stored. */
+  | { phase: 'saving' }
+
+export type DrivingProgressHandler = (progress: DrivingProgress) => void
+
+async function coordinatesForStops(stops: DailyRouteStop[], onProgress?: DrivingProgressHandler) {
   const coordinates: Coordinates[] = []
+  onProgress?.({ phase: 'locating', done: 0, total: stops.length })
   // Requests are deliberately sequential to respect the public geocoding service.
-  for (const stop of stops) coordinates.push(await coordinatesFor(stop))
+  for (const stop of stops) {
+    coordinates.push(await coordinatesFor(stop))
+    onProgress?.({ phase: 'locating', done: coordinates.length, total: stops.length })
+  }
   return coordinates
 }
 
@@ -203,11 +218,14 @@ const toVerification = (legs: GoogleLeg[]): RouteVerification => ({
 /** Driving legs for each consecutive pair of coordinates, with the source that answered. */
 async function routeLegs(
   coordinates: Coordinates[],
+  onProgress?: DrivingProgressHandler,
 ): Promise<{ source: DrivingSource; seconds: Seconds[]; google?: GoogleLeg[] }> {
   // Google is the most precise source; the free services below only cover for it.
+  onProgress?.({ phase: 'google' })
   const fromGoogle = await googleRouteLegs(coordinates)
   if (fromGoogle)
     return { source: 'google', seconds: fromGoogle.map((leg) => leg.seconds), google: fromGoogle }
+  onProgress?.({ phase: 'fallback' })
 
   const fromValhalla = await valhallaPost<ValhallaRoute>('route', {
     locations: coordinates.map(toLocation),
@@ -234,9 +252,14 @@ async function routeLegs(
 }
 
 /** Driving seconds between every pair of coordinates. */
-async function durationMatrix(coordinates: Coordinates[]): Promise<Seconds[][]> {
+async function durationMatrix(
+  coordinates: Coordinates[],
+  onProgress?: DrivingProgressHandler,
+): Promise<Seconds[][]> {
+  onProgress?.({ phase: 'google' })
   const fromGoogle = await googleDurationMatrix(coordinates)
   if (fromGoogle) return fromGoogle
+  onProgress?.({ phase: 'fallback' })
 
   const locations = coordinates.map(toLocation)
   const fromValhalla = await valhallaPost<ValhallaMatrix>('sources_to_targets', {
@@ -264,15 +287,18 @@ async function durationMatrix(coordinates: Coordinates[]): Promise<Seconds[][]> 
  * Calculates consecutive driving legs; the final stop has no following journey. Also reports
  * which service answered and, for Google, the distance and road of every leg.
  */
-export async function calculateDrivingRoute(stops: DailyRouteStop[]) {
+export async function calculateDrivingRoute(
+  stops: DailyRouteStop[],
+  onProgress?: DrivingProgressHandler,
+) {
   if (stops.length < 2)
     return {
       stops: stops.map((stop) => ({ ...stop, minutes: 0 })),
       verification: undefined as RouteVerification | undefined,
     }
 
-  const coordinates = await coordinatesForStops(stops)
-  const { source, seconds, google } = await routeLegs(coordinates)
+  const coordinates = await coordinatesForStops(stops, onProgress)
+  const { source, seconds, google } = await routeLegs(coordinates, onProgress)
   const verification: RouteVerification = google
     ? toVerification(google)
     : {
@@ -290,8 +316,11 @@ export async function calculateDrivingRoute(stops: DailyRouteStop[]) {
   }
 }
 
-export async function calculateDrivingTimes(stops: DailyRouteStop[]) {
-  return (await calculateDrivingRoute(stops)).stops
+export async function calculateDrivingTimes(
+  stops: DailyRouteStop[],
+  onProgress?: DrivingProgressHandler,
+) {
+  return (await calculateDrivingRoute(stops, onProgress)).stops
 }
 
 const maxVerificationCacheEntries = 20
@@ -303,14 +332,17 @@ const verificationsByRoute = new Map<string, Promise<RouteVerification | null>>(
  * services are never used here). Answers are kept for the session so reopening a route does
  * not bill Google again.
  */
-export function verifyDrivingRoute(stops: DailyRouteStop[]) {
+export function verifyDrivingRoute(stops: DailyRouteStop[], onProgress?: DrivingProgressHandler) {
   if (stops.length < 2) return Promise.resolve(null)
   const key = stops.map(coordinateCacheKey).join(';')
   const cached = verificationsByRoute.get(key)
   if (cached) return cached
 
-  const request = coordinatesForStops(stops)
-    .then(googleRouteLegs)
+  const request = coordinatesForStops(stops, onProgress)
+    .then((coordinates) => {
+      onProgress?.({ phase: 'google' })
+      return googleRouteLegs(coordinates)
+    })
     .then((legs) => (legs ? toVerification(legs) : null))
     .catch(() => null)
   verificationsByRoute.set(key, request)
@@ -325,12 +357,16 @@ export function verifyDrivingRoute(stops: DailyRouteStop[]) {
 }
 
 /** Finds the insertion point with the shortest total driving time for the marked stops. */
-export async function findBestStopInsertion(stops: DailyRouteStop[], newStop: DailyRouteStop) {
+export async function findBestStopInsertion(
+  stops: DailyRouteStop[],
+  newStop: DailyRouteStop,
+  onProgress?: DrivingProgressHandler,
+) {
   if (!stops.length) return { index: 0, stops: [{ ...newStop, minutes: 0 }] }
 
   const allStops = [...stops, newStop]
-  const coordinates = await coordinatesForStops(allStops)
-  const durations = await durationMatrix(coordinates)
+  const coordinates = await coordinatesForStops(allStops, onProgress)
+  const durations = await durationMatrix(coordinates, onProgress)
 
   const duration = (from: DailyRouteStop, to: DailyRouteStop) =>
     minutesFor(

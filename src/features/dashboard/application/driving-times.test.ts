@@ -153,6 +153,24 @@ describe('route verification', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('reports each phase, and flags when Google is replaced by a free service', async () => {
+    const stops = [stop('p-1', 43.3, 4.1), stop('p-2', 43.4, 4.2)]
+    vi.mocked(googleRouteLegs).mockResolvedValueOnce([{ seconds: 600, meters: 9000, path }])
+    const withGoogle: string[] = []
+    await calculateDrivingRoute(stops, (progress) => withGoogle.push(progress.phase))
+    expect(withGoogle).toEqual(['locating', 'locating', 'locating', 'google'])
+
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(json({ trip: { legs: [{ summary: { time: 600 } }] } })),
+    )
+    const withFallback: string[] = []
+    await calculateDrivingRoute(stops, (progress) => withFallback.push(progress.phase))
+    expect(withFallback.slice(-2)).toEqual(['google', 'fallback'])
+  })
+
   it('decodes a Google encoded polyline', () => {
     // Example from Google's polyline algorithm documentation.
     expect(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@')).toEqual([
