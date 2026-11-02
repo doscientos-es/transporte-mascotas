@@ -8849,6 +8849,138 @@ a.whatsapp-link:hover {
     box-shadow 0.3s;
 }
 
+/* Road Google drives between stops: revealed progressively, with minutes and km on each leg. */
+.route-map-road {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: route-road-draw 1.2s ease-out forwards;
+}
+@keyframes route-road-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-map-road {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+}
+.route-map-leg {
+  overflow: visible;
+}
+.route-map-leg span {
+  position: absolute;
+  padding: 2px 8px;
+  transform: translate(-50%, -50%);
+  border: 1px solid #cf1f2a;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
+  color: #111;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Verification strip above the route map: where the times come from and whether Google agrees. */
+.route-verify {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #eae8e6;
+  background: #fff;
+  font-size: 13px;
+}
+.route-verify.is-checking,
+.route-verify.is-muted {
+  flex-direction: row;
+  align-items: center;
+  color: #6b6560;
+}
+.route-verify.is-muted > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+.route-verify strong {
+  display: block;
+  color: #111;
+  font-size: 13px;
+}
+.route-verify span {
+  color: #6b6560;
+  font-size: 12px;
+}
+.route-verify-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.route-verify-head > svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+.route-verify.is-verified {
+  background: #f0faf3;
+}
+.route-verify.is-verified .route-verify-head > svg {
+  color: #15803d;
+}
+.route-verify.is-different {
+  background: #fff8eb;
+}
+.route-verify.is-different .route-verify-head > svg {
+  color: #b45309;
+}
+.route-verify-totals {
+  display: flex;
+  gap: 24px;
+  margin: 0;
+}
+.route-verify-totals dt {
+  color: #6b6560;
+  font-size: 11px;
+}
+.route-verify-totals dd {
+  margin: 0;
+  color: #111;
+  font-size: 15px;
+  font-weight: 700;
+}
+.route-verify .button,
+.route-verify > button {
+  align-self: flex-start;
+}
+.route-verify-legs summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.route-verify-legs ol {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.route-verify-legs li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.route-verify-legs li span {
+  flex: 1 1 140px;
+  color: #111;
+}
+.route-verify-legs li small {
+  color: #b45309;
+}
+
 /* Route detail: stops on the left, map pinned on the right when the card is wide enough. */
 .route-layout-map {
   margin-top: 20px;

@@ -12,6 +12,18 @@ type Props = {
   onStopClick?: (index: number) => void
   /** Popup content per stop (same order as `stops`), read when a popup opens. */
   details?: StopDetail[]
+  /**
+   * Verified legs between consecutive stops (one per pair). When every leg carries a road
+   * path, the real road is drawn instead of straight lines, with a label on each leg.
+   */
+  legs?: MapLeg[]
+}
+
+export type MapLeg = {
+  /** The road driven, as `[latitude, longitude]` pairs. */
+  path?: Array<[latitude: number, longitude: number]>
+  /** Short text shown on the leg, e.g. `18 min · 14 km`. */
+  label: string
 }
 
 export type StopDetail = {
@@ -56,7 +68,13 @@ const BLACK = '#111'
 const ARROW_SPACING = 70
 
 /** Interactive map (OpenStreetMap tiles, no API key) with the route drawn over it. */
-export default function RouteMap({ stops, label, onStopClick: onClick, details: lines }: Props) {
+export default function RouteMap({
+  stops,
+  label,
+  onStopClick: onClick,
+  details: lines,
+  legs,
+}: Props) {
   const container = useRef<HTMLDivElement>(null)
   // Latest values are read through refs so editing times does not rebuild the map.
   const interactive = useRef(Boolean(onClick))
@@ -83,7 +101,36 @@ export default function RouteMap({ stops, label, onStopClick: onClick, details: 
     L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map)
 
     const points = stops.map((stop) => L.latLng(stop.latitude, stop.longitude))
-    L.polyline(points, { color: RED, weight: 3, opacity: 0.85 }).addTo(map)
+    const roads =
+      legs && legs.length === stops.length - 1 && legs.every((leg) => (leg.path?.length ?? 0) >= 2)
+        ? legs.map((leg) => (leg.path ?? []).map(([lat, lng]) => L.latLng(lat, lng)))
+        : undefined
+    if (roads && legs) {
+      // White casing under the colored line, like the roads Google draws.
+      for (const road of roads)
+        L.polyline(road, { color: '#fff', weight: 8, opacity: 0.95 }).addTo(map)
+      roads.forEach((road, index) => {
+        const line = L.polyline(road, {
+          color: RED,
+          weight: 5,
+          opacity: 0.95,
+          className: 'route-map-road',
+        }).addTo(map)
+        // Lets the CSS animation draw the road progressively, whatever its length.
+        line.getElement()?.setAttribute('pathLength', '1')
+        L.marker(road[Math.floor(road.length / 2)], {
+          interactive: false,
+          keyboard: false,
+          icon: L.divIcon({
+            className: 'route-map-leg',
+            iconSize: [0, 0],
+            html: `<span>${index + 1}→${index + 2} · ${legs[index].label}</span>`,
+          }),
+        }).addTo(map)
+      })
+    } else {
+      L.polyline(points, { color: RED, weight: 3, opacity: 0.85 }).addTo(map)
+    }
     points.forEach((point, index) => {
       const edge = index === 0 || index === points.length - 1
       if (interactive.current) {
@@ -111,7 +158,8 @@ export default function RouteMap({ stops, label, onStopClick: onClick, details: 
         .bindTooltip(stops[index].locality)
         .addTo(map)
     })
-    map.fitBounds(L.latLngBounds(points), { padding: [20, 20] })
+    const linePoints = roads ? roads.flat() : points
+    map.fitBounds(L.latLngBounds(linePoints), { padding: [20, 20] })
 
     // Subtle direction arrows at the middle of each leg; redrawn on zoom because the
     // on-screen angle and the space available per leg change with the zoom level.
@@ -121,9 +169,9 @@ export default function RouteMap({ stops, label, onStopClick: onClick, details: 
       // Walk the whole line and drop an arrow every ARROW_SPACING screen pixels, so
       // routes with many short legs still show the direction.
       let travelled = ARROW_SPACING / 2
-      for (let index = 0; index < points.length - 1; index += 1) {
-        const from = map.latLngToLayerPoint(points[index])
-        const to = map.latLngToLayerPoint(points[index + 1])
+      for (let index = 0; index < linePoints.length - 1; index += 1) {
+        const from = map.latLngToLayerPoint(linePoints[index])
+        const to = map.latLngToLayerPoint(linePoints[index + 1])
         const length = from.distanceTo(to)
         if (length === 0) continue
         const angle = (Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI
@@ -157,7 +205,7 @@ export default function RouteMap({ stops, label, onStopClick: onClick, details: 
     return () => {
       map.remove()
     }
-  }, [stops])
+  }, [stops, legs])
 
   return <section ref={container} className="route-map" aria-label={label} />
 }

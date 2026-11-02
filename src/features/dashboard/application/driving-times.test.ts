@@ -2,7 +2,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { DailyRouteStop } from '@/shared/types'
 
-import { calculateDrivingTimes, findBestStopInsertion } from './driving-times'
+import { googleDurationMatrix, googleRouteLegs } from '../infrastructure/google-route-times'
+import {
+  calculateDrivingRoute,
+  calculateDrivingTimes,
+  findBestStopInsertion,
+  verifyDrivingRoute,
+} from './driving-times'
+import { decodePolyline } from './encoded-polyline'
+import { legLabel, summarizeVerification } from './route-verification'
+
+vi.mock('../infrastructure/google-route-times', () => ({
+  googleRouteLegs: vi.fn().mockResolvedValue(null),
+  googleDurationMatrix: vi.fn().mockResolvedValue(null),
+}))
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -66,6 +79,115 @@ describe('calculateDrivingTimes', () => {
   })
 })
 
+describe('calculateDrivingTimes with Google', () => {
+  it('uses the Google durations and never calls the free services', async () => {
+    vi.mocked(googleRouteLegs).mockResolvedValueOnce([{ seconds: 5400, meters: 80000, path: [] }])
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const updatedStops = await calculateDrivingTimes([
+      stop('stop-1', 41.3, 2.1),
+      stop('stop-2', 41.4, 2.2),
+    ])
+
+    expect(googleRouteLegs).toHaveBeenCalledWith([
+      [2.1, 41.3],
+      [2.2, 41.4],
+    ])
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(updatedStops.map((item) => item.minutes)).toEqual([90, 0])
+  })
+})
+
+describe('route verification', () => {
+  const path: Array<[number, number]> = [
+    [41.3, 2.1],
+    [41.35, 2.15],
+    [41.4, 2.2],
+  ]
+
+  it('reports Google as the source with the distance and road of each leg', async () => {
+    vi.mocked(googleRouteLegs).mockResolvedValueOnce([{ seconds: 5400, meters: 80000, path }])
+
+    const result = await calculateDrivingRoute([
+      stop('stop-1', 41.3, 2.1),
+      stop('stop-2', 41.4, 2.2),
+    ])
+
+    expect(result.verification).toMatchObject({
+      source: 'google',
+      legs: [{ minutes: 90, meters: 80000, path }],
+    })
+  })
+
+  it('reports the free service that answered when Google is unavailable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(json({ trip: { legs: [{ summary: { time: 600 } }] } })),
+    )
+
+    const result = await calculateDrivingRoute([
+      stop('stop-1', 41.3, 2.1),
+      stop('stop-2', 41.4, 2.2),
+    ])
+
+    expect(result.verification?.source).toBe('valhalla')
+    expect(result.verification?.legs[0]).toEqual({ minutes: 10 })
+  })
+
+  it('verifies with Google only, and asks again only after a failure', async () => {
+    const stops = [stop('v-1', 42.3, 3.1), stop('v-2', 42.4, 3.2)]
+    vi.mocked(googleRouteLegs).mockClear()
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await verifyDrivingRoute(stops)).toBeNull()
+    vi.mocked(googleRouteLegs).mockResolvedValueOnce([{ seconds: 600, meters: 9000, path }])
+    const verified = await verifyDrivingRoute(stops)
+    expect(verified?.source).toBe('google')
+    expect(await verifyDrivingRoute(stops)).toBe(verified)
+
+    expect(googleRouteLegs).toHaveBeenCalledTimes(2)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('decodes a Google encoded polyline', () => {
+    // Example from Google's polyline algorithm documentation.
+    expect(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@')).toEqual([
+      [38.5, -120.2],
+      [40.7, -120.95],
+      [43.252, -126.453],
+    ])
+  })
+
+  it('treats small gaps as a match and flags real differences', () => {
+    const verification = {
+      source: 'google' as const,
+      calculatedAt: 0,
+      legs: [
+        { minutes: 40, meters: 30000 },
+        { minutes: 62, meters: 70500 },
+      ],
+    }
+
+    const close = summarizeVerification(verification, [41, 60])
+    expect(close).toMatchObject({ googleMinutes: 102, savedMinutes: 101, matches: true })
+    expect(close?.kilometers).toBeCloseTo(100.5)
+
+    const far = summarizeVerification(verification, [20, 30])
+    expect(far).toMatchObject({ differenceMinutes: 52, matches: false })
+    expect(summarizeVerification(verification, [20])).toBeNull()
+  })
+
+  it('labels a leg with its time and distance', () => {
+    expect(legLabel({ minutes: 18, meters: 14200 })).toBe('18 min · 14 km')
+    expect(legLabel({ minutes: 95, meters: 8500 })).toBe('1 h 35 min · 8,5 km')
+    expect(legLabel({ minutes: 7 })).toBe('7 min')
+  })
+})
+
 describe('findBestStopInsertion', () => {
   it('places the new stop where the total Valhalla driving time is shortest', async () => {
     const times = [
@@ -88,6 +210,25 @@ describe('findBestStopInsertion', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       'https://valhalla1.openstreetmap.de/sources_to_targets',
     )
+    expect(best.index).toBe(2)
+    expect(best.stops.map((item) => item.minutes)).toEqual([10, 5, 0])
+  })
+
+  it('uses the Google matrix and never calls the free services', async () => {
+    vi.mocked(googleDurationMatrix).mockResolvedValueOnce([
+      [0, 600, 1200],
+      [600, 0, 300],
+      [1200, 300, 0],
+    ])
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const best = await findBestStopInsertion(
+      [stop('a', 41.3, 2.1), stop('b', 41.4, 2.2)],
+      stop('c', 41.5, 2.3),
+    )
+
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(best.index).toBe(2)
     expect(best.stops.map((item) => item.minutes)).toEqual([10, 5, 0])
   })

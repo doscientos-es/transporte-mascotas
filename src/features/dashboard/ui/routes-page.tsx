@@ -78,12 +78,19 @@ import { useUrlParams } from '@/shared/ui/use-url-params'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { DRIVER_SHEET_HEADER, driverSheetRows } from '../application/driver-sheet'
-import { calculateDrivingTimes } from '../application/driving-times'
+import {
+  calculateDrivingRoute,
+  calculateDrivingTimes,
+  verifyDrivingRoute,
+  type RouteVerification,
+} from '../application/driving-times'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
+import { legLabel, summarizeVerification } from '../application/route-verification'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
 import { mergedStopInstructions } from '../application/stop-instructions'
 import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { StopFormDialog } from './operation-dialogs'
+import { RouteVerificationPanel, type VerificationStatus } from './route-verification-panel'
 
 const RouteMap = lazy(() => import('@/features/client-portal/ui/route-map'))
 
@@ -473,6 +480,9 @@ export function RoutesPage({
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
   const [closingRoute, setClosingRoute] = useState(false)
   const [recalculatingTimes, setRecalculatingTimes] = useState(false)
+  const [verification, setVerification] = useState<RouteVerification | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [applyingVerification, setApplyingVerification] = useState(false)
   const [closeConfirmationOpen, setCloseConfirmationOpen] = useState(false)
   const [editingRoute, setEditingRoute] = useState(false)
   const [deleteRouteOpen, setDeleteRouteOpen] = useState(false)
@@ -493,8 +503,51 @@ export function RoutesPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const mapStops = useMemo(() => stops, [mapSignature])
   const directionsLinks = useMemo(() => itineraryDirectionsLinks(mapStops), [mapStops])
+
+  // Google checks the route whenever the stops or their order change; it never edits anything.
+  useEffect(() => {
+    setVerification(null)
+    if (mapStops.length < 2) {
+      setVerifying(false)
+      return
+    }
+    let cancelled = false
+    setVerifying(true)
+    void verifyDrivingRoute(mapStops).then((result) => {
+      if (cancelled) return
+      setVerification(result)
+      setVerifying(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [mapStops])
+  const googleRoadLegs = useMemo(
+    () =>
+      verification?.source === 'google'
+        ? verification.legs.map((leg) => ({ path: leg.path, label: legLabel(leg) }))
+        : undefined,
+    [verification],
+  )
   const travelMinutes = stops.slice(0, -1).reduce((total, stop) => total + stop.minutes, 0)
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
+  const verificationSummary = verification
+    ? summarizeVerification(
+        verification,
+        stops.slice(0, -1).map((stop) => stop.minutes),
+      )
+    : null
+  const verificationStatus: VerificationStatus =
+    verifying || recalculatingTimes
+      ? { kind: 'checking' }
+      : verification && verificationSummary
+        ? {
+            kind: 'ready',
+            source: verification.source,
+            calculatedAt: verification.calculatedAt,
+            summary: verificationSummary,
+          }
+        : { kind: 'unavailable' }
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
   const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
   let onboard = 0
@@ -595,14 +648,36 @@ export function RoutesPage({
     setOperationError('')
     setOrganizing(false)
     try {
-      const updatedStops = await calculateDrivingTimes(stops)
-      await onUpdateStops(route.id, updatedStops, false)
+      const result = await calculateDrivingRoute(stops)
+      await onUpdateStops(route.id, result.stops, false)
+      setVerification(result.verification ?? null)
       return true
     } catch (error) {
       reportOperationError(error, 'No se han podido recalcular los tiempos de trayecto.')
       return false
     } finally {
       setRecalculatingTimes(false)
+    }
+  }
+  /** Saves the minutes Google just returned, without asking Google again. */
+  async function applyVerifiedTimes() {
+    if (verification?.source !== 'google' || verification.legs.length !== stops.length - 1) return
+    const verifiedStops = stops.map((stop, index) => ({
+      ...stop,
+      minutes: index === stops.length - 1 ? 0 : verification.legs[index].minutes,
+    }))
+    if (plannedStops) {
+      setPlannedStops(verifiedStops)
+      return
+    }
+    setApplyingVerification(true)
+    setOperationError('')
+    try {
+      await onUpdateStops(route.id, verifiedStops, false)
+    } catch (error) {
+      reportOperationError(error, 'No se han podido guardar los tiempos de Google.')
+    } finally {
+      setApplyingVerification(false)
     }
   }
   async function changeStartTime(value: string) {
@@ -932,9 +1007,17 @@ export function RoutesPage({
           </div>
           {stops.length >= 2 && (
             <aside className="route-layout-map upcoming-route-map">
+              <RouteVerificationPanel
+                status={verificationStatus}
+                stopNames={stops.map((stop) => stop.locality)}
+                canApply={canManage && !itineraryClosed}
+                applying={applyingVerification}
+                onApply={() => void applyVerifiedTimes()}
+              />
               <Suspense fallback={null}>
                 <RouteMap
                   stops={mapStops}
+                  legs={googleRoadLegs}
                   details={mapDetails}
                   onStopClick={showStopInList}
                   label={`Mapa del recorrido de la ruta ${template.name}`}

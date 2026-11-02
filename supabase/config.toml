@@ -443,3 +443,6 @@ verify_jwt = true
 
 [functions.send-daily-route-closure-notifications]
 verify_jwt = false
+
+[functions.route-times]
+verify_jwt = true

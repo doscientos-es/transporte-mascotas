@@ -1,5 +1,11 @@
 import type { DailyRouteStop } from '@/shared/types'
 
+import {
+  googleDurationMatrix,
+  googleRouteLegs,
+  type GoogleLeg,
+} from '../infrastructure/google-route-times'
+
 type PhotonFeature = {
   geometry?: { coordinates?: [number, number] }
   properties?: { street?: string; name?: string; postcode?: string }
@@ -166,15 +172,50 @@ function valhallaPost<T>(path: string, body: object) {
   })
 }
 
-/** Driving seconds for each consecutive pair of coordinates. */
-async function legSeconds(coordinates: Coordinates[]): Promise<Seconds[]> {
+export type DrivingSource = 'google' | 'valhalla' | 'osrm'
+
+export type DrivingLeg = {
+  /** Driving minutes, rounded up to at least 1. */
+  minutes: number
+  /** Road distance; only Google reports it. */
+  meters?: number
+  /** The road driven, as `[latitude, longitude]` pairs; only Google reports it. */
+  path?: Array<[latitude: number, longitude: number]>
+}
+
+/** How a set of driving legs was calculated, so the UI can show where the numbers come from. */
+export type RouteVerification = {
+  source: DrivingSource
+  calculatedAt: number
+  legs: DrivingLeg[]
+}
+
+const toVerification = (legs: GoogleLeg[]): RouteVerification => ({
+  source: 'google',
+  calculatedAt: Date.now(),
+  legs: legs.map((leg) => ({
+    minutes: minutesFor(leg.seconds),
+    ...(leg.meters === null ? {} : { meters: leg.meters }),
+    ...(leg.path.length >= 2 ? { path: leg.path } : {}),
+  })),
+})
+
+/** Driving legs for each consecutive pair of coordinates, with the source that answered. */
+async function routeLegs(
+  coordinates: Coordinates[],
+): Promise<{ source: DrivingSource; seconds: Seconds[]; google?: GoogleLeg[] }> {
+  // Google is the most precise source; the free services below only cover for it.
+  const fromGoogle = await googleRouteLegs(coordinates)
+  if (fromGoogle)
+    return { source: 'google', seconds: fromGoogle.map((leg) => leg.seconds), google: fromGoogle }
+
   const fromValhalla = await valhallaPost<ValhallaRoute>('route', {
     locations: coordinates.map(toLocation),
   })
     .then((result) => result.trip?.legs?.map((leg) => leg.summary?.time))
     .catch(() => undefined)
   if (fromValhalla?.length === coordinates.length - 1 && fromValhalla.every(isSeconds))
-    return fromValhalla
+    return { source: 'valhalla', seconds: fromValhalla }
 
   const response = await fetch(
     osrmUrl + '/route/v1/driving/' + toOsrmPath(coordinates) + '?overview=false&steps=false',
@@ -184,11 +225,19 @@ async function legSeconds(coordinates: Coordinates[]): Promise<Seconds[]> {
   const legs = result.routes?.[0]?.legs
   if (result.code !== 'Ok' || !legs || legs.length !== coordinates.length - 1)
     throw new Error('No se han podido calcular los trayectos en coche.')
-  return legs.map((leg) => (isSeconds(leg.duration) ? leg.duration * osrmTimeFactor : undefined))
+  return {
+    source: 'osrm',
+    seconds: legs.map((leg) =>
+      isSeconds(leg.duration) ? leg.duration * osrmTimeFactor : undefined,
+    ),
+  }
 }
 
 /** Driving seconds between every pair of coordinates. */
 async function durationMatrix(coordinates: Coordinates[]): Promise<Seconds[][]> {
+  const fromGoogle = await googleDurationMatrix(coordinates)
+  if (fromGoogle) return fromGoogle
+
   const locations = coordinates.map(toLocation)
   const fromValhalla = await valhallaPost<ValhallaMatrix>('sources_to_targets', {
     sources: locations,
@@ -211,17 +260,68 @@ async function durationMatrix(coordinates: Coordinates[]): Promise<Seconds[][]> 
   )
 }
 
-/** Calculates consecutive driving legs; the final stop has no following journey. */
-export async function calculateDrivingTimes(stops: DailyRouteStop[]) {
-  if (stops.length < 2) return stops.map((stop) => ({ ...stop, minutes: 0 }))
+/**
+ * Calculates consecutive driving legs; the final stop has no following journey. Also reports
+ * which service answered and, for Google, the distance and road of every leg.
+ */
+export async function calculateDrivingRoute(stops: DailyRouteStop[]) {
+  if (stops.length < 2)
+    return {
+      stops: stops.map((stop) => ({ ...stop, minutes: 0 })),
+      verification: undefined as RouteVerification | undefined,
+    }
 
   const coordinates = await coordinatesForStops(stops)
-  const seconds = await legSeconds(coordinates)
+  const { source, seconds, google } = await routeLegs(coordinates)
+  const verification: RouteVerification = google
+    ? toVerification(google)
+    : {
+        source,
+        calculatedAt: Date.now(),
+        legs: seconds.slice(0, stops.length - 1).map((value) => ({ minutes: minutesFor(value) })),
+      }
 
-  return stops.map((stop, index) => ({
-    ...stop,
-    minutes: index === stops.length - 1 ? 0 : minutesFor(seconds[index]),
-  }))
+  return {
+    stops: stops.map((stop, index) => ({
+      ...stop,
+      minutes: index === stops.length - 1 ? 0 : minutesFor(seconds[index]),
+    })),
+    verification,
+  }
+}
+
+export async function calculateDrivingTimes(stops: DailyRouteStop[]) {
+  return (await calculateDrivingRoute(stops)).stops
+}
+
+const maxVerificationCacheEntries = 20
+const verificationsByRoute = new Map<string, Promise<RouteVerification | null>>()
+
+/**
+ * Asks Google for the legs of a route without changing anything, to compare them with the
+ * saved times and draw the real road. Resolves to `null` when Google is unavailable (the free
+ * services are never used here). Answers are kept for the session so reopening a route does
+ * not bill Google again.
+ */
+export function verifyDrivingRoute(stops: DailyRouteStop[]) {
+  if (stops.length < 2) return Promise.resolve(null)
+  const key = stops.map(coordinateCacheKey).join(';')
+  const cached = verificationsByRoute.get(key)
+  if (cached) return cached
+
+  const request = coordinatesForStops(stops)
+    .then(googleRouteLegs)
+    .then((legs) => (legs ? toVerification(legs) : null))
+    .catch(() => null)
+  verificationsByRoute.set(key, request)
+  void request.then((result) => {
+    if (!result) verificationsByRoute.delete(key)
+  })
+  if (verificationsByRoute.size > maxVerificationCacheEntries) {
+    const oldestKey = verificationsByRoute.keys().next().value
+    if (oldestKey) verificationsByRoute.delete(oldestKey)
+  }
+  return request
 }
 
 /** Finds the insertion point with the shortest total driving time for the marked stops. */
