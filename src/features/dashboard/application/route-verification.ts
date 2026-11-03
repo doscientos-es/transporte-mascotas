@@ -25,8 +25,8 @@ export type VerificationSummary = {
 }
 
 /**
- * Compares the saved driving minutes of each leg with a verification. Small gaps (a few
- * minutes, or under 8% of the trip) count as a match, since rounding alone produces them.
+ * Checks both each leg and the total: opposite leg errors must not cancel each other out.
+ * Allow at most 3 minutes or 8% of Google's duration, whichever is greater.
  */
 export function summarizeVerification(
   verification: RouteVerification,
@@ -38,11 +38,15 @@ export function summarizeVerification(
   const savedMinutes = savedLegMinutes.reduce((total, minutes) => total + minutes, 0)
   const differenceMinutes = googleMinutes - savedMinutes
   const hasDistance = verification.legs.every((leg) => leg.meters !== undefined)
+  const withinTolerance = (expected: number, saved: number) =>
+    Math.abs(expected - saved) <= Math.max(3, expected * 0.08)
   return {
     googleMinutes,
     savedMinutes,
     differenceMinutes,
-    matches: Math.abs(differenceMinutes) <= Math.max(3, googleMinutes * 0.08),
+    matches:
+      withinTolerance(googleMinutes, savedMinutes) &&
+      verification.legs.every((leg, index) => withinTolerance(leg.minutes, savedLegMinutes[index])),
     kilometers: hasDistance
       ? verification.legs.reduce((total, leg) => total + (leg.meters ?? 0), 0) / 1000
       : undefined,

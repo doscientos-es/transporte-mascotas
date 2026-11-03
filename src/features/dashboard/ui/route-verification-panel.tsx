@@ -11,11 +11,11 @@ export type VerificationStatus =
   /** Nothing could be asked or calculated (Google not configured, offline...). */
   | { kind: 'unavailable' }
   | {
-      kind: 'ready'
-      source: DrivingSource
-      calculatedAt: number
-      summary: VerificationSummary
-    }
+    kind: 'ready'
+    source: DrivingSource
+    calculatedAt: number
+    summary: VerificationSummary
+  }
 
 type Props = {
   status: VerificationStatus
@@ -74,17 +74,19 @@ export function RouteVerificationPanel({ status, stopNames, canApply, applying, 
   const gap = Math.abs(summary.differenceMinutes)
   return (
     <div className={`route-verify ${summary.matches ? 'is-verified' : 'is-different'}`}>
-      <div className="route-verify-head">
+      <div className="route-verify-head" aria-live="polite">
         {summary.matches ? <BadgeCheck aria-hidden="true" /> : <TriangleAlert aria-hidden="true" />}
         <div>
           <strong>
             {summary.matches
               ? 'Verificado con Google Maps'
-              : `Google calcula ${duration(gap)} ${summary.differenceMinutes > 0 ? 'más' : 'menos'}`}
+              : gap === 0
+                ? 'Hay diferencias entre tramos'
+                : `Google calcula ${duration(gap)} ${summary.differenceMinutes > 0 ? 'más' : 'menos'}`}
           </strong>
           <span>
             {summary.matches
-              ? 'Los tiempos guardados coinciden con los de Google.'
+              ? 'Los tiempos guardados coinciden dentro del margen de tolerancia.'
               : `Guardado: ${duration(summary.savedMinutes)} · Google: ${duration(summary.googleMinutes)}.`}{' '}
             Comprobado a las {clock(calculatedAt)}.
           </span>
@@ -106,6 +108,7 @@ export function RouteVerificationPanel({ status, stopNames, canApply, applying, 
           <dd>{summary.legs.length}</dd>
         </div>
       </dl>
+      <span>Sin tráfico en tiempo real; la conducción no incluye las paradas.</span>
       {!summary.matches && canApply && (
         <Button size="sm" onClick={onApply} disabled={applying}>
           {applying ? 'Aplicando…' : 'Usar tiempos de Google'}

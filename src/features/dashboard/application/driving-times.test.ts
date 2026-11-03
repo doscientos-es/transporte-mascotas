@@ -199,6 +199,32 @@ describe('route verification', () => {
     expect(summarizeVerification(verification, [20])).toBeNull()
   })
 
+  it('does not verify a route when wrong leg times cancel out in the total', () => {
+    const verification = {
+      source: 'google' as const,
+      calculatedAt: 0,
+      legs: [{ minutes: 40 }, { minutes: 60 }],
+    }
+
+    expect(summarizeVerification(verification, [70, 30])).toMatchObject({
+      googleMinutes: 100,
+      savedMinutes: 100,
+      differenceMinutes: 0,
+      matches: false,
+    })
+    expect(summarizeVerification(verification, [70, 32])?.matches).toBe(false)
+  })
+
+  it('does not let small errors on many legs hide a significant total difference', () => {
+    const verification = {
+      source: 'google' as const,
+      calculatedAt: 0,
+      legs: Array.from({ length: 5 }, () => ({ minutes: 10 })),
+    }
+
+    expect(summarizeVerification(verification, [12, 12, 12, 12, 12])?.matches).toBe(false)
+  })
+
   it('labels a leg with its time and distance', () => {
     expect(legLabel({ minutes: 18, meters: 14200 })).toBe('18 min · 14 km')
     expect(legLabel({ minutes: 95, meters: 8500 })).toBe('1 h 35 min · 8,5 km')

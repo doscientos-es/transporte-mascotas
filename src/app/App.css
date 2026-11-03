@@ -8938,7 +8938,8 @@ a.whatsapp-link:hover {
 }
 .route-verify-totals {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 8px 24px;
   margin: 0;
 }
 .route-verify-totals dt {

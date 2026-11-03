@@ -20,7 +20,7 @@ const paperTone = {
 } as const
 
 export function PaperSheet({ children }: { children: ReactNode }) {
-  return <div className="border-2 border-black bg-white text-black">{children}</div>
+  return <div className="@container border-2 border-black bg-white text-black">{children}</div>
 }
 
 export function PaperCell({
@@ -79,7 +79,7 @@ export function PaperHeader({
   onAtesNumberChange: (value: string) => void
 }) {
   return (
-    <header className="grid items-stretch border-b-2 border-black sm:grid-cols-[1fr_auto_1fr]">
+    <header className="grid items-stretch border-b-2 border-black @min-[680px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       <div className="flex flex-col justify-center gap-1 p-3">
         <span className="text-[11px] font-bold tracking-wide">CARTA DE PORTE</span>
         <label className="flex items-baseline gap-1.5 text-sm font-bold">
@@ -99,8 +99,8 @@ export function PaperHeader({
             : 'Déjalo vacío para asignarlo automáticamente.'}
         </span>
       </div>
-      <div className="flex flex-col items-center justify-center gap-0.5 px-4 py-2">
-        <img src="/icon-512.png" alt="Kache Envíos" className="size-20 object-contain" />
+      <div className="order-first flex flex-col items-center justify-center gap-0.5 px-4 py-2 @min-[680px]:order-none">
+        <img src="/icon-512.png" alt="Kache Envíos" className="size-36 object-contain sm:size-44" />
         <span className="text-[11px]">kacheenvios.com</span>
       </div>
       <div className="flex flex-col justify-center gap-1 p-3 sm:items-end sm:text-right">
