@@ -150,6 +150,13 @@ describe('LetterForm paid manual letter creation', () => {
     expect(markup).toContain('Crear y marcar como pagada')
     expect(markup).toContain('Si ya está pagada, método de cobro')
     expect(markup).toContain('<option>Bizum</option>')
+    const amountInput = markup.match(/<input[^>]*name="billingTotal"[^>]*>/)?.[0]
+    expect(amountInput).toBeDefined()
+    expect(amountInput).toContain('type="number"')
+    expect(amountInput).toContain('step="0.01"')
+    expect(amountInput).toContain('required=""')
+    expect(amountInput).not.toMatch(/readonly|disabled|max=/i)
+    expect(markup).toContain('Puedes cobrar más o menos.')
   })
 })
 

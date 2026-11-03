@@ -57,6 +57,7 @@ import { lookupAddressSuggestions, type AddressSuggestion } from '../application
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
 import type { DrivingProgress } from '../application/driving-times'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
+import { manualLetterTotalCents } from '../application/manual-letter-total'
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
@@ -353,6 +354,7 @@ export function LetterForm({
     setError('')
     setSavingMode(createAsPaid ? 'paid' : 'request')
     try {
+      if (!isEditing) manualLetterTotalCents(draft, boxCatalog)
       await onCreate(draft, createAsPaid ? paymentMethod : undefined)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido guardar la carta.')
@@ -1826,18 +1828,39 @@ function BillingAndSignatureSection({
         </div>
       )}
       {!isEditing && (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-[#e2e2e2] bg-[#fafafa] px-3 py-2.5">
-          <div>
-            <span className="text-muted-foreground block text-xs font-semibold">
+        <div className="mt-4 rounded-lg border border-[#e2e2e2] bg-[#fafafa] px-3 py-2.5">
+          <Label className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-muted-foreground text-xs font-semibold">
               Importe a cobrar (IVA incluido)
             </span>
-            <span className="text-muted-foreground text-[11px]">
-              Calculado según el box de cada mascota
+            <Input
+              className="w-36 text-right"
+              name="billingTotal"
+              type="number"
+              inputMode="decimal"
+              min="0.01"
+              step="0.01"
+              value={draft.billingTotal ?? (totalCents / 100).toFixed(2)}
+              onChange={(event) => update('billingTotal', event.target.value)}
+              aria-describedby="letter-billing-total-hint"
+              required
+            />
+          </Label>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <span id="letter-billing-total-hint" className="text-muted-foreground text-[11px]">
+              Tarifa sugerida: {euros(totalCents)}. Puedes cobrar más o menos.
             </span>
+            {draft.billingTotal !== undefined && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => update('billingTotal', undefined)}
+              >
+                Usar tarifa sugerida
+              </Button>
+            )}
           </div>
-          <strong className="text-foreground text-lg" aria-live="polite">
-            {euros(totalCents)}
-          </strong>
         </div>
       )}
     </LetterFormSection>

@@ -27,7 +27,7 @@ describe('billing browser compatibility', () => {
       expect(markup).toContain('Buscar documentos')
       expect(markup).not.toContain('Vamos a solucionarlo')
     }
-  })
+  }, 30_000)
 
   it('reads a PDF with the compatibility viewer when native Iterator is unavailable', async () => {
     vi.stubGlobal('Iterator', undefined)

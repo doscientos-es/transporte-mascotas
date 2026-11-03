@@ -151,6 +151,8 @@ export interface LetterDraft {
   accompanyingDocuments: AccompanyingDocument[]
   atesNumber: string
   billingPayer: InvoicePayer
+  /** Admin-entered total in euros; undefined keeps the suggested box tariff. */
+  billingTotal?: string | undefined
   otherPayer: InvoiceClientInput
   signatureConfirmed: boolean
   /** Manual van box; when empty a free compatible box is assigned automatically. */

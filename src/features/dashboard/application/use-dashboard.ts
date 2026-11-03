@@ -6,7 +6,6 @@ import {
   defaultTransportBoxCatalog,
   minimumTransportBoxCategory,
   requestedTransportBoxCategory,
-  transportAnimalsTotalCents,
   type TransportBoxCatalog,
 } from '@/shared/application/transport-boxes'
 import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
@@ -83,6 +82,7 @@ import {
   findBestStopInsertion,
   type DrivingProgressHandler,
 } from './driving-times'
+import { manualLetterTotalCents } from './manual-letter-total'
 import { findForwardRouteSegment } from './route-segment'
 import { assignmentsForRoute, boxesBySize, vanBoxSizeForAnimal } from './van'
 
@@ -985,7 +985,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         throw new Error(
           'Elige un origen anterior al destino entre las paradas de la ruta seleccionada.',
         )
-      const billingTotal = transportAnimalsTotalCents(draft.animals, boxCatalog) / 100
+      const billingTotal = manualLetterTotalCents(draft, boxCatalog) / 100
       let savedId: string | null = null
       let documentPending = false
       let paidInvoiceId: string | undefined
