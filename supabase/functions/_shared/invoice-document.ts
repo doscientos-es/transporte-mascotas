@@ -95,7 +95,9 @@ async function loadBrandLogo(pdf: PDFDocument) {
   const sources = [...new Set([appUrl, 'https://www.kacheenvios.com'])].filter(Boolean)
   for (const source of sources) {
     try {
-      const response = await fetch(`${source}/logo-white.png`, { signal: AbortSignal.timeout(3000) })
+      const response = await fetch(`${source}/logo-white.png`, {
+        signal: AbortSignal.timeout(3000),
+      })
       if (response.ok) return await pdf.embedPng(new Uint8Array(await response.arrayBuffer()))
     } catch {
       // Try the next source; the invoice must still render without the logo.
