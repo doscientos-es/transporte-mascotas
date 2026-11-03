@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@doscientos/ui'
 import { CheckCircle2, Download, ExternalLink } from 'lucide-react'
-import * as pdfjs from 'pdfjs-dist'
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
 import { useEffect, useRef, useState } from 'react'
 
 import type { ClientInvoice, ManualPaymentMethod } from '@/shared/types'
@@ -16,11 +16,6 @@ import { loadInvoiceDocumentBlob, prepareInvoiceDocument } from '../application/
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 import { downloadBlob } from './billing-document-export'
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
 
 export function InvoicePreviewDialog({
   invoice,
@@ -190,11 +185,16 @@ function PaymentRequestPdfPreview({ blob, fallback }: { blob: Blob; fallback: Re
 
   useEffect(() => {
     let active = true
-    let loadingTask: ReturnType<typeof pdfjs.getDocument> | undefined
-    void blob
-      .arrayBuffer()
-      .then((data) => {
+    let loadingTask: PDFDocumentLoadingTask | undefined
+    setFailed(false)
+    // Keep PDF.js compatibility or loading failures inside the preview, not the billing page.
+    void Promise.all([import('pdfjs-dist/legacy/build/pdf.mjs'), blob.arrayBuffer()])
+      .then(([pdfjs, data]) => {
         if (!active) return null
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+          import.meta.url,
+        ).toString()
         loadingTask = pdfjs.getDocument({ data })
         return loadingTask.promise
       })
@@ -215,7 +215,9 @@ function PaymentRequestPdfPreview({ blob, fallback }: { blob: Blob; fallback: Re
       })
     return () => {
       active = false
-      void loadingTask?.destroy()
+      void loadingTask?.destroy().catch(() => {
+        // Preview teardown must not trigger the application's unhandled-rejection guard.
+      })
     }
   }, [blob])
 

@@ -95,7 +95,7 @@ async function loadBrandLogo(pdf: PDFDocument) {
   const sources = [...new Set([appUrl, 'https://www.kacheenvios.com'])].filter(Boolean)
   for (const source of sources) {
     try {
-      const response = await fetch(`${source}/icon-512.png`, { signal: AbortSignal.timeout(3000) })
+      const response = await fetch(`${source}/logo-white.png`, { signal: AbortSignal.timeout(3000) })
       if (response.ok) return await pdf.embedPng(new Uint8Array(await response.arrayBuffer()))
     } catch {
       // Try the next source; the invoice must still render without the logo.
@@ -169,14 +169,12 @@ async function renderInvoice(invoice: IssuedInvoice) {
   ) => values.forEach((value, index) => draw(value, x, y - index * gap, size, emphasis, color))
   const logo = await loadBrandLogo(pdf)
   const drawLogo = (x: number, y: number) => {
-    // A coral ring and a white disc make the dark logo stand out on the ink header.
-    page.drawEllipse({ x, y, xScale: 52, yScale: 52, color: coral })
-    page.drawEllipse({ x, y, xScale: 49, yScale: 49, color: white })
     if (logo) {
-      page.drawImage(logo, { x: x - 37, y: y - 37, width: 74, height: 74 })
+      const { width, height } = logo.scaleToFit(92, 74)
+      page.drawImage(logo, { x: x - width / 2, y: y - height / 2, width, height })
       return
     }
-    draw('K', x - 12, y - 14, 40, true, coral)
+    draw('K', x - 12, y - 14, 40, true, white)
   }
   const clientLines = [
     clientNif && `NIF/CIF: ${clientNif}`,

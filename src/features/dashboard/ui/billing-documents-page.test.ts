@@ -21,9 +21,7 @@ describe('billing browser compatibility', () => {
       [InvoicesPage, 'Facturas'],
       [PaymentRequestsPage, 'Pagos pendientes'],
     ] as const) {
-      const markup = renderToStaticMarkup(
-        createElement(MemoryRouter, null, createElement(Page)),
-      )
+      const markup = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(Page)))
 
       expect(markup).toContain(`<h2>${heading}</h2>`)
       expect(markup).toContain('Buscar documentos')
