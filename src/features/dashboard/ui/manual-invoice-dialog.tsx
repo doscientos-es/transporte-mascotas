@@ -131,11 +131,7 @@ export function ManualInvoiceDialog({
                 placeholder="Nombre o NIF/CIF"
               />
             </Label>
-            {lookupError && (
-              <p role="status" className="form-span">
-                {lookupError}
-              </p>
-            )}
+            {lookupError && <output className="form-span">{lookupError}</output>}
             {clients.length > 0 && (
               <div className="form-span grid gap-2" aria-label="Clientes encontrados">
                 {clients.map((item) => (
@@ -143,7 +139,7 @@ export function ManualInvoiceDialog({
                     key={item.id}
                     type="button"
                     variant="outline"
-                    className="justify-start"
+                    className="h-auto min-h-9 justify-start text-left whitespace-normal"
                     onClick={() => {
                       setClient({
                         fullName: item.fullName,
@@ -201,10 +197,10 @@ export function ManualInvoiceDialog({
               />
             </Label>
             {amounts && (
-              <p className="form-span" role="status">
+              <output className="form-span">
                 Base: {currency(amounts.netAmount)} · IVA: {currency(amounts.vatAmount)} · Total:{' '}
                 {currency(amounts.totalAmount)}
-              </p>
+              </output>
             )}
             <label className="date-field form-span">
               Método de cobro

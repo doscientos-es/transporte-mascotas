@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ManualInvoiceInput } from '@/shared/types'
 
+import { loadInvoicePage } from './clients'
 import { createPaidManualInvoice } from './manual-invoices'
 
-const { invoke } = vi.hoisted(() => ({ invoke: vi.fn() }))
+const { invoke, rpc } = vi.hoisted(() => ({ invoke: vi.fn(), rpc: vi.fn() }))
 vi.mock('@/shared/infrastructure/supabase', () => ({
-  requireSupabase: () => ({ functions: { invoke } }),
+  supabase: null,
+  requireSupabase: () => ({ functions: { invoke }, rpc }),
 }))
 const input: ManualInvoiceInput = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -28,6 +30,53 @@ const input: ManualInvoiceInput = {
 beforeEach(() => vi.resetAllMocks())
 
 describe('manual invoice persistence', () => {
+  it('loads an issued free invoice without fabricating a carriage-letter reference', async () => {
+    rpc.mockResolvedValue({
+      data: {
+        total: 1,
+        items: [
+          {
+            id: input.id,
+            letter_id: null,
+            client_id: 'client',
+            payer: 'manual',
+            concept: 'Extra',
+            total_amount: '121.00',
+            status: 'emitida',
+            created_at: '2026-01-10',
+            client_name: 'Test',
+            issued_invoice_id: 'issued',
+            issued_number: 'F-2026-000001',
+            issued_at: '2026-01-10',
+            fiscal_snapshot: { concept: 'Extra', operation_date: input.operationDate },
+          },
+        ],
+      },
+      error: null,
+    })
+    const result = await loadInvoicePage({
+      query: '',
+      status: 'emitida',
+      sort: 'date',
+      direction: 'desc',
+      page: 1,
+    })
+    expect(result).toMatchObject({
+      total: 1,
+      items: [
+        {
+          id: input.id,
+          letterId: null,
+          total: 121,
+          issuedInvoice: {
+            number: 'F-2026-000001',
+            fiscalSnapshot: { concept: 'Extra', operation_date: input.operationDate },
+          },
+        },
+      ],
+    })
+  })
+
   it('reuses the same identity on retry and preserves a pending PDF as a successful issuance', async () => {
     invoke.mockResolvedValue({
       data: { invoiceDraftId: input.id, documentPending: true },

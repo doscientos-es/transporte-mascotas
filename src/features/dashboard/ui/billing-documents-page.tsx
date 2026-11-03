@@ -302,7 +302,7 @@ export function BillingDocumentsPage({
         </div>
       </section>
 
-      {notice && <p role="status">{notice}</p>}
+      {notice && <output>{notice}</output>}
       <div className="invoice-results" aria-live="polite">
         {loading
           ? 'Actualizando resultados…'

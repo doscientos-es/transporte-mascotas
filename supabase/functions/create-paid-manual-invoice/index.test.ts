@@ -51,6 +51,14 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('free invoice endpoint', () => {
+  it('rejects invalid JSON as a client error', async () => {
+    const response = await handler(
+      new Request('https://example.invalid', { method: 'POST', body: '{' }),
+    )
+    expect(response.status).toBe(400)
+    expect(rest).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['No autenticado.', 401],
     ['No tienes permisos para generar pagos.', 403],

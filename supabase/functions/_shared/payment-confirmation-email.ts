@@ -87,10 +87,11 @@ async function sendConfirmation(
   if (!isEmailConfigured())
     throw new EmailError('El envío de emails todavía no está configurado.', true)
   const draft = loadedDraft ?? (await loadInvoiceDraft(invoiceDraftId))
+  const letterId = draft.letter_id
   const [invoiceNumber, letter] = await Promise.all([
     issuedInvoiceNumber(issuedInvoiceId),
-    draft.letter_id
-      ? optional('Carriage letter not loaded', () => loadCarriageLetter(draft.letter_id!))
+    letterId
+      ? optional('Carriage letter not loaded', () => loadCarriageLetter(letterId))
       : Promise.resolve(null),
   ])
   const attachments: Array<EmailAttachment & { label: string }> = []

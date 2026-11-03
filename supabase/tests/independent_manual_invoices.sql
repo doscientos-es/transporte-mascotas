@@ -13,6 +13,7 @@ declare
   v_first jsonb;
   v_second jsonb;
   v_snapshot jsonb;
+  v_list jsonb;
   v_counter integer;
   v_failed boolean;
 begin
@@ -20,7 +21,7 @@ begin
   insert into public.profiles (id, display_name, role, active)
   values (v_admin, 'Invoice test admin', 'admin', true), (v_driver, 'Invoice test driver', 'transportista', true)
   on conflict (id) do update set role = excluded.role, active = true;
-  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+  perform set_config('request.jwt.claims', jsonb_build_object('role', 'service_role', 'user_role', 'admin', 'sub', v_admin)::text, true);
 
   v_first := public.create_paid_manual_invoice(v_id, v_admin, v_client, 'Servicio extra', 121, current_date, 'Transferencia', v_issuer);
   select fiscal_snapshot into v_snapshot from public.issued_invoices where id = (v_first ->> 'issuedInvoiceId')::uuid;
@@ -31,6 +32,15 @@ begin
     or v_snapshot ->> 'payment_method' is distinct from 'Transferencia'
     or coalesce(v_snapshot ->> 'number', '') = '' then
     raise exception 'Free invoice did not persist its fiscal snapshot and paid status';
+  end if;
+
+  v_list := public.list_invoice_page(p_status := 'emitida', p_client_id := (
+    select client_id from public.invoice_drafts where id = v_id
+  ));
+  if not exists (select 1 from jsonb_array_elements(v_list -> 'items') item
+    where item ->> 'id' = v_id::text and item -> 'letter_id' = 'null'::jsonb
+      and item ->> 'issued_number' = v_snapshot ->> 'number') then
+    raise exception 'Issued free invoice is missing from the invoice/client listing';
   end if;
 
   select last_number into v_counter from public.invoice_series_counters
@@ -84,6 +94,20 @@ begin
   exception when insufficient_privilege then v_failed := true;
   end;
   if not v_failed then raise exception 'Non-admin actor created an invoice'; end if;
+
+  v_failed := false;
+  begin
+    perform public.create_paid_manual_invoice(gen_random_uuid(), v_admin, v_client, 'Invalid amount', 1.001, current_date, 'Tarjeta', v_issuer);
+  exception when others then v_failed := true;
+  end;
+  if not v_failed then raise exception 'Server accepted more than two decimals'; end if;
+
+  v_failed := false;
+  begin
+    perform public.create_paid_manual_invoice(gen_random_uuid(), v_admin, v_client - 'nif', 'Missing fiscal data', 121, current_date, 'Tarjeta', v_issuer);
+  exception when others then v_failed := true;
+  end;
+  if not v_failed then raise exception 'Server accepted missing fiscal data'; end if;
 
   if has_function_privilege('anon', 'public.create_paid_manual_invoice(uuid,uuid,jsonb,text,numeric,date,text,jsonb)', 'execute')
     or has_function_privilege('authenticated', 'public.create_paid_manual_invoice(uuid,uuid,jsonb,text,numeric,date,text,jsonb)', 'execute') then

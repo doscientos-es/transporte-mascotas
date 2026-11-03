@@ -15,7 +15,7 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
   try {
     const userId = await requireAdmin(request)
-    const input = (await request.json()) as Input | null
+    const input = (await request.json().catch(() => null)) as Input | null
     if (
       !input ||
       typeof input.id !== 'string' ||
