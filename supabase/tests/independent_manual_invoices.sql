@@ -5,7 +5,7 @@ begin;
 do $$
 declare
   v_admin uuid := gen_random_uuid();
-  v_driver uuid := gen_random_uuid();
+  v_user uuid := gen_random_uuid();
   v_id uuid := gen_random_uuid();
   v_other_id uuid := gen_random_uuid();
   v_client jsonb := '{"fullName":"Free invoice test","nif":"FREE-TEST","address":"Test address","postalCode":"08001","city":"Test city"}';
@@ -17,9 +17,9 @@ declare
   v_counter integer;
   v_failed boolean;
 begin
-  insert into auth.users (id) values (v_admin), (v_driver);
+  insert into auth.users (id) values (v_admin), (v_user);
   insert into public.profiles (id, display_name, role, active)
-  values (v_admin, 'Invoice test admin', 'admin', true), (v_driver, 'Invoice test driver', 'transportista', true)
+  values (v_admin, 'Invoice test admin', 'admin', true), (v_user, 'Invoice test client', 'user', true)
   on conflict (id) do update set role = excluded.role, active = true;
   perform set_config('request.jwt.claims', jsonb_build_object('role', 'service_role', 'user_role', 'admin', 'sub', v_admin)::text, true);
 
@@ -90,7 +90,7 @@ begin
 
   v_failed := false;
   begin
-    perform public.create_paid_manual_invoice(gen_random_uuid(), v_driver, v_client, 'Unauthorized', 121, current_date, 'Tarjeta', v_issuer);
+    perform public.create_paid_manual_invoice(gen_random_uuid(), v_user, v_client, 'Unauthorized', 121, current_date, 'Tarjeta', v_issuer);
   exception when insufficient_privilege then v_failed := true;
   end;
   if not v_failed then raise exception 'Non-admin actor created an invoice'; end if;
