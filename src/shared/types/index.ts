@@ -186,6 +186,15 @@ export interface PaymentDelivery {
 
 export type ManualPaymentMethod = 'Transferencia' | 'Bizum' | 'Tarjeta'
 
+export interface ManualInvoiceInput {
+  id: string
+  client: InvoiceClientInput
+  concept: string
+  operationDate: string
+  total: number
+  paymentMethod: ManualPaymentMethod
+}
+
 export interface InvoiceFiscalSnapshot {
   number?: string
   issuer?: { name?: string; taxId?: string; address?: string }
@@ -218,7 +227,7 @@ export interface IssuedInvoice {
 
 export interface ClientInvoice {
   id: string
-  letterId: string
+  letterId: string | null
   clientId: string
   payer: InvoicePayer
   concept: string

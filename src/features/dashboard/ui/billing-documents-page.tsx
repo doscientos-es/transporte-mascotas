@@ -1,5 +1,5 @@
 import { Button, Card, CardContent, Pagination, Tooltip } from '@doscientos/ui'
-import { ArrowDownWideNarrow, ArrowUpWideNarrow, Download, ReceiptText } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowUpWideNarrow, Download, Plus, ReceiptText } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { readEnumParam, readPageParam } from '@/shared/lib/search-params'
@@ -25,6 +25,7 @@ import {
 } from './billing-document-dialogs'
 import { downloadBlob, downloadInvoiceRegister } from './billing-document-export'
 import type { BillingDocumentMode, BillingDocumentsPageProps } from './billing-document-types'
+import { ManualInvoiceDialog } from './manual-invoice-dialog'
 
 const sortDirections = ['asc', 'desc'] as const
 
@@ -59,6 +60,7 @@ const pageCopy: Record<
 
 export function BillingDocumentsPage({
   mode,
+  canCreateManualInvoice = false,
   onConfirmManualPayment,
   onOpenClient,
   onOpenLetter,
@@ -70,6 +72,8 @@ export function BillingDocumentsPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [creating, setCreating] = useState(false)
+  const [notice, setNotice] = useState('')
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
   const from = searchParams.get('desde') ?? ''
@@ -211,14 +215,27 @@ export function BillingDocumentsPage({
             <h2>{copy.title}</h2>
             <p>{copy.description}</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={exporting || result.total === 0}
-            onClick={() => void exportRegister()}
-          >
-            <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {!isPaymentRequests && canCreateManualInvoice && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setNotice('')
+                  setCreating(true)
+                }}
+              >
+                <Plus size={15} /> Nueva factura
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={exporting || result.total === 0}
+              onClick={() => void exportRegister()}
+            >
+              <Download size={15} /> {exporting ? 'Exportando…' : 'Exportar CSV'}
+            </Button>
+          </div>
         </div>
         <div className="invoice-filters">
           <div className="invoice-filter-field is-search">
@@ -285,6 +302,7 @@ export function BillingDocumentsPage({
         </div>
       </section>
 
+      {notice && <p role="status">{notice}</p>}
       <div className="invoice-results" aria-live="polite">
         {loading
           ? 'Actualizando resultados…'
@@ -350,6 +368,33 @@ export function BillingDocumentsPage({
           onConfirm={async (invoice, method) => {
             await onConfirmManualPayment(invoice, method)
             setRefreshKey((current) => current + 1)
+          }}
+        />
+      )}
+      {creating && !isPaymentRequests && canCreateManualInvoice && (
+        <ManualInvoiceDialog
+          onClose={() => setCreating(false)}
+          onCreated={({ invoiceDraftId, documentPending }) => {
+            setCreating(false)
+            updateParams(
+              {
+                q: undefined,
+                letter: undefined,
+                desde: undefined,
+                hasta: undefined,
+                pagina: undefined,
+                orden: 'date',
+                direccion: 'desc',
+                factura: invoiceDraftId,
+              },
+              false,
+            )
+            setRefreshKey((current) => current + 1)
+            setNotice(
+              documentPending
+                ? 'Factura creada y pagada. El PDF está pendiente de preparación; puedes reintentarlo desde la factura.'
+                : 'Factura creada y marcada como pagada.',
+            )
           }}
         />
       )}

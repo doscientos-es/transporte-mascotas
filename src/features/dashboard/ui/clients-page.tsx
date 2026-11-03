@@ -17,8 +17,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
   Pagination,
   PopoverContent,
   PopoverTrigger,
@@ -44,6 +42,7 @@ import {
   type ClientSort,
   type SortDirection,
 } from '../application/paginated-lists'
+import { ClientFields } from './client-fields'
 
 type ClientInput = Omit<Client, 'id' | 'createdAt'>
 const emptyClient: ClientInput = {
@@ -408,7 +407,9 @@ export function ClientsPage({
                               <span className="invoice-mark">F</span>
                               <span>
                                 <strong>
-                                  {invoice.letterId.replace('CARTA DE PORTE Nº ', '')}
+                                  {invoice.issuedInvoice?.number ??
+                                    invoice.letterId?.replace('CARTA DE PORTE Nº ', '') ??
+                                    'Factura libre'}
                                 </strong>
                                 <small>
                                   {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
@@ -423,7 +424,7 @@ export function ClientsPage({
                         <p className="empty-copy">
                           {loadingHistory
                             ? 'Cargando facturas…'
-                            : 'Las facturas generadas desde cartas de porte aparecerán aquí.'}
+                            : 'Las facturas del cliente aparecerán aquí.'}
                         </p>
                       )}
                     </div>
@@ -581,48 +582,7 @@ function ClientDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="client-form" onSubmit={(event) => void submit(event)}>
-          <Label>
-            Nombre completo
-            <Input
-              value={form.fullName}
-              onChange={(event) => update('fullName', event.target.value)}
-              required
-            />
-          </Label>
-          <Label>
-            NIF
-            <Input value={form.nif} onChange={(event) => update('nif', event.target.value)} />
-          </Label>
-          <Label>
-            Email
-            <Input
-              type="email"
-              value={form.email}
-              onChange={(event) => update('email', event.target.value)}
-            />
-          </Label>
-          <Label>
-            Teléfono
-            <Input value={form.phone} onChange={(event) => update('phone', event.target.value)} />
-          </Label>
-          <Label className="form-span">
-            Dirección
-            <Input
-              value={form.address}
-              onChange={(event) => update('address', event.target.value)}
-            />
-          </Label>
-          <Label>
-            Código postal
-            <Input
-              value={form.postalCode}
-              onChange={(event) => update('postalCode', event.target.value)}
-            />
-          </Label>
-          <Label>
-            Ciudad
-            <Input value={form.city} onChange={(event) => update('city', event.target.value)} />
-          </Label>
+          <ClientFields value={form} onChange={update} />
           {error && (
             <p className="form-error form-span" role="alert">
               {error}

@@ -453,6 +453,7 @@ export function AdminDashboardPage({
             )}
             {section === 'facturas' && (
               <InvoicesPage
+                canCreateManualInvoice={profile.role === 'admin'}
                 onConfirmManualPayment={dashboard.confirmManualPayment}
                 onOpenClient={openClient}
                 onOpenLetter={openLetter}

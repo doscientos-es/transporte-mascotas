@@ -10,6 +10,8 @@ import type {
   PaginatedResult,
 } from '@/shared/types'
 
+import { fiscalClient, invoiceAmounts } from '../domain/invoice-values'
+
 type ClientRow = {
   id: string
   full_name: string
@@ -64,7 +66,7 @@ type InvoicePageOptions = {
 
 type InvoiceRow = {
   id: string
-  letter_id: string
+  letter_id: string | null
   client_id: string | null
   payer: InvoicePayer
   concept: string
@@ -214,39 +216,6 @@ export async function deleteClient(clientId: string) {
   if (!supabase) throw new Error('Supabase no está configurado.')
   const { error } = await supabase.from('clients').delete().eq('id', clientId)
   if (error) throw error
-}
-
-function fiscalClient(client: InvoiceClientInput) {
-  const normalized = Object.fromEntries(
-    Object.entries(client).map(([key, value]) => [key, value.trim()]),
-  ) as InvoiceClientInput
-  const required = [
-    ['nombre o razón social', normalized.fullName],
-    ['NIF/CIF', normalized.nif],
-    ['dirección', normalized.address],
-    ['código postal', normalized.postalCode],
-    ['ciudad', normalized.city],
-  ]
-  const missing = required.filter(([, value]) => !value).map(([label]) => label)
-  if (missing.length) throw new Error(`Completa los datos fiscales: ${missing.join(', ')}.`)
-  return normalized
-}
-
-function invoiceAmounts(total: number) {
-  const totalCents = Math.round(total * 100)
-  if (
-    !Number.isFinite(total) ||
-    totalCents <= 0 ||
-    totalCents > 99_999_999 ||
-    Math.abs(total * 100 - totalCents) > 0.000001
-  )
-    throw new Error('El total debe ser un importe positivo con un máximo de dos decimales.')
-  const netCents = Math.round(totalCents / 1.21)
-  return {
-    netAmount: netCents / 100,
-    vatAmount: (totalCents - netCents) / 100,
-    totalAmount: totalCents / 100,
-  }
 }
 
 export async function persistInvoice(

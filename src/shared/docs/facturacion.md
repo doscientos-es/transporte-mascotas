@@ -7,6 +7,16 @@
 3. Solo al confirmarse el cobro mediante el webhook firmado de Cyberpac, o al registrar el cobro manual, se emite la factura: se asigna un número correlativo por serie y año y se congela el emisor, destinatario, importes, operación y cobro.
 4. Un proceso servidor genera y guarda el PDF canónico exclusivamente desde esa instantánea emitida. La factura emitida se puede buscar, filtrar, previsualizar y descargar; la solicitud de pago se puede previsualizar y descargar solo como documento informativo, nunca como factura.
 
+## Facturas libres por extras
+
+- En **Facturas → Nueva factura**, administración puede facturar un extra sin crear carta de porte ni transporte ficticio.
+- Se puede buscar un cliente existente o introducir sus datos fiscales; se indican concepto, fecha de operación e importe total con IVA del 21 % incluido.
+- **Crear y marcar pagada** registra el método de cobro y emite la factura en una única transacción. Comparte serie, numeración correlativa, auditoría e inmutabilidad con las demás facturas.
+- El identificador de la solicitud se reutiliza al reintentar para evitar una segunda factura si se pierde la respuesta. Si falla la generación del PDF tras emitir, la factura sigue creada y su descarga permite regenerarlo.
+- No se envía un correo automático en este flujo. El PDF se consulta y descarga desde Facturas.
+- Publicación pendiente: aplicar `20261103120000_independent_manual_invoices.sql` y desplegar `create-paid-manual-invoice` junto al frontend. La migración requiere autorización explícita.
+- Prueba SQL de regresión (en base de datos de pruebas, con rollback): `supabase/tests/independent_manual_invoices.sql`, además de `manual_invoice_payment_confirmation.sql` para cartas existentes.
+
 ## Controles aplicados
 
 - Base imponible, IVA y total se almacenan con dos decimales y se valida que `total = base + IVA`.

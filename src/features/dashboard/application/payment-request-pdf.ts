@@ -1,7 +1,7 @@
 import type { jsPDF } from 'jspdf'
 
 export type PaymentRequestDocumentInput = {
-  letterId: string
+  letterId: string | null
   letterName?: string
   clientName: string
   concept: string
@@ -104,7 +104,7 @@ export async function createPaymentRequestDocument({
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
   doc.text(clientName, 31, 126, { maxWidth: 72 })
-  doc.text(letterId, 116, 126, { maxWidth: 62 })
+  doc.text(letterId ?? 'Sin carta de porte', 116, 126, { maxWidth: 62 })
 
   doc.setTextColor(...colors.muted)
   doc.setFont('helvetica', 'bold')
@@ -137,6 +137,6 @@ export async function createPaymentRequestDocument({
 
   return {
     blob: doc.output('blob'),
-    fileName: `solicitud-pago-${filePart((letterName || letterId).replace(/\.[^.]+$/, '')) || 'transporte'}.pdf`,
+    fileName: `solicitud-pago-${filePart((letterName || letterId || 'libre').replace(/\.[^.]+$/, '')) || 'transporte'}.pdf`,
   }
 }

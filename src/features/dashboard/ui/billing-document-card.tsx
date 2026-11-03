@@ -32,6 +32,7 @@ export function BillingDocumentCard({
   const isIssued = mode === 'invoices'
   const issued = isIssued ? invoice.issuedInvoice : undefined
   const clientId = invoice.clientId
+  const letterId = invoice.letterId
 
   return (
     <Card className="invoice-card">
@@ -62,16 +63,16 @@ export function BillingDocumentCard({
                   <span>{clientName}</span>
                 )}
                 <span aria-hidden="true">·</span>
-                {onOpenLetter ? (
+                {onOpenLetter && letterId ? (
                   <button
                     type="button"
                     className="invoice-card-link invoice-reference"
-                    onClick={() => onOpenLetter(invoice.letterId)}
+                    onClick={() => onOpenLetter(letterId)}
                   >
-                    {invoice.letterId}
+                    {letterId}
                   </button>
                 ) : (
-                  <span className="invoice-reference">{invoice.letterId}</span>
+                  <span className="invoice-reference">{letterId ?? 'Factura libre'}</span>
                 )}
               </small>
             </div>
@@ -86,6 +87,7 @@ export function BillingDocumentCard({
             {!isIssued && (
               <span className="invoice-status invoice-pending">Pendiente de cobro</span>
             )}
+            {isIssued && <span className="invoice-status">Pagada</span>}
           </div>
           <div className="invoice-card-actions">
             <Button

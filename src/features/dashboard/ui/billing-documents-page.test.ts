@@ -11,6 +11,44 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 afterEach(() => vi.unstubAllGlobals())
 
 describe('billing browser compatibility', () => {
+  it('offers free invoice creation only when explicitly enabled for administrators', async () => {
+    const { InvoicesPage } = await import('./invoices-page')
+    const render = (canCreateManualInvoice: boolean) =>
+      renderToStaticMarkup(
+        createElement(MemoryRouter, null, createElement(InvoicesPage, { canCreateManualInvoice })),
+      )
+    expect(render(true)).toContain('Nueva factura')
+    expect(render(false)).not.toContain('Nueva factura')
+  })
+
+  it('shows an issued free invoice as paid without a carriage-letter link', async () => {
+    const { BillingDocumentCard } = await import('./billing-document-card')
+    const markup = renderToStaticMarkup(
+      createElement(BillingDocumentCard, {
+        invoice: {
+          id: 'invoice',
+          letterId: null,
+          clientId: 'client',
+          payer: 'manual',
+          concept: 'Extra',
+          total: 121,
+          status: 'emitida',
+          createdAt: '2026-01-10',
+          clientName: 'Test',
+        },
+        mode: 'invoices',
+        clientName: 'Test',
+        downloading: false,
+        onPreview: vi.fn(),
+        onDownload: vi.fn(),
+        onOpenLetter: vi.fn(),
+      }),
+    )
+    expect(markup).toContain('Factura libre')
+    expect(markup).toContain('Pagada')
+    expect(markup).not.toContain('invoice-card-link invoice-reference')
+  })
+
   it('opens invoices and payment requests without the Iterator API required by the PDF viewer', async () => {
     vi.stubGlobal('Iterator', undefined)
 

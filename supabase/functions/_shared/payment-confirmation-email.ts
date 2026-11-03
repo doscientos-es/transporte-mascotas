@@ -21,7 +21,7 @@ import {
 import { rest } from './supabase.ts'
 
 type InvoiceDraft = {
-  letter_id: string
+  letter_id: string | null
   concept: string
   total_amount: string
   client_snapshot: Record<string, unknown>
@@ -89,7 +89,9 @@ async function sendConfirmation(
   const draft = loadedDraft ?? (await loadInvoiceDraft(invoiceDraftId))
   const [invoiceNumber, letter] = await Promise.all([
     issuedInvoiceNumber(issuedInvoiceId),
-    optional('Carriage letter not loaded', () => loadCarriageLetter(draft.letter_id)),
+    draft.letter_id
+      ? optional('Carriage letter not loaded', () => loadCarriageLetter(draft.letter_id!))
+      : Promise.resolve(null),
   ])
   const attachments: Array<EmailAttachment & { label: string }> = []
 
@@ -138,7 +140,7 @@ async function sendConfirmation(
     details: confirmationDetails(draft, letter, invoiceNumber),
     attachments: attachments.map(({ label }) => label),
     hasCalendarInvitation: Boolean(event),
-    portalUrl: appUrl ? `${appUrl}/mis-transportes` : null,
+    portalUrl: appUrl && letter ? `${appUrl}/mis-transportes` : null,
     calendarUrl: event ? googleCalendarUrl(event) : null,
   })
   return sendEmail({
