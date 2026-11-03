@@ -146,8 +146,24 @@ const hasWeight = (animal: TransportRequestAnimal) => animal.weightKg > 0
 
 function OtherSpeciesNotice({ name }: { name: string }) {
   return (
-  
-  
+    <div className="mt-4 grid gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <p className="flex items-start gap-2 font-semibold">
+        <PawPrint size={16} className="mt-0.5 shrink-0" />
+        <span>Solo gestionamos aquí el viaje de perros y gatos</span>
+      </p>
+      <p className="leading-6">
+        Para aves, reptiles, roedores u otras especies, escribe directamente a Stella y te ayudará a
+        organizar el transporte.
+      </p>
+      <a
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-green-600 px-4 text-sm font-bold text-white no-underline hover:bg-green-700"
+        href={`${STELLA_WHATSAPP}?text=${encodeURIComponent(`Hola Stella, quiero consultar el transporte de ${name.trim() || 'mi mascota'}, que no es ni un perro ni un gato.`)}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Escribir a Stella por WhatsApp (658 60 49 33)
+      </a>
+    </div>
   )
 }
 

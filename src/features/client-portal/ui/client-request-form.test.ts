@@ -34,9 +34,10 @@ describe('ClientRequestForm departure date', () => {
     )
 
     expect(markup).toContain('martes, 6 de octubre de 2026')
-    expect(markup).toContain('Confirmaremos la hora exacta al cerrar la ruta')
-    expect(markup).toContain('<output')
-    expect(markup).not.toContain('id="request-desired-date" type="date"')
+    expect(markup).toMatch(
+      /<output[^>]*id="request-desired-date"[^>]*aria-labelledby="request-desired-date-label"/,
+    )
+    expect(markup).not.toMatch(/<input[^>]*id="request-desired-date"/)
   })
 })
 

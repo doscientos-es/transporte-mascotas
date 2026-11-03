@@ -542,20 +542,20 @@ export function RoutesPage({
   const pointMinutes = stops.reduce((total, stop) => total + stop.dwellMinutes, 0)
   const verificationSummary = verification
     ? summarizeVerification(
-      verification,
-      stops.slice(0, -1).map((stop) => stop.minutes),
-    )
+        verification,
+        stops.slice(0, -1).map((stop) => stop.minutes),
+      )
     : null
   const verificationStatus: VerificationStatus =
     verifying || recalculatingTimes
       ? { kind: 'checking', progress, saving: recalculatingTimes }
       : verification && verificationSummary
         ? {
-          kind: 'ready',
-          source: verification.source,
-          calculatedAt: verification.calculatedAt,
-          summary: verificationSummary,
-        }
+            kind: 'ready',
+            source: verification.source,
+            calculatedAt: verification.calculatedAt,
+            summary: verificationSummary,
+          }
         : { kind: 'unavailable' }
   const stopArrivals = routeStopArrivals(route.date, startTime, stops)
   const arrivalByStop = new Map(stops.map((stop, index) => [stop.id, stopArrivals[index]]))
@@ -667,9 +667,9 @@ export function RoutesPage({
         result.verification?.source === 'google'
           ? { tone: 'success', text: 'Tiempos recalculados y guardados con Google Maps.' }
           : {
-            tone: 'warning',
-            text: 'Google Maps no ha respondido: los tiempos se han guardado con un servicio alternativo y son aproximados.',
-          },
+              tone: 'warning',
+              text: 'Google Maps no ha respondido: los tiempos se han guardado con un servicio alternativo y son aproximados.',
+            },
       )
       return true
     } catch (error) {
