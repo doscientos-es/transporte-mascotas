@@ -8866,24 +8866,6 @@ a.whatsapp-link:hover {
     animation: none;
   }
 }
-.route-map-leg {
-  overflow: visible;
-}
-.route-map-leg span {
-  position: absolute;
-  padding: 2px 8px;
-  transform: translate(-50%, -50%);
-  border: 1px solid #cf1f2a;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
-  color: #111;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 /* Verification strip above the route map: where the times come from and whether Google agrees. */
 .route-verify {
   display: flex;

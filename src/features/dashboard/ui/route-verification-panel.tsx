@@ -84,12 +84,7 @@ export function RouteVerificationPanel({ status, stopNames, canApply, applying, 
                 ? 'Hay diferencias entre tramos'
                 : `Google calcula ${duration(gap)} ${summary.differenceMinutes > 0 ? 'más' : 'menos'}`}
           </strong>
-          <span>
-            {summary.matches
-              ? 'Los tiempos guardados coinciden dentro del margen de tolerancia.'
-              : `Guardado: ${duration(summary.savedMinutes)} · Google: ${duration(summary.googleMinutes)}.`}{' '}
-            Comprobado a las {clock(calculatedAt)}.
-          </span>
+          {!summary.matches && <span>Guardado: {duration(summary.savedMinutes)}.</span>}
         </div>
       </div>
       <dl className="route-verify-totals">
@@ -103,19 +98,18 @@ export function RouteVerificationPanel({ status, stopNames, canApply, applying, 
             <dd>{summary.kilometers.toLocaleString('es-ES', { maximumFractionDigits: 0 })} km</dd>
           </div>
         )}
-        <div>
-          <dt>Tramos</dt>
-          <dd>{summary.legs.length}</dd>
-        </div>
       </dl>
-      <span>Sin tráfico en tiempo real; la conducción no incluye las paradas.</span>
       {!summary.matches && canApply && (
         <Button size="sm" onClick={onApply} disabled={applying}>
           {applying ? 'Aplicando…' : 'Usar tiempos de Google'}
         </Button>
       )}
       <details className="route-verify-legs">
-        <summary>Ver tramos</summary>
+        <summary>Ver tramos ({summary.legs.length})</summary>
+        <small>
+          Sin tráfico en tiempo real; no incluye las paradas. Comprobado a las {clock(calculatedAt)}
+          .
+        </small>
         <ol>
           {summary.legs.map((leg, index) => (
             <li key={index}>

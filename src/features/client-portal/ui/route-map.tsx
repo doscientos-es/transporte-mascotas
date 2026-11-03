@@ -14,7 +14,7 @@ type Props = {
   details?: StopDetail[]
   /**
    * Verified legs between consecutive stops (one per pair). When every leg carries a road
-   * path, the real road is drawn instead of straight lines, with a label on each leg.
+   * path, the real road is drawn instead of straight lines. Click a leg for its details.
    */
   legs?: MapLeg[]
 }
@@ -118,15 +118,9 @@ export default function RouteMap({
         }).addTo(map)
         // Lets the CSS animation draw the road progressively, whatever its length.
         line.getElement()?.setAttribute('pathLength', '1')
-        L.marker(road[Math.floor(road.length / 2)], {
-          interactive: false,
-          keyboard: false,
-          icon: L.divIcon({
-            className: 'route-map-leg',
-            iconSize: [0, 0],
-            html: `<span>${index + 1}→${index + 2} · ${legs[index].label}</span>`,
-          }),
-        }).addTo(map)
+        const detail = document.createElement('span')
+        detail.textContent = `${index + 1} → ${index + 2} · ${legs[index].label}`
+        line.bindPopup(detail)
       })
     } else {
       L.polyline(points, { color: RED, weight: 3, opacity: 0.85 }).addTo(map)

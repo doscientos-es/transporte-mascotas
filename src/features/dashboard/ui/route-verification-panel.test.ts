@@ -47,13 +47,22 @@ describe('RouteVerificationPanel', () => {
     expect(markup).toContain('guardado: 1 h 10 min')
   })
 
-  it('explains traffic and stop time limitations without claiming an exact match', () => {
+  it('keeps the verified summary compact and puts extra information inside the disclosure', () => {
     const markup = render(ready({ ...summary, matches: true }))
+    const disclosureStart = markup.indexOf('<details')
+    const overview = markup.slice(0, disclosureStart)
+    const details = markup.slice(disclosureStart)
 
-    expect(markup).toContain('Verificado con Google Maps')
-    expect(markup).toContain('margen de tolerancia')
-    expect(markup).toContain('Sin tráfico en tiempo real')
-    expect(markup).toContain('no incluye las paradas')
+    expect(overview).toContain('Verificado con Google Maps')
+    expect(overview).toContain('1 h 40 min')
+    expect(overview).toContain('101 km')
+    expect(overview).not.toContain('margen de tolerancia')
+    expect(overview).not.toContain('Comprobado')
+    expect(overview).not.toContain('Sin tráfico')
+    expect(details).toContain('<summary>Ver tramos (2)</summary>')
+    expect(details).toContain('Sin tráfico en tiempo real')
+    expect(details).toContain('no incluye las paradas')
+    expect(details).toContain('Comprobado a las')
     expect(markup).not.toContain('Usar tiempos de Google')
   })
 
