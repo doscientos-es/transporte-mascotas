@@ -28,4 +28,24 @@ describe('billing browser compatibility', () => {
       expect(markup).not.toContain('Vamos a solucionarlo')
     }
   })
+
+  it('reads a PDF with the compatibility viewer when native Iterator is unavailable', async () => {
+    vi.stubGlobal('Iterator', undefined)
+
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    const { jsPDF } = await import('jspdf')
+    const document = new jsPDF()
+    document.text('Factura de prueba', 20, 20)
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(document.output('arraybuffer')),
+    })
+
+    try {
+      const pdf = await loadingTask.promise
+      expect(pdf.numPages).toBe(1)
+      expect(await pdf.getPage(1)).toMatchObject({ pageNumber: 1 })
+    } finally {
+      await loadingTask.destroy()
+    }
+  })
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { drawCarriageLetter as drawCustomerCarriageLetter } from '../../../../supabase/functions/_shared/carriage-letter-layout'
 import { drawCarriageLetter, type LayoutLetter } from './carriage-letter-layout'
 
 const letter = (
@@ -33,13 +34,16 @@ const letter = (
   ...overrides,
 })
 
-describe('carriage letter layout', () => {
-  it('centers the transparent logo and prints the letter, box, and animal identifiers', () => {
+describe.each([
+  ['client portal', drawCarriageLetter],
+  ['customer attachment', drawCustomerCarriageLetter],
+] as const)('%s carriage letter layout', (_name, drawLetter) => {
+  it('enlarges and centers the logo and prints only the box and ATES beside it', () => {
     const texts: string[] = []
     const textPositions: Array<{ value: string; x: number; align?: string }> = []
     const images: Array<[number, number, number, number]> = []
 
-    drawCarriageLetter(
+    drawLetter(
       {
         rect: () => {},
         text: (value, x, _y, { align }) => {
@@ -50,6 +54,7 @@ describe('carriage letter layout', () => {
         image: (_data, x, y, w, h) => images.push([x, y, w, h]),
       },
       letter(17, {
+        ates_number: ' ATES01140700097 ',
         animals: [{ species: 'Perro', breed: 'Mestizo', identification: '123456789' }],
       }),
       new Uint8Array([1]),
@@ -59,21 +64,22 @@ describe('carriage letter layout', () => {
     expect(texts).toContain('Nº 2026-P00001')
     expect(texts).toContain('Nº Box: 17')
     expect(texts).toContain('kacheenvios.com')
-    expect(texts).toContain('Identificación: 123456789')
+    expect(texts).toContain('ATES: ATES01140700097')
+    expect(texts.some((value) => value.startsWith('Identificación:'))).toBe(false)
     expect(texts).not.toContain('CARTA DE PORTE Nº CARTA DE PORTE Nº 2026-P00001')
     expect(textPositions).toContainEqual({ value: 'Nº 2026-P00001', x: 10, align: undefined })
     expect(textPositions).toContainEqual({
-      value: 'Identificación: 123456789',
+      value: 'ATES: ATES01140700097',
       x: 198,
       align: 'right',
     })
-    expect(images).toEqual([[96.5, 5, 17, 17]])
+    expect(images).toEqual([[95, 4.5, 20, 20]])
   })
 
   it('shows an explicit fallback when no transport box is assigned', () => {
     const texts: string[] = []
 
-    drawCarriageLetter(
+    drawLetter(
       {
         rect: () => {},
         text: (value) => texts.push(value),
@@ -83,12 +89,14 @@ describe('carriage letter layout', () => {
     )
 
     expect(texts).toContain('Nº Box: No especificado')
+    expect(texts).not.toContain('Identificación: No especificado')
+    expect(texts.some((value) => value.startsWith('ATES:'))).toBe(false)
   })
 
   it('prints animal birth dates with a fallback and only the stop locality', () => {
     const texts: string[] = []
 
-    drawCarriageLetter(
+    drawLetter(
       {
         rect: () => {},
         text: (value) => texts.push(value),

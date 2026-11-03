@@ -11,11 +11,11 @@ export type VerificationStatus =
   /** Nothing could be asked or calculated (Google not configured, offline...). */
   | { kind: 'unavailable' }
   | {
-    kind: 'ready'
-    source: DrivingSource
-    calculatedAt: number
-    summary: VerificationSummary
-  }
+      kind: 'ready'
+      source: DrivingSource
+      calculatedAt: number
+      summary: VerificationSummary
+    }
 
 type Props = {
   status: VerificationStatus

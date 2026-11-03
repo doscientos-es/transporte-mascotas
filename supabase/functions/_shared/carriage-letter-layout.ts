@@ -134,29 +134,22 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
 
   // Header
   canvas.rect(X0, 4, X1 - X0, 24, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
-  if (logo && canvas.image) canvas.image(logo, 96.5, 5, 17, 17)
+  if (logo && canvas.image) canvas.image(logo, 95, 4.5, 20, 20)
   else canvas.text('KACHE ENVÍOS', MID, 16, { size: 8, bold: true, align: 'center' })
   canvas.text('kacheenvios.com', MID, 26, { size: 5.5, align: 'center' })
   canvas.text(fit('CARTA DE PORTE', 6.5, 80, true), 10, 11, { size: 6.5, bold: true })
   canvas.text(fit(`Nº ${letterNumber(letter.id)}`, 8, 80, true), 10, 21, { size: 8, bold: true })
-  const identification = [
-    ...new Set(letter.animals.map((animal) => animal.identification?.trim()).filter(Boolean)),
-  ].join(', ')
   canvas.text(
     fit(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 7, 70, true),
     198,
-    10,
+    12,
     { size: 7, bold: true, align: 'right' },
   )
   if (letter.ates_number?.trim())
-    canvas.text(fit(`ATES: ${letter.ates_number.trim()}`, 6.5, 70), 198, 15.5, {
+    canvas.text(fit(`ATES: ${letter.ates_number.trim()}`, 6.5, 70), 198, 21, {
       size: 6.5,
       align: 'right',
     })
-  canvas.text(fit(`Identificación: ${identification || 'No especificado'}`, 6.5, 70), 198, 21, {
-    size: 6.5,
-    align: 'right',
-  })
 
   // Sender / recipient
   const parties = [
