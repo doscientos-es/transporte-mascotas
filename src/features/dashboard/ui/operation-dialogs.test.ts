@@ -155,7 +155,7 @@ describe('LetterForm paid manual letter creation', () => {
     expect(amountInput).toContain('type="number"')
     expect(amountInput).toContain('step="0.01"')
     expect(amountInput).toContain('required=""')
-    expect(amountInput).not.toMatch(/readonly|disabled|max=/i)
+    expect(amountInput).not.toMatch(/\s(?:readonly|disabled|max)=/i)
     expect(markup).toContain('Puedes cobrar más o menos.')
   })
 })
