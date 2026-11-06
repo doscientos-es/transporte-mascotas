@@ -88,6 +88,37 @@ const letter: Letter = {
   importedAt: '',
 }
 
+describe('LetterForm contact addresses', () => {
+  it.each([
+    ['creation', undefined, 'off'],
+    ['editing', letter, 'street-address'],
+  ])('uses the expected address autocomplete setting during %s', (_, existingLetter, setting) => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: existingLetter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    const addresses = markup.match(/<input[^>]*placeholder="Ej\. Calle Mayor 12"[^>]*>/g) ?? []
+
+    expect(addresses).toHaveLength(2)
+    expect(addresses.every((input) => input.includes(`autoComplete="${setting}"`))).toBe(true)
+    expect(addresses.every((input) => input.includes('required=""'))).toBe(true)
+    if (!existingLetter) {
+      expect(markup).not.toContain('autoComplete="address-level2"')
+      expect(markup).not.toContain('autoComplete="address-level1"')
+      expect(markup).not.toContain('autoComplete="postal-code"')
+    }
+  })
+})
+
 describe('LetterForm assigned box', () => {
   it.each([
     [17, 'value="17"'],
@@ -146,13 +177,27 @@ describe('LetterForm assigned box', () => {
 
   it('rejects an incompatible assigned box before rebuilding actions', () => {
     const animal = {
-      id: 'animal-1', species: 'Perro', breed: 'Labrador', birthDate: '', weightKg: 40,
-      lengthCm: 90, heightCm: 60, widthCm: 60, size: 'grande' as const,
+      id: 'animal-1',
+      species: 'Perro',
+      breed: 'Labrador',
+      birthDate: '',
+      weightKg: 40,
+      lengthCm: 90,
+      heightCm: 60,
+      widthCm: 60,
+      size: 'grande' as const,
     }
-    expect(() => actionsForLetter(
-      route, template, { ...letter, animals: [animal] }, defaultTransportBoxCatalog,
-      'stop-1', 'stop-4', 17,
-    )).toThrow('El box asignado no es adecuado')
+    expect(() =>
+      actionsForLetter(
+        route,
+        template,
+        { ...letter, animals: [animal] },
+        defaultTransportBoxCatalog,
+        'stop-1',
+        'stop-4',
+        17,
+      ),
+    ).toThrow('El box asignado no es adecuado')
   })
 })
 

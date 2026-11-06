@@ -453,7 +453,7 @@ export function LetterForm({
           onRouteChange={selectRoute}
           onAddStop={setAddingStopFor}
         />
-        <ContactsSection draft={draft} update={update} />
+        <ContactsSection draft={draft} update={update} addressLookupEnabled={isEditing} />
         <div className="grid md:grid-cols-[1.4fr_1fr]">
           <AnimalsSection
             animals={draft.animals}
@@ -1237,7 +1237,15 @@ export function NewTemplateDialog({
   )
 }
 
-function ContactsSection({ draft, update }: { draft: LetterDraft; update: LetterUpdate }) {
+function ContactsSection({
+  draft,
+  update,
+  addressLookupEnabled,
+}: {
+  draft: LetterDraft
+  update: LetterUpdate
+  addressLookupEnabled: boolean
+}) {
   const updatePerson = (
     person: 'sender' | 'recipient',
     field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
@@ -1254,6 +1262,7 @@ function ContactsSection({ draft, update }: { draft: LetterDraft; update: Letter
         subtitle="Quien entrega la mascota"
         person="sender"
         draft={draft}
+        addressLookupEnabled={addressLookupEnabled}
         onChange={updatePerson}
       />
       <ContactDetails
@@ -1261,6 +1270,7 @@ function ContactsSection({ draft, update }: { draft: LetterDraft; update: Letter
         subtitle="Quien recibe la mascota"
         person="recipient"
         draft={draft}
+        addressLookupEnabled={addressLookupEnabled}
         onChange={updatePerson}
       />
     </div>
@@ -1272,12 +1282,14 @@ function ContactDetails({
   subtitle,
   person,
   draft,
+  addressLookupEnabled,
   onChange,
 }: {
   title: string
   subtitle: string
   person: 'sender' | 'recipient'
   draft: LetterDraft
+  addressLookupEnabled: boolean
   onChange: (
     person: 'sender' | 'recipient',
     field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
@@ -1297,7 +1309,7 @@ function ContactDetails({
 
   useEffect(() => {
     const query = address.trim()
-    if (query.length < 5 || query === selectedAddress.current) {
+    if (!addressLookupEnabled || query.length < 5 || query === selectedAddress.current) {
       setAddressSuggestions([])
       setAddressLookupState('idle')
       return
@@ -1323,7 +1335,7 @@ function ContactDetails({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [address])
+  }, [address, addressLookupEnabled])
 
   function updateAddress(nextAddress: string) {
     selectedAddress.current = ''
@@ -1369,7 +1381,7 @@ function ContactDetails({
             value={address}
             onChange={(event) => updateAddress(event.target.value)}
             placeholder="Ej. Calle Mayor 12"
-            autoComplete="street-address"
+            autoComplete={addressLookupEnabled ? 'street-address' : 'off'}
             required
           />
           {status && (
@@ -1413,7 +1425,7 @@ function ContactDetails({
           value={value('City')}
           onChange={(event) => onChange(person, 'City', event.target.value)}
           placeholder="Ej. Madrid"
-          autoComplete="address-level2"
+          autoComplete={addressLookupEnabled ? 'address-level2' : 'off'}
           required
         />
       </PaperCell>
@@ -1423,7 +1435,7 @@ function ContactDetails({
           value={value('Province')}
           onChange={(event) => onChange(person, 'Province', event.target.value)}
           placeholder="Ej. Madrid"
-          autoComplete="address-level1"
+          autoComplete={addressLookupEnabled ? 'address-level1' : 'off'}
           required
         />
       </PaperCell>
@@ -1433,7 +1445,7 @@ function ContactDetails({
           value={value('PostalCode')}
           onChange={(event) => onChange(person, 'PostalCode', event.target.value)}
           placeholder="Ej. 28013"
-          autoComplete="postal-code"
+          autoComplete={addressLookupEnabled ? 'postal-code' : 'off'}
           inputMode="numeric"
           required
         />
