@@ -12,8 +12,17 @@ Deno.serve(async (request) => {
     const response = await rest(
       `carriage_letters?id=eq.${encodeURIComponent(body.letterId)}&select=complimentary,status,entry_source`,
     )
-    const [letter] = (await response.json()) as Array<{ complimentary: boolean; status: string; entry_source: string }>
-    if (!letter || !letter.complimentary || letter.entry_source !== 'manual' || letter.status === 'cancelada')
+    const [letter] = (await response.json()) as Array<{
+      complimentary: boolean
+      status: string
+      entry_source: string
+    }>
+    if (
+      !letter ||
+      !letter.complimentary ||
+      letter.entry_source !== 'manual' ||
+      letter.status === 'cancelada'
+    )
       return json({ error: 'La carta no admite este aviso.' }, 400)
     const sent = await sendComplimentaryLetterConfirmation(body.letterId)
     return json({ sent: sent ?? 0 })

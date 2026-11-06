@@ -1110,14 +1110,18 @@ export function useDashboard(session: Session | null, role: AppRole) {
         } catch {
           emailPending = true
         }
-        toast(`Carta creada como pagada sin factura ni ingresos.${emailPending ? ' No se han podido enviar todos los emails.' : ''}`)
+        toast(
+          `Carta creada como pagada sin factura ni ingresos.${emailPending ? ' No se han podido enviar todos los emails.' : ''}`,
+        )
         return { paid: true as const, complimentary: true as const, invoiceId: undefined }
       }
       if (settlement) {
         toast(
-          documentPending
-            ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'
-            : `Carta creada y marcada como pagada. La factura se ha emitido.${emailPending ? ' No se han podido enviar todos los emails.' : ''}`,
+          `${
+            documentPending
+              ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'
+              : 'Carta creada y marcada como pagada. La factura se ha emitido.'
+          }${emailPending ? ' No se han podido enviar todos los emails.' : ''}`,
         )
         return { paid: true as const, invoiceId: paidInvoiceId }
       }

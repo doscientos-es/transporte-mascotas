@@ -344,9 +344,12 @@ export async function createPaidManualLetter(
 }
 
 export async function sendComplimentaryLetterConfirmation(letterId: string) {
-  const { data, error } = await requireSupabase().functions.invoke('send-complimentary-letter-confirmation', {
-    body: { letterId },
-  })
+  const { data, error } = await requireSupabase().functions.invoke(
+    'send-complimentary-letter-confirmation',
+    {
+      body: { letterId },
+    },
+  )
   if (error || (data as { error?: string } | null)?.error)
     throw new Error('No se ha podido enviar el aviso de la carta.')
 }

@@ -209,7 +209,9 @@ export function PaymentSuccessPanel({
       )}
 
       <ul className="payment-success-steps">
-        <li>Más adelante recibirás un email con la hora exacta y más detalles del transporte.</li>
+        {(paymentRecorded || confirmed) && (
+          <li>Más adelante recibirás un email con la hora exacta y más detalles del transporte.</li>
+        )}
         <li>Ten a mano la documentación y la cartilla de tu mascota.</li>
         <li>Puedes seguir el estado del transporte en todo momento desde Mis transportes.</li>
       </ul>

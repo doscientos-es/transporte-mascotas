@@ -26,12 +26,16 @@ const button = (href: string, label: string, primary: boolean) =>
 
 export function paymentConfirmationEmail(content: ConfirmationContent) {
   const greeting = content.name.trim() ? `Hola ${content.name.trim()},` : 'Hola,'
-  const subject = content.isPayer && content.invoiceNumber
-    ? `Pago confirmado · Factura ${content.invoiceNumber} · Kache Envíos`
-    : 'Transporte confirmado · Kache Envíos'
-  const intro = content.isPayer && content.hasPayment
-    ? 'Hemos recibido tu pago correctamente y tu servicio queda confirmado. Te dejamos el resumen de la operación y la documentación.'
-    : 'El transporte queda confirmado. Te dejamos el resumen del servicio y la documentación.'
+  const subject =
+    content.isPayer && content.invoiceNumber
+      ? `Pago confirmado · Factura ${content.invoiceNumber} · Kache Envíos`
+      : content.isPayer && content.hasPayment
+        ? 'Pago confirmado · Kache Envíos'
+        : 'Transporte confirmado · Kache Envíos'
+  const intro =
+    content.isPayer && content.hasPayment
+      ? 'Hemos recibido tu pago correctamente y tu servicio queda confirmado. Te dejamos el resumen de la operación y la documentación.'
+      : 'El transporte queda confirmado. Te dejamos el resumen del servicio y la documentación.'
   const calendarNote = content.hasCalendarInvitation
     ? 'Incluimos una invitación de calendario con el día del transporte.'
     : ''
@@ -47,7 +51,11 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
     '',
     'RESUMEN',
     ...content.details.map(([label, value]) => `- ${label}: ${value}`),
-    ...content.locations.flatMap(({ label, address, url }) => ['', `${label}: ${address}`, `Ver ubicación: ${url}`]),
+    ...content.locations.flatMap(({ label, address, url }) => [
+      '',
+      `${label}: ${address}`,
+      `Ver ubicación: ${url}`,
+    ]),
     ...(content.attachments.length
       ? ['', 'DOCUMENTOS ADJUNTOS', ...content.attachments.map((name) => `- ${name}`)]
       : []),
@@ -74,7 +82,9 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
     )
     .join('')
   const buttons = [
-    ...content.locations.map(({ label, url }) => button(url, `Ver ubicación de ${label.toLowerCase()}`, false)),
+    ...content.locations.map(({ label, url }) =>
+      button(url, `Ver ubicación de ${label.toLowerCase()}`, false),
+    ),
     content.portalUrl ? button(content.portalUrl, 'Ver mis transportes', true) : '',
     content.calendarUrl ? button(content.calendarUrl, 'Añadir a Google Calendar', false) : '',
   ].join('')
