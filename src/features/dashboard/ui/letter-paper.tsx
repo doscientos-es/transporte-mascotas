@@ -66,6 +66,7 @@ export function PaperHeader({
   referenceLocked,
   onReferenceChange,
   boxNumber,
+  boxNumberLocked = false,
   onBoxNumberChange,
   atesNumber,
   onAtesNumberChange,
@@ -74,6 +75,7 @@ export function PaperHeader({
   referenceLocked: boolean
   onReferenceChange: (value: string) => void
   boxNumber?: number | undefined
+  boxNumberLocked?: boolean
   onBoxNumberChange: (value: number | undefined) => void
   atesNumber: string
   onAtesNumberChange: (value: string) => void
@@ -112,6 +114,7 @@ export function PaperHeader({
             min="1"
             inputMode="numeric"
             value={boxNumber ?? ''}
+            readOnly={boxNumberLocked}
             onChange={(event) =>
               onBoxNumberChange(event.target.value ? Number(event.target.value) : undefined)
             }
@@ -120,7 +123,9 @@ export function PaperHeader({
           />
         </label>
         <span id="letter-box-hint" className="text-[11px] text-neutral-700">
-          Vacío: se asigna un box libre automáticamente.
+          {boxNumberLocked
+            ? 'Para cambiar el box, utiliza la sección Furgoneta.'
+            : 'Vacío: se asigna un box libre automáticamente.'}
         </span>
         <label className="flex items-baseline gap-1.5 text-sm font-bold">
           ATES
@@ -158,9 +163,8 @@ export function PaperParty({
       </legend>
       <span
         aria-hidden="true"
-        className={`flex items-center justify-center border border-neutral-600 px-2 py-1 text-[11px] font-bold tracking-[0.25em] md:w-7 md:px-0 md:[writing-mode:vertical-rl] ${
-          sender ? 'bg-[#f46a46] text-black md:rotate-180' : 'bg-[#6b6b6b] text-white'
-        }`}
+        className={`flex items-center justify-center border border-neutral-600 px-2 py-1 text-[11px] font-bold tracking-[0.25em] md:w-7 md:px-0 md:[writing-mode:vertical-rl] ${sender ? 'bg-[#f46a46] text-black md:rotate-180' : 'bg-[#6b6b6b] text-white'
+          }`}
       >
         {title.toUpperCase()}
       </span>

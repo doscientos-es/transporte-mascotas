@@ -660,6 +660,7 @@ export async function appendLetterToDailyRoute(
   route: DailyRoute,
   letter: Letter,
   actions: ServiceAction[],
+  shareBox = false,
 ) {
   if (!actions.length) return
   const database = requireSupabase()
@@ -703,7 +704,7 @@ export async function appendLetterToDailyRoute(
   const pickupSequence = stopSequenceById.get(pickup.stopId)
   const deliverySequence = stopSequenceById.get(delivery.stopId)
   if (!pickupSequence || !deliverySequence) return
-  const { error: assignmentError } = await database.rpc('assign_van_box', {
+  const { error: assignmentError } = await database.rpc(shareBox ? 'assign_shared_van_box' : 'assign_van_box', {
     p_daily_route_id: route.id,
     p_letter_id: letter.id,
     p_animal_id: pickup.action.animalId,

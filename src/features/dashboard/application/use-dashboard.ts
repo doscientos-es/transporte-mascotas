@@ -82,9 +82,10 @@ import {
   findBestStopInsertion,
   type DrivingProgressHandler,
 } from './driving-times'
+import { validateManualLetterBreeds } from './manual-letter-animals'
 import { manualLetterTotalCents } from './manual-letter-total'
 import { findForwardRouteSegment } from './route-segment'
-import { assignmentsForRoute, boxesBySize, vanBoxSizeForAnimal } from './van'
+import { assignmentsForRoute, boxesBySize, letterBoxForRoute, vanBoxSizeForAnimal } from './van'
 
 function copyTemplateStops(
   template: RouteTemplate,
@@ -190,13 +191,14 @@ function selectFreeBox(animals: Animal[], usedBoxes: Set<number>, boxCatalog: Tr
   return requestedBox ?? compatibleBoxes.find((box) => !usedBoxes.has(box))
 }
 
-function actionsForLetter(
+export function actionsForLetter(
   route: DailyRoute,
   template: RouteTemplate,
   letter: Letter,
   boxCatalog: TransportBoxCatalog,
   originStopId?: string,
   destinationStopId?: string,
+  preservedBox?: number,
 ) {
   if (!letter.animals.length) return []
   const stops = route.stops ?? copyTemplateStops(template)
@@ -212,7 +214,7 @@ function actionsForLetter(
   )
   if (!segment) return []
   const { originStop, destinationStop } = segment
-  const box = selectFreeBox(letter.animals, usedBoxes, boxCatalog)
+  const box = preservedBox ?? selectFreeBox(letter.animals, usedBoxes, boxCatalog)
   return letter.animals.flatMap((animal) => [
     ...(originStop
       ? [
@@ -918,6 +920,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
   async function createLetter(draft: LetterDraft, paymentMethod?: ManualPaymentMethod) {
     if (!session) throw new Error('Inicia sesión para crear una carta de porte.')
     try {
+      validateManualLetterBreeds(draft.animals)
       const dailyRoute = dailyRoutes.find((route) => route.id === draft.routeId)
       const routeTemplate =
         dailyRoute && routeTemplates.find((template) => template.id === dailyRoute.templateId)
@@ -929,7 +932,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         return {
           ...animal,
           id: crypto.randomUUID(),
-          breed: animal.breed.trim() || 'Sin clasificar',
+          breed: animal.breed.trim(),
           size: sizeForMeasurements(animal),
           ...(draft.boxNumber ? { box: draft.boxNumber } : {}),
           boxCategory: requestedTransportBoxCategory(
@@ -1067,7 +1070,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
         return {
           ...animal,
           id: currentLetter.animals[index]?.id ?? crypto.randomUUID(),
-          box: currentLetter.animals[index]?.box,
           breed: animal.breed.trim() || 'Sin clasificar',
           size: sizeForMeasurements(animal),
           boxCategory: requestedTransportBoxCategory(
@@ -1107,6 +1109,10 @@ export function useDashboard(session: Session | null, role: AppRole) {
         serviceDate: dailyRoute.date,
         animals,
       }
+      const assignedBox = letterBoxForRoute(dailyRoute, letter.id)
+      const sharedBox = assignedBox !== undefined && dailyRoute.actions.some(
+        (action) => action.letterId !== letter.id && action.type === 'recogida' && action.box === assignedBox,
+      )
       const rebuiltActions = actionsForLetter(
         dailyRoute,
         routeTemplate,
@@ -1114,9 +1120,19 @@ export function useDashboard(session: Session | null, role: AppRole) {
         boxCatalog,
         draft.originStopId,
         draft.destinationStopId,
+        assignedBox,
       )
       if (rebuiltActions.length !== animals.length * 2)
         throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
+      if (sharedBox) {
+        const oldActions = dailyRoute.actions.filter((action) => action.letterId === letter.id)
+        const stopChanged = (['recogida', 'entrega'] as const).some(
+          (type) => oldActions.find((action) => action.type === type)?.stopId !==
+            rebuiltActions.find((action) => action.type === type)?.stopId,
+        )
+        if (stopChanged)
+          throw new Error('Para cambiar las paradas de una carta con box compartido, reasigna primero el box en Furgoneta.')
+      }
       const previousActions = dailyRoutes
         .flatMap((route) => route.actions)
         .filter((action) => action.letterId === letter.id)
@@ -1131,7 +1147,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         route.actions.some((action) => action.letterId === letter.id),
       )
       await updateLetter(letter, routeTemplate.id, affectedRoutes, draft.signatureConfirmed)
-      await appendLetterToDailyRoute(dailyRoute, letter, routeActions)
+      await appendLetterToDailyRoute(dailyRoute, letter, routeActions, sharedBox)
       invalidateLettersCache(session.user.id)
       setLetters((current) => current.map((item) => (item.id === letter.id ? letter : item)))
       const updateRoute = (route: DailyRoute): DailyRoute => {

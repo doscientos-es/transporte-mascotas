@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { defaultTransportBoxCatalog } from '@/shared/application/transport-boxes'
 import type { DailyRoute, Letter, RouteTemplate } from '@/shared/types'
 
+import { actionsForLetter } from '../application/use-dashboard'
 import { LetterForm } from './operation-dialogs'
 
 const stops = ['Madrid', 'Zaragoza', 'Madrid', 'Barcelona'].map((locality, index) => ({
@@ -87,6 +88,48 @@ const letter: Letter = {
   importedAt: '',
 }
 
+describe('LetterForm assigned box', () => {
+  it.each([
+    [17, 'value="17"'],
+    [undefined, 'value=""'],
+  ])('shows the route assignment (%s) when editing', (box, expectedValue) => {
+    const assignedRoute = { ...route, actions: route.actions.map((action) => ({ ...action, box })) }
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [assignedRoute],
+        templates: [template],
+        letter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    const boxInput = markup.match(/<input[^>]*aria-describedby="letter-box-hint"[^>]*>/)?.[0]
+
+    expect(boxInput).toContain(expectedValue)
+    expect(boxInput).toContain('readOnly=""')
+    expect(markup).toContain('Para cambiar el box, utiliza la sección Furgoneta.')
+  })
+
+  it('preserves the assigned box in rebuilt pickup and delivery actions', () => {
+    const animal = {
+      id: 'animal-1', species: 'Gato', breed: 'Común', birthDate: '', weightKg: 2,
+      lengthCm: 20, heightCm: 20, widthCm: 20, size: 'pequeno' as const,
+    }
+    const assignedRoute = { ...route, actions: route.actions.map((action) => ({ ...action, box: 17 })) }
+    const actions = actionsForLetter(
+      assignedRoute, template, { ...letter, animals: [animal] }, defaultTransportBoxCatalog,
+      'stop-1', 'stop-4', 17,
+    )
+
+    expect(actions).toHaveLength(2)
+    expect(actions.map((action) => action.box)).toEqual([17, 17])
+  })
+})
+
 describe('LetterForm route stop options', () => {
   it('shows repeated stops as distinct origin and destination options', () => {
     const markup = renderToStaticMarkup(
@@ -111,26 +154,32 @@ describe('LetterForm route stop options', () => {
 })
 
 describe('LetterForm contact emails', () => {
-  it('requires a valid email for both sender and recipient', () => {
-    const markup = renderToStaticMarkup(
-      createElement(LetterForm, {
-        routes: [route],
-        templates: [template],
-        letter,
-        routeId: route.id,
-        fullPage: true,
-        boxCatalog: defaultTransportBoxCatalog,
-        onClose: vi.fn(),
-        onCreate: vi.fn().mockResolvedValue(undefined),
-        onAddStop: vi.fn().mockResolvedValue(stops[0]),
-      }),
-    )
-    const emailInputs = markup.match(/<input[^>]*type="email"[^>]*>/g) ?? []
+  it.each([
+    ['creating a letter', undefined, 2],
+    ['editing a letter with another payer', { ...letter, billingPayer: 'manual' as const }, 3],
+  ])(
+    'allows empty emails when %s while validating any supplied address',
+    (_, existingLetter, count) => {
+      const markup = renderToStaticMarkup(
+        createElement(LetterForm, {
+          routes: [route],
+          templates: [template],
+          letter: existingLetter,
+          routeId: route.id,
+          fullPage: true,
+          boxCatalog: defaultTransportBoxCatalog,
+          onClose: vi.fn(),
+          onCreate: vi.fn().mockResolvedValue(undefined),
+          onAddStop: vi.fn().mockResolvedValue(stops[0]),
+        }),
+      )
+      const emailInputs = markup.match(/<input[^>]*type="email"[^>]*>/g) ?? []
 
-    expect(markup).toContain('>Email</span>')
-    expect(emailInputs).toHaveLength(2)
-    expect(emailInputs.every((input) => input.includes('required=""'))).toBe(true)
-  })
+      expect(markup).toContain('Email (opcional)')
+      expect(emailInputs).toHaveLength(count)
+      expect(emailInputs.every((input) => !input.includes('required=""'))).toBe(true)
+    },
+  )
 })
 
 describe('LetterForm paid manual letter creation', () => {
@@ -157,6 +206,61 @@ describe('LetterForm paid manual letter creation', () => {
     expect(amountInput).toContain('required=""')
     expect(amountInput).not.toMatch(/\s(?:readonly|disabled|max)=/i)
     expect(markup).toContain('Puedes cobrar más o menos.')
+  })
+})
+
+describe('LetterForm animal breed', () => {
+  it('requires a breed when creating a letter', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn().mockResolvedValue(undefined),
+        onAddStop: vi.fn().mockResolvedValue(stops[0]),
+      }),
+    )
+    const breedInput = markup.match(/<input[^>]*placeholder="Ej\. Labrador, Mestizo…"[^>]*>/)?.[0]
+
+    expect(breedInput).toContain('required=""')
+  })
+
+  it('keeps breed optional when editing an existing letter', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: {
+          ...letter,
+          animals: [
+            {
+              id: 'animal-1',
+              species: 'Canina',
+              breed: '',
+              birthDate: '2020-01-01',
+              weightKg: 10,
+              lengthCm: 0,
+              heightCm: 0,
+              widthCm: 0,
+              size: 'pequeno',
+            },
+          ],
+        },
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn().mockResolvedValue(undefined),
+        onAddStop: vi.fn().mockResolvedValue(stops[0]),
+      }),
+    )
+    const breedInput = markup.match(
+      /<input[^>]*placeholder="Opcional · Ej\. Labrador, Mestizo…"[^>]*>/,
+    )?.[0]
+
+    expect(breedInput).toBeDefined()
+    expect(breedInput).not.toContain('required=""')
   })
 })
 

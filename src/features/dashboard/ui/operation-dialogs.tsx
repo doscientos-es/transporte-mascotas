@@ -57,10 +57,12 @@ import { lookupAddressSuggestions, type AddressSuggestion } from '../application
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
 import type { DrivingProgress } from '../application/driving-times'
 import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
+import { validateManualLetterBreeds } from '../application/manual-letter-animals'
 import { manualLetterTotalCents } from '../application/manual-letter-total'
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
+import { letterBoxForRoute } from '../application/van'
 import { CalculationProgress } from './calculation-progress'
 import {
   PaperBand,
@@ -243,69 +245,69 @@ export function LetterForm({
   const [draft, setDraft] = useState<LetterDraft>(() =>
     letter
       ? {
-          reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
-          routeId: routeId ?? '',
-          sender: letter.sender,
-          senderPhone: letter.senderPhone,
-          senderEmail: letter.senderEmail,
-          senderNif: letter.senderNif,
-          senderAddress: letter.senderAddress,
-          senderPostalCode: letter.senderPostalCode,
-          senderCity: letter.senderCity,
-          senderProvince: letter.senderProvince,
-          recipient: letter.recipient,
-          recipientPhone: letter.recipientPhone,
-          recipientEmail: letter.recipientEmail,
-          recipientNif: letter.recipientNif,
-          recipientAddress: letter.recipientAddress,
-          recipientPostalCode: letter.recipientPostalCode,
-          recipientCity: letter.recipientCity,
-          recipientProvince: letter.recipientProvince,
-          origin: letter.origin,
-          destination: letter.destination,
-          originStopId:
-            routes
-              .find((route) => route.id === routeId)
-              ?.actions.find(
-                (action) => action.letterId === letter.id && action.type === 'recogida',
-              )?.stopId ?? '',
-          destinationStopId:
-            routes
-              .find((route) => route.id === routeId)
-              ?.actions.find((action) => action.letterId === letter.id && action.type === 'entrega')
-              ?.stopId ?? '',
-          originPoint: letter.originPoint,
-          destinationPoint: letter.destinationPoint,
-          accompanyingDocuments: letter.accompanyingDocuments,
-          atesNumber: letter.atesNumber ?? DEFAULT_ATES_NUMBER,
-          billingPayer: letter.billingPayer,
-          otherPayer:
-            letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
-          signatureConfirmed: false,
-          animals: letter.animals.map(
-            ({
-              species,
-              breed,
-              birthDate,
-              weightKg,
-              lengthCm,
-              heightCm,
-              widthCm,
-              size,
-              boxCategory,
-            }) => ({
-              species,
-              breed,
-              birthDate,
-              weightKg,
-              lengthCm,
-              heightCm,
-              widthCm,
-              size,
-              requestedBoxCategory: boxCategory,
-            }),
-          ),
-        }
+        reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
+        routeId: routeId ?? '',
+        sender: letter.sender,
+        senderPhone: letter.senderPhone,
+        senderEmail: letter.senderEmail,
+        senderNif: letter.senderNif,
+        senderAddress: letter.senderAddress,
+        senderPostalCode: letter.senderPostalCode,
+        senderCity: letter.senderCity,
+        senderProvince: letter.senderProvince,
+        recipient: letter.recipient,
+        recipientPhone: letter.recipientPhone,
+        recipientEmail: letter.recipientEmail,
+        recipientNif: letter.recipientNif,
+        recipientAddress: letter.recipientAddress,
+        recipientPostalCode: letter.recipientPostalCode,
+        recipientCity: letter.recipientCity,
+        recipientProvince: letter.recipientProvince,
+        origin: letter.origin,
+        destination: letter.destination,
+        originStopId:
+          routes
+            .find((route) => route.id === routeId)
+            ?.actions.find(
+              (action) => action.letterId === letter.id && action.type === 'recogida',
+            )?.stopId ?? '',
+        destinationStopId:
+          routes
+            .find((route) => route.id === routeId)
+            ?.actions.find((action) => action.letterId === letter.id && action.type === 'entrega')
+            ?.stopId ?? '',
+        originPoint: letter.originPoint,
+        destinationPoint: letter.destinationPoint,
+        accompanyingDocuments: letter.accompanyingDocuments,
+        atesNumber: letter.atesNumber ?? DEFAULT_ATES_NUMBER,
+        billingPayer: letter.billingPayer,
+        otherPayer:
+          letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
+        signatureConfirmed: false,
+        animals: letter.animals.map(
+          ({
+            species,
+            breed,
+            birthDate,
+            weightKg,
+            lengthCm,
+            heightCm,
+            widthCm,
+            size,
+            boxCategory,
+          }) => ({
+            species,
+            breed,
+            birthDate,
+            weightKg,
+            lengthCm,
+            heightCm,
+            widthCm,
+            size,
+            requestedBoxCategory: boxCategory,
+          }),
+        ),
+      }
       : emptyLetter,
   )
   const [savingMode, setSavingMode] = useState<'request' | 'paid' | null>(null)
@@ -354,7 +356,10 @@ export function LetterForm({
     setError('')
     setSavingMode(createAsPaid ? 'paid' : 'request')
     try {
-      if (!isEditing) manualLetterTotalCents(draft, boxCatalog)
+      if (!isEditing) {
+        validateManualLetterBreeds(draft.animals)
+        manualLetterTotalCents(draft, boxCatalog)
+      }
       await onCreate(draft, createAsPaid ? paymentMethod : undefined)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido guardar la carta.')
@@ -430,7 +435,8 @@ export function LetterForm({
           reference={draft.reference}
           referenceLocked={isEditing}
           onReferenceChange={(value) => update('reference', value)}
-          boxNumber={draft.boxNumber}
+          boxNumber={letter && selectedRoute ? letterBoxForRoute(selectedRoute, letter.id) : draft.boxNumber}
+          boxNumberLocked={isEditing}
           onBoxNumberChange={(value) => update('boxNumber', value)}
           atesNumber={draft.atesNumber}
           onAtesNumberChange={(value) => update('atesNumber', value)}
@@ -450,6 +456,7 @@ export function LetterForm({
           <AnimalsSection
             animals={draft.animals}
             boxCatalog={boxCatalog}
+            requireBreed={!isEditing}
             updateAnimal={updateAnimal}
             onCountChange={updateAnimalCount}
             onAdd={() => updateAnimalCount(draft.animals.length + 1)}
@@ -1441,7 +1448,7 @@ function ContactDetails({
           required
         />
       </PaperCell>
-      <PaperCell label="Email" tone={tone} className="col-span-2">
+      <PaperCell label="Email (opcional)" tone={tone} className="col-span-2">
         <input
           className={paperControl}
           type="email"
@@ -1449,7 +1456,6 @@ function ContactDetails({
           onChange={(event) => onChange(person, 'Email', event.target.value)}
           placeholder="nombre@correo.com"
           autoComplete="email"
-          required
         />
       </PaperCell>
     </PaperParty>
@@ -1459,6 +1465,7 @@ function ContactDetails({
 function AnimalsSection({
   animals,
   boxCatalog,
+  requireBreed,
   updateAnimal,
   onCountChange,
   onAdd,
@@ -1466,6 +1473,7 @@ function AnimalsSection({
 }: {
   animals: LetterDraft['animals']
   boxCatalog: TransportBoxCatalog
+  requireBreed: boolean
   updateAnimal: <K extends keyof LetterDraft['animals'][number]>(
     index: number,
     field: K,
@@ -1544,7 +1552,10 @@ function AnimalsSection({
                   className={paperControl}
                   value={animal.breed}
                   onChange={(event) => updateAnimal(index, 'breed', event.target.value)}
-                  placeholder="Opcional · Ej. Labrador, Mestizo…"
+                  placeholder={
+                    requireBreed ? 'Ej. Labrador, Mestizo…' : 'Opcional · Ej. Labrador, Mestizo…'
+                  }
+                  required={requireBreed}
                 />
               </PaperCell>
               <PaperCell label="Fecha de nacimiento">
@@ -1631,7 +1642,7 @@ function AnimalsSection({
                             ),
                           )}
                           {transportBoxCategoryRank(category) >
-                          transportBoxCategoryRank(minimumCategory)
+                            transportBoxCategoryRank(minimumCategory)
                             ? ' · extra por comodidad'
                             : ''}
                         </option>
@@ -1738,7 +1749,7 @@ function BillingAndSignatureSection({
     <LetterFormSection
       icon={<CreditCard size={16} />}
       title="¿Quién paga el servicio?"
-      description="Elige quién paga. Si el cliente ya ha pagado, podrás emitir la factura al crear la carta."
+      description="El correo es opcional. Puedes descargar la carta y, tras confirmar el cobro, la factura para enviarlas por WhatsApp."
     >
       <div className="[&_button]:border-border [&_button]:bg-card [&_button[aria-pressed=true]]:border-accent grid grid-cols-1 gap-2 sm:grid-cols-3 [&_button]:grid [&_button]:min-h-16 [&_button]:gap-1 [&_button]:rounded-lg [&_button]:border [&_button]:p-3 [&_button]:text-left [&_button]:text-[#4b4b4b] [&_button]:transition-colors [&_button:hover]:bg-[#fafafa] [&_button[aria-pressed=true]]:bg-[#fff0f1] [&_button[aria-pressed=true]]:text-[#9f1720] [&_span]:text-[11px] [&_strong]:truncate [&_strong]:text-xs">
         {(Object.keys(payerLabels) as InvoicePayer[]).map((payer) => (
@@ -1777,13 +1788,12 @@ function BillingAndSignatureSection({
             />
           </Label>
           <Label>
-            Email
+            Email (opcional)
             <Input
               type="email"
               value={draft.otherPayer.email}
               onChange={(event) => onOtherPayerChange('email', event.target.value)}
               placeholder="facturacion@empresa.com"
-              required
             />
           </Label>
           <Label>
