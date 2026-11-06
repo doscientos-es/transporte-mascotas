@@ -301,11 +301,12 @@ export function AdminDashboardPage({
                 onClose={() => navigateToSection('cartas')}
                 onCreate={async (draft, paymentMethod) => {
                   const created = await dashboard.createLetter(draft, paymentMethod)
-                  // A paid letter already has its invoice issued; unpaid ones wait as payment requests.
                   void navigate(
-                    created?.paid
-                      ? `${navigation.hrefForSection('facturas')}${created.invoiceId ? `?invoice=${encodeURIComponent(created.invoiceId)}` : ''}`
-                      : navigation.hrefForSection('solicitudes'),
+                    created?.complimentary
+                      ? navigation.hrefForSection('cartas')
+                      : created?.paid
+                        ? `${navigation.hrefForSection('facturas')}${created.invoiceId ? `?invoice=${encodeURIComponent(created.invoiceId)}` : ''}`
+                        : navigation.hrefForSection('solicitudes'),
                   )
                 }}
                 onAddStop={dashboard.addLetterRouteStop}

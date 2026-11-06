@@ -49,6 +49,7 @@ import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { groupLettersByRoute } from '../application/letter-route-groups'
 import { downloadBlob } from './billing-document-export'
+import { LetterInvoiceDownload } from './letter-invoice-download'
 import { PdfPreview } from './pdf-preview'
 
 type Props = {
@@ -179,7 +180,11 @@ export function LettersPage({
         letter.destination,
         letter.route,
         letter.serviceDate,
-        letter.paymentStatus === 'paid' ? 'Pagada' : 'Pendiente de pago',
+        letter.complimentary
+          ? 'Pagada sin factura'
+          : letter.paymentStatus === 'paid'
+            ? 'Pagada'
+            : 'Pendiente de pago',
         ...letter.animals.map((animal) => animal.breed),
       ]
         .join(' ')
@@ -566,7 +571,7 @@ function LetterPaymentBadge({ letter }: { letter: Letter }) {
   const isPaid = letter.paymentStatus === 'paid'
   return (
     <StatusBadge status={isPaid ? 'pagada' : 'pendiente_pago'}>
-      {isPaid ? 'Pagada' : 'Pendiente de pago'}
+      {letter.complimentary ? 'Pagada · sin factura' : isPaid ? 'Pagada' : 'Pendiente de pago'}
     </StatusBadge>
   )
 }
@@ -677,9 +682,11 @@ function LetterActionsMenu({
       <DropdownMenuItem onAction={() => onDownload(letter)}>
         <FileDown size={16} /> Descargar PDF
       </DropdownMenuItem>
-      <DropdownMenuItem onAction={() => onOpenPaymentRequests(letter.id)}>
-        <ReceiptText size={16} /> Ver solicitud de pago
-      </DropdownMenuItem>
+      {!letter.complimentary && (
+        <DropdownMenuItem onAction={() => onOpenPaymentRequests(letter.id)}>
+          <ReceiptText size={16} /> Ver solicitud de pago
+        </DropdownMenuItem>
+      )}
       {clientName && (
         <DropdownMenuItem onAction={() => onOpenClient(clientName)}>
           <UserRound size={16} /> Buscar cliente
@@ -937,9 +944,12 @@ function LetterDetailsDialog({
           <Button size="sm" variant="outline" onClick={() => onDownload(letter)}>
             <FileDown size={15} /> Descargar PDF
           </Button>
-          <Button size="sm" variant="outline" onClick={() => onOpenPaymentRequests(letter.id)}>
-            <ReceiptText size={15} /> Ver solicitud
-          </Button>
+          <LetterInvoiceDownload invoiceDraftId={letter.issuedInvoiceDraftId} />
+          {!letter.complimentary && (
+            <Button size="sm" variant="outline" onClick={() => onOpenPaymentRequests(letter.id)}>
+              <ReceiptText size={15} /> Ver solicitud
+            </Button>
+          )}
           {clientName && (
             <Button size="sm" variant="outline" onClick={() => onOpenClient(clientName)}>
               <UserRound size={15} /> Ver cliente

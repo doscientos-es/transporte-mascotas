@@ -471,7 +471,11 @@ export function ClientsPage({
                             <StatusBadge
                               status={letter.paymentStatus === 'paid' ? 'pagada' : 'pendiente_pago'}
                             >
-                              {letter.paymentStatus === 'paid' ? 'Pagada' : 'Pendiente de pago'}
+                              {letter.complimentary
+                                ? 'Pagada · sin factura'
+                                : letter.paymentStatus === 'paid'
+                                  ? 'Pagada'
+                                  : 'Pendiente de pago'}
                             </StatusBadge>
                           </button>
                         ))}

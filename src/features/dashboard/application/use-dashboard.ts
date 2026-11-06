@@ -26,6 +26,7 @@ import {
   type Letter,
   type LetterDraft,
   type ManualPaymentMethod,
+  type ManualLetterSettlement,
   type RouteDirection,
   type SavedMeetingPoint,
   type RouteTemplate,
@@ -934,7 +935,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     setDailyRoutes((current) => current.map(update))
   }
 
-  async function createLetter(draft: LetterDraft, paymentMethod?: ManualPaymentMethod) {
+  async function createLetter(draft: LetterDraft, settlement?: ManualLetterSettlement) {
     if (!session) throw new Error('Inicia sesión para crear una carta de porte.')
     try {
       validateManualLetterBreeds(draft.animals)
@@ -985,8 +986,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
         destinationPoint: draft.destinationPoint.trim() || draft.recipientAddress.trim(),
         accompanyingDocuments: draft.accompanyingDocuments,
         atesNumber: draft.atesNumber.trim(),
-        billingPayer: draft.billingPayer,
-        billingClient: billingClientForDraft(draft),
+        billingPayer: settlement === 'complimentary' ? 'remitente' : draft.billingPayer,
+        billingClient:
+          settlement === 'complimentary'
+            ? contactInvoiceInput(draft, 'sender')
+            : billingClientForDraft(draft),
         route: routeTemplate.name,
         serviceDate: dailyRoute.date,
         status: 'pendiente',
@@ -1005,11 +1009,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
         throw new Error(
           'Elige un origen anterior al destino entre las paradas de la ruta seleccionada.',
         )
-      const billingTotal = manualLetterTotalCents(draft, boxCatalog) / 100
+      const complimentary = settlement === 'complimentary'
+      const billingTotal = complimentary ? 0 : manualLetterTotalCents(draft, boxCatalog) / 100
       let savedId: string | null = null
       let documentPending = false
       let paidInvoiceId: string | undefined
-      if (paymentMethod) {
+      if (settlement && !complimentary) {
         const result = await createPaidManualLetter(
           letter,
           dailyRoute,
@@ -1017,7 +1022,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
           reference,
           draft.signatureConfirmed,
           billingTotal,
-          paymentMethod,
+          settlement,
         )
         savedId = result.letterId
         documentPending = result.documentPending
@@ -1030,12 +1035,15 @@ export function useDashboard(session: Session | null, role: AppRole) {
           reference,
           draft.signatureConfirmed,
           billingTotal,
+          complimentary,
         )
       }
       const savedLetter = {
         ...letter,
         id: savedId ?? letter.id,
-        ...(paymentMethod ? { paymentStatus: 'paid' as const } : {}),
+        ...(settlement ? { paymentStatus: 'paid' as const } : {}),
+        complimentary,
+        issuedInvoiceDraftId: paidInvoiceId,
       }
       const savedActions = routeActions.map((action) => ({ ...action, letterId: savedLetter.id }))
       invalidateLettersCache(session.user.id)
@@ -1046,7 +1054,11 @@ export function useDashboard(session: Session | null, role: AppRole) {
           : route
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
-      if (paymentMethod) {
+      if (complimentary) {
+        toast('Carta creada como pagada sin factura ni ingresos.')
+        return { paid: true as const, complimentary: true as const, invoiceId: undefined }
+      }
+      if (settlement) {
         toast(
           documentPending
             ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'

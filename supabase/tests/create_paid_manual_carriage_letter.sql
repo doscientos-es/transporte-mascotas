@@ -6,7 +6,7 @@ declare
   function_signature regprocedure;
 begin
   function_signature := to_regprocedure(
-    'public.create_paid_manual_carriage_letter(uuid,text,jsonb,jsonb,text,text,text,text,text[],public.payer_type,jsonb,numeric,boolean,jsonb,jsonb,integer,text,jsonb)'
+    'public.create_paid_manual_carriage_letter(uuid,text,jsonb,jsonb,text,text,text,text,text[],public.payer_type,jsonb,numeric,boolean,jsonb,jsonb,integer,text,jsonb,text)'
   );
   if function_signature is null then
     raise exception 'Paid manual carriage-letter function is not installed';

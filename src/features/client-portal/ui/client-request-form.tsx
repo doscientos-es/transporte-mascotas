@@ -95,6 +95,52 @@ export type RequestFormValues = {
   animals: TransportRequestAnimal[]
 }
 
+export function validateRequestContactDetails(values: RequestFormValues): { message: string; fieldId?: string } {
+  const requiredPartyFields: Array<[string, string, string]> = [
+    ['nombre de quien envía', values.contactName, 'request-contact-name'],
+    ['DNI/NIE de quien envía', values.senderNif, 'request-sender-nif'],
+    ['teléfono de quien envía', values.contactPhone, 'request-contact-phone'],
+    ['correo de quien envía', values.contactEmail, 'request-contact-email'],
+    ['dirección de quien envía', values.senderAddress, 'request-sender-address'],
+    ['código postal de quien envía', values.senderPostalCode, 'request-sender-postal-code'],
+    ['localidad de quien envía', values.senderCity, 'request-sender-city'],
+    ['provincia de quien envía', values.senderProvince, 'request-sender-province'],
+    ['nombre de quien recibe', values.recipientName, 'request-recipient-name'],
+    ['DNI/NIE de quien recibe', values.recipientNif, 'request-recipient-nif'],
+    ['teléfono de quien recibe', values.recipientPhone, 'request-recipient-phone'],
+    ['correo de quien recibe', values.recipientEmail, 'request-recipient-email'],
+    ['dirección de quien recibe', values.recipientAddress, 'request-recipient-address'],
+    ['código postal de quien recibe', values.recipientPostalCode, 'request-recipient-postal-code'],
+    ['localidad de quien recibe', values.recipientCity, 'request-recipient-city'],
+    ['provincia de quien recibe', values.recipientProvince, 'request-recipient-province'],
+  ]
+  const missingPartyField = requiredPartyFields.find(([, value]) => !value.trim())
+  if (missingPartyField)
+    return { message: `Completa el ${missingPartyField[0]}.`, fieldId: missingPartyField[2] }
+  if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
+    return { message: 'Escribe un correo electrónico válido.', fieldId: 'request-contact-email' }
+  if (!/^\S+@\S+\.\S+$/.test(values.recipientEmail))
+    return { message: 'Escribe un correo válido para quien recibe.', fieldId: 'request-recipient-email' }
+  const requiredFiscalFields: Array<[string, string, string]> =
+    values.billingPayer === 'manual'
+      ? [
+        ['nombre o razón social', values.billingClient.fullName, 'request-billing-name'],
+        ['NIF/CIF', values.billingClient.nif, 'request-billing-nif'],
+        ['dirección fiscal', values.billingClient.address, 'request-billing-address'],
+        ['código postal', values.billingClient.postalCode, 'request-billing-postal-code'],
+        ['ciudad', values.billingClient.city, 'request-billing-city'],
+        ['correo del pagador', values.billingClient.email, 'request-billing-email'],
+        ['teléfono del pagador', values.billingClient.phone, 'request-billing-phone'],
+      ]
+      : []
+  const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
+  if (missingFiscalField)
+    return { message: `Completa los datos fiscales: ${missingFiscalField[0]}.`, fieldId: missingFiscalField[2] }
+  if (values.billingPayer === 'manual' && !/^\S+@\S+\.\S+$/.test(values.billingClient.email))
+    return { message: 'Escribe un correo válido para el pagador.', fieldId: 'request-billing-email' }
+  return { message: '' }
+}
+
 type PartyField =
   | 'contactName'
   | 'contactPhone'
@@ -483,14 +529,14 @@ export function ClientRequestForm({
       current.dailyRouteId === initialRouteId
         ? current
         : {
-            ...current,
-            dailyRouteId: route.id,
-            desiredDate: route.serviceDate,
-            origin: '',
-            destination: '',
-            originStopId: '',
-            destinationStopId: '',
-          },
+          ...current,
+          dailyRouteId: route.id,
+          desiredDate: route.serviceDate,
+          origin: '',
+          destination: '',
+          originStopId: '',
+          destinationStopId: '',
+        },
     )
   }, [initialRouteId, routes, values.dailyRouteId])
 
@@ -548,66 +594,7 @@ export function ClientRequestForm({
 
   // Devuelve el mensaje de error y, si se conoce, el id del campo que falla.
   function validateCurrentStep(): { message: string; fieldId?: string } {
-    if (step === 1) {
-      const requiredPartyFields: Array<[string, string, string]> = [
-        ['nombre de quien envía', values.contactName, 'request-contact-name'],
-        ['DNI/NIE de quien envía', values.senderNif, 'request-sender-nif'],
-        ['teléfono de quien envía', values.contactPhone, 'request-contact-phone'],
-        ['correo de quien envía', values.contactEmail, 'request-contact-email'],
-        ['dirección de quien envía', values.senderAddress, 'request-sender-address'],
-        ['código postal de quien envía', values.senderPostalCode, 'request-sender-postal-code'],
-        ['localidad de quien envía', values.senderCity, 'request-sender-city'],
-        ['provincia de quien envía', values.senderProvince, 'request-sender-province'],
-        ['nombre de quien recibe', values.recipientName, 'request-recipient-name'],
-        ['DNI/NIE de quien recibe', values.recipientNif, 'request-recipient-nif'],
-        ['teléfono de quien recibe', values.recipientPhone, 'request-recipient-phone'],
-        ['correo de quien recibe', values.recipientEmail, 'request-recipient-email'],
-        ['dirección de quien recibe', values.recipientAddress, 'request-recipient-address'],
-        [
-          'código postal de quien recibe',
-          values.recipientPostalCode,
-          'request-recipient-postal-code',
-        ],
-        ['localidad de quien recibe', values.recipientCity, 'request-recipient-city'],
-        ['provincia de quien recibe', values.recipientProvince, 'request-recipient-province'],
-      ]
-      const missingPartyField = requiredPartyFields.find(([, value]) => !value.trim())
-      if (missingPartyField)
-        return { message: `Completa el ${missingPartyField[0]}.`, fieldId: missingPartyField[2] }
-      if (!/^\S+@\S+\.\S+$/.test(values.contactEmail))
-        return {
-          message: 'Escribe un correo electrónico válido.',
-          fieldId: 'request-contact-email',
-        }
-      if (!/^\S+@\S+\.\S+$/.test(values.recipientEmail))
-        return {
-          message: 'Escribe un correo válido para quien recibe.',
-          fieldId: 'request-recipient-email',
-        }
-      const requiredFiscalFields: Array<[string, string, string]> =
-        values.billingPayer === 'manual'
-          ? [
-              ['nombre o razón social', values.billingClient.fullName, 'request-billing-name'],
-              ['NIF/CIF', values.billingClient.nif, 'request-billing-nif'],
-              ['dirección fiscal', values.billingClient.address, 'request-billing-address'],
-              ['código postal', values.billingClient.postalCode, 'request-billing-postal-code'],
-              ['ciudad', values.billingClient.city, 'request-billing-city'],
-              ['correo del pagador', values.billingClient.email, 'request-billing-email'],
-              ['teléfono del pagador', values.billingClient.phone, 'request-billing-phone'],
-            ]
-          : []
-      const missingFiscalField = requiredFiscalFields.find(([, value]) => !value.trim())
-      if (missingFiscalField)
-        return {
-          message: `Completa los datos fiscales: ${missingFiscalField[0]}.`,
-          fieldId: missingFiscalField[2],
-        }
-      if (values.billingPayer === 'manual' && !/^\S+@\S+\.\S+$/.test(values.billingClient.email))
-        return {
-          message: 'Escribe un correo válido para el pagador.',
-          fieldId: 'request-billing-email',
-        }
-    }
+    if (step === 1) return validateRequestContactDetails(values)
     if (step === 0) return { message: validateRoute() }
     if (step === 2) {
       for (const animal of values.animals) {
@@ -724,10 +711,10 @@ export function ClientRequestForm({
   const deliveryStop = deliveryStopIndex >= 0 ? selectedRoute?.stops[deliveryStopIndex] : undefined
   const arrivals = selectedRoute
     ? routeStopArrivals(
-        selectedRoute.serviceDate,
-        selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
-        selectedRoute.stops,
-      )
+      selectedRoute.serviceDate,
+      selectedRoute.startTime ?? DEFAULT_ROUTE_START_TIME,
+      selectedRoute.stops,
+    )
     : []
   const pickupArrival = pickupStopIndex >= 0 ? arrivals[pickupStopIndex] : undefined
   const deliveryArrival = deliveryStopIndex >= 0 ? arrivals[deliveryStopIndex] : undefined
@@ -771,12 +758,12 @@ export function ClientRequestForm({
       setValues((current) =>
         current.dailyRouteId === route.id && !current.origin
           ? {
-              ...current,
-              origin: origin.locality,
-              originStopId: origin.id,
-              destination: '',
-              destinationStopId: '',
-            }
+            ...current,
+            origin: origin.locality,
+            originStopId: origin.id,
+            destination: '',
+            destinationStopId: '',
+          }
           : current,
       )
       setOriginSuggestion(`Hemos seleccionado ${origin.locality} como recogida más cercana.`)
@@ -1304,7 +1291,7 @@ export function ClientRequestForm({
               <div className="request-form-block-heading">
                 <div>
                   <h4>Recogida y entrega</h4>
-                  <p>Elige las paradas de la ruta donde recogemos y dejamos a tu mascota.</p>
+                  <p>Elige las paradas de la ruta donde recogemos y dejamos a tu mascota de nuestros puntos de encuentro.</p>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -1669,7 +1656,7 @@ export function ClientRequestForm({
                                     ) / 100,
                                   )}
                                   {transportBoxCategoryRank(category) >
-                                  transportBoxCategoryRank(minimumCategory)
+                                    transportBoxCategoryRank(minimumCategory)
                                     ? ' · extra por comodidad'
                                     : ''}
                                 </option>

@@ -292,6 +292,8 @@ describe('LetterForm paid manual letter creation', () => {
     )
 
     expect(markup).toContain('Crear y marcar como pagada')
+    expect(markup).toContain('Servicio gratuito o propio: pagada sin factura')
+    expect(markup).toContain('No se generará factura, solicitud de pago ni ingresos.')
     expect(markup).toContain('Si ya está pagada, método de cobro')
     expect(markup).toContain('<option>Bizum</option>')
     const amountInput = markup.match(/<input[^>]*name="billingTotal"[^>]*>/)?.[0]
@@ -301,6 +303,24 @@ describe('LetterForm paid manual letter creation', () => {
     expect(amountInput).toContain('required=""')
     expect(amountInput).not.toMatch(/\s(?:readonly|disabled|max)=/i)
     expect(markup).toContain('Puedes cobrar más o menos.')
+  })
+
+  it('does not offer billing fields or change the free option when editing a complimentary letter', () => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: { ...letter, complimentary: true },
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    expect(markup).not.toContain('¿Quién paga el servicio?')
+    expect(markup).not.toContain('Servicio gratuito o propio: pagada sin factura')
   })
 })
 

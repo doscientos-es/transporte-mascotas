@@ -185,4 +185,37 @@ describe('LettersPage route selector', () => {
     expect(pendingMarkup).toContain('>Pendiente de pago</span>')
     expect(pendingMarkup).not.toContain('letter-paid')
   })
+
+  it('shows complimentary letters as paid without offering a payment request', () => {
+    const routeKey = encodeURIComponent(JSON.stringify(['Ruta Norte', '2026-10-07']))
+    const markup = renderToStaticMarkup(
+      createElement(
+        MemoryRouter,
+        { initialEntries: [`/?ruta-carta=${routeKey}&estado=paid`] },
+        createElement(LettersPage, {
+          letters: [
+            {
+              id: 'free',
+              route: 'Ruta Norte',
+              serviceDate: '2026-10-07',
+              status: 'pendiente',
+              paymentStatus: 'paid',
+              complimentary: true,
+              animals: [],
+              billingClient: { fullName: 'Cliente' },
+            } as unknown as Letter,
+          ],
+          loading: false,
+          error: '',
+          onRetry: vi.fn(),
+          onEdit: vi.fn(),
+          onOpenClient: vi.fn(),
+          onOpenPaymentRequests: vi.fn(),
+        }),
+      ),
+    )
+    expect(markup).toContain('free')
+    expect(markup).toContain('Pagada · sin factura')
+    expect(markup).not.toContain('Ver solicitud de pago')
+  })
 })

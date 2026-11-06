@@ -6,7 +6,7 @@ import { defaultTransportBoxCatalog } from '@/shared/application/transport-boxes
 import type { UpcomingRoute } from '@/shared/types'
 
 import { payerIdentity } from '../application/request-payer'
-import { ClientRequestForm } from './client-request-form'
+import { ClientRequestForm, validateRequestContactDetails, type RequestFormValues } from './client-request-form'
 
 const route: UpcomingRoute = {
   id: 'route-1',
@@ -96,5 +96,41 @@ describe('ClientRequestForm contact details', () => {
       city: 'Valencia',
     })
     expect(payerIdentity({ ...parties, billingPayer: 'manual' })).toEqual({})
+  })
+})
+
+describe('ClientRequestForm email requirements', () => {
+  const values = {
+    contactName: 'Ana', senderNif: '123', contactPhone: '600000000',
+    contactEmail: 'ana@example.test', senderAddress: 'Calle', senderPostalCode: '28001',
+    senderCity: 'Madrid', senderProvince: 'Madrid', recipientName: 'Luis', recipientNif: '456',
+    recipientPhone: '611111111', recipientEmail: 'luis@example.test', recipientAddress: 'Calle',
+    recipientPostalCode: '46001', recipientCity: 'Valencia', recipientProvince: 'Valencia',
+    billingPayer: 'manual', billingClient: {
+      fullName: 'Empresa', nif: '123', address: 'Calle', postalCode: '28001', city: 'Madrid',
+      email: 'empresa@example.test', phone: '600000000',
+    },
+  } as RequestFormValues
+
+  it('accepts valid sender, recipient and payer emails', () => {
+    expect(validateRequestContactDetails(values)).toEqual({ message: '' })
+  })
+
+  it.each(['', '   ', 'incorrecto'])('requires a valid sender email: %j', (email) => {
+    expect(validateRequestContactDetails({ ...values, contactEmail: email }).fieldId).toBe('request-contact-email')
+  })
+
+  it.each(['', '   ', 'incorrecto'])('requires a valid recipient email: %j', (email) => {
+    expect(validateRequestContactDetails({ ...values, recipientEmail: email }).fieldId).toBe('request-recipient-email')
+  })
+
+  it.each(['', '   ', 'incorrecto'])('requires a valid separate payer email: %j', (email) => {
+    expect(validateRequestContactDetails({ ...values, billingClient: { ...values.billingClient, email } }).fieldId).toBe('request-billing-email')
+  })
+
+  it('does not require a separate payer email when the payer is the sender or recipient', () => {
+    for (const billingPayer of ['remitente', 'destinatario'] as const) {
+      expect(validateRequestContactDetails({ ...values, billingPayer, billingClient: { ...values.billingClient, email: '' } })).toEqual({ message: '' })
+    }
   })
 })

@@ -117,6 +117,8 @@ export interface Letter {
   serviceDate: string
   status: LetterStatus
   paymentStatus?: 'paid' | 'pending'
+  complimentary?: boolean
+  issuedInvoiceDraftId?: string | undefined
   animals: Animal[]
   importedAt: string
   extractionEmail?: string
@@ -185,6 +187,7 @@ export interface PaymentDelivery {
 }
 
 export type ManualPaymentMethod = 'Transferencia' | 'Bizum' | 'Tarjeta'
+export type ManualLetterSettlement = ManualPaymentMethod | 'complimentary'
 
 export interface ManualInvoiceInput {
   id: string

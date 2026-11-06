@@ -45,6 +45,7 @@ import type {
   InvoicePayer,
   Letter,
   LetterDraft,
+  ManualLetterSettlement,
   ManualPaymentMethod,
   RouteDirection,
   RouteStop,
@@ -224,7 +225,7 @@ export type LetterFormProps = {
   templates: RouteTemplate[]
   boxCatalog: TransportBoxCatalog
   onClose: () => void
-  onCreate: (draft: LetterDraft, paymentMethod?: ManualPaymentMethod) => Promise<void>
+  onCreate: (draft: LetterDraft, settlement?: ManualLetterSettlement) => Promise<void>
   onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>
   letter?: Letter
   routeId?: string
@@ -312,6 +313,7 @@ export function LetterForm({
   )
   const [savingMode, setSavingMode] = useState<'request' | 'paid' | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<ManualPaymentMethod>('Transferencia')
+  const [complimentary, setComplimentary] = useState(false)
   const [error, setError] = useState('')
   const [addingStopFor, setAddingStopFor] = useState<'origin' | 'destination' | null>(null)
   const creationMode = useRef<'request' | 'paid'>('request')
@@ -339,7 +341,7 @@ export function LetterForm({
     }))
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const createAsPaid = !isEditing && creationMode.current === 'paid'
+    const createAsPaid = !isEditing && !complimentary && creationMode.current === 'paid'
     creationMode.current = 'request'
     if (!isWhatsAppPhone(draft.senderPhone) || !isWhatsAppPhone(draft.recipientPhone)) {
       setError('Indica teléfonos válidos para remitente y destinatario.')
@@ -358,9 +360,12 @@ export function LetterForm({
     try {
       if (!isEditing) {
         validateManualLetterBreeds(draft.animals)
-        manualLetterTotalCents(draft, boxCatalog)
+        if (!complimentary) manualLetterTotalCents(draft, boxCatalog)
       }
-      await onCreate(draft, createAsPaid ? paymentMethod : undefined)
+      await onCreate(
+        draft,
+        !isEditing && complimentary ? 'complimentary' : createAsPaid ? paymentMethod : undefined,
+      )
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido guardar la carta.')
     } finally {
@@ -484,18 +489,35 @@ export function LetterForm({
           Al guardar, la carta queda firmada.
         </p>
       </PaperSheet>
-      <BillingAndSignatureSection
-        draft={draft}
-        totalCents={transportAnimalsTotalCents(draft.animals, boxCatalog)}
-        update={update}
-        isEditing={isEditing}
-        onOtherPayerChange={(field, value) =>
-          setDraft((current) => ({
-            ...current,
-            otherPayer: { ...current.otherPayer, [field]: value },
-          }))
-        }
-      />
+      {!isEditing && (
+        <label className="border-border bg-card flex items-start gap-3 rounded-xl border p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={complimentary}
+            disabled={isSaving}
+            onChange={(event) => setComplimentary(event.target.checked)}
+          />
+          <span>
+            <strong>Servicio gratuito o propio: pagada sin factura</strong>
+            <br />
+            No se generará factura, solicitud de pago ni ingresos.
+          </span>
+        </label>
+      )}
+      {!complimentary && !letter?.complimentary && (
+        <BillingAndSignatureSection
+          draft={draft}
+          totalCents={transportAnimalsTotalCents(draft.animals, boxCatalog)}
+          update={update}
+          isEditing={isEditing}
+          onOtherPayerChange={(field, value) =>
+            setDraft((current) => ({
+              ...current,
+              otherPayer: { ...current.otherPayer, [field]: value },
+            }))
+          }
+        />
+      )}
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -506,7 +528,9 @@ export function LetterForm({
           <p className="text-muted-foreground m-0 text-xs">
             {isEditing
               ? 'Guarda los cambios y vuelve a firmar la carta.'
-              : 'Crea la carta y deja el cobro pendiente.'}
+              : complimentary
+                ? 'Crea la carta sin factura ni cobro.'
+                : 'Crea la carta y deja el cobro pendiente.'}
           </p>
           <Button type="submit" disabled={isSaving} className="h-10 w-full">
             <ShieldCheck />{' '}
@@ -514,11 +538,13 @@ export function LetterForm({
               ? 'Guardando carta…'
               : isEditing
                 ? 'Firmar y guardar cambios'
-                : 'Firmar y crear carta'}
+                : complimentary
+                  ? 'Crear pagada sin factura'
+                  : 'Firmar y crear carta'}
           </Button>
         </div>
-        {!isEditing && (
-          <div className="border-border flex flex-col gap-2 border-t pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+        {!isEditing && !complimentary && (
+          <div className="flex flex-col gap-2 pt-3 sm:pt-0 sm:pl-4">
             <Label className="text-xs font-semibold text-[#454545]">
               Si ya está pagada, método de cobro
               <select

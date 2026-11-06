@@ -6,7 +6,7 @@ declare
 begin
   select prosrc into function_source
   from pg_proc
-  where oid = 'public.create_manual_carriage_letter(uuid,text,jsonb,jsonb,text,text,text,text,text[],public.payer_type,jsonb,numeric,boolean,jsonb,jsonb,integer)'::regprocedure;
+  where oid = 'public.create_manual_carriage_letter(uuid,text,jsonb,jsonb,text,text,text,text,text[],public.payer_type,jsonb,numeric,boolean,jsonb,jsonb,integer,text,boolean)'::regprocedure;
 
   if function_source is null then
     raise exception 'Manual carriage-letter creation function is not installed';
