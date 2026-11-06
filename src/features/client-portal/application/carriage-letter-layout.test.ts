@@ -74,7 +74,7 @@ describe.each([
       x: 198,
       align: 'right',
     })
-    expect(images).toEqual([[92, 4.5, 26, 26]])
+    expect(images).toEqual([[89, 4.7, 32, 26]])
     expect(rectangles).toContainEqual([4, 4, 202, 30])
     expect(rectangles).toContainEqual([4, 128.7, 101, 15.3])
     expect(rectangles.every(([, y, , height]) => y + height <= 148)).toBe(true)

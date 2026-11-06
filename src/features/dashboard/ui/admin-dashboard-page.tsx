@@ -320,6 +320,7 @@ export function AdminDashboardPage({
                   error={dashboard.lettersError}
                   onRetry={() => void dashboard.ensureLetters(true)}
                   onEdit={dashboard.setEditingLetter}
+                  onCancelLetter={dashboard.cancelLetter}
                   onOpenClient={searchClient}
                   onOpenPaymentRequests={openPaymentRequestForLetter}
                 />
@@ -376,6 +377,7 @@ export function AdminDashboardPage({
                   onRemoveStop={dashboard.removeRouteStop}
                   onUpdateService={dashboard.updateRouteService}
                   onRemoveLetter={dashboard.removeRouteLetter}
+                  onCancelLetter={dashboard.cancelLetter}
                   onCloseRoute={dashboard.closeRoute}
                   onDeleteRoute={dashboard.removeRoute}
                   canManage

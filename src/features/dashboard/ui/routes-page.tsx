@@ -90,6 +90,7 @@ import { transportReminderMessage, type ReminderPoint } from '../application/ser
 import { mergedStopInstructions } from '../application/stop-instructions'
 import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { CalculationProgress } from './calculation-progress'
+import { CancelLetterDialog } from './cancel-letter-dialog'
 import { StopFormDialog } from './operation-dialogs'
 import { RouteVerificationPanel, type VerificationStatus } from './route-verification-panel'
 
@@ -115,6 +116,7 @@ type Props = {
   onRemoveStop: (routeId: string, stopId: string) => Promise<void>
   onUpdateService: (routeId: string, service: ServiceAction) => void
   onRemoveLetter: (routeId: string, letterId: string) => Promise<void>
+  onCancelLetter: (letterId: string) => Promise<void>
   onCloseRoute: (routeId: string) => Promise<void>
   onDeleteRoute?: (routeId: string) => Promise<void>
   canManage?: boolean
@@ -469,6 +471,7 @@ export function RoutesPage({
   onAddStop,
   onRemoveStop,
   onRemoveLetter,
+  onCancelLetter,
   onCloseRoute,
   onDeleteRoute,
   canManage = true,
@@ -480,6 +483,7 @@ export function RoutesPage({
   const [reorderingStops, setReorderingStops] = useState(false)
   const [deletingStop, setDeletingStop] = useState<DailyRouteStop | null>(null)
   const [removingLetter, setRemovingLetter] = useState<string | null>(null)
+  const [cancellingLetter, setCancellingLetter] = useState<string | null>(null)
   const [removingLetterBusy, setRemovingLetterBusy] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
@@ -1042,6 +1046,7 @@ export function RoutesPage({
                   }
                   onAction={updateServices}
                   onRemoveLetter={canManage ? setRemovingLetter : undefined}
+                  onCancelLetter={canManage ? setCancellingLetter : undefined}
                 />
               ))}
             </ol>
@@ -1165,6 +1170,13 @@ export function RoutesPage({
           onSave={saveReorderedStops}
         />
       )}
+      {cancellingLetter && (
+        <CancelLetterDialog
+          letterId={cancellingLetter}
+          onCancelLetter={onCancelLetter}
+          onClose={() => setCancellingLetter(null)}
+        />
+      )}
       <AlertDialog
         open={removingLetter !== null}
         onOpenChange={(open) => {
@@ -1256,6 +1268,7 @@ function JourneyStop({
   onDelete,
   onAction,
   onRemoveLetter,
+  onCancelLetter,
 }: {
   stop: DailyRouteStop
   index: number
@@ -1270,6 +1283,7 @@ function JourneyStop({
   onDelete?: () => void
   onAction: (ids: string[]) => Promise<void>
   onRemoveLetter?: ((letterId: string) => void) | undefined
+  onCancelLetter?: ((letterId: string) => void) | undefined
 }) {
   const hasServices = services.length > 0
   const instructions = mergedStopInstructions(stop.alias, stop.place)
@@ -1352,6 +1366,9 @@ function JourneyStop({
                 onToggle={() => onAction(group.actions.map((action) => action.id))}
                 onRemove={
                   onRemoveLetter ? () => onRemoveLetter(group.actions[0].letterId) : undefined
+                }
+                onCancel={
+                  onCancelLetter ? () => onCancelLetter(group.actions[0].letterId) : undefined
                 }
               />
             ))}
@@ -1692,11 +1709,13 @@ function ServiceCard({
   reminder,
   onToggle,
   onRemove,
+  onCancel,
 }: {
   group: ServiceGroup
   reminder: string
   onToggle: () => Promise<void>
   onRemove?: (() => void) | undefined
+  onCancel?: (() => void) | undefined
 }) {
   const action = group.actions[0]
   const done = group.actions.every((item) => item.status === 'completada')
@@ -1729,11 +1748,18 @@ function ServiceCard({
         />
       </div>
       {action.type === 'recogida' ? (
-        onRemove && (
-          <Button variant="outline" size="sm" onClick={onRemove}>
-            Quitar de la ruta
-          </Button>
-        )
+        <div className="flex flex-wrap gap-2">
+          {onRemove && (
+            <Button variant="outline" size="sm" onClick={onRemove}>
+              Quitar de la ruta
+            </Button>
+          )}
+          {onCancel && (
+            <Button variant="outline" size="sm" onClick={onCancel}>
+              Anular
+            </Button>
+          )}
+        </div>
       ) : (
         <Button variant={done ? 'outline' : 'default'} size="sm" onClick={() => void onToggle()}>
           {done ? 'Deshacer' : 'Entregado'}

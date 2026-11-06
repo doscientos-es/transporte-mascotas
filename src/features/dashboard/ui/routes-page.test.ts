@@ -74,6 +74,7 @@ describe('RoutesPage header', () => {
           onRemoveStop: async () => {},
           onUpdateService: vi.fn(),
           onRemoveLetter: vi.fn(),
+          onCancelLetter: vi.fn(),
           onCloseRoute: async () => {},
           canManage: true,
         }),
@@ -153,6 +154,7 @@ describe('route pickup actions', () => {
           onRemoveStop: vi.fn(),
           onUpdateService: vi.fn(),
           onRemoveLetter: vi.fn(),
+          onCancelLetter: vi.fn(),
           onCloseRoute: vi.fn(),
           canManage,
         }),
@@ -162,5 +164,6 @@ describe('route pickup actions', () => {
     expect(markup).toContain('>Entregado</button>')
     expect(markup).toContain('1 transporte')
     expect(markup.includes('>Quitar de la ruta</button>')).toBe(canManage)
+    expect(markup.includes('>Anular</button>')).toBe(canManage)
   })
 })

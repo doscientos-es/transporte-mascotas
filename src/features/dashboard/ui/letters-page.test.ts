@@ -26,6 +26,7 @@ describe('LettersPage route selector', () => {
           error: '',
           onRetry: vi.fn(),
           onEdit: vi.fn(),
+          onCancelLetter: vi.fn(),
           onOpenClient: vi.fn(),
           onOpenPaymentRequests: vi.fn(),
         }),
@@ -54,6 +55,7 @@ describe('LettersPage route selector', () => {
           error: '',
           onRetry: vi.fn(),
           onEdit: vi.fn(),
+          onCancelLetter: vi.fn(),
           onOpenClient: vi.fn(),
           onOpenPaymentRequests: vi.fn(),
         }),
@@ -86,6 +88,7 @@ describe('LettersPage route selector', () => {
           error: '',
           onRetry: vi.fn(),
           onEdit: vi.fn(),
+          onCancelLetter: vi.fn(),
           onOpenClient: vi.fn(),
           onOpenPaymentRequests: vi.fn(),
         }),
@@ -117,6 +120,7 @@ describe('LettersPage route selector', () => {
           error: '',
           onRetry: vi.fn(),
           onEdit: vi.fn(),
+          onCancelLetter: vi.fn(),
           onOpenClient: vi.fn(),
           onOpenPaymentRequests: vi.fn(),
         }),
@@ -164,6 +168,7 @@ describe('LettersPage route selector', () => {
             error: '',
             onRetry: vi.fn(),
             onEdit: vi.fn(),
+            onCancelLetter: vi.fn(),
             onOpenClient: vi.fn(),
             onOpenPaymentRequests: vi.fn(),
           }),
@@ -209,6 +214,7 @@ describe('LettersPage route selector', () => {
           error: '',
           onRetry: vi.fn(),
           onEdit: vi.fn(),
+          onCancelLetter: vi.fn(),
           onOpenClient: vi.fn(),
           onOpenPaymentRequests: vi.fn(),
         }),
@@ -217,5 +223,50 @@ describe('LettersPage route selector', () => {
     expect(markup).toContain('free')
     expect(markup).toContain('Pagada · sin factura')
     expect(markup).not.toContain('Ver solicitud de pago')
+  })
+
+  it('keeps cancelled letters out of active route cards and shows them in the cancelled view', () => {
+    const letters = [
+      {
+        id: 'active',
+        route: 'Ruta Norte',
+        serviceDate: '2026-10-07',
+        status: 'pendiente',
+        animals: [],
+        billingClient: { fullName: 'Cliente' },
+      },
+      {
+        id: 'cancelled',
+        route: 'Sin ruta',
+        serviceDate: '2026-10-07',
+        status: 'cancelada',
+        animals: [],
+        billingClient: { fullName: 'Cliente' },
+      },
+    ] as unknown as Letter[]
+    const render = (url: string) =>
+      renderToStaticMarkup(
+        createElement(
+          MemoryRouter,
+          { initialEntries: [url] },
+          createElement(LettersPage, {
+            letters,
+            loading: false,
+            error: '',
+            onRetry: vi.fn(),
+            onEdit: vi.fn(),
+            onCancelLetter: vi.fn(),
+            onOpenClient: vi.fn(),
+            onOpenPaymentRequests: vi.fn(),
+          }),
+        ),
+      )
+    const active = render('/')
+    const cancelled = render('/?vista=anuladas')
+    expect(active).toContain('Ver 1 cartas de Ruta Norte')
+    expect(active).not.toContain('Ver 1 cartas de Sin ruta')
+    expect(cancelled).toContain('cancelled')
+    expect(cancelled).toContain('>Anulada</span>')
+    expect(cancelled).not.toContain('>active</strong>')
   })
 })

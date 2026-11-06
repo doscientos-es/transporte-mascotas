@@ -56,11 +56,14 @@ describe('createCarriageLetterPdf', () => {
       const blob = await createCarriageLetterPdf(letterToCarriageLetter(letter, 17))
       const bytes = await blob.arrayBuffer()
       const pdfSource = new TextDecoder('latin1').decode(bytes)
-      const imageTransform = /([0-9.]+) 0 0 ([0-9.]+) [0-9.]+ [0-9.]+ cm\s*\/I[0-9]+ Do/.exec(
+      const imageTransform = /([0-9.]+) 0 0 ([0-9.]+) ([0-9.]+) ([0-9.]+) cm\s*\/I[0-9]+ Do/.exec(
         pdfSource,
       )
       expect(imageTransform).not.toBeNull()
       expect(Number(imageTransform?.[1]) / Number(imageTransform?.[2])).toBeCloseTo(1399 / 1124)
+      const pointsPerMm = 72 / 25.4
+      expect(Number(imageTransform?.[1]) / pointsPerMm).toBeCloseTo(32)
+      expect((Number(imageTransform?.[3]) + Number(imageTransform?.[1]) / 2) / pointsPerMm).toBeCloseTo(105)
       const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
       const task = getDocument({ data: new Uint8Array(bytes) })
       try {

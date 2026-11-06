@@ -14,7 +14,16 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 
 import type { DailyRoute, Letter } from '@/shared/types'
 
-import { loadLetters, saveManualLetter } from './letters'
+import { cancelCarriageLetter, loadLetters, saveManualLetter } from './letters'
+
+describe('cancelCarriageLetter', () => {
+  it('uses the atomic cancellation RPC and propagates database errors', async () => {
+    rpc.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: new Error('denied') })
+    await cancelCarriageLetter('letter-1')
+    expect(rpc).toHaveBeenCalledWith('cancel_carriage_letter', { p_letter_id: 'letter-1' })
+    await expect(cancelCarriageLetter('letter-1')).rejects.toThrow('denied')
+  })
+})
 
 describe('complimentary letters', () => {
   beforeEach(() => {
@@ -32,15 +41,38 @@ describe('complimentary letters', () => {
     order.mockResolvedValue({
       data: [
         { ...row, id: 'free', complimentary: true, invoice_drafts: [] },
-        { ...row, id: 'paid', complimentary: false, invoice_drafts: [{ id: 'draft-paid', status: 'emitida', issued_invoices: { id: 'issued' } }] },
+        {
+          ...row,
+          id: 'paid',
+          complimentary: false,
+          invoice_drafts: [
+            { id: 'draft-paid', status: 'emitida', issued_invoices: { id: 'issued' } },
+          ],
+        },
         {
           ...row,
           id: 'pending',
           complimentary: false,
-          invoice_drafts: [{ id: 'draft-pending', status: 'solicitud_pago', issued_invoices: null }],
+          invoice_drafts: [
+            { id: 'draft-pending', status: 'solicitud_pago', issued_invoices: null },
+          ],
         },
-        { ...row, id: 'no-issued', complimentary: false, invoice_drafts: { id: 'draft-missing', status: 'pagada', issued_invoices: [] } },
-        { ...row, id: 'issued-array', complimentary: false, invoice_drafts: { id: 'draft-array', status: 'emitida', issued_invoices: [{ id: 'issued' }] } },
+        {
+          ...row,
+          id: 'no-issued',
+          complimentary: false,
+          invoice_drafts: { id: 'draft-missing', status: 'pagada', issued_invoices: [] },
+        },
+        {
+          ...row,
+          id: 'issued-array',
+          complimentary: false,
+          invoice_drafts: {
+            id: 'draft-array',
+            status: 'emitida',
+            issued_invoices: [{ id: 'issued' }],
+          },
+        },
       ],
       error: null,
     })
@@ -55,9 +87,15 @@ describe('complimentary letters', () => {
       { id: 'issued-array', complimentary: false, paymentStatus: 'paid' },
     ])
     expect(result.map((letter) => letter.issuedInvoiceDraftId)).toEqual([
-      undefined, 'draft-paid', undefined, undefined, 'draft-array',
+      undefined,
+      'draft-paid',
+      undefined,
+      undefined,
+      'draft-array',
     ])
-    expect(select).toHaveBeenCalledWith(expect.stringContaining('invoice_drafts(id,status,issued_invoices(id))'))
+    expect(select).toHaveBeenCalledWith(
+      expect.stringContaining('invoice_drafts(id,status,issued_invoices(id))'),
+    )
   })
 
   it('sends the free flag and zero total to the same atomic creation RPC', async () => {

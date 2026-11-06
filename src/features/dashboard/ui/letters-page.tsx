@@ -49,6 +49,7 @@ import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { groupLettersByRoute } from '../application/letter-route-groups'
 import { downloadBlob } from './billing-document-export'
+import { CancelLetterDialog } from './cancel-letter-dialog'
 import { LetterInvoiceDownload } from './letter-invoice-download'
 import { PdfPreview } from './pdf-preview'
 
@@ -59,6 +60,7 @@ type Props = {
   error: string
   onRetry: () => void
   onEdit: (letter: Letter) => void
+  onCancelLetter: (letterId: string) => Promise<void>
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
 }
@@ -110,6 +112,7 @@ export function LettersPage({
   error,
   onRetry,
   onEdit,
+  onCancelLetter,
   onOpenClient,
   onOpenPaymentRequests,
 }: Props) {
@@ -126,7 +129,15 @@ export function LettersPage({
   const search = searchParams.get('q') ?? ''
   const statusFilter = readEnumParam(searchParams.get('estado'), letterStatusFilters, 'todos')
   const requestedPage = readPageParam(searchParams.get('pagina'))
-  const routeGroups = useMemo(() => groupLettersByRoute(sourceLetters), [sourceLetters])
+  const cancelled = searchParams.get('vista') === 'anuladas'
+  const cancelledLetters = useMemo(
+    () => sourceLetters.filter((letter) => letter.status === 'cancelada'),
+    [sourceLetters],
+  )
+  const routeGroups = useMemo(
+    () => groupLettersByRoute(sourceLetters.filter((letter) => letter.status !== 'cancelada')),
+    [sourceLetters],
+  )
   const routeSearch = searchParams.get('ruta-busqueda') ?? ''
   const routeTemplateFilter = searchParams.get('ruta-plantilla') ?? ''
   const routeMonthFilter = searchParams.get('ruta-mes') ?? ''
@@ -167,7 +178,7 @@ export function LettersPage({
     routeGroups.find((group) => group.letters.some((letter) => letter.id === viewingLetter?.id))
   const searchedLetters = useMemo(() => {
     const term = search.trim().toLocaleLowerCase()
-    const routeLetters = selectedRouteGroup?.letters ?? []
+    const routeLetters = cancelled ? cancelledLetters : (selectedRouteGroup?.letters ?? [])
     if (!term) return routeLetters
     return routeLetters.filter((letter) =>
       [
@@ -191,7 +202,7 @@ export function LettersPage({
         .toLocaleLowerCase()
         .includes(term),
     )
-  }, [search, selectedRouteGroup])
+  }, [cancelled, cancelledLetters, search, selectedRouteGroup])
   const letters = useMemo(
     () =>
       statusFilter === 'todos'
@@ -213,6 +224,7 @@ export function LettersPage({
   )
   const letterPagination = paginate(letters, requestedPage, pageSize)
   const [downloadError, setDownloadError] = useState('')
+  const [cancellingLetter, setCancellingLetter] = useState<string | null>(null)
 
   function boxForLetter(letter: Letter) {
     return dailyRoutes
@@ -253,11 +265,14 @@ export function LettersPage({
     <>
       <PageIntro
         text={
-          selectedRouteGroup
-            ? `Cartas de porte de ${selectedRouteGroup.routeName}.`
-            : 'Selecciona una ruta para consultar sus cartas de porte.'
+          cancelled
+            ? 'Consulta las cartas de porte anuladas.'
+            : selectedRouteGroup
+              ? `Cartas de porte de ${selectedRouteGroup.routeName}.`
+              : 'Selecciona una ruta para consultar sus cartas de porte.'
         }
         leading={
+          !cancelled &&
           selectedRouteGroup && (
             <Button
               size="sm"
@@ -277,32 +292,70 @@ export function LettersPage({
           )
         }
       />
-      {selectedRouteGroup ? (
+      <div className="mb-4 flex flex-wrap gap-2" aria-label="Vistas de cartas">
+        <Button
+          size="sm"
+          variant={cancelled ? 'outline' : 'default'}
+          onClick={() =>
+            updateParams({
+              vista: undefined,
+              'ruta-carta': undefined,
+              carta: undefined,
+              q: undefined,
+              estado: undefined,
+              pagina: undefined,
+            })
+          }
+        >
+          Activas
+        </Button>
+        <Button
+          size="sm"
+          variant={cancelled ? 'default' : 'outline'}
+          onClick={() =>
+            updateParams({
+              vista: 'anuladas',
+              'ruta-carta': undefined,
+              carta: undefined,
+              q: undefined,
+              estado: undefined,
+              pagina: undefined,
+            })
+          }
+        >
+          Anuladas ({cancelledLetters.length})
+        </Button>
+      </div>
+      {cancelled || selectedRouteGroup ? (
         <>
-          <div className="mb-4">
-            <p className="text-muted-foreground text-sm">
-              {formatServiceDate(selectedRouteGroup.serviceDate)} ·{' '}
-              {selectedRouteGroup.letters.length}{' '}
-              {selectedRouteGroup.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
-            </p>
-          </div>
-          <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
-            <Stat
-              label="Pendientes de pago"
-              value={summary.pending}
-              accent="lime"
-              loading={loading}
-              successWhenZero
-              compact
-            />
-            <Stat label="Pagadas" value={summary.paid} loading={loading} compact />
-            <Stat label="Animales" value={summary.animals} loading={loading} compact />
-          </section>
+          {!cancelled && selectedRouteGroup && (
+            <div className="mb-4">
+              <p className="text-muted-foreground text-sm">
+                {formatServiceDate(selectedRouteGroup.serviceDate)} ·{' '}
+                {selectedRouteGroup.letters.length}{' '}
+                {selectedRouteGroup.letters.length === 1 ? 'carta de porte' : 'cartas de porte'}
+              </p>
+            </div>
+          )}
+          {!cancelled && (
+            <section className="mb-5 grid grid-cols-3 gap-3.5 max-[850px]:grid-cols-1 max-[850px]:gap-[9px]">
+              <Stat
+                label="Pendientes de pago"
+                value={summary.pending}
+                accent="lime"
+                loading={loading}
+                successWhenZero
+                compact
+              />
+              <Stat label="Pagadas" value={summary.paid} loading={loading} compact />
+              <Stat label="Animales" value={summary.animals} loading={loading} compact />
+            </section>
+          )}
           <Card className="table-card">
             <CardContent>
               <div className="table-heading">
                 <div>
-                  <h3>Cartas de porte</h3>
+                  <h3>{cancelled ? 'Cartas anuladas' : 'Cartas de porte'}</h3>
                   <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
                 </div>
                 <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
@@ -373,6 +426,7 @@ export function LettersPage({
                             box={boxForLetter(letter)}
                             onView={(letter) => updateParams({ carta: letter.id }, false)}
                             onEdit={onEdit}
+                            onCancelLetter={setCancellingLetter}
                             onDownload={(letter) => void downloadLetterPdf(letter)}
                             clientName={letter.billingClient.fullName}
                             onOpenClient={onOpenClient}
@@ -389,6 +443,7 @@ export function LettersPage({
                         letter={letter}
                         onView={(letter) => updateParams({ carta: letter.id }, false)}
                         onEdit={onEdit}
+                        onCancelLetter={setCancellingLetter}
                         onDownload={(letter) => void downloadLetterPdf(letter)}
                         clientName={letter.billingClient.fullName}
                         onOpenClient={onOpenClient}
@@ -546,6 +601,27 @@ export function LettersPage({
           onClose={() => updateParams({ carta: undefined })}
           onOpenClient={onOpenClient}
           onOpenPaymentRequests={onOpenPaymentRequests}
+          onCancelLetter={(letterId) => {
+            updateParams({ carta: undefined })
+            setCancellingLetter(letterId)
+          }}
+        />
+      )}
+      {cancellingLetter && (
+        <CancelLetterDialog
+          letterId={cancellingLetter}
+          onCancelLetter={async (letterId) => {
+            await onCancelLetter(letterId)
+            updateParams({
+              vista: 'anuladas',
+              'ruta-carta': undefined,
+              carta: undefined,
+              q: undefined,
+              estado: undefined,
+              pagina: undefined,
+            })
+          }}
+          onClose={() => setCancellingLetter(null)}
         />
       )}
     </>
@@ -568,6 +644,7 @@ function LettersListSkeleton() {
 }
 
 function LetterPaymentBadge({ letter }: { letter: Letter }) {
+  if (letter.status === 'cancelada') return <StatusBadge status="cancelada">Anulada</StatusBadge>
   const isPaid = letter.paymentStatus === 'paid'
   return (
     <StatusBadge status={isPaid ? 'pagada' : 'pendiente_pago'}>
@@ -581,6 +658,7 @@ function LetterRow({
   box,
   onView,
   onEdit,
+  onCancelLetter,
   onDownload,
   clientName,
   onOpenClient,
@@ -590,6 +668,7 @@ function LetterRow({
   box?: number | undefined
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
+  onCancelLetter: (letterId: string) => void
   onDownload: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
@@ -636,6 +715,7 @@ function LetterRow({
             letter={letter}
             clientName={clientName}
             onEdit={onEdit}
+            onCancelLetter={onCancelLetter}
             onDownload={onDownload}
             onOpenClient={onOpenClient}
             onOpenPaymentRequests={onOpenPaymentRequests}
@@ -650,6 +730,7 @@ function LetterActionsMenu({
   letter,
   clientName,
   onEdit,
+  onCancelLetter,
   onDownload,
   onOpenClient,
   onOpenPaymentRequests,
@@ -657,6 +738,7 @@ function LetterActionsMenu({
   letter: Letter
   clientName: string
   onEdit: (letter: Letter) => void
+  onCancelLetter: (letterId: string) => void
   onDownload: (letter: Letter) => void
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
@@ -676,9 +758,14 @@ function LetterActionsMenu({
       placement="bottom end"
       className="min-w-48"
     >
-      <DropdownMenuItem onAction={() => onEdit(letter)}>
-        <FilePenLine size={16} /> Editar carta
-      </DropdownMenuItem>
+      {letter.status !== 'cancelada' && (
+        <DropdownMenuItem onAction={() => onEdit(letter)}>
+          <FilePenLine size={16} /> Editar carta
+        </DropdownMenuItem>
+      )}
+      {letter.status !== 'cancelada' && (
+        <DropdownMenuItem onAction={() => onCancelLetter(letter.id)}>Anular carta</DropdownMenuItem>
+      )}
       <DropdownMenuItem onAction={() => onDownload(letter)}>
         <FileDown size={16} /> Descargar PDF
       </DropdownMenuItem>
@@ -700,6 +787,7 @@ function LetterCard({
   letter,
   onView,
   onEdit,
+  onCancelLetter,
   onDownload,
   clientName,
   onOpenClient,
@@ -708,6 +796,7 @@ function LetterCard({
   letter: Letter
   onView: (letter: Letter) => void
   onEdit: (letter: Letter) => void
+  onCancelLetter: (letterId: string) => void
   onDownload: (letter: Letter) => void
   clientName: string
   onOpenClient: (clientName: string) => void
@@ -748,6 +837,7 @@ function LetterCard({
             letter={letter}
             clientName={clientName}
             onEdit={onEdit}
+            onCancelLetter={onCancelLetter}
             onDownload={onDownload}
             onOpenClient={onOpenClient}
             onOpenPaymentRequests={onOpenPaymentRequests}
@@ -767,6 +857,7 @@ function LetterDetailsDialog({
   onClose,
   onOpenClient,
   onOpenPaymentRequests,
+  onCancelLetter,
 }: {
   letter: Letter
   boxNumber: number | null
@@ -776,6 +867,7 @@ function LetterDetailsDialog({
   onClose: () => void
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
+  onCancelLetter: (letterId: string) => void
 }) {
   const [preview, setPreview] = useState<{
     letter: Letter
@@ -945,6 +1037,11 @@ function LetterDetailsDialog({
             <FileDown size={15} /> Descargar PDF
           </Button>
           <LetterInvoiceDownload invoiceDraftId={letter.issuedInvoiceDraftId} />
+          {letter.status !== 'cancelada' && (
+            <Button size="sm" variant="outline" onClick={() => onCancelLetter(letter.id)}>
+              Anular carta
+            </Button>
+          )}
           {!letter.complimentary && (
             <Button size="sm" variant="outline" onClick={() => onOpenPaymentRequests(letter.id)}>
               <ReceiptText size={15} /> Ver solicitud

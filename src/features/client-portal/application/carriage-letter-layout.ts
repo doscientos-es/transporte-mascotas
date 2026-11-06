@@ -134,7 +134,7 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
 
   // Header
   canvas.rect(X0, 4, X1 - X0, 30, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
-  if (logo && canvas.image) canvas.image(logo, 92, 4.5, 26, 26)
+  if (logo && canvas.image) canvas.image(logo, 89, 4.7, 32, 26)
   else canvas.text('KACHE ENVÍOS', MID, 16, { size: 8, bold: true, align: 'center' })
   canvas.text('kacheenvios.com', MID, 33, { size: 5.5, align: 'center' })
   canvas.text(fit('CARTA DE PORTE', 6.5, 78, true), 10, 11, { size: 6.5, bold: true })

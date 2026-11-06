@@ -40,6 +40,7 @@ import {
   updateClient,
 } from '../infrastructure/clients'
 import {
+  cancelCarriageLetter,
   getCachedLetters,
   invalidateLettersCache,
   loadLetters,
@@ -960,6 +961,27 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast('Carta retirada de la ruta y del box. La carta y su factura se conservan.')
   }
 
+  async function cancelLetter(letterId: string) {
+    if (!session) throw new Error('Inicia sesión para anular una carta.')
+    await cancelCarriageLetter(letterId)
+    const update = (route: DailyRoute): DailyRoute => ({
+      ...route,
+      actions: route.actions.filter((action) => action.letterId !== letterId),
+    })
+    setDailyRoutes((current) => current.map(update))
+    setSelectedRoute((current) => (current ? update(current) : null))
+    setLetters((current) =>
+      current.map((letter) =>
+        letter.id === letterId
+          ? { ...letter, status: 'cancelada', route: 'Sin ruta', routeTemplateColor: undefined }
+          : letter,
+      ),
+    )
+    invalidateLettersCache(session.user.id)
+    toast('Carta anulada. Se conservan el cliente y la factura.')
+    void ensureLetters(true)
+  }
+
   async function createLetter(draft: LetterDraft, settlement?: ManualLetterSettlement) {
     if (!session) throw new Error('Inicia sesión para crear una carta de porte.')
     try {
@@ -1427,6 +1449,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     updateRouteService,
     reassignRouteBox,
     removeRouteLetter,
+    cancelLetter,
     createLetter,
     editLetter,
     createDailyRoute,

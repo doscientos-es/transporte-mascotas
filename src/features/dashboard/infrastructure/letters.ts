@@ -165,11 +165,7 @@ function issuedInvoiceDraftId(invoiceDrafts: LetterRow['invoice_drafts']) {
 }
 
 function invoiceDraftArray(invoiceDrafts: LetterRow['invoice_drafts']) {
-  return Array.isArray(invoiceDrafts)
-    ? invoiceDrafts
-    : invoiceDrafts
-      ? [invoiceDrafts]
-      : []
+  return Array.isArray(invoiceDrafts) ? invoiceDrafts : invoiceDrafts ? [invoiceDrafts] : []
 }
 
 export async function loadLetters(sessionId: string, force = false): Promise<Letter[]> {
@@ -186,6 +182,11 @@ export async function loadLetters(sessionId: string, force = false): Promise<Let
     .finally(() => pendingLetterLoads.delete(sessionId))
   pendingLetterLoads.set(sessionId, request)
   return request
+}
+
+export async function cancelCarriageLetter(letterId: string) {
+  const { error } = await requireSupabase().rpc('cancel_carriage_letter', { p_letter_id: letterId })
+  if (error) throw error
 }
 
 export async function loadPaymentRequestLetterName(letterId: string) {
