@@ -300,14 +300,16 @@ export function LettersPage({
                   <h3>Cartas de porte</h3>
                   <p>{loading ? 'Cargando registros…' : `${letters.length} registros`}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <SearchFilter
-                    ariaLabel="Buscar cartas"
-                    placeholder="Buscar"
-                    value={search}
-                    onChange={(value) => updateParams({ q: value, pagina: undefined })}
-                    disabled={loading}
-                  />
+                <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
+                  <div className="min-w-0 flex-[1_1_10rem] sm:w-56 sm:flex-none">
+                    <SearchFilter
+                      ariaLabel="Buscar cartas"
+                      placeholder="Buscar"
+                      value={search}
+                      onChange={(value) => updateParams({ q: value, pagina: undefined })}
+                      disabled={loading}
+                    />
+                  </div>
                   <FilterSelect
                     label="Estado"
                     ariaLabel="Filtrar cartas por estado"
@@ -788,7 +790,8 @@ function LetterDetailsDialog({
       active = false
     }
   }, [letter, boxNumber])
-  const currentPreview = preview?.letter === letter && preview.boxNumber === boxNumber ? preview : null
+  const currentPreview =
+    preview?.letter === letter && preview.boxNumber === boxNumber ? preview : null
   const senderAddress = [letter.senderAddress, letter.senderPostalCode, letter.senderCity]
     .filter(Boolean)
     .join(', ')
@@ -822,7 +825,11 @@ function LetterDetailsDialog({
           </DialogDescription>
         </DialogHeader>
         {!currentPreview && <p className="page-loading">Preparando carta de porte…</p>}
-        {currentPreview?.error && <p role="alert" className="form-error">{currentPreview.error}</p>}
+        {currentPreview?.error && (
+          <p role="alert" className="form-error">
+            {currentPreview.error}
+          </p>
+        )}
         {currentPreview?.blob && (
           <div className="letter-print-preview">
             <PdfPreview
@@ -831,7 +838,11 @@ function LetterDetailsDialog({
               className="letter-print-preview-pdf"
               label="Vista previa de la carta de porte"
               scale={1.8}
-              fallback={<p className="form-error" role="alert">No se puede mostrar la vista previa. Descarga el PDF para consultarla.</p>}
+              fallback={
+                <p className="form-error" role="alert">
+                  No se puede mostrar la vista previa. Descarga el PDF para consultarla.
+                </p>
+              }
             />
           </div>
         )}
@@ -902,8 +913,8 @@ function LetterDetailsDialog({
               <p>
                 {letter.accompanyingDocuments.length
                   ? letter.accompanyingDocuments
-                    .map((document) => accompanyingDocumentLabels[document])
-                    .join(', ')
+                      .map((document) => accompanyingDocumentLabels[document])
+                      .join(', ')
                   : 'Sin documentos indicados'}
               </p>
             </div>
@@ -917,7 +928,11 @@ function LetterDetailsDialog({
             </div>
           </section>
         </details>
-        {downloadError && <p className="form-error" role="alert">{downloadError}</p>}
+        {downloadError && (
+          <p className="form-error" role="alert">
+            {downloadError}
+          </p>
+        )}
         <div className="invoice-card-actions">
           <Button size="sm" variant="outline" onClick={() => onDownload(letter)}>
             <FileDown size={15} /> Descargar PDF

@@ -47,7 +47,7 @@ export function PdfPreview({
       })
     return () => {
       active = false
-      void loadingTask?.destroy().catch(() => { })
+      void loadingTask?.destroy().catch(() => {})
     }
   }, [blob, scale])
 

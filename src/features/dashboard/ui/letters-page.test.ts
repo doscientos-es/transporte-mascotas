@@ -172,6 +172,10 @@ describe('LettersPage route selector', () => {
     const paidMarkup = renderForStatus('paid')
     const pendingMarkup = renderForStatus('pending')
 
+    expect(paidMarkup).toContain('flex w-full flex-wrap items-center gap-2.5 sm:w-auto')
+    expect(paidMarkup).toContain('min-w-0 flex-[1_1_10rem] sm:w-56 sm:flex-none')
+    expect(paidMarkup).toContain('aria-label="Buscar cartas"')
+    expect(paidMarkup).toContain('aria-label="Filtrar cartas por estado"')
     expect(paidMarkup).toContain('<option value="pending">Pendientes de pago</option>')
     expect(paidMarkup).toContain('<option value="paid" selected="">Pagadas</option>')
     expect(paidMarkup).not.toContain('En ruta')

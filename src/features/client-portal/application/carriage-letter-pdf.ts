@@ -88,7 +88,14 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
         const scale = Math.min(w / image.width, h / image.height)
         const imageWidth = image.width * scale
         const imageHeight = image.height * scale
-        doc.addImage(data, 'PNG', x + (w - imageWidth) / 2, y + (h - imageHeight) / 2, imageWidth, imageHeight)
+        doc.addImage(
+          data,
+          'PNG',
+          x + (w - imageWidth) / 2,
+          y + (h - imageHeight) / 2,
+          imageWidth,
+          imageHeight,
+        )
       },
       width(value, size, bold) {
         font(size, bold)
