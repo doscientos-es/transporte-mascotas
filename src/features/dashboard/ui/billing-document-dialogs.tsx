@@ -7,8 +7,7 @@ import {
   DialogTitle,
 } from '@doscientos/ui'
 import { CheckCircle2, Download, ExternalLink } from 'lucide-react'
-import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { ClientInvoice, ManualPaymentMethod } from '@/shared/types'
 
@@ -16,6 +15,7 @@ import { loadInvoiceDocumentBlob, prepareInvoiceDocument } from '../application/
 import { paymentRequestLetterName } from '../application/payment-request-letter-name'
 import { createPaymentRequestDocument } from '../application/payment-request-pdf'
 import { downloadBlob } from './billing-document-export'
+import { PdfPreview } from './pdf-preview'
 
 export function InvoicePreviewDialog({
   invoice,
@@ -88,7 +88,7 @@ export function InvoicePreviewDialog({
           </div>
         )}
         {document && (
-          <PaymentRequestPdfPreview
+          <PdfPreview
             blob={document.blob}
             fallback={<p className="form-error">Usa «Abrir» para ver la factura completa.</p>}
           />
@@ -169,61 +169,13 @@ export function PaymentRequestPreviewDialog({
           </p>
         )}
         {document && (
-          <PaymentRequestPdfPreview
+          <PdfPreview
             blob={document.blob}
             fallback={<PaymentRequestDocumentPreview invoice={invoice} clientName={clientName} />}
           />
         )}
       </DialogContent>
     </Dialog>
-  )
-}
-
-function PaymentRequestPdfPreview({ blob, fallback }: { blob: Blob; fallback: React.ReactNode }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let active = true
-    let loadingTask: PDFDocumentLoadingTask | undefined
-    setFailed(false)
-    // Keep PDF.js compatibility or loading failures inside the preview, not the billing page.
-    void Promise.all([import('pdfjs-dist/legacy/build/pdf.mjs'), blob.arrayBuffer()])
-      .then(([pdfjs, data]) => {
-        if (!active) return null
-        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-          'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
-          import.meta.url,
-        ).toString()
-        loadingTask = pdfjs.getDocument({ data })
-        return loadingTask.promise
-      })
-      .then(async (pdf) => {
-        if (!pdf) return
-        const page = await pdf.getPage(1)
-        if (!active || !canvasRef.current) return
-        const viewport = page.getViewport({ scale: 1.35 })
-        const canvas = canvasRef.current
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        const canvasContext = canvas.getContext('2d')
-        if (!canvasContext) throw new Error('No se ha podido preparar la vista previa.')
-        await page.render({ canvas, canvasContext, viewport }).promise
-      })
-      .catch(() => {
-        if (active) setFailed(true)
-      })
-    return () => {
-      active = false
-      void loadingTask?.destroy().catch(() => {
-        // Preview teardown must not trigger the application's unhandled-rejection guard.
-      })
-    }
-  }, [blob])
-
-  if (failed) return fallback
-  return (
-    <canvas ref={canvasRef} className="invoice-preview-pdf" aria-label="Vista previa del PDF" />
   )
 }
 

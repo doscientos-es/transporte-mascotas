@@ -49,6 +49,7 @@ import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { groupLettersByRoute } from '../application/letter-route-groups'
 import { downloadBlob } from './billing-document-export'
+import { PdfPreview } from './pdf-preview'
 
 type Props = {
   letters: Letter[]
@@ -529,8 +530,11 @@ export function LettersPage({
       )}
       {viewingLetter && (
         <LetterDetailsDialog
+          key={viewingLetter.id}
           letter={viewingLetter}
+          boxNumber={boxForLetter(viewingLetter) ?? null}
           clientName={viewingLetter.billingClient.fullName}
+          downloadError={downloadError}
           onDownload={(letter) => void downloadLetterPdf(letter)}
           onClose={() => updateParams({ carta: undefined })}
           onOpenClient={onOpenClient}
@@ -747,19 +751,44 @@ function LetterCard({
 
 function LetterDetailsDialog({
   letter,
+  boxNumber,
   clientName,
+  downloadError,
   onDownload,
   onClose,
   onOpenClient,
   onOpenPaymentRequests,
 }: {
   letter: Letter
+  boxNumber: number | null
   clientName: string
+  downloadError: string
   onDownload: (letter: Letter) => void
   onClose: () => void
   onOpenClient: (clientName: string) => void
   onOpenPaymentRequests: (letterId: string) => void
 }) {
+  const [preview, setPreview] = useState<{
+    letter: Letter
+    boxNumber: number | null
+    blob?: Blob
+    error?: string
+  } | null>(null)
+  useEffect(() => {
+    let active = true
+    void createCarriageLetterPdf(letterToCarriageLetter(letter, boxNumber))
+      .then((blob) => {
+        if (active) setPreview({ letter, boxNumber, blob })
+      })
+      .catch(() => {
+        if (active)
+          setPreview({ letter, boxNumber, error: 'No se ha podido preparar la vista previa.' })
+      })
+    return () => {
+      active = false
+    }
+  }, [letter, boxNumber])
+  const currentPreview = preview?.letter === letter && preview.boxNumber === boxNumber ? preview : null
   const senderAddress = [letter.senderAddress, letter.senderPostalCode, letter.senderCity]
     .filter(Boolean)
     .join(', ')
@@ -789,88 +818,106 @@ function LetterDetailsDialog({
         <DialogHeader className="gap-0">
           <DialogTitle>{letter.id}</DialogTitle>
           <DialogDescription>
-            Detalle de la carta de porte y del servicio contratado.
+            Vista previa de la carta de porte en formato de impresión.
           </DialogDescription>
         </DialogHeader>
-        <div className="letter-detail-route" aria-label="Trayecto">
-          <span>{letter.origin}</span>
-          <ChevronRight aria-hidden size={18} />
-          <span>{letter.destination}</span>
-        </div>
-        <dl className="letter-detail-summary">
-          <div>
-            <dt>Servicio</dt>
-            <dd>{formatServiceDate(letter.serviceDate)}</dd>
-          </div>
-          <div>
-            <dt>Ruta</dt>
-            <dd>{letter.route || 'Sin ruta asignada'}</dd>
-          </div>
-          <div>
-            <dt>Estado</dt>
-            <dd>
-              <LetterPaymentBadge letter={letter} />
-            </dd>
-          </div>
-        </dl>
-        <section className="letter-detail-section">
-          <h3>Contacto y entrega</h3>
-          <div className="letter-detail-contacts">
-            <ContactDetails
-              title="Remitente"
-              name={letter.sender}
-              phone={letter.senderPhone}
-              email={letter.senderEmail}
-              address={senderAddress}
-              message={contactMessage(letter.sender)}
-            />
-            <ContactDetails
-              title="Destinatario"
-              name={letter.recipient}
-              phone={letter.recipientPhone}
-              email={letter.recipientEmail}
-              address={recipientAddress}
-              message={contactMessage(letter.recipient)}
+        {!currentPreview && <p className="page-loading">Preparando carta de porte…</p>}
+        {currentPreview?.error && <p role="alert" className="form-error">{currentPreview.error}</p>}
+        {currentPreview?.blob && (
+          <div className="letter-print-preview">
+            <PdfPreview
+              key={`${letter.id}-${boxNumber ?? 'none'}`}
+              blob={currentPreview.blob}
+              className="letter-print-preview-pdf"
+              label="Vista previa de la carta de porte"
+              scale={1.8}
+              fallback={<p className="form-error" role="alert">No se puede mostrar la vista previa. Descarga el PDF para consultarla.</p>}
             />
           </div>
-        </section>
-        <section className="letter-detail-section">
-          <h3>Mascotas</h3>
-          <div className="letter-detail-animals">
-            {letter.animals.map((animal, index) => (
-              <article key={animal.id}>
-                <PawPrint size={17} />
-                <div>
-                  <strong>{animal.breed || animal.species || `Mascota ${index + 1}`}</strong>
-                  <span>
-                    {animal.species || 'Especie sin indicar'} · {animalSizeLabels[animal.size]}
-                    {animal.box ? ` · Box ${animal.box}` : ''}
-                  </span>
-                </div>
-              </article>
-            ))}
+        )}
+        <details className="letter-additional-details">
+          <summary>Datos del servicio y contactos</summary>
+          <div className="letter-detail-route" aria-label="Trayecto">
+            <span>{letter.origin}</span>
+            <ChevronRight aria-hidden size={18} />
+            <span>{letter.destination}</span>
           </div>
-        </section>
-        <section className="letter-detail-section letter-detail-meta">
-          <div>
-            <h3>Documentación</h3>
-            <p>
-              {letter.accompanyingDocuments.length
-                ? letter.accompanyingDocuments
+          <dl className="letter-detail-summary">
+            <div>
+              <dt>Servicio</dt>
+              <dd>{formatServiceDate(letter.serviceDate)}</dd>
+            </div>
+            <div>
+              <dt>Ruta</dt>
+              <dd>{letter.route || 'Sin ruta asignada'}</dd>
+            </div>
+            <div>
+              <dt>Estado</dt>
+              <dd>
+                <LetterPaymentBadge letter={letter} />
+              </dd>
+            </div>
+          </dl>
+          <section className="letter-detail-section">
+            <h3>Contacto y entrega</h3>
+            <div className="letter-detail-contacts">
+              <ContactDetails
+                title="Remitente"
+                name={letter.sender}
+                phone={letter.senderPhone}
+                email={letter.senderEmail}
+                address={senderAddress}
+                message={contactMessage(letter.sender)}
+              />
+              <ContactDetails
+                title="Destinatario"
+                name={letter.recipient}
+                phone={letter.recipientPhone}
+                email={letter.recipientEmail}
+                address={recipientAddress}
+                message={contactMessage(letter.recipient)}
+              />
+            </div>
+          </section>
+          <section className="letter-detail-section">
+            <h3>Mascotas</h3>
+            <div className="letter-detail-animals">
+              {letter.animals.map((animal, index) => (
+                <article key={animal.id}>
+                  <PawPrint size={17} />
+                  <div>
+                    <strong>{animal.breed || animal.species || `Mascota ${index + 1}`}</strong>
+                    <span>
+                      {animal.species || 'Especie sin indicar'} · {animalSizeLabels[animal.size]}
+                      {animal.box ? ` · Box ${animal.box}` : ''}
+                    </span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="letter-detail-section letter-detail-meta">
+            <div>
+              <h3>Documentación</h3>
+              <p>
+                {letter.accompanyingDocuments.length
+                  ? letter.accompanyingDocuments
                     .map((document) => accompanyingDocumentLabels[document])
                     .join(', ')
-                : 'Sin documentos indicados'}
-            </p>
-          </div>
-          <div>
-            <h3>Facturación</h3>
-            <p>{billingPayerLabels[letter.billingPayer]}</p>
-          </div>
-          <div>
-            <h3>Firma</h3>
-            <p>{letter.signedAt ? `Firmada el ${letter.signedAt}` : 'Pendiente de firma'}</p>
-          </div>
-        </section>
+                  : 'Sin documentos indicados'}
+              </p>
+            </div>
+            <div>
+              <h3>Facturación</h3>
+              <p>{billingPayerLabels[letter.billingPayer]}</p>
+            </div>
+            <div>
+              <h3>Firma</h3>
+              <p>{letter.signedAt ? `Firmada el ${letter.signedAt}` : 'Pendiente de firma'}</p>
+            </div>
+          </section>
+        </details>
+        {downloadError && <p className="form-error" role="alert">{downloadError}</p>}
         <div className="invoice-card-actions">
           <Button size="sm" variant="outline" onClick={() => onDownload(letter)}>
             <FileDown size={15} /> Descargar PDF

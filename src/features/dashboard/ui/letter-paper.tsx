@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { BrandLogo } from '@/shared/ui/brand-logo'
+
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
 
 /**
@@ -102,7 +104,7 @@ export function PaperHeader({
         </span>
       </div>
       <div className="order-first flex flex-col items-center justify-center gap-0.5 px-4 py-2 @min-[680px]:order-none">
-        <img src="/icon-512.png" alt="Kache Envíos" className="size-36 object-contain sm:size-44" />
+        <BrandLogo className="size-36 object-contain sm:size-44" />
         <span className="text-[11px]">kacheenvios.com</span>
       </div>
       <div className="flex flex-col justify-center gap-1 p-3 sm:items-end sm:text-right">

@@ -61,7 +61,7 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
   const { jsPDF } = await import('jspdf')
   const { width, height } = CARRIAGE_LETTER_PAGE
   const doc = new jsPDF({ unit: 'mm', format: [width, height], orientation: 'landscape' })
-  const logo = await fetch('/icon-512.png')
+  const logo = await fetch('/logo.png')
     .then(async (response) => (response.ok ? new Uint8Array(await response.arrayBuffer()) : null))
     .catch(() => null)
   const font = (size: number, bold?: boolean) => {
@@ -84,7 +84,11 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
         doc.text(value, x, y, { align })
       },
       image(data, x, y, w, h) {
-        doc.addImage(data, 'PNG', x, y, w, h)
+        const image = doc.getImageProperties(data)
+        const scale = Math.min(w / image.width, h / image.height)
+        const imageWidth = image.width * scale
+        const imageHeight = image.height * scale
+        doc.addImage(data, 'PNG', x + (w - imageWidth) / 2, y + (h - imageHeight) / 2, imageWidth, imageHeight)
       },
       width(value, size, bold) {
         font(size, bold)

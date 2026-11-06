@@ -2162,8 +2162,32 @@
 
 .letter-details-dialog {
   width: calc(100% - 2.5rem) !important;
-  max-width: 760px !important;
+  max-width: 960px !important;
   padding: 26px !important;
+}
+
+.letter-print-preview {
+  max-width: 100%;
+  overflow-x: auto;
+  background: #f5f5f5;
+  border: 1px solid #e7ece4;
+  border-radius: 8px;
+}
+
+.letter-print-preview-pdf {
+  display: block;
+  width: 100%;
+  min-width: 640px;
+  height: auto;
+}
+
+.letter-additional-details > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.letter-additional-details[open] > * + * {
+  margin-top: 12px;
 }
 
 .letter-detail-route {

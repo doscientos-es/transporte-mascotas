@@ -88,6 +88,30 @@ const letter: Letter = {
   importedAt: '',
 }
 
+describe('LetterForm logo', () => {
+  it.each([
+    ['creation', undefined],
+    ['editing', letter],
+  ])('uses the current logo during %s', (_, existingLetter) => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: existingLetter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+
+    expect(markup).toMatch(/<img[^>]*src="\/logo\.png"[^>]*alt="Kache Envíos"/)
+    expect(markup).not.toContain('/icon-512.png')
+  })
+})
+
 describe('LetterForm contact addresses', () => {
   it.each([
     ['creation', undefined, 'off'],

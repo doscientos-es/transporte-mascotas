@@ -145,7 +145,7 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
   let logo: Awaited<ReturnType<typeof pdf.embedPng>> | undefined
   for (const source of [...new Set([appUrl, 'https://www.kacheenvios.com'])].filter(Boolean)) {
     try {
-      const response = await fetch(`${source}/icon-512.png`, { signal: AbortSignal.timeout(5000) })
+      const response = await fetch(`${source}/logo.png`, { signal: AbortSignal.timeout(5000) })
       if (!response.ok) continue
       logoBytes = new Uint8Array(await response.arrayBuffer())
       logo = await pdf.embedPng(logoBytes)
@@ -184,11 +184,11 @@ export async function renderCarriageLetter(letter: CarriageLetter) {
       },
       image(_data, x, y, w, h) {
         if (!logo) return
+        const image = logo.scaleToFit(mm(w), mm(h))
         page.drawImage(logo, {
-          x: mm(x),
-          y: mm(height - y - h),
-          width: mm(w),
-          height: mm(h),
+          x: mm(x) + (mm(w) - image.width) / 2,
+          y: mm(height - y - h) + (mm(h) - image.height) / 2,
+          ...image,
         })
       },
       width: (value, size, isBold) =>
