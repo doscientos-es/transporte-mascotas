@@ -85,7 +85,13 @@ import {
 import { validateManualLetterBreeds } from './manual-letter-animals'
 import { manualLetterTotalCents } from './manual-letter-total'
 import { findForwardRouteSegment } from './route-segment'
-import { assignmentsForRoute, boxesBySize, letterBoxForRoute, vanBoxSizeForAnimal } from './van'
+import {
+  assignmentsForRoute,
+  boxesBySize,
+  isBoxCompatible,
+  letterBoxForRoute,
+  vanBoxSizeForAnimal,
+} from './van'
 
 function copyTemplateStops(
   template: RouteTemplate,
@@ -214,6 +220,17 @@ export function actionsForLetter(
   )
   if (!segment) return []
   const { originStop, destinationStop } = segment
+  if (
+    preservedBox !== undefined &&
+    letter.animals.some(
+      (animal) =>
+        !isBoxCompatible(preservedBox, animal.size) ||
+        !isBoxCompatible(preservedBox, vanRequirementForAnimal(animal, boxCatalog)),
+    )
+  )
+    throw new Error(
+      'El box asignado no es adecuado para todos los animales. Cambia el box en Furgoneta antes de guardar.',
+    )
   const box = preservedBox ?? selectFreeBox(letter.animals, usedBoxes, boxCatalog)
   return letter.animals.flatMap((animal) => [
     ...(originStop

@@ -27,6 +27,7 @@ import type {
 import { SelectField } from '@/shared/ui/filter-controls'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
+import { sortRoutesByDate } from '../application/route-order'
 import {
   boxGridSpan,
   boxSize,
@@ -87,7 +88,7 @@ export function VanPage({
   const routeName = (item: DailyRoute) =>
     templates.find((template) => template.id === item.templateId)?.name ?? 'Ruta sin plantilla'
   const routeOptionLabel = (item: DailyRoute) =>
-    `${routeName(item)} · ${new Date(`${item.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`
+    `${routeName(item)} · ${new Date(`${item.date}T12:00:00`).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}`
   const reassignmentShownFor = new Set<string>()
   const selectedBoxDetails: BoxAnimalDetails[] =
     selectedBox === null
@@ -214,7 +215,10 @@ export function VanPage({
               const selected = routes.find((item) => item.id === value)
               if (selected) onSelectRoute(selected)
             }}
-            options={routes.map((item) => ({ id: item.id, label: routeOptionLabel(item) }))}
+            options={sortRoutesByDate(routes).map((item) => ({
+              id: item.id,
+              label: routeOptionLabel(item),
+            }))}
           />
         </div>
         <section

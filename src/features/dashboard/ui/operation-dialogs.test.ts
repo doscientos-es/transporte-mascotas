@@ -143,6 +143,17 @@ describe('LetterForm assigned box', () => {
     expect(actions).toHaveLength(2)
     expect(actions.map((action) => action.box)).toEqual([17, 17])
   })
+
+  it('rejects an incompatible assigned box before rebuilding actions', () => {
+    const animal = {
+      id: 'animal-1', species: 'Perro', breed: 'Labrador', birthDate: '', weightKg: 40,
+      lengthCm: 90, heightCm: 60, widthCm: 60, size: 'grande' as const,
+    }
+    expect(() => actionsForLetter(
+      route, template, { ...letter, animals: [animal] }, defaultTransportBoxCatalog,
+      'stop-1', 'stop-4', 17,
+    )).toThrow('El box asignado no es adecuado')
+  })
 })
 
 describe('LetterForm route stop options', () => {
