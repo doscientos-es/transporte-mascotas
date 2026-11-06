@@ -163,8 +163,9 @@ export function PaperParty({
       </legend>
       <span
         aria-hidden="true"
-        className={`flex items-center justify-center border border-neutral-600 px-2 py-1 text-[11px] font-bold tracking-[0.25em] md:w-7 md:px-0 md:[writing-mode:vertical-rl] ${sender ? 'bg-[#f46a46] text-black md:rotate-180' : 'bg-[#6b6b6b] text-white'
-          }`}
+        className={`flex items-center justify-center border border-neutral-600 px-2 py-1 text-[11px] font-bold tracking-[0.25em] md:w-7 md:px-0 md:[writing-mode:vertical-rl] ${
+          sender ? 'bg-[#f46a46] text-black md:rotate-180' : 'bg-[#6b6b6b] text-white'
+        }`}
       >
         {title.toUpperCase()}
       </span>

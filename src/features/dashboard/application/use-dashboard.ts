@@ -1110,9 +1110,14 @@ export function useDashboard(session: Session | null, role: AppRole) {
         animals,
       }
       const assignedBox = letterBoxForRoute(dailyRoute, letter.id)
-      const sharedBox = assignedBox !== undefined && dailyRoute.actions.some(
-        (action) => action.letterId !== letter.id && action.type === 'recogida' && action.box === assignedBox,
-      )
+      const sharedBox =
+        assignedBox !== undefined &&
+        dailyRoute.actions.some(
+          (action) =>
+            action.letterId !== letter.id &&
+            action.type === 'recogida' &&
+            action.box === assignedBox,
+        )
       const rebuiltActions = actionsForLetter(
         dailyRoute,
         routeTemplate,
@@ -1127,11 +1132,14 @@ export function useDashboard(session: Session | null, role: AppRole) {
       if (sharedBox) {
         const oldActions = dailyRoute.actions.filter((action) => action.letterId === letter.id)
         const stopChanged = (['recogida', 'entrega'] as const).some(
-          (type) => oldActions.find((action) => action.type === type)?.stopId !==
+          (type) =>
+            oldActions.find((action) => action.type === type)?.stopId !==
             rebuiltActions.find((action) => action.type === type)?.stopId,
         )
         if (stopChanged)
-          throw new Error('Para cambiar las paradas de una carta con box compartido, reasigna primero el box en Furgoneta.')
+          throw new Error(
+            'Para cambiar las paradas de una carta con box compartido, reasigna primero el box en Furgoneta.',
+          )
       }
       const previousActions = dailyRoutes
         .flatMap((route) => route.actions)

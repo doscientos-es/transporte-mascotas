@@ -245,69 +245,69 @@ export function LetterForm({
   const [draft, setDraft] = useState<LetterDraft>(() =>
     letter
       ? {
-        reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
-        routeId: routeId ?? '',
-        sender: letter.sender,
-        senderPhone: letter.senderPhone,
-        senderEmail: letter.senderEmail,
-        senderNif: letter.senderNif,
-        senderAddress: letter.senderAddress,
-        senderPostalCode: letter.senderPostalCode,
-        senderCity: letter.senderCity,
-        senderProvince: letter.senderProvince,
-        recipient: letter.recipient,
-        recipientPhone: letter.recipientPhone,
-        recipientEmail: letter.recipientEmail,
-        recipientNif: letter.recipientNif,
-        recipientAddress: letter.recipientAddress,
-        recipientPostalCode: letter.recipientPostalCode,
-        recipientCity: letter.recipientCity,
-        recipientProvince: letter.recipientProvince,
-        origin: letter.origin,
-        destination: letter.destination,
-        originStopId:
-          routes
-            .find((route) => route.id === routeId)
-            ?.actions.find(
-              (action) => action.letterId === letter.id && action.type === 'recogida',
-            )?.stopId ?? '',
-        destinationStopId:
-          routes
-            .find((route) => route.id === routeId)
-            ?.actions.find((action) => action.letterId === letter.id && action.type === 'entrega')
-            ?.stopId ?? '',
-        originPoint: letter.originPoint,
-        destinationPoint: letter.destinationPoint,
-        accompanyingDocuments: letter.accompanyingDocuments,
-        atesNumber: letter.atesNumber ?? DEFAULT_ATES_NUMBER,
-        billingPayer: letter.billingPayer,
-        otherPayer:
-          letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
-        signatureConfirmed: false,
-        animals: letter.animals.map(
-          ({
-            species,
-            breed,
-            birthDate,
-            weightKg,
-            lengthCm,
-            heightCm,
-            widthCm,
-            size,
-            boxCategory,
-          }) => ({
-            species,
-            breed,
-            birthDate,
-            weightKg,
-            lengthCm,
-            heightCm,
-            widthCm,
-            size,
-            requestedBoxCategory: boxCategory,
-          }),
-        ),
-      }
+          reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
+          routeId: routeId ?? '',
+          sender: letter.sender,
+          senderPhone: letter.senderPhone,
+          senderEmail: letter.senderEmail,
+          senderNif: letter.senderNif,
+          senderAddress: letter.senderAddress,
+          senderPostalCode: letter.senderPostalCode,
+          senderCity: letter.senderCity,
+          senderProvince: letter.senderProvince,
+          recipient: letter.recipient,
+          recipientPhone: letter.recipientPhone,
+          recipientEmail: letter.recipientEmail,
+          recipientNif: letter.recipientNif,
+          recipientAddress: letter.recipientAddress,
+          recipientPostalCode: letter.recipientPostalCode,
+          recipientCity: letter.recipientCity,
+          recipientProvince: letter.recipientProvince,
+          origin: letter.origin,
+          destination: letter.destination,
+          originStopId:
+            routes
+              .find((route) => route.id === routeId)
+              ?.actions.find(
+                (action) => action.letterId === letter.id && action.type === 'recogida',
+              )?.stopId ?? '',
+          destinationStopId:
+            routes
+              .find((route) => route.id === routeId)
+              ?.actions.find((action) => action.letterId === letter.id && action.type === 'entrega')
+              ?.stopId ?? '',
+          originPoint: letter.originPoint,
+          destinationPoint: letter.destinationPoint,
+          accompanyingDocuments: letter.accompanyingDocuments,
+          atesNumber: letter.atesNumber ?? DEFAULT_ATES_NUMBER,
+          billingPayer: letter.billingPayer,
+          otherPayer:
+            letter.billingPayer === 'manual' ? letter.billingClient : emptyInvoiceClient(),
+          signatureConfirmed: false,
+          animals: letter.animals.map(
+            ({
+              species,
+              breed,
+              birthDate,
+              weightKg,
+              lengthCm,
+              heightCm,
+              widthCm,
+              size,
+              boxCategory,
+            }) => ({
+              species,
+              breed,
+              birthDate,
+              weightKg,
+              lengthCm,
+              heightCm,
+              widthCm,
+              size,
+              requestedBoxCategory: boxCategory,
+            }),
+          ),
+        }
       : emptyLetter,
   )
   const [savingMode, setSavingMode] = useState<'request' | 'paid' | null>(null)
@@ -435,7 +435,9 @@ export function LetterForm({
           reference={draft.reference}
           referenceLocked={isEditing}
           onReferenceChange={(value) => update('reference', value)}
-          boxNumber={letter && selectedRoute ? letterBoxForRoute(selectedRoute, letter.id) : draft.boxNumber}
+          boxNumber={
+            letter && selectedRoute ? letterBoxForRoute(selectedRoute, letter.id) : draft.boxNumber
+          }
           boxNumberLocked={isEditing}
           onBoxNumberChange={(value) => update('boxNumber', value)}
           atesNumber={draft.atesNumber}
@@ -1642,7 +1644,7 @@ function AnimalsSection({
                             ),
                           )}
                           {transportBoxCategoryRank(category) >
-                            transportBoxCategoryRank(minimumCategory)
+                          transportBoxCategoryRank(minimumCategory)
                             ? ' · extra por comodidad'
                             : ''}
                         </option>

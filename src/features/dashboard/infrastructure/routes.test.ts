@@ -1,16 +1,37 @@
 ﻿import { describe, expect, it, vi } from 'vitest'
 
-import type { DailyRouteStop, RouteTemplate } from '@/shared/types'
+import type {
+  DailyRoute,
+  DailyRouteStop,
+  Letter,
+  RouteTemplate,
+  ServiceAction,
+} from '@/shared/types'
 
-const { updates, inserts, deletes } = vi.hoisted(() => ({
+const { updates, inserts, deletes, rpcs } = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
   inserts: [] as Array<{ table: string; values: unknown }>,
   deletes: [] as Array<{ table: string; id: string }>,
+  rpcs: [] as Array<{ name: string; args: unknown }>,
 }))
 
 vi.mock('@/shared/infrastructure/supabase', () => ({
   requireSupabase: () => ({
+    rpc: (name: string, args: unknown) => {
+      rpcs.push({ name, args })
+      return Promise.resolve({ error: null })
+    },
     from: (table: string) => ({
+      select: () => ({
+        eq: () =>
+          Promise.resolve({
+            data: [
+              { id: 'pickup', locality: 'pickup', sequence: 1 },
+              { id: 'delivery', locality: 'delivery', sequence: 2 },
+            ],
+            error: null,
+          }),
+      }),
       update: (values: Record<string, unknown>) => {
         updates.push(values)
         const query = Promise.resolve({ error: null }) as Promise<{ error: null }> & {
@@ -40,6 +61,7 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 }))
 
 import {
+  appendLetterToDailyRoute,
   deleteRouteTemplateStop,
   duplicateRouteTemplate,
   updateDailyRouteDate,
@@ -58,6 +80,49 @@ const stop = (id: string): DailyRouteStop => ({
   minutes: 0,
   kind: 'parada',
   dwellMinutes: 15,
+})
+
+describe('appendLetterToDailyRoute', () => {
+  it.each([
+    [false, 'assign_van_box'],
+    [true, 'assign_shared_van_box'],
+  ] as const)(
+    'restores a box using the correct assignment method (shared: %s)',
+    async (shared, rpcName) => {
+      rpcs.length = 0
+      const actions = (['recogida', 'entrega'] as const).map((type, index) => ({
+        id: `action-${index}`,
+        letterId: 'letter-1',
+        animalId: 'animal-1',
+        type,
+        stop: index ? 'delivery' : 'pickup',
+        stopId: index ? 'delivery' : 'pickup',
+        customer: '',
+        phone: '',
+        status: 'pendiente' as const,
+        box: 17,
+      })) satisfies ServiceAction[]
+      await appendLetterToDailyRoute(
+        { id: 'route-1' } as DailyRoute,
+        { id: 'letter-1' } as Letter,
+        actions,
+        shared,
+      )
+      expect(rpcs).toEqual([
+        {
+          name: rpcName,
+          args: {
+            p_daily_route_id: 'route-1',
+            p_letter_id: 'letter-1',
+            p_animal_id: 'animal-1',
+            p_box_number: 17,
+            p_pickup_sequence: 1,
+            p_delivery_sequence: 2,
+          },
+        },
+      ])
+    },
+  )
 })
 
 describe('updateDailyRouteStops', () => {

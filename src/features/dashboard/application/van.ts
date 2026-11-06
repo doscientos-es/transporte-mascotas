@@ -3,9 +3,8 @@ import type { Animal, AnimalSize, DailyRoute, TransportBoxCategory } from '@/sha
 export type VanAssignment = { box: number; label: string; animalCount: number }
 
 export function letterBoxForRoute(route: Pick<DailyRoute, 'actions'>, letterId: string) {
-  return route.actions.find(
-    (action) => action.letterId === letterId && action.type === 'recogida',
-  )?.box
+  return route.actions.find((action) => action.letterId === letterId && action.type === 'recogida')
+    ?.box
 }
 
 export function assignmentsForRoute(route: Pick<DailyRoute, 'actions'>): VanAssignment[] {

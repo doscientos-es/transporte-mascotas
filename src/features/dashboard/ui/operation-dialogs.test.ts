@@ -116,13 +116,28 @@ describe('LetterForm assigned box', () => {
 
   it('preserves the assigned box in rebuilt pickup and delivery actions', () => {
     const animal = {
-      id: 'animal-1', species: 'Gato', breed: 'Común', birthDate: '', weightKg: 2,
-      lengthCm: 20, heightCm: 20, widthCm: 20, size: 'pequeno' as const,
+      id: 'animal-1',
+      species: 'Gato',
+      breed: 'Común',
+      birthDate: '',
+      weightKg: 2,
+      lengthCm: 20,
+      heightCm: 20,
+      widthCm: 20,
+      size: 'pequeno' as const,
     }
-    const assignedRoute = { ...route, actions: route.actions.map((action) => ({ ...action, box: 17 })) }
+    const assignedRoute = {
+      ...route,
+      actions: route.actions.map((action) => ({ ...action, box: 17 })),
+    }
     const actions = actionsForLetter(
-      assignedRoute, template, { ...letter, animals: [animal] }, defaultTransportBoxCatalog,
-      'stop-1', 'stop-4', 17,
+      assignedRoute,
+      template,
+      { ...letter, animals: [animal] },
+      defaultTransportBoxCatalog,
+      'stop-1',
+      'stop-4',
+      17,
     )
 
     expect(actions).toHaveLength(2)

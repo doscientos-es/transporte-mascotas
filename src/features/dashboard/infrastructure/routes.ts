@@ -704,14 +704,17 @@ export async function appendLetterToDailyRoute(
   const pickupSequence = stopSequenceById.get(pickup.stopId)
   const deliverySequence = stopSequenceById.get(delivery.stopId)
   if (!pickupSequence || !deliverySequence) return
-  const { error: assignmentError } = await database.rpc(shareBox ? 'assign_shared_van_box' : 'assign_van_box', {
-    p_daily_route_id: route.id,
-    p_letter_id: letter.id,
-    p_animal_id: pickup.action.animalId,
-    p_box_number: pickup.action.box,
-    p_pickup_sequence: pickupSequence,
-    p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
-  })
+  const { error: assignmentError } = await database.rpc(
+    shareBox ? 'assign_shared_van_box' : 'assign_van_box',
+    {
+      p_daily_route_id: route.id,
+      p_letter_id: letter.id,
+      p_animal_id: pickup.action.animalId,
+      p_box_number: pickup.action.box,
+      p_pickup_sequence: pickupSequence,
+      p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
+    },
+  )
   if (assignmentError) throw assignmentError
 }
 
