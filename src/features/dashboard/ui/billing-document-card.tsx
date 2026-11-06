@@ -1,5 +1,5 @@
 import { Button, Card, CardContent } from '@doscientos/ui'
-import { CheckCircle2, Download, Eye, FileText, ReceiptText } from 'lucide-react'
+import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText } from 'lucide-react'
 
 import type { ClientInvoice } from '@/shared/types'
 
@@ -7,6 +7,63 @@ import type { BillingDocumentMode } from './billing-document-types'
 
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
+
+type DocumentActions = {
+  mode: BillingDocumentMode
+  downloading: boolean
+  onPreview: () => void
+  onDownload: () => void
+  onManualPayment?: () => void
+  onEdit?: () => void
+}
+
+export function BillingDocumentActions({
+  mode,
+  downloading,
+  onPreview,
+  onDownload,
+  onManualPayment,
+  onEdit,
+}: DocumentActions) {
+  const isIssued = mode === 'invoices'
+  return (
+    <div className="invoice-card-actions">
+      <Button
+        size="sm"
+        variant="outline"
+        className="invoice-preview-button"
+        onClick={onPreview}
+        aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
+      >
+        <Eye size={15} />
+        <span className="invoice-action-label">{isIssued ? 'Ver factura' : 'Ver solicitud'}</span>
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="invoice-download-button"
+        disabled={downloading}
+        onClick={onDownload}
+        aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+      >
+        <Download size={15} />
+        <span className="invoice-download-label">
+          {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+        </span>
+      </Button>
+      {onEdit && (
+        <Button size="sm" variant="outline" onClick={onEdit}>
+          <Pencil size={15} /> Editar
+        </Button>
+      )}
+      {!isIssued && onManualPayment && (
+        <Button size="sm" variant="outline" onClick={onManualPayment}>
+          <CheckCircle2 size={15} /> Registrar cobro
+        </Button>
+      )}
+    </div>
+  )
+}
 
 export function BillingDocumentCard({
   invoice,
@@ -18,6 +75,7 @@ export function BillingDocumentCard({
   onManualPayment,
   onOpenClient,
   onOpenLetter,
+  onEdit,
 }: {
   invoice: ClientInvoice
   mode: BillingDocumentMode
@@ -28,6 +86,7 @@ export function BillingDocumentCard({
   onManualPayment?: () => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
+  onEdit?: () => void
 }) {
   const isIssued = mode === 'invoices'
   const issued = isIssued ? invoice.issuedInvoice : undefined
@@ -89,42 +148,14 @@ export function BillingDocumentCard({
             )}
             {isIssued && <span className="invoice-status">Pagada</span>}
           </div>
-          <div className="invoice-card-actions">
-            <Button
-              size="sm"
-              variant="outline"
-              className="invoice-preview-button"
-              onClick={onPreview}
-              aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
-            >
-              <Eye size={15} />
-              <span className="invoice-action-label">
-                {isIssued ? 'Ver factura' : 'Ver solicitud'}
-              </span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="invoice-download-button"
-              disabled={downloading}
-              onClick={onDownload}
-              aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-            >
-              <Download size={15} />
-              <span className="invoice-download-label">
-                {downloading
-                  ? 'Preparando…'
-                  : isIssued
-                    ? 'Descargar factura'
-                    : 'Descargar solicitud'}
-              </span>
-            </Button>
-            {!isIssued && onManualPayment && (
-              <Button size="sm" variant="outline" onClick={onManualPayment}>
-                <CheckCircle2 size={15} /> Registrar cobro
-              </Button>
-            )}
-          </div>
+          <BillingDocumentActions
+            mode={mode}
+            downloading={downloading}
+            onPreview={onPreview}
+            onDownload={onDownload}
+            onManualPayment={onManualPayment}
+            onEdit={onEdit}
+          />
         </div>
       </CardContent>
     </Card>

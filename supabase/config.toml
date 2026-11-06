@@ -438,6 +438,9 @@ verify_jwt = true
 [functions.create-paid-manual-invoice]
 verify_jwt = true
 
+[functions.edit-issued-invoice]
+verify_jwt = true
+
 [functions.confirm-manual-transport-payment]
 verify_jwt = true
 

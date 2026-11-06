@@ -49,6 +49,44 @@ describe('billing browser compatibility', () => {
     expect(markup).not.toContain('invoice-card-link invoice-reference')
   })
 
+  it('shows invoice details and editing actions in the desktop table', async () => {
+    const { BillingDocumentTable } = await import('./billing-document-table')
+    const markup = renderToStaticMarkup(
+      createElement(BillingDocumentTable, {
+        invoices: [
+          {
+            id: 'draft',
+            letterId: null,
+            clientId: 'client',
+            payer: 'manual',
+            concept: 'Extra',
+            total: 121,
+            status: 'emitida',
+            createdAt: '2026-01-10',
+            clientName: 'Test',
+            issuedInvoice: {
+              id: 'issued',
+              invoiceDraftId: 'draft',
+              number: 'F-2026-000819',
+              issuedAt: '2026-01-10',
+              fiscalSnapshot: {},
+            },
+          },
+        ],
+        downloadingId: null,
+        onPreview: vi.fn(),
+        onDownload: vi.fn(),
+        onEdit: vi.fn(),
+      }),
+    )
+    expect(markup).toContain('<table')
+    expect(markup).toContain('F-2026-000819')
+    expect(markup).toContain('Factura libre')
+    expect(markup).toContain('Pagada')
+    expect(markup).toContain('Editar')
+    expect(markup).toContain('Descargar factura')
+  })
+
   it('opens invoices and payment requests without the Iterator API required by the PDF viewer', async () => {
     vi.stubGlobal('Iterator', undefined)
 
