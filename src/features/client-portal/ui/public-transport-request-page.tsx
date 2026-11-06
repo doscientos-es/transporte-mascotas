@@ -18,7 +18,6 @@ import {
   payTransportRequest,
 } from '../application/transport-requests'
 import { ClientRequestForm, type RequestFormValues } from './client-request-form'
-import { submitPaymentForm } from './submit-payment-form'
 
 type CreatedRequest = { id: string; contact: RequestFormValues }
 
@@ -69,7 +68,7 @@ export function PublicTransportRequestPage() {
     setPaying(true)
     setError('')
     try {
-      submitPaymentForm(await payTransportRequest(created.id))
+      window.location.assign(await payTransportRequest(created.id))
     } catch (reason) {
       setError(
         reason instanceof Error

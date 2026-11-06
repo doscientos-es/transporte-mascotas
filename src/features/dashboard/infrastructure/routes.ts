@@ -437,6 +437,14 @@ export async function closeDailyRoute(routeId: string) {
   return result
 }
 
+export async function removeLetterFromDailyRoute(routeId: string, letterId: string) {
+  const { error } = await requireSupabase().rpc('remove_letter_from_daily_route', {
+    p_daily_route_id: routeId,
+    p_letter_id: letterId,
+  })
+  if (error) throw error
+}
+
 export async function deleteDailyRoute(routeId: string) {
   const database = requireSupabase()
   const { count, error: actionsError } = await database

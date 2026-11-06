@@ -114,7 +114,7 @@ type Props = {
   onAddStop: (routeId: string, stops: DailyRouteStop[]) => Promise<void>
   onRemoveStop: (routeId: string, stopId: string) => Promise<void>
   onUpdateService: (routeId: string, service: ServiceAction) => void
-  onRemoveService: (routeId: string, serviceId: string) => void
+  onRemoveLetter: (routeId: string, letterId: string) => Promise<void>
   onCloseRoute: (routeId: string) => Promise<void>
   onDeleteRoute?: (routeId: string) => Promise<void>
   canManage?: boolean
@@ -468,6 +468,7 @@ export function RoutesPage({
   onSuggestStop,
   onAddStop,
   onRemoveStop,
+  onRemoveLetter,
   onCloseRoute,
   onDeleteRoute,
   canManage = true,
@@ -478,6 +479,8 @@ export function RoutesPage({
   const [savingPlan, setSavingPlan] = useState(false)
   const [reorderingStops, setReorderingStops] = useState(false)
   const [deletingStop, setDeletingStop] = useState<DailyRouteStop | null>(null)
+  const [removingLetter, setRemovingLetter] = useState<string | null>(null)
+  const [removingLetterBusy, setRemovingLetterBusy] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
   const [closingRoute, setClosingRoute] = useState(false)
@@ -841,6 +844,20 @@ export function RoutesPage({
       reportOperationError(error, 'No se ha podido actualizar el servicio.')
     }
   }
+  async function removeLetter() {
+    if (!removingLetter || removingLetterBusy) return
+    setRemovingLetterBusy(true)
+    try {
+      setOperationError('')
+      await onRemoveLetter(route.id, removingLetter)
+      setRemovingLetter(null)
+    } catch (error) {
+      reportOperationError(error, 'No se ha podido quitar la carta de la ruta.')
+      setRemovingLetter(null)
+    } finally {
+      setRemovingLetterBusy(false)
+    }
+  }
 
   return (
     <>
@@ -1024,6 +1041,7 @@ export function RoutesPage({
                       : () => setDeletingStop(stop)
                   }
                   onAction={updateServices}
+                  onRemoveLetter={canManage ? setRemovingLetter : undefined}
                 />
               ))}
             </ol>
@@ -1148,6 +1166,35 @@ export function RoutesPage({
         />
       )}
       <AlertDialog
+        open={removingLetter !== null}
+        onOpenChange={(open) => {
+          if (!open && !removingLetterBusy) setRemovingLetter(null)
+        }}
+      >
+        <AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Quitar de la ruta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se retirarán de esta ruta la recogida y la entrega de todos los animales de{' '}
+              {removingLetter}, y se liberará su box. La carta y su factura se conservarán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removingLetterBusy}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removingLetterBusy}
+              onClick={(event) => {
+                event.preventDefault()
+                void removeLetter()
+              }}
+            >
+              {removingLetterBusy ? 'Quitando…' : 'Quitar de la ruta'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
         open={deletingStop !== null}
         onOpenChange={(open) => {
           if (!open) setDeletingStop(null)
@@ -1208,6 +1255,7 @@ function JourneyStop({
   onEdit,
   onDelete,
   onAction,
+  onRemoveLetter,
 }: {
   stop: DailyRouteStop
   index: number
@@ -1221,6 +1269,7 @@ function JourneyStop({
   onEdit?: () => void
   onDelete?: () => void
   onAction: (ids: string[]) => Promise<void>
+  onRemoveLetter?: ((letterId: string) => void) | undefined
 }) {
   const hasServices = services.length > 0
   const instructions = mergedStopInstructions(stop.alias, stop.place)
@@ -1301,6 +1350,9 @@ function JourneyStop({
                 group={group}
                 reminder={serviceReminder(group, pointFor)}
                 onToggle={() => onAction(group.actions.map((action) => action.id))}
+                onRemove={
+                  onRemoveLetter ? () => onRemoveLetter(group.actions[0].letterId) : undefined
+                }
               />
             ))}
           </div>
@@ -1639,10 +1691,12 @@ function ServiceCard({
   group,
   reminder,
   onToggle,
+  onRemove,
 }: {
   group: ServiceGroup
   reminder: string
   onToggle: () => Promise<void>
+  onRemove?: (() => void) | undefined
 }) {
   const action = group.actions[0]
   const done = group.actions.every((item) => item.status === 'completada')
@@ -1674,9 +1728,17 @@ function ServiceCard({
           recipient={action.customer}
         />
       </div>
-      <Button variant={done ? 'outline' : 'default'} size="sm" onClick={() => void onToggle()}>
-        {done ? 'Deshacer' : action.type === 'recogida' ? 'Recogido' : 'Entregado'}
-      </Button>
+      {action.type === 'recogida' ? (
+        onRemove && (
+          <Button variant="outline" size="sm" onClick={onRemove}>
+            Quitar de la ruta
+          </Button>
+        )
+      ) : (
+        <Button variant={done ? 'outline' : 'default'} size="sm" onClick={() => void onToggle()}>
+          {done ? 'Deshacer' : 'Entregado'}
+        </Button>
+      )}
     </div>
   )
 }

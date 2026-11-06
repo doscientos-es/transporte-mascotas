@@ -375,7 +375,7 @@ export function AdminDashboardPage({
                   onAddStop={dashboard.addRouteStop}
                   onRemoveStop={dashboard.removeRouteStop}
                   onUpdateService={dashboard.updateRouteService}
-                  onRemoveService={dashboard.removeRouteService}
+                  onRemoveLetter={dashboard.removeRouteLetter}
                   onCloseRoute={dashboard.closeRoute}
                   onDeleteRoute={dashboard.removeRoute}
                   canManage

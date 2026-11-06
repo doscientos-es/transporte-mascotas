@@ -64,6 +64,7 @@ import {
   appendLetterToDailyRoute,
   deleteRouteTemplateStop,
   duplicateRouteTemplate,
+  removeLetterFromDailyRoute,
   updateDailyRouteDate,
   updateDailyRouteStops,
   updateRouteTemplateStop,
@@ -80,6 +81,22 @@ const stop = (id: string): DailyRouteStop => ({
   minutes: 0,
   kind: 'parada',
   dwellMinutes: 15,
+})
+
+describe('removeLetterFromDailyRoute', () => {
+  it('uses the atomic route removal operation for the selected letter', async () => {
+    rpcs.length = 0
+    await removeLetterFromDailyRoute('route-1', 'letter-1')
+    expect(rpcs).toEqual([
+      {
+        name: 'remove_letter_from_daily_route',
+        args: {
+          p_daily_route_id: 'route-1',
+          p_letter_id: 'letter-1',
+        },
+      },
+    ])
+  })
 })
 
 describe('appendLetterToDailyRoute', () => {

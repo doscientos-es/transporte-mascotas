@@ -47,7 +47,6 @@ import { ClientRequestForm, type RequestFormValues } from './client-request-form
 import { ClientTransportCard } from './client-transport-card'
 import { PaymentSuccessPanel } from './payment-success-panel'
 import { saveFile } from './save-file'
-import { submitPaymentForm } from './submit-payment-form'
 import { UpcomingRouteCard } from './upcoming-route-card'
 import { UpcomingRouteDetail } from './upcoming-route-detail'
 
@@ -272,7 +271,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
   }
 
   async function completeRequestPayment(requestId: string) {
-    submitPaymentForm(await payTransportRequest(requestId))
+    window.location.assign(await payTransportRequest(requestId))
   }
 
   async function continuePayment(requestId: string) {
@@ -316,7 +315,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     setError('')
     setPayingRequestId(invoiceId)
     try {
-      submitPaymentForm(await payClientPaymentRequest(invoiceId))
+      window.location.assign(await payClientPaymentRequest(invoiceId))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'No se ha podido abrir el pago.')
       setPayingRequestId(null)

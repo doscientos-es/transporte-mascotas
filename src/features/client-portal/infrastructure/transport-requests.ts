@@ -301,7 +301,7 @@ export async function payTransportRequest(requestId: string) {
   if (error) throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
-  return openPaymentForm(result?.paymentUrl)
+  return requirePaymentUrl(result?.paymentUrl)
 }
 
 export type ClientPaymentRequest = {
@@ -339,23 +339,12 @@ export async function payClientPaymentRequest(invoiceId: string) {
   if (error) throw new Error(await functionErrorMessage(error, 'No se ha podido preparar el pago.'))
   const result = data as { paymentUrl?: string; error?: string } | null
   if (result?.error) throw new Error(result.error)
-  return openPaymentForm(result?.paymentUrl)
+  return requirePaymentUrl(result?.paymentUrl)
 }
 
-async function openPaymentForm(url: string | undefined) {
+function requirePaymentUrl(url: string | undefined) {
   if (!url) throw new Error('No se ha recibido el enlace de pago.')
-  const paymentUrl = new URL(url)
-  paymentUrl.searchParams.set('format', 'json')
-  const paymentResponse = await fetch(paymentUrl)
-  if (!paymentResponse.ok) throw new Error('No se ha podido abrir la pasarela de pago.')
-  const paymentForm = (await paymentResponse.json()) as Partial<TransportPaymentForm>
-  if (
-    typeof paymentForm.endpoint !== 'string' ||
-    !paymentForm.fields ||
-    typeof paymentForm.fields !== 'object'
-  )
-    throw new Error('La pasarela de pago no ha devuelto un formulario válido.')
-  return paymentForm as TransportPaymentForm
+  return url
 }
 
 async function functionErrorMessage(error: unknown, fallback: string) {

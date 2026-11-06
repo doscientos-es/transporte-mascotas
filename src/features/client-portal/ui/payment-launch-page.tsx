@@ -3,11 +3,13 @@ import { CircleAlert, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { loadPaymentRedirectForm } from '../application/payment-redirect'
-import { submitPaymentForm } from './submit-payment-form'
 
 export function PaymentLaunchPage() {
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState('')
+  const [paymentForm, setPaymentForm] = useState<Awaited<
+    ReturnType<typeof loadPaymentRedirectForm>
+  > | null>(null)
 
   useEffect(() => {
     let active = true
@@ -15,10 +17,11 @@ export function PaymentLaunchPage() {
     const token = params.get('token') ?? ''
     const kind = params.get('kind') === 'transport' ? 'transport' : undefined
     setError('')
+    setPaymentForm(null)
 
     void loadPaymentRedirectForm(token, kind)
       .then((form) => {
-        if (active) submitPaymentForm(form)
+        if (active) setPaymentForm(form)
       })
       .catch((reason: unknown) => {
         if (active)
@@ -48,6 +51,26 @@ export function PaymentLaunchPage() {
               <RefreshCw /> Reintentar
             </Button>
           </div>
+        </section>
+      </main>
+    )
+
+  if (paymentForm)
+    return (
+      <main className="loading-screen">
+        <section className="route-error-card">
+          <h1>Continuar con el pago</h1>
+          <p className="route-error-copy">
+            Pulsa el botón para abrir la pasarela segura de CaixaBank.
+          </p>
+          <form action={paymentForm.endpoint} method="post">
+            {Object.entries(paymentForm.fields).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <div className="route-error-actions">
+              <Button type="submit">Ir a CaixaBank</Button>
+            </div>
+          </form>
         </section>
       </main>
     )

@@ -66,6 +66,7 @@ import {
   loadDailyRoutes,
   loadRouteTemplates,
   reassignVanBox,
+  removeLetterFromDailyRoute,
   saveDailyRoute,
   saveRouteTemplate,
   updateDailyRouteDate,
@@ -926,13 +927,37 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast(`Box ${box} asignado a ${letterId}.`)
   }
 
-  function removeRouteService(routeId: string, serviceId: string) {
+  async function removeRouteLetter(routeId: string, letterId: string) {
+    if (!session) throw new Error('Inicia sesión para quitar una carta de la ruta.')
+    await removeLetterFromDailyRoute(routeId, letterId)
     const update = (route: DailyRoute): DailyRoute =>
       route.id === routeId
-        ? { ...route, actions: route.actions.filter((action) => action.id !== serviceId) }
+        ? { ...route, actions: route.actions.filter((action) => action.letterId !== letterId) }
         : route
     setSelectedRoute((current) => (current ? update(current) : null))
     setDailyRoutes((current) => current.map(update))
+    if (
+      !dailyRoutes.some(
+        (route) =>
+          route.id !== routeId && route.actions.some((action) => action.letterId === letterId),
+      )
+    ) {
+      setLetters((current) =>
+        current.map((letter) =>
+          letter.id === letterId
+            ? {
+                ...letter,
+                route: 'Sin ruta',
+                routeTemplateColor: undefined,
+                status: letter.status === 'cancelada' ? 'cancelada' : 'pendiente',
+              }
+            : letter,
+        ),
+      )
+    }
+    invalidateLettersCache(session.user.id)
+    await ensureLetters(true)
+    toast('Carta retirada de la ruta y del box. La carta y su factura se conservan.')
   }
 
   async function createLetter(draft: LetterDraft, settlement?: ManualLetterSettlement) {
@@ -1401,7 +1426,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     recalculateTemplateTimes,
     updateRouteService,
     reassignRouteBox,
-    removeRouteService,
+    removeRouteLetter,
     createLetter,
     editLetter,
     createDailyRoute,
