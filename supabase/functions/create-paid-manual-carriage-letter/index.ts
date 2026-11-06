@@ -38,15 +38,18 @@ Deno.serve(async (request) => {
       documentPending = true
       console.error('Issued invoice document not persisted', errorMessage(error))
     }
+    let emailPending = false
     try {
       await sendInvoicePaymentConfirmation(result.invoiceDraftId, result.issuedInvoiceId)
     } catch (error) {
+      emailPending = true
       console.error('Payment confirmation email not sent', errorMessage(error))
     }
     return json({
       letterId: result.letterId,
       invoiceDraftId: result.invoiceDraftId,
       documentPending,
+      emailPending,
     })
   } catch (error) {
     const message = errorMessage(error)

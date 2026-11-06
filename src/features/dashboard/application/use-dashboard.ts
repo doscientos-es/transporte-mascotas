@@ -46,6 +46,7 @@ import {
   loadLetters,
   createPaidManualLetter,
   saveManualLetter,
+  sendComplimentaryLetterConfirmation,
   sendPaymentRequestEmail,
   updateLetter,
 } from '../infrastructure/letters'
@@ -1060,6 +1061,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
       const billingTotal = complimentary ? 0 : manualLetterTotalCents(draft, boxCatalog) / 100
       let savedId: string | null = null
       let documentPending = false
+      let emailPending = false
       let paidInvoiceId: string | undefined
       if (settlement && !complimentary) {
         const result = await createPaidManualLetter(
@@ -1073,6 +1075,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         )
         savedId = result.letterId
         documentPending = result.documentPending
+        emailPending = result.emailPending
         paidInvoiceId = result.invoiceDraftId
       } else {
         savedId = await saveManualLetter(
@@ -1102,14 +1105,19 @@ export function useDashboard(session: Session | null, role: AppRole) {
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
       if (complimentary) {
-        toast('Carta creada como pagada sin factura ni ingresos.')
+        try {
+          await sendComplimentaryLetterConfirmation(savedLetter.id)
+        } catch {
+          emailPending = true
+        }
+        toast(`Carta creada como pagada sin factura ni ingresos.${emailPending ? ' No se han podido enviar todos los emails.' : ''}`)
         return { paid: true as const, complimentary: true as const, invoiceId: undefined }
       }
       if (settlement) {
         toast(
           documentPending
             ? 'Carta creada y marcada como pagada; la factura está emitida, pero su PDF está pendiente de guardarse.'
-            : 'Carta creada y marcada como pagada. La factura se ha emitido.',
+            : `Carta creada y marcada como pagada. La factura se ha emitido.${emailPending ? ' No se han podido enviar todos los emails.' : ''}`,
         )
         return { paid: true as const, invoiceId: paidInvoiceId }
       }

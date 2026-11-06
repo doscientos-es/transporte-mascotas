@@ -331,6 +331,7 @@ export async function createPaidManualLetter(
     letterId?: string
     invoiceDraftId?: string
     documentPending?: boolean
+    emailPending?: boolean
   } | null
   if (!result?.letterId)
     throw new Error('No se ha podido confirmar la creación de la carta pagada.')
@@ -338,7 +339,16 @@ export async function createPaidManualLetter(
     letterId: result.letterId,
     invoiceDraftId: result.invoiceDraftId,
     documentPending: result.documentPending === true,
+    emailPending: result.emailPending === true,
   }
+}
+
+export async function sendComplimentaryLetterConfirmation(letterId: string) {
+  const { data, error } = await requireSupabase().functions.invoke('send-complimentary-letter-confirmation', {
+    body: { letterId },
+  })
+  if (error || (data as { error?: string } | null)?.error)
+    throw new Error('No se ha podido enviar el aviso de la carta.')
 }
 
 /** Emails the payer the payment link; returns false when the payer has no email. */

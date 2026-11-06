@@ -26,29 +26,18 @@ type InvoiceDraft = {
   total_amount: string
   client_snapshot: Record<string, unknown>
 }
-type Recipient = { email: string; name: string }
+type Side = 'pickup' | 'delivery'
+type Recipient = { email: string; name: string; isPayer: boolean; sides: Side[] }
 
 /** Payment confirmation for a self-service transport request paid through Cyberpac. */
 export async function sendTransportPaymentConfirmation(requestId: string, issuedInvoiceId: string) {
-  const response = await rest(
-    `transport_requests?id=eq.${encodeURIComponent(requestId)}&select=contact_name,contact_email`,
-  )
-  const [request] = (await response.json()) as Array<{
-    contact_name: string
-    contact_email: string
-  }>
-  if (!request) throw new Error('No se ha encontrado la solicitud de transporte.')
-  if (!isValidEmail(request.contact_email)) return null
+  void requestId
   const invoiceResponse = await rest(
     `issued_invoices?id=eq.${encodeURIComponent(issuedInvoiceId)}&select=invoice_draft_id`,
   )
   const [invoice] = (await invoiceResponse.json()) as Array<{ invoice_draft_id: string }>
   if (!invoice) throw new Error('No se ha encontrado la factura.')
-  return sendConfirmation(
-    { email: request.contact_email.trim(), name: request.contact_name },
-    invoice.invoice_draft_id,
-    issuedInvoiceId,
-  )
+  return sendInvoicePaymentConfirmation(invoice.invoice_draft_id, issuedInvoiceId)
 }
 
 /** Payment confirmation for a payment request, whether paid by card or registered manually. */
@@ -57,11 +46,16 @@ export async function sendInvoicePaymentConfirmation(
   issuedInvoiceId: string,
 ) {
   const draft = await loadInvoiceDraft(invoiceDraftId)
-  const recipient = draft.client_snapshot.email
-  if (!isValidEmail(recipient)) return null
-  const name =
-    typeof draft.client_snapshot.fullName === 'string' ? draft.client_snapshot.fullName : ''
-  return sendConfirmation({ email: recipient.trim(), name }, invoiceDraftId, issuedInvoiceId, draft)
+  const letter = draft.letter_id ? await loadCarriageLetter(draft.letter_id) : null
+  if (draft.letter_id && !letter) throw new Error('No se ha encontrado la carta de porte.')
+  return sendConfirmations(draft, letter, issuedInvoiceId, invoiceDraftId)
+}
+
+/** Called only after the admin endpoint verifies that the letter is complimentary. */
+export async function sendComplimentaryLetterConfirmation(letterId: string) {
+  const letter = await loadCarriageLetter(letterId)
+  if (!letter) throw new Error('No se ha encontrado la carta de porte.')
+  return sendConfirmations(null, letter, null, null)
 }
 
 async function loadInvoiceDraft(invoiceDraftId: string) {
@@ -73,91 +67,92 @@ async function loadInvoiceDraft(invoiceDraftId: string) {
   return draft
 }
 
-/**
- * Sends the confirmation with the invoice PDF, the carriage letter PDF and a
- * calendar invitation. A document that cannot be prepared is logged and left
- * out rather than blocking the confirmation.
- */
-async function sendConfirmation(
-  recipient: Recipient,
-  invoiceDraftId: string,
-  issuedInvoiceId: string,
-  loadedDraft?: InvoiceDraft,
-) {
-  if (!isEmailConfigured())
-    throw new EmailError('El envío de emails todavía no está configurado.', true)
-  const draft = loadedDraft ?? (await loadInvoiceDraft(invoiceDraftId))
-  const letterId = draft.letter_id
-  const [invoiceNumber, letter] = await Promise.all([
-    issuedInvoiceNumber(issuedInvoiceId),
-    letterId
-      ? optional('Carriage letter not loaded', () => loadCarriageLetter(letterId))
-      : Promise.resolve(null),
-  ])
-  const attachments: Array<EmailAttachment & { label: string }> = []
+export function confirmationRecipients(draft: InvoiceDraft | null, letter: CarriageLetter | null) {
+  const recipients = new Map<string, Recipient>()
+  const add = (email: unknown, name: string, isPayer: boolean, sides: Side[]) => {
+    if (!isValidEmail(email)) return
+    const key = email.trim().toLowerCase()
+    const existing = recipients.get(key)
+    if (existing) {
+      existing.isPayer ||= isPayer
+      for (const side of sides) if (!existing.sides.includes(side)) existing.sides.push(side)
+    } else recipients.set(key, { email: email.trim(), name, isPayer, sides: [...sides] })
+  }
+  if (letter) {
+    add(letter.sender_email, letter.sender_name, false, ['pickup'])
+    add(letter.recipient_email, letter.recipient_name, false, ['delivery'])
+  }
+  if (draft) {
+    const name = typeof draft.client_snapshot.fullName === 'string' ? draft.client_snapshot.fullName : ''
+    // A distinct billing address receives both locations; never disclose the invoice to another address.
+    const payerKey = typeof draft.client_snapshot.email === 'string' ? draft.client_snapshot.email.trim().toLowerCase() : ''
+    add(draft.client_snapshot.email, name, true, letter && !recipients.has(payerKey) ? ['pickup', 'delivery'] : [])
+  }
+  return [...recipients.values()]
+}
 
-  const invoicePdf = await optional('Invoice PDF not attached', async () => {
-    const document = await persistIssuedInvoiceDocument(invoiceDraftId)
-    const response = await fetchInvoiceDocument(document)
-    return { fileName: document.file_name, body: new Uint8Array(await response.arrayBuffer()) }
-  })
-  if (invoicePdf)
-    attachments.push({
+async function sendConfirmations(draft: InvoiceDraft | null, letter: CarriageLetter | null, issuedInvoiceId: string | null, invoiceDraftId: string | null) {
+  const recipients = confirmationRecipients(draft, letter)
+  if (!recipients.length) return null
+  if (!isEmailConfigured()) throw new EmailError('El envío de emails todavía no está configurado.', true)
+  const letterPdf = letter ? await renderCarriageLetter(letter) : null
+  const invoiceNumber = issuedInvoiceId ? await issuedInvoiceNumber(issuedInvoiceId) : null
+  // A failed invoice does not prevent the other party receiving their documentation.
+  const invoiceResult = invoiceDraftId && recipients.some((recipient) => recipient.isPayer)
+    ? await Promise.allSettled([ (async () => {
+        const document = await persistIssuedInvoiceDocument(invoiceDraftId)
+        const response = await fetchInvoiceDocument(document)
+        return { fileName: document.file_name, body: new Uint8Array(await response.arrayBuffer()) }
+      })() ])
+    : []
+  const invoice = invoiceResult[0]
+  const outcomes = await Promise.allSettled(recipients.map(async (recipient) => {
+    if (recipient.isPayer && invoice?.status === 'rejected') throw invoice.reason
+    const attachments: Array<EmailAttachment & { label: string }> = []
+    if (recipient.isPayer && invoice?.status === 'fulfilled') attachments.push({
       label: `Factura${invoiceNumber ? ` ${invoiceNumber}` : ''} (PDF)`,
-      filename: invoicePdf.fileName,
-      content: invoicePdf.body,
-      contentType: 'application/pdf',
+      filename: invoice.value.fileName, content: invoice.value.body, contentType: 'application/pdf',
     })
-
-  const letterPdf = letter
-    ? await optional('Carriage letter PDF not attached', () => renderCarriageLetter(letter))
-    : null
-  if (letter && letterPdf)
-    attachments.push({
+    if (letter && letterPdf) attachments.push({
       label: `Carta de porte ${letter.id.replace(/^CARTA DE PORTE\s*/i, '')} (PDF)`,
-      filename: letterPdf.fileName,
-      content: letterPdf.body,
-      contentType: 'application/pdf',
+      filename: letterPdf.fileName, content: letterPdf.body, contentType: 'application/pdf',
     })
-
-  const event = letter ? transportEvent(letter) : null
-  const organizer = senderAddress()
-  if (event)
-    attachments.push({
-      label: 'Invitación de calendario (.ics)',
-      filename: 'transporte-kache-envios.ics',
-      content: transportInvitationIcs(event, {
-        organizer: isValidEmail(organizer) ? organizer : '',
-        attendee: recipient.email,
-        attendeeName: recipient.name,
-      }),
+    const locations = letter ? recipient.sides.map((side) => transportLocation(letter, side)) : []
+    const event = letter ? transportEvent(letter, locations) : null
+    const organizer = senderAddress()
+    if (event) attachments.push({
+      label: 'Invitación de calendario (.ics)', filename: 'transporte-kache-envios.ics',
+      content: transportInvitationIcs(event, { organizer: isValidEmail(organizer) ? organizer : '', attendee: recipient.email, attendeeName: recipient.name }),
       contentType: `text/calendar; charset=utf-8; method=${isValidEmail(organizer) ? 'REQUEST' : 'PUBLISH'}`,
     })
-
-  const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
-  const email = paymentConfirmationEmail({
-    name: recipient.name,
-    invoiceNumber,
-    details: confirmationDetails(draft, letter, invoiceNumber),
-    attachments: attachments.map(({ label }) => label),
-    hasCalendarInvitation: Boolean(event),
-    portalUrl: appUrl && letter ? `${appUrl}/mis-transportes` : null,
-    calendarUrl: event ? googleCalendarUrl(event) : null,
-  })
-  return sendEmail({
-    to: recipient.email,
-    ...email,
-    attachments: attachments.map(({ label: _label, ...attachment }) => attachment),
-    idempotencyKey: `payment-confirmation/${issuedInvoiceId}`,
-  })
+    const appUrl = Deno.env.get('PUBLIC_APP_URL')?.replace(/\/$/, '')
+    const email = paymentConfirmationEmail({
+      name: recipient.name, invoiceNumber: recipient.isPayer ? invoiceNumber : null,
+      isPayer: recipient.isPayer, hasPayment: Boolean(draft), locations,
+      details: confirmationDetails(draft, letter, recipient.isPayer ? invoiceNumber : null, recipient.isPayer),
+      attachments: attachments.map(({ label }) => label), hasCalendarInvitation: Boolean(event),
+      portalUrl: appUrl && letter ? `${appUrl}/mis-transportes` : null,
+      calendarUrl: event ? googleCalendarUrl(event) : null,
+    })
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(recipient.email.toLowerCase()))
+    const recipientKey = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('')
+    return sendEmail({ to: recipient.email, ...email,
+      attachments: attachments.map(({ label: _label, ...attachment }) => attachment),
+      idempotencyKey: `confirmation/${issuedInvoiceId ?? letter?.id}/${recipientKey}`,
+    })
+  }))
+  const failure = outcomes.find((result) => result.status === 'rejected')
+  if (failure?.status === 'rejected') throw failure.reason
+  return outcomes.length
 }
 
 function confirmationDetails(
-  draft: InvoiceDraft,
+  draft: InvoiceDraft | null,
   letter: CarriageLetter | null,
   invoiceNumber: string | null,
+  isPayer: boolean,
 ): Detail[] {
-  const details: Detail[] = [['Concepto', draft.concept]]
+  const details: Detail[] = draft && isPayer ? [['Concepto', draft.concept]] : []
   if (letter) {
     details.push(
       ['Trayecto', `${letter.origin_text} → ${letter.destination_text}`],
@@ -169,29 +164,29 @@ function confirmationDetails(
     if (animals.length)
       details.push([animals.length > 1 ? 'Mascotas' : 'Mascota', animals.join(', ')])
   }
-  details.push(['Importe pagado', formatAmount(Number(draft.total_amount))])
+  if (draft && isPayer) details.push(['Importe pagado', formatAmount(Number(draft.total_amount))])
   if (invoiceNumber) details.push(['Factura', invoiceNumber])
   return details
 }
 
-function transportEvent(letter: CarriageLetter): TransportEvent {
-  const pickup = [letter.origin_text, letter.origin_point].filter(Boolean).join(' · ')
-  const delivery = [letter.destination_text, letter.destination_point].filter(Boolean).join(' · ')
+function transportLocation(letter: CarriageLetter, side: Side) {
+  const pickup = side === 'pickup'
+  const locality = pickup ? letter.origin_text : letter.destination_text
+  const point = pickup ? letter.origin_point : letter.destination_point
+  const latitude = pickup ? letter.origin_latitude : letter.destination_latitude
+  const longitude = pickup ? letter.origin_longitude : letter.destination_longitude
+  const address = [point, locality].filter(Boolean).join(', ')
+  const destination = typeof latitude === 'number' && typeof longitude === 'number' ? `${latitude},${longitude}` : address
+  return { label: pickup ? 'Recogida' : 'Entrega', address, url: `https://www.google.com/maps/dir/?${new URLSearchParams({ api: '1', destination })}` }
+}
+
+function transportEvent(letter: CarriageLetter, locations: Array<{ label: string; address: string }>): TransportEvent {
   return {
     uid: `${letter.id.replace(/[^a-zA-Z0-9-]+/g, '-')}@kache-envios`,
     date: letter.service_date,
     title: `Transporte Kache Envíos: ${letter.origin_text} → ${letter.destination_text}`,
-    description: `Recogida: ${pickup}\nEntrega: ${delivery}\n${letter.id}\n\nTe avisaremos con la hora aproximada de recogida.`,
-    location: pickup,
-  }
-}
-
-async function optional<T>(context: string, task: () => Promise<T>): Promise<T | null> {
-  try {
-    return await task()
-  } catch (error) {
-    console.error(context, error instanceof Error ? error.message : 'unknown error')
-    return null
+    description: `${locations.map(({ label, address }) => `${label}: ${address}`).join('\n')}\n${letter.id}\n\nMás adelante recibirás un email con la hora exacta y más detalles.`,
+    location: locations.map(({ address }) => address).join(' · '),
   }
 }
 
