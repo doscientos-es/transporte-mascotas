@@ -42,10 +42,11 @@ describe.each([
     const texts: string[] = []
     const textPositions: Array<{ value: string; x: number; align?: string }> = []
     const images: Array<[number, number, number, number]> = []
+    const rectangles: Array<[number, number, number, number]> = []
 
     drawLetter(
       {
-        rect: () => {},
+        rect: (x, y, w, h) => rectangles.push([x, y, w, h]),
         text: (value, x, _y, { align }) => {
           texts.push(value)
           textPositions.push({ value, x, align })
@@ -73,7 +74,10 @@ describe.each([
       x: 198,
       align: 'right',
     })
-    expect(images).toEqual([[95, 4.5, 20, 20]])
+    expect(images).toEqual([[92, 4.5, 26, 26]])
+    expect(rectangles).toContainEqual([4, 4, 202, 30])
+    expect(rectangles).toContainEqual([4, 128.7, 101, 15.3])
+    expect(rectangles.every(([, y, , height]) => y + height <= 148)).toBe(true)
   })
 
   it('shows an explicit fallback when no transport box is assigned', () => {

@@ -133,12 +133,12 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
     )
 
   // Header
-  canvas.rect(X0, 4, X1 - X0, 24, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
-  if (logo && canvas.image) canvas.image(logo, 95, 4.5, 20, 20)
+  canvas.rect(X0, 4, X1 - X0, 30, { fill: [255, 255, 255], stroke: BLACK, lineWidth: 0.9 })
+  if (logo && canvas.image) canvas.image(logo, 92, 4.5, 26, 26)
   else canvas.text('KACHE ENVÍOS', MID, 16, { size: 8, bold: true, align: 'center' })
-  canvas.text('kacheenvios.com', MID, 26, { size: 5.5, align: 'center' })
-  canvas.text(fit('CARTA DE PORTE', 6.5, 80, true), 10, 11, { size: 6.5, bold: true })
-  canvas.text(fit(`Nº ${letterNumber(letter.id)}`, 8, 80, true), 10, 21, { size: 8, bold: true })
+  canvas.text('kacheenvios.com', MID, 33, { size: 5.5, align: 'center' })
+  canvas.text(fit('CARTA DE PORTE', 6.5, 78, true), 10, 11, { size: 6.5, bold: true })
+  canvas.text(fit(`Nº ${letterNumber(letter.id)}`, 8, 78, true), 10, 21, { size: 8, bold: true })
   canvas.text(
     fit(`Nº Box: ${letter.transport_box_number ?? 'No especificado'}`, 7, 70, true),
     198,
@@ -179,7 +179,7 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
       ],
     ]
     rows.forEach((row, i) => {
-      const y = 28 + 11 * i
+      const y = 34 + 11 * i
       row.forEach(([label, value], j) => {
         const cx = row.length === 1 ? x : j === 0 ? x : split
         const cw = row.length === 1 ? w : j === 0 ? 53 : w - 53
@@ -188,16 +188,16 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
       })
     })
   }
-  canvas.rect(X0, 28, TAB, 44, { fill: [244, 106, 70], stroke: FRAME, lineWidth: 0.4 })
-  stacked('REMITENTE', X0 + TAB / 2, 28, 44, 7, BLACK)
-  canvas.rect(X1 - TAB, 28, TAB, 44, { fill: [120, 120, 120], stroke: FRAME, lineWidth: 0.4 })
-  stacked('DESTINATARIO', X1 - TAB / 2, 28, 44, 6, [255, 255, 255])
+  canvas.rect(X0, 34, TAB, 44, { fill: [244, 106, 70], stroke: FRAME, lineWidth: 0.4 })
+  stacked('REMITENTE', X0 + TAB / 2, 34, 44, 7, BLACK)
+  canvas.rect(X1 - TAB, 34, TAB, 44, { fill: [120, 120, 120], stroke: FRAME, lineWidth: 0.4 })
+  stacked('DESTINATARIO', X1 - TAB / 2, 34, 44, 6, [255, 255, 255])
 
   // Species and accompanying documents
-  cell(X0, 72, MID - X0, 6.6)
-  plain(X0, 72, MID - X0, 6.6, 'ESPECIE', 'center')
-  cell(MID, 72, X1 - MID, 6.6)
-  plain(MID, 72, X1 - MID, 6.6, 'DOCUMENTO QUE ACOMPAÑA', 'center')
+  cell(X0, 78, MID - X0, 6.6)
+  plain(X0, 78, MID - X0, 6.6, 'ESPECIE', 'center')
+  cell(MID, 78, X1 - MID, 6.6)
+  plain(MID, 78, X1 - MID, 6.6, 'DOCUMENTO QUE ACOMPAÑA', 'center')
   const kinds = new Set<number>(letter.animals.map((animal) => speciesKind(animal.species)))
   const others = letter.animals.filter((a) => speciesKind(a.species) === 3).map((a) => a.species)
   const breeds = [...new Set(letter.animals.map((animal) => animal.breed).filter(Boolean))]
@@ -224,7 +224,7 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
     ['Otro', '(Especificar)', others.join(', ')],
   ]
   species.forEach(([name, label, value], i) => {
-    const y = 78.6 + 9.4 * i
+    const y = 84.6 + 9.4 * i
     mark(X0, y, TAB, 9.4, kinds.has(i))
     cell(X0 + TAB, y, 53, 9.4)
     plain(X0 + TAB, y, 53, 9.4, name)
@@ -252,18 +252,18 @@ export function drawCarriageLetter(canvas: PdfCanvas, letter: LayoutLetter, logo
 
   // Origin, destination and signatures
   const place = (x: number, label: string, text: string) => {
-    cell(x, 116.2, 44, 6.5)
-    plain(x, 116.2, 44, 6.5, label)
-    cell(x + 44, 116.2, 57, 6.5)
+    cell(x, 122.2, 44, 6.5)
+    plain(x, 122.2, 44, 6.5, label)
+    cell(x + 44, 122.2, 57, 6.5)
     const value = locality(text)
-    if (value) canvas.text(fit(value, 6.5, 54), x + 45.5, 120.6, { size: 6.5 })
+    if (value) canvas.text(fit(value, 6.5, 54), x + 45.5, 126.6, { size: 6.5 })
   }
   place(X0, 'PUNTO DE ORIGEN', letter.origin_text)
   place(MID, 'PUNTO DE DESTINO', letter.destination_text)
-  cell(X0, 122.7, MID - X0, 21.3, SENDER)
-  canvas.text('FIRMA REMITENTE', X0 + 1.5, 126.8, { size: 7.5, bold: true })
-  cell(MID, 122.7, X1 - MID, 21.3, RECIPIENT)
-  canvas.text('FIRMA DESTINATARIO', MID + 1.5, 126.8, { size: 7.5, bold: true })
+  cell(X0, 128.7, MID - X0, 15.3, SENDER)
+  canvas.text('FIRMA REMITENTE', X0 + 1.5, 132.8, { size: 7.5, bold: true })
+  cell(MID, 128.7, X1 - MID, 15.3, RECIPIENT)
+  canvas.text('FIRMA DESTINATARIO', MID + 1.5, 132.8, { size: 7.5, bold: true })
 }
 
 const labelFor = (key: string) =>
