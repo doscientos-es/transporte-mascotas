@@ -38,7 +38,7 @@ async function dispatch(routeId?: string) {
   })
   const notifications = (await response.json()) as Notification[]
   let sent = 0
-  let failed = 0
+  const failedRecipients: Array<{ name: string; email: string }> = []
   for (const notification of notifications) {
     try {
       const route = await loadRoute(notification.daily_route_id)
@@ -56,10 +56,10 @@ async function dispatch(routeId?: string) {
         error_message: safeMessage(error),
         processing_started_at: null,
       })
-      failed++
+      failedRecipients.push({ name: notification.recipient_name, email: notification.recipient })
     }
   }
-  return { sent, failed }
+  return { sent, failedRecipients }
 }
 
 async function loadRoute(routeId: string) {

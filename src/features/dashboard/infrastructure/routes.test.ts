@@ -8,19 +8,31 @@ import type {
   ServiceAction,
 } from '@/shared/types'
 
-const { updates, inserts, deletes, rpcs } = vi.hoisted(() => ({
+const { updates, inserts, deletes, rpcs, closure } = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
   inserts: [] as Array<{ table: string; values: unknown }>,
   deletes: [] as Array<{ table: string; id: string }>,
   rpcs: [] as Array<{ name: string; args: unknown }>,
+  closure: {
+    invocation: { data: { sent: 1, failedRecipients: [] }, error: null } as {
+      data: unknown
+      error: unknown
+    },
+  },
 }))
 
 vi.mock('@/shared/infrastructure/supabase', () => ({
   requireSupabase: () => ({
     rpc: (name: string, args: unknown) => {
       rpcs.push({ name, args })
+      if (name === 'close_daily_route')
+        return Promise.resolve({
+          data: { closedAt: 'now', missingEmails: [{ name: 'Ana', phone: '600000000' }] },
+          error: null,
+        })
       return Promise.resolve({ error: null })
     },
+    functions: { invoke: () => Promise.resolve(closure.invocation) },
     from: (table: string) => ({
       select: () => ({
         eq: () =>
@@ -62,6 +74,7 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 
 import {
   appendLetterToDailyRoute,
+  closeDailyRoute,
   deleteRouteTemplateStop,
   duplicateRouteTemplate,
   removeLetterFromDailyRoute,
@@ -81,6 +94,23 @@ const stop = (id: string): DailyRouteStop => ({
   minutes: 0,
   kind: 'parada',
   dwellMinutes: 15,
+})
+
+describe('closeDailyRoute', () => {
+  it('returns missing contacts and delivery results without undoing closure on delivery failure', async () => {
+    closure.invocation = {
+      data: { sent: 1, failedRecipients: [{ name: 'Luis', email: 'luis@example.com' }] },
+      error: null,
+    }
+    expect(await closeDailyRoute('route-1')).toMatchObject({
+      closedAt: 'now',
+      sent: 1,
+      missingEmails: [{ name: 'Ana' }],
+      failedRecipients: [{ name: 'Luis' }],
+    })
+    closure.invocation = { data: null, error: new Error('unavailable') }
+    expect(await closeDailyRoute('route-1')).toMatchObject({ closedAt: 'now', sent: null })
+  })
 })
 
 describe('removeLetterFromDailyRoute', () => {

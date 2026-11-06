@@ -23,12 +23,13 @@ describe('RoutesCatalogPage filters', () => {
 })
 
 describe('RoutesPage header', () => {
-  it('keeps planning actions visible and groups secondary actions in a menu', () => {
+  it.each([false, true])('keeps planning actions visible when closed: %s', (closed) => {
     const route: DailyRoute = {
       id: 'route-1',
       templateId: 'template-1',
       date: '2026-12-01',
-      status: 'activa',
+      status: closed ? 'cerrada' : 'activa',
+      closedAt: closed ? '2026-11-01T00:00:00Z' : undefined,
       actions: [],
       stops: [
         {
@@ -75,7 +76,12 @@ describe('RoutesPage header', () => {
           onUpdateService: vi.fn(),
           onRemoveLetter: vi.fn(),
           onCancelLetter: vi.fn(),
-          onCloseRoute: async () => {},
+          onCloseRoute: async () => ({
+            closedAt: 'now',
+            missingEmails: [],
+            sent: 0,
+            failedRecipients: [],
+          }),
           canManage: true,
         }),
       ),
@@ -83,6 +89,7 @@ describe('RoutesPage header', () => {
 
     expect(markup).toContain('Añadir parada')
     expect(markup).toContain('Editar ruta')
+    if (closed) expect(markup).toContain('Ruta cerrada a nuevas solicitudes')
     expect(markup).not.toContain('Reordenar paradas')
     expect(markup).not.toContain('Recalcular tiempos')
     expect(markup).toContain('Más acciones')

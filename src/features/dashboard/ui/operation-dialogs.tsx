@@ -695,7 +695,7 @@ function TripSection({
               {stop.label}
             </option>
           ))}
-          {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
+          <option value="__new-stop__">+ Añadir nueva parada…</option>
         </select>
       </PaperCell>
       <PaperCell label="Destino (entrega)">
@@ -712,7 +712,7 @@ function TripSection({
               {stop.label}
             </option>
           ))}
-          {!itineraryClosed && <option value="__new-stop__">+ Añadir nueva parada…</option>}
+          <option value="__new-stop__">+ Añadir nueva parada…</option>
         </select>
       </PaperCell>
     </div>

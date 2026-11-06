@@ -10,6 +10,8 @@ import type {
   UserRoleEntry,
 } from '@/shared/types'
 
+import type { RouteClosureContact, RouteClosureResult } from '../application/route-closure'
+
 type StoredStop = {
   id: string
   sequence: number
@@ -426,15 +428,34 @@ export async function closeDailyRoute(routeId: string) {
   const { data, error } = await requireSupabase().rpc('close_daily_route', {
     p_daily_route_id: routeId,
   })
-  if (error) throw error
-  const result = data as { closedAt?: string; notificationsQueued?: number } | null
-  if (result?.notificationsQueued) {
-    // Customer emails must never undo or block the closure; failed rows stay queued for retry.
-    await requireSupabase()
-      .functions.invoke('send-daily-route-closure-notifications', { body: { routeId } })
-      .catch(() => null)
+  if (error) throw new Error(error.message)
+  const result = data as { closedAt: string; missingEmails: RouteClosureContact[] } | null
+  if (!result?.closedAt || !Array.isArray(result.missingEmails))
+    throw new Error('El servidor no ha devuelto el resultado del cierre. Actualiza la página.')
+  // A failed dispatch cannot undo closure. Retry remains available in the route menu.
+  let delivery: { sent: number; failedRecipients: RouteClosureResult['failedRecipients'] } | null =
+    null
+  try {
+    const response = await requireSupabase().functions.invoke(
+      'send-daily-route-closure-notifications',
+      {
+        body: { routeId },
+      },
+    )
+    if (
+      !response.error &&
+      typeof response.data?.sent === 'number' &&
+      Array.isArray(response.data?.failedRecipients)
+    )
+      delivery = response.data
+  } catch {
+    // The route is closed, but delivery could not be confirmed.
   }
-  return result
+  return {
+    ...result,
+    sent: delivery?.sent ?? null,
+    failedRecipients: delivery?.failedRecipients ?? [],
+  }
 }
 
 export async function removeLetterFromDailyRoute(routeId: string, letterId: string) {

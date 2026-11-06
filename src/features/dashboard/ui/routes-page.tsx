@@ -84,6 +84,7 @@ import {
   type DrivingProgress,
   type RouteVerification,
 } from '../application/driving-times'
+import type { RouteClosureResult } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { legLabel, summarizeVerification } from '../application/route-verification'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
@@ -92,6 +93,7 @@ import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { CalculationProgress } from './calculation-progress'
 import { CancelLetterDialog } from './cancel-letter-dialog'
 import { StopFormDialog } from './operation-dialogs'
+import { RouteClosureReport } from './route-closure-report'
 import { RouteVerificationPanel, type VerificationStatus } from './route-verification-panel'
 
 const RouteMap = lazy(() => import('@/features/client-portal/ui/route-map'))
@@ -117,7 +119,7 @@ type Props = {
   onUpdateService: (routeId: string, service: ServiceAction) => void
   onRemoveLetter: (routeId: string, letterId: string) => Promise<void>
   onCancelLetter: (letterId: string) => Promise<void>
-  onCloseRoute: (routeId: string) => Promise<void>
+  onCloseRoute: (routeId: string) => Promise<RouteClosureResult>
   onDeleteRoute?: (routeId: string) => Promise<void>
   canManage?: boolean
 }
@@ -488,6 +490,7 @@ export function RoutesPage({
   const [deleting, setDeleting] = useState(false)
   const [editingStop, setEditingStop] = useState<DailyRouteStop | null>(null)
   const [closingRoute, setClosingRoute] = useState(false)
+  const [closureReport, setClosureReport] = useState<RouteClosureResult | null>(null)
   const [recalculatingTimes, setRecalculatingTimes] = useState(false)
   const [verification, setVerification] = useState<RouteVerification | null>(null)
   const [verifying, setVerifying] = useState(false)
@@ -773,9 +776,11 @@ export function RoutesPage({
     setClosingRoute(true)
     try {
       setOperationError('')
-      await onCloseRoute(route.id)
+      const result = await onCloseRoute(route.id)
       setCloseConfirmationOpen(false)
+      setClosureReport(result)
     } catch (error) {
+      setCloseConfirmationOpen(false)
       reportOperationError(error, 'No se ha podido cerrar el itinerario.')
     } finally {
       setClosingRoute(false)
@@ -921,7 +926,7 @@ export function RoutesPage({
               {(onOpenVan || canManage) && (
                 <div className="route-header-toolbar">
                   <div className="route-header-primary-actions">
-                    {canManage && !itineraryClosed && (
+                    {canManage && (
                       <>
                         <Button
                           className="journey-add-stop"
@@ -970,6 +975,11 @@ export function RoutesPage({
                         </DropdownMenuItem>
                       </>
                     )}
+                    {canManage && itineraryClosed && (
+                      <DropdownMenuItem onAction={() => void closeRoute()}>
+                        <Lock /> Ver contactos y reintentar avisos
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenu>
                 </div>
               )}
@@ -981,8 +991,8 @@ export function RoutesPage({
             )}
             {itineraryClosed && (
               <p className="itinerary-toolbar">
-                <Lock size={15} /> Itinerario cerrado: se conservan las paradas y los tiempos. Aún
-                puedes añadir animales en las paradas existentes.
+                <Lock size={15} /> Ruta cerrada a nuevas solicitudes. Administración puede seguir
+                editándola.
               </p>
             )}
             {plannedStops && (
@@ -1028,21 +1038,15 @@ export function RoutesPage({
                     arrivalByStop.get(stop.id) ?? { date: route.date, time: startTime },
                   )}
                   pointFor={pointFor}
-                  organizing={
-                    !recalculatingTimes && !itineraryClosed && (organizing || Boolean(plannedStops))
-                  }
+                  organizing={!recalculatingTimes && (organizing || Boolean(plannedStops))}
                   services={servicesByStop.get(stop.id) ?? []}
                   onDwellChange={setDwellMinutes}
                   onTravelChange={setTravelMinutes}
                   onEdit={
-                    itineraryClosed || plannedStops || recalculatingTimes
-                      ? undefined
-                      : () => setEditingStop(stop)
+                    plannedStops || recalculatingTimes ? undefined : () => setEditingStop(stop)
                   }
                   onDelete={
-                    itineraryClosed || plannedStops || recalculatingTimes
-                      ? undefined
-                      : () => setDeletingStop(stop)
+                    plannedStops || recalculatingTimes ? undefined : () => setDeletingStop(stop)
                   }
                   onAction={updateServices}
                   onRemoveLetter={canManage ? setRemovingLetter : undefined}
@@ -1056,7 +1060,7 @@ export function RoutesPage({
               <RouteVerificationPanel
                 status={verificationStatus}
                 stopNames={stops.map((stop) => stop.locality)}
-                canApply={canManage && !itineraryClosed}
+                canApply={canManage}
                 applying={applyingVerification}
                 onApply={() => void applyVerifiedTimes()}
               />
@@ -1238,8 +1242,8 @@ export function RoutesPage({
           <AlertDialogHeader>
             <AlertDialogTitle>Cerrar itinerario</AlertDialogTitle>
             <AlertDialogDescription>
-              Se fijarán las paradas y los tiempos de esta ruta. No se enviarán avisos automáticos a
-              los clientes.
+              La ruta dejará de aparecer en la web y no admitirá nuevas solicitudes de clientes. Se
+              intentará enviar un email a cada contacto; administración podrá seguir editándola.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1250,6 +1254,22 @@ export function RoutesPage({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={Boolean(closureReport)}
+        onOpenChange={(open) => {
+          if (!open) setClosureReport(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ruta cerrada</DialogTitle>
+            <DialogDescription>
+              Resultado de los avisos a los contactos de la ruta.
+            </DialogDescription>
+          </DialogHeader>
+          {closureReport && <RouteClosureReport result={closureReport} />}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
