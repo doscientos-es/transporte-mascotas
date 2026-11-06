@@ -215,7 +215,7 @@ export function ManualInvoiceDialog({
             </label>
             <p className="form-span">
               Al confirmar se registrará el cobro y se asignará el número definitivo. La factura
-              emitida no se puede modificar.
+              conserva el cobro registrado si se editan sus datos.
             </p>
             {error && (
               <p className="form-error form-span" role="alert">

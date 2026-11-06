@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1'
 
 import { rest, serviceHeaders } from './supabase.ts'
 
-type FiscalSnapshot = {
+export type FiscalSnapshot = {
   number?: unknown
   issuer?: { name?: unknown; taxId?: unknown; address?: unknown }
   client?: {
@@ -23,7 +23,7 @@ type FiscalSnapshot = {
   payment_date?: unknown
   operation_date?: unknown
 }
-type IssuedInvoice = {
+export type IssuedInvoice = {
   id: string
   invoice_draft_id: string
   issued_at: string
@@ -106,7 +106,7 @@ async function loadBrandLogo(pdf: PDFDocument) {
   return null
 }
 
-async function renderInvoice(invoice: IssuedInvoice) {
+export async function renderInvoice(invoice: IssuedInvoice) {
   const snapshot = invoice.fiscal_snapshot
   const issuer = snapshot.issuer ?? {}
   const client = snapshot.client ?? {}
@@ -255,6 +255,18 @@ async function renderInvoice(invoice: IssuedInvoice) {
   drawRight('Gracias por confiar en Kache Envíos', 541, 64, 8, true, coral)
   drawRight('Documento generado desde una instantánea fiscal inmutable', 541, 52, 7, false, muted)
   return { body: await pdf.save(), fileName: `factura_${filePart(number)}.pdf` }
+}
+
+export async function uploadInvoiceRevision(invoice: IssuedInvoice) {
+  const document = await renderInvoice(invoice)
+  const path = `${invoice.id}/revisions/${crypto.randomUUID()}/${document.fileName}`
+  const upload = await fetch(storageUrl(path), {
+    method: 'POST',
+    headers: { ...serviceHeaders(), 'Content-Type': 'application/pdf', 'x-upsert': 'false' },
+    body: document.body,
+  })
+  if (!upload.ok) throw new Error('No se ha podido guardar el nuevo PDF de la factura.')
+  return { path, fileName: document.fileName }
 }
 
 /** Creates once and returns the immutable PDF that corresponds to an issued invoice snapshot. */

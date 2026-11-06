@@ -24,7 +24,9 @@ import {
   PaymentRequestPreviewDialog,
 } from './billing-document-dialogs'
 import { downloadBlob, downloadInvoiceRegister } from './billing-document-export'
+import { BillingDocumentTable } from './billing-document-table'
 import type { BillingDocumentMode, BillingDocumentsPageProps } from './billing-document-types'
+import { EditInvoiceDialog } from './edit-invoice-dialog'
 import { ManualInvoiceDialog } from './manual-invoice-dialog'
 
 const sortDirections = ['asc', 'desc'] as const
@@ -73,6 +75,7 @@ export function BillingDocumentsPage({
   const [error, setError] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<ClientInvoice['issuedInvoice']>()
   const [notice, setNotice] = useState('')
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
@@ -308,7 +311,22 @@ export function BillingDocumentsPage({
           ? 'Actualizando resultados…'
           : `${result.total} ${result.total === 1 ? 'resultado' : 'resultados'}`}
       </div>
-      <div className="invoices-list">
+      {!isPaymentRequests && result.items.length > 0 && (
+        <BillingDocumentTable
+          invoices={result.items}
+          downloadingId={downloadingId}
+          onPreview={(invoice) => updateParams({ factura: invoice.id }, false)}
+          onDownload={(invoice) => void downloadDocument(invoice, invoice.clientName || 'Cliente')}
+          onEdit={
+            canCreateManualInvoice ? (invoice) => setEditing(invoice.issuedInvoice) : undefined
+          }
+          onOpenClient={onOpenClient}
+          onOpenLetter={onOpenLetter}
+        />
+      )}
+      <div
+        className={`invoices-list${!isPaymentRequests && result.items.length ? ' invoice-mobile-list' : ''}`}
+      >
         {result.items.length ? (
           result.items.map((invoice) => {
             const clientName = invoice.clientName || 'Cliente'
@@ -326,6 +344,11 @@ export function BillingDocumentsPage({
                 }
                 onOpenClient={onOpenClient}
                 onOpenLetter={onOpenLetter}
+                onEdit={
+                  !isPaymentRequests && canCreateManualInvoice && invoice.issuedInvoice
+                    ? () => setEditing(invoice.issuedInvoice)
+                    : undefined
+                }
               />
             )
           })
@@ -394,6 +417,19 @@ export function BillingDocumentsPage({
               documentPending
                 ? 'Factura creada y pagada. El PDF está pendiente de preparación; puedes reintentarlo desde la factura.'
                 : 'Factura creada y marcada como pagada.',
+            )
+          }}
+        />
+      )}
+      {editing && (
+        <EditInvoiceDialog
+          invoice={editing}
+          onClose={() => setEditing(undefined)}
+          onSaved={() => {
+            setEditing(undefined)
+            setRefreshKey((current) => current + 1)
+            setNotice(
+              'Factura actualizada. Se ha guardado el PDF anterior y generado uno nuevo; el cobro no ha cambiado.',
             )
           }}
         />
