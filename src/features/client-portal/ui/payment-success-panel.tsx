@@ -209,7 +209,7 @@ export function PaymentSuccessPanel({
       )}
 
       <ul className="payment-success-steps">
-        <li>Te avisaremos con la hora aproximada de recogida antes del viaje.</li>
+        <li>Más adelante recibirás un email con la hora exacta y más detalles del transporte.</li>
         <li>Ten a mano la documentación y la cartilla de tu mascota.</li>
         <li>Puedes seguir el estado del transporte en todo momento desde Mis transportes.</li>
       </ul>

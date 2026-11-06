@@ -4,6 +4,9 @@ export type Detail = [label: string, value: string]
 export type ConfirmationContent = {
   name: string
   invoiceNumber: string | null
+  isPayer: boolean
+  hasPayment: boolean
+  locations: Array<{ label: string; address: string; url: string }>
   details: Detail[]
   /** Human readable names of the files attached to the email. */
   attachments: string[]
@@ -23,13 +26,17 @@ const button = (href: string, label: string, primary: boolean) =>
 
 export function paymentConfirmationEmail(content: ConfirmationContent) {
   const greeting = content.name.trim() ? `Hola ${content.name.trim()},` : 'Hola,'
-  const subject = content.invoiceNumber
+  const subject = content.isPayer && content.invoiceNumber
     ? `Pago confirmado · Factura ${content.invoiceNumber} · Kache Envíos`
-    : 'Pago confirmado · Kache Envíos'
-  const intro =
-    'Hemos recibido tu pago correctamente y tu servicio queda confirmado. Te dejamos el resumen de la operación y la documentación.'
+    : 'Transporte confirmado · Kache Envíos'
+  const intro = content.isPayer && content.hasPayment
+    ? 'Hemos recibido tu pago correctamente y tu servicio queda confirmado. Te dejamos el resumen de la operación y la documentación.'
+    : 'El transporte queda confirmado. Te dejamos el resumen del servicio y la documentación.'
   const calendarNote = content.hasCalendarInvitation
-    ? 'Incluimos una invitación de calendario con el día del transporte. Te avisaremos con la hora aproximada de recogida.'
+    ? 'Incluimos una invitación de calendario con el día del transporte.'
+    : ''
+  const scheduleNote = content.locations.length
+    ? 'Más adelante recibirás un email con la hora exacta y más detalles del transporte.'
     : ''
   const closing = 'Si tienes cualquier duda, responde a este email y te ayudaremos.'
 
@@ -40,10 +47,12 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
     '',
     'RESUMEN',
     ...content.details.map(([label, value]) => `- ${label}: ${value}`),
+    ...content.locations.flatMap(({ label, address, url }) => ['', `${label}: ${address}`, `Ver ubicación: ${url}`]),
     ...(content.attachments.length
       ? ['', 'DOCUMENTOS ADJUNTOS', ...content.attachments.map((name) => `- ${name}`)]
       : []),
     ...(calendarNote ? ['', calendarNote] : []),
+    ...(scheduleNote ? ['', scheduleNote] : []),
     ...(content.calendarUrl ? [`Añadir a Google Calendar: ${content.calendarUrl}`] : []),
     ...(content.portalUrl ? ['', `Consulta tus transportes: ${content.portalUrl}`] : []),
     '',
@@ -65,6 +74,7 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
     )
     .join('')
   const buttons = [
+    ...content.locations.map(({ label, url }) => button(url, `Ver ubicación de ${label.toLowerCase()}`, false)),
     content.portalUrl ? button(content.portalUrl, 'Ver mis transportes', true) : '',
     content.calendarUrl ? button(content.calendarUrl, 'Añadir a Google Calendar', false) : '',
   ].join('')
@@ -72,7 +82,7 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
   const html = `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:${CREAM};font-family:${FONT};color:${INK}">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0">Tu pago se ha confirmado. Adjuntamos la factura y la documentación del servicio.</div>
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Tu transporte está confirmado. Adjuntamos la documentación del servicio.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM}"><tr><td align="center" style="padding:32px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden">
 <tr><td style="background:${INK};padding:26px 32px">
@@ -80,23 +90,25 @@ export function paymentConfirmationEmail(content: ConfirmationContent) {
 <div style="font-size:12px;color:#d8d3ce;margin-top:4px">Transporte de mascotas</div>
 </td></tr>
 <tr><td style="padding:32px 32px 8px">
-<div style="display:inline-block;padding:6px 12px;border-radius:999px;background:#fde8e8;color:${CORAL};font-size:12px;font-weight:bold;letter-spacing:.5px">&#10003; PAGO CONFIRMADO</div>
+<div style="display:inline-block;padding:6px 12px;border-radius:999px;background:#fde8e8;color:${CORAL};font-size:12px;font-weight:bold;letter-spacing:.5px">&#10003; TRANSPORTE CONFIRMADO</div>
 <p style="margin:22px 0 8px;font-size:16px">${escapeHtml(greeting)}</p>
 <p style="margin:0;font-size:15px;line-height:1.6;color:#3a3835">${escapeHtml(intro)}</p>
 </td></tr>
 <tr><td style="padding:16px 32px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM};border-radius:10px"><tr><td style="padding:8px 20px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>
 </td></tr></table></td></tr>
+${content.locations.map(({ label, address }) => `<tr><td style="padding:8px 32px;font-size:14px;color:${INK}"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(address)}</td></tr>`).join('')}
 ${
   attachmentList
     ? `<tr><td style="padding:8px 32px"><div style="font-size:12px;font-weight:bold;letter-spacing:.5px;color:${MUTED};margin-bottom:6px">DOCUMENTOS ADJUNTOS</div><table role="presentation" cellpadding="0" cellspacing="0">${attachmentList}</table></td></tr>`
     : ''
 }
 ${calendarNote ? `<tr><td style="padding:8px 32px"><p style="margin:0;font-size:14px;line-height:1.6;color:#3a3835">${escapeHtml(calendarNote)}</p></td></tr>` : ''}
+${scheduleNote ? `<tr><td style="padding:8px 32px"><p style="margin:0;font-size:14px;line-height:1.6;color:#3a3835">${escapeHtml(scheduleNote)}</p></td></tr>` : ''}
 ${buttons ? `<tr><td style="padding:18px 32px 6px">${buttons}</td></tr>` : ''}
 <tr><td style="padding:16px 32px 32px"><p style="margin:0;font-size:14px;line-height:1.6;color:#3a3835">${escapeHtml(closing)}</p><p style="margin:14px 0 0;font-size:14px;font-weight:bold">Gracias por confiar en Kache Envíos.</p></td></tr>
 </table>
-<p style="max-width:600px;margin:18px auto 0;font-size:11px;line-height:1.5;color:${MUTED}">Has recibido este email porque has realizado un pago a Kache Envíos. Es un mensaje transaccional relacionado con tu servicio.</p>
+<p style="max-width:600px;margin:18px auto 0;font-size:11px;line-height:1.5;color:${MUTED}">Has recibido este email porque tienes un transporte con Kache Envíos. Es un mensaje transaccional relacionado con tu servicio.</p>
 </td></tr></table>
 </body></html>`
 

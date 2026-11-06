@@ -39,6 +39,10 @@ export type CarriageLetter = {
   destination_text: string
   origin_point: string
   destination_point: string
+  origin_latitude: number | null
+  origin_longitude: number | null
+  destination_latitude: number | null
+  destination_longitude: number | null
   accompanying_documents: string[] | null
   transport_box_number: number | null
   ates_number?: string | null
@@ -69,6 +73,10 @@ export async function loadCarriageLetter(letterId: string): Promise<CarriageLett
     'destination_text',
     'origin_point',
     'destination_point',
+    'origin_latitude',
+    'origin_longitude',
+    'destination_latitude',
+    'destination_longitude',
     'accompanying_documents',
     'ates_number',
     'animals(ordinal,species,breed,identification,birth_date,weight_kg,length_cm,height_cm,width_cm)',
