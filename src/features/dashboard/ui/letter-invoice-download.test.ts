@@ -13,15 +13,17 @@ vi.mock('../application/invoice-preview', () => ({
 }))
 vi.mock('./billing-document-export', () => ({ downloadBlob: download }))
 
-import { downloadLetterInvoice, LetterInvoiceDownload } from './letter-invoice-download'
+import { downloadLetterInvoice } from './download-letter-invoice'
+import { LetterInvoiceDownload } from './letter-invoice-download'
 
 describe('letter invoice download', () => {
   beforeEach(() => vi.resetAllMocks())
 
   it('only offers the action for a linked issued invoice', () => {
     expect(renderToStaticMarkup(createElement(LetterInvoiceDownload, {}))).toBe('')
-    expect(renderToStaticMarkup(createElement(LetterInvoiceDownload, { invoiceDraftId: 'draft' })))
-      .toContain('Descargar factura')
+    expect(
+      renderToStaticMarkup(createElement(LetterInvoiceDownload, { invoiceDraftId: 'draft' })),
+    ).toContain('Descargar factura')
   })
 
   it('downloads the stored invoice PDF using its draft ID and filename', async () => {
