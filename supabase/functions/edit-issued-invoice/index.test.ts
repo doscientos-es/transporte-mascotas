@@ -21,6 +21,9 @@ let handler: (request: Request) => Promise<Response>
 const invoiceId = '11111111-1111-4111-8111-111111111111'
 const snapshot = {
   number: 'F-2026-000819',
+  net_amount: 100,
+  vat_rate: 21,
+  vat_amount: 21,
   total_amount: 121,
   payment_method: 'Tarjeta',
   concept: 'Antes',
@@ -39,6 +42,7 @@ const input = {
   },
   concept: 'Después',
   operationDate: '2026-11-01',
+  total: 242,
 }
 const request = (body: unknown = input) =>
   new Request('https://example.invalid', { method: 'POST', body: JSON.stringify(body) })
@@ -79,14 +83,16 @@ describe('edit invoice endpoint', () => {
     expect(rest).not.toHaveBeenCalled()
   })
 
-  it('saves the previous document, renders the revision and atomically submits unchanged payment data', async () => {
+  it('renders and submits a revised total while preserving the payment method', async () => {
     expect((await handler(request())).status).toBe(200)
     expect(persist).toHaveBeenCalledWith(invoiceId, 'admin')
     expect(persist.mock.invocationCallOrder[0]).toBeLessThan(upload.mock.invocationCallOrder[0])
     const updated = upload.mock.calls[0][0].fiscal_snapshot
     expect(updated).toMatchObject({
       number: snapshot.number,
-      total_amount: 121,
+      net_amount: 200,
+      vat_amount: 42,
+      total_amount: 242,
       payment_method: 'Tarjeta',
       concept: 'Después',
       client: { fullName: 'Cliente' },
@@ -97,6 +103,20 @@ describe('edit invoice endpoint', () => {
       p_actor_id: 'admin',
       p_expected_snapshot: snapshot,
       p_snapshot: updated,
+    })
+  })
+
+  it.each([0, -1, 1.001, 1000000, null, '121'])('rejects invalid total %s', async (total) => {
+    expect((await handler(request({ ...input, total }))).status).toBe(400)
+    expect(rest).not.toHaveBeenCalled()
+  })
+
+  it('preserves the original tax breakdown if the total is unchanged', async () => {
+    expect((await handler(request({ ...input, total: 121 }))).status).toBe(200)
+    expect(upload.mock.calls[0][0].fiscal_snapshot).toMatchObject({
+      net_amount: 100,
+      vat_amount: 21,
+      total_amount: 121,
     })
   })
 

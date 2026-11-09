@@ -1,15 +1,17 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type { InvoiceClientInput, IssuedInvoice } from '@/shared/types'
 
-import { fiscalClient } from '../domain/invoice-values'
+import { fiscalClient, invoiceAmounts } from '../domain/invoice-values'
 
 export async function editInvoice(
   invoice: IssuedInvoice,
   client: InvoiceClientInput,
   concept: string,
   operationDate: string,
+  total: number,
 ) {
   const normalizedClient = fiscalClient(client)
+  invoiceAmounts(total, Number(invoice.fiscalSnapshot.vat_rate ?? NaN))
   if (!concept.trim() || concept.trim().length > 500)
     throw new Error('Indica un concepto de hasta 500 caracteres.')
   if (!/^\d{4}-\d{2}-\d{2}$/.test(operationDate))
@@ -21,6 +23,7 @@ export async function editInvoice(
       client: normalizedClient,
       concept: concept.trim(),
       operationDate,
+      total,
     },
   })
   if (error) {

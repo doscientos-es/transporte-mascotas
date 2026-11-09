@@ -1,4 +1,7 @@
+import { CheckCircle2, FileText, ReceiptText } from 'lucide-react'
+
 import type { ClientInvoice } from '@/shared/types'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import { BillingDocumentActions } from './billing-document-card'
 
@@ -41,11 +44,15 @@ export function BillingDocumentTable({
           {invoices.map((invoice) => (
             <tr key={invoice.id}>
               <td>
+                <span className="invoice-table-icon" aria-hidden="true">
+                  <ReceiptText size={17} />
+                </span>
                 <strong>{invoice.issuedInvoice?.number ?? invoice.concept}</strong>
               </td>
               <td>
                 {onOpenClient && invoice.clientId ? (
                   <button
+                    type="button"
                     className="invoice-card-link"
                     onClick={() => onOpenClient(invoice.clientId)}
                   >
@@ -58,25 +65,29 @@ export function BillingDocumentTable({
               <td>
                 {onOpenLetter && invoice.letterId ? (
                   <button
-                    className="invoice-card-link"
+                    type="button"
+                    className="invoice-card-link invoice-table-reference"
                     onClick={() => {
                       if (invoice.letterId) onOpenLetter(invoice.letterId)
                     }}
                   >
+                    <FileText size={14} aria-hidden="true" />
                     {invoice.letterId}
                   </button>
                 ) : (
                   (invoice.letterId ?? 'Factura libre')
                 )}
               </td>
-              <td>
+              <td className="invoice-table-date">
                 {new Date(invoice.issuedInvoice?.issuedAt ?? invoice.createdAt).toLocaleDateString(
                   'es-ES',
                 )}
               </td>
-              <td>{currency(invoice.total)}</td>
+              <td className="invoice-table-amount">{currency(invoice.total)}</td>
               <td>
-                <span className="invoice-status">Pagada</span>
+                <StatusBadge status="pagada" className="gap-1.5">
+                  <CheckCircle2 size={13} aria-hidden="true" /> Pagada
+                </StatusBadge>
               </td>
               <td>
                 <BillingDocumentActions

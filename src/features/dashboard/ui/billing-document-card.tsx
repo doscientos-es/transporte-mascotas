@@ -3,6 +3,7 @@ import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText } from 'luci
 import type { ReactNode } from 'react'
 
 import type { ClientInvoice } from '@/shared/types'
+import { StatusBadge } from '@/shared/ui/status-badge'
 
 import type { BillingDocumentMode } from './billing-document-types'
 
@@ -196,10 +197,12 @@ export function BillingDocumentCard({
                 {new Date(issued?.issuedAt ?? invoice.createdAt).toLocaleDateString('es-ES')}
               </span>
             </div>
-            {!isIssued && (
-              <span className="invoice-status invoice-pending">Pendiente de cobro</span>
+            {!isIssued && <StatusBadge status="pendiente_pago">Pendiente de cobro</StatusBadge>}
+            {isIssued && (
+              <StatusBadge status="pagada" className="gap-1.5">
+                <CheckCircle2 size={13} aria-hidden="true" /> Pagada
+              </StatusBadge>
             )}
-            {isIssued && <span className="invoice-status">Pagada</span>}
           </div>
           <BillingDocumentActions
             mode={mode}

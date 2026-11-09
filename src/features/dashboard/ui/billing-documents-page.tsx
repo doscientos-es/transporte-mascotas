@@ -94,6 +94,7 @@ export function BillingDocumentsPage({
   )
   const manualPayment = findByParam(result.items, searchParams.get('cobro'))
   const isPaymentRequests = mode === 'payment-requests'
+  const hasFilters = Boolean(query || from || to)
 
   useEffect(() => {
     let active = true
@@ -247,7 +248,7 @@ export function BillingDocumentsPage({
               ariaLabel="Buscar documentos"
               placeholder="Nº, cliente, carta o concepto"
               value={query}
-              onChange={(value) => updateParams({ q: value, ...resetPage })}
+              onChange={(value) => updateParams({ q: value, letter: undefined, ...resetPage })}
             />
           </div>
           <label>
@@ -306,10 +307,30 @@ export function BillingDocumentsPage({
       </section>
 
       {notice && <output>{notice}</output>}
-      <div className="invoice-results" aria-live="polite">
-        {loading
-          ? 'Actualizando resultados…'
-          : `${result.total} ${result.total === 1 ? 'resultado' : 'resultados'}`}
+      <div className="invoice-results">
+        <span aria-live="polite">
+          {loading
+            ? 'Actualizando resultados…'
+            : `${result.total} ${result.total === 1 ? 'resultado' : 'resultados'}`}
+        </span>
+        {hasFilters && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              updateParams({
+                q: undefined,
+                letter: undefined,
+                desde: undefined,
+                hasta: undefined,
+                ...resetPage,
+              })
+            }
+          >
+            Limpiar filtros
+          </Button>
+        )}
       </div>
       {!isPaymentRequests && result.items.length > 0 && (
         <BillingDocumentTable
@@ -429,7 +450,7 @@ export function BillingDocumentsPage({
             setEditing(undefined)
             setRefreshKey((current) => current + 1)
             setNotice(
-              'Factura actualizada. Se ha guardado el PDF anterior y generado uno nuevo; el cobro no ha cambiado.',
+              'Factura actualizada. Se ha guardado el PDF anterior y el cobro registrado refleja el importe de la factura.',
             )
           }}
         />

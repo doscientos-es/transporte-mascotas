@@ -47,6 +47,12 @@ describe('manual invoice values', () => {
     expect(() => validateManualInvoice({ ...input, total })).toThrow('El total')
   })
 
+  it('uses the invoice tax rate rather than replacing it with the default', () => {
+    expect(invoiceAmounts(110, 10)).toEqual({ netAmount: 100, vatAmount: 10, totalAmount: 110 })
+    expect(invoiceAmounts(0.21, 5)).toEqual({ netAmount: 0.2, vatAmount: 0.01, totalAmount: 0.21 })
+    expect(() => invoiceAmounts(100, NaN)).toThrow('IVA')
+  })
+
   it.each(['fullName', 'nif', 'address', 'postalCode', 'city'] as const)(
     'requires fiscal field %s',
     (field) => {

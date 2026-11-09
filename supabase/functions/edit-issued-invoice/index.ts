@@ -12,6 +12,7 @@ type Input = {
   client?: Record<string, unknown>
   concept?: string
   operationDate?: string
+  total?: number
 }
 
 Deno.serve(async (request) => {
@@ -36,6 +37,11 @@ Deno.serve(async (request) => {
       typeof input.concept !== 'string' ||
       !input.concept.trim() ||
       input.concept.trim().length > 500 ||
+      typeof input.total !== 'number' ||
+      !Number.isFinite(input.total) ||
+      input.total <= 0 ||
+      input.total > 999999.99 ||
+      Math.abs(input.total * 100 - Math.round(input.total * 100)) > 0.000001 ||
       typeof input.operationDate !== 'string' ||
       !/^\d{4}-\d{2}-\d{2}$/.test(input.operationDate) ||
       Number.isNaN(Date.parse(`${input.operationDate}T12:00:00Z`)) ||
@@ -49,6 +55,10 @@ Deno.serve(async (request) => {
     )
     const [invoice] = (await response.json()) as IssuedInvoice[]
     if (!invoice) return json({ error: 'Factura no encontrada.' }, 404)
+    const vatRate = Number(invoice.fiscal_snapshot.vat_rate ?? NaN)
+    if (!Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100 ||
+        Math.abs(vatRate * 100 - Math.round(vatRate * 100)) > 0.000001)
+      throw new Error('El tipo de IVA de la factura no es válido.')
     // Always save the old PDF before creating a new version.
     await persistIssuedInvoiceDocument(input.invoiceId, actorId)
     const client = Object.fromEntries(
@@ -59,6 +69,13 @@ Deno.serve(async (request) => {
       client,
       concept: input.concept.trim(),
       operation_date: input.operationDate,
+    }
+    if (input.total !== Number(invoice.fiscal_snapshot.total_amount)) {
+      const totalCents = Math.round(input.total * 100)
+      const netCents = Math.round((totalCents * 10000) / (10000 + Math.round(vatRate * 100)))
+      snapshot.net_amount = netCents / 100
+      snapshot.vat_amount = (totalCents - netCents) / 100
+      snapshot.total_amount = totalCents / 100
     }
     const document = await uploadInvoiceRevision({ ...invoice, fiscal_snapshot: snapshot })
     await rest('rpc/edit_issued_invoice', {

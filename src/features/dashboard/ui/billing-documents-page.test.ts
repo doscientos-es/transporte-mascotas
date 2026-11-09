@@ -46,6 +46,7 @@ describe('billing browser compatibility', () => {
     )
     expect(markup).toContain('Factura libre')
     expect(markup).toContain('Pagada')
+    expect(markup).toContain('data-status="pagada"')
     expect(markup).not.toContain('invoice-card-link invoice-reference')
   })
 
@@ -83,6 +84,9 @@ describe('billing browser compatibility', () => {
     expect(markup).toContain('F-2026-000819')
     expect(markup).toContain('Factura libre')
     expect(markup).toContain('Pagada')
+    expect(markup).toContain('data-status="pagada"')
+    expect(markup).toContain('invoice-table-icon')
+    expect(markup).toContain('invoice-table-amount')
     for (const label of ['Ver factura', 'Descargar factura', 'Editar factura']) {
       expect(markup).toContain(`aria-label="${label}"`)
     }
@@ -106,6 +110,25 @@ describe('billing browser compatibility', () => {
     const card = renderToStaticMarkup(createElement(BillingDocumentActions, props))
     expect(card).toContain('invoice-action-label')
     expect(card).toContain('Preparando…')
+  })
+
+  it('offers to clear active search and date filters, including legacy letter links', async () => {
+    const { InvoicesPage } = await import('./invoices-page')
+    const render = (url: string) =>
+      renderToStaticMarkup(
+        createElement(MemoryRouter, { initialEntries: [url] }, createElement(InvoicesPage)),
+      )
+
+    expect(render('/')).not.toContain('Limpiar filtros')
+    for (const url of [
+      '/?q=cliente',
+      '/?letter=carta',
+      '/?desde=2026-11-05',
+      '/?hasta=2026-11-06',
+    ]) {
+      expect(render(url)).toContain('Limpiar filtros')
+    }
+    expect(render('/?orden=total')).not.toContain('Limpiar filtros')
   })
 
   it('opens invoices and payment requests without the Iterator API required by the PDF viewer', async () => {
