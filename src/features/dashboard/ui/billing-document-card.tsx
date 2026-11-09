@@ -1,5 +1,6 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+import { Button, Card, CardContent, IconButton } from '@doscientos/ui'
 import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import type { ClientInvoice } from '@/shared/types'
 
@@ -11,15 +12,65 @@ const currency = (amount: number) =>
 type DocumentActions = {
   mode: BillingDocumentMode
   downloading: boolean
+  compact?: boolean
   onPreview: () => void
   onDownload: () => void
   onManualPayment?: () => void
   onEdit?: () => void
 }
 
+function DocumentAction({
+  compact,
+  label,
+  text,
+  icon,
+  onClick,
+  disabled,
+  className,
+  labelClassName,
+}: {
+  compact: boolean
+  label: string
+  text?: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  className?: string
+  labelClassName?: string
+}) {
+  if (compact) {
+    return (
+      <IconButton
+        label={label}
+        size="icon-sm"
+        variant="outline"
+        className={className}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {icon}
+      </IconButton>
+    )
+  }
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className={className}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+    >
+      {icon}
+      <span className={labelClassName}>{text ?? label}</span>
+    </Button>
+  )
+}
+
 export function BillingDocumentActions({
   mode,
   downloading,
+  compact = false,
   onPreview,
   onDownload,
   onManualPayment,
@@ -28,38 +79,40 @@ export function BillingDocumentActions({
   const isIssued = mode === 'invoices'
   return (
     <div className="invoice-card-actions">
-      <Button
-        size="sm"
-        variant="outline"
+      <DocumentAction
+        compact={compact}
+        label={isIssued ? 'Ver factura' : 'Ver solicitud'}
+        icon={<Eye size={15} />}
         className="invoice-preview-button"
+        labelClassName="invoice-action-label"
         onClick={onPreview}
-        aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
-      >
-        <Eye size={15} />
-        <span className="invoice-action-label">{isIssued ? 'Ver factura' : 'Ver solicitud'}</span>
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
+      />
+      <DocumentAction
+        compact={compact}
+        label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+        text={downloading ? 'Preparando…' : undefined}
+        icon={<Download size={15} />}
         className="invoice-download-button"
+        labelClassName="invoice-download-label"
         disabled={downloading}
         onClick={onDownload}
-        aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-      >
-        <Download size={15} />
-        <span className="invoice-download-label">
-          {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-        </span>
-      </Button>
+      />
       {onEdit && (
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          <Pencil size={15} /> Editar
-        </Button>
+        <DocumentAction
+          compact={compact}
+          label="Editar factura"
+          text="Editar"
+          icon={<Pencil size={15} />}
+          onClick={onEdit}
+        />
       )}
       {!isIssued && onManualPayment && (
-        <Button size="sm" variant="outline" onClick={onManualPayment}>
-          <CheckCircle2 size={15} /> Registrar cobro
-        </Button>
+        <DocumentAction
+          compact={compact}
+          label="Registrar cobro"
+          icon={<CheckCircle2 size={15} />}
+          onClick={onManualPayment}
+        />
       )}
     </div>
   )
