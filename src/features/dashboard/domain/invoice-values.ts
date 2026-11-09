@@ -25,7 +25,12 @@ export function invoiceAmounts(total: number, vatRate = 21) {
     Math.abs(total * 100 - totalCents) > 0.000001
   )
     throw new Error('El total debe ser un importe positivo con un máximo de dos decimales.')
-  if (!Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100 || Math.abs(vatRate * 100 - Math.round(vatRate * 100)) > 0.000001)
+  if (
+    !Number.isFinite(vatRate) ||
+    vatRate < 0 ||
+    vatRate > 100 ||
+    Math.abs(vatRate * 100 - Math.round(vatRate * 100)) > 0.000001
+  )
     throw new Error('El tipo de IVA de la factura no es válido.')
   const netCents = Math.round((totalCents * 10000) / (10000 + Math.round(vatRate * 100)))
   return {

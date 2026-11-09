@@ -129,8 +129,8 @@ export function EditInvoiceDialog({
               </output>
             )}
             <p className="form-span">
-              Si cambias el total, también se actualizará el cobro registrado en la aplicación. No se
-              hará ningún cobro ni devolución en el banco.
+              Si cambias el total, también se actualizará el cobro registrado en la aplicación. No
+              se hará ningún cobro ni devolución en el banco.
             </p>
             {error && (
               <p className="form-error form-span" role="alert">

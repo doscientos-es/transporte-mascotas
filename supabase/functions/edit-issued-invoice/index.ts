@@ -56,8 +56,12 @@ Deno.serve(async (request) => {
     const [invoice] = (await response.json()) as IssuedInvoice[]
     if (!invoice) return json({ error: 'Factura no encontrada.' }, 404)
     const vatRate = Number(invoice.fiscal_snapshot.vat_rate ?? NaN)
-    if (!Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100 ||
-        Math.abs(vatRate * 100 - Math.round(vatRate * 100)) > 0.000001)
+    if (
+      !Number.isFinite(vatRate) ||
+      vatRate < 0 ||
+      vatRate > 100 ||
+      Math.abs(vatRate * 100 - Math.round(vatRate * 100)) > 0.000001
+    )
       throw new Error('El tipo de IVA de la factura no es válido.')
     // Always save the old PDF before creating a new version.
     await persistIssuedInvoiceDocument(input.invoiceId, actorId)
