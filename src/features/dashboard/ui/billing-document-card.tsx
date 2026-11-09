@@ -1,5 +1,5 @@
 import { Button, Card, CardContent, IconButton } from '@doscientos/ui'
-import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText } from 'lucide-react'
+import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText, Trash2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import type { ClientInvoice } from '@/shared/types'
@@ -17,6 +17,7 @@ type DocumentActions = {
   onPreview: () => void
   onDownload: () => void
   onManualPayment?: () => void
+  onRemovePaymentRequest?: () => void
   onEdit?: () => void
 }
 
@@ -75,6 +76,7 @@ export function BillingDocumentActions({
   onPreview,
   onDownload,
   onManualPayment,
+  onRemovePaymentRequest,
   onEdit,
 }: DocumentActions) {
   const isIssued = mode === 'invoices'
@@ -115,6 +117,14 @@ export function BillingDocumentActions({
           onClick={onManualPayment}
         />
       )}
+      {!isIssued && onRemovePaymentRequest && (
+        <DocumentAction
+          compact={compact}
+          label="Quitar solicitud de pago"
+          icon={<Trash2 size={15} />}
+          onClick={onRemovePaymentRequest}
+        />
+      )}
     </div>
   )
 }
@@ -127,6 +137,7 @@ export function BillingDocumentCard({
   onPreview,
   onDownload,
   onManualPayment,
+  onRemovePaymentRequest,
   onOpenClient,
   onOpenLetter,
   onEdit,
@@ -138,6 +149,7 @@ export function BillingDocumentCard({
   onPreview: () => void
   onDownload: () => void
   onManualPayment?: () => void
+  onRemovePaymentRequest?: () => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
   onEdit?: () => void
@@ -210,6 +222,7 @@ export function BillingDocumentCard({
             onPreview={onPreview}
             onDownload={onDownload}
             onManualPayment={onManualPayment}
+            onRemovePaymentRequest={onRemovePaymentRequest}
             onEdit={onEdit}
           />
         </div>

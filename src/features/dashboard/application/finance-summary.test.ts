@@ -6,6 +6,7 @@ import {
   expenseCategoryValue,
   expensesByCategory,
   expensesToCsv,
+  filterFinanceExpenses,
 } from './finance-summary'
 
 const customExpense: Expense = {
@@ -35,5 +36,20 @@ describe('custom expense categories', () => {
   it('normalizes suggested labels while preserving custom text', () => {
     expect(expenseCategoryValue('  Combustible  ')).toBe('combustible')
     expect(expenseCategoryValue('Mantenimiento de jaulas')).toBe('Mantenimiento de jaulas')
+  })
+})
+
+describe('filterFinanceExpenses', () => {
+  it('searches expense details and combines the query with the category filter', () => {
+    const expenseWithReference = { ...customExpense, invoiceReference: 'MNT-2026-014' }
+
+    expect(filterFinanceExpenses([customExpense], '  mantenimiento ', '')).toEqual([customExpense])
+    expect(filterFinanceExpenses([customExpense], 'proveedor', customExpense.category)).toEqual([
+      customExpense,
+    ])
+    expect(filterFinanceExpenses([expenseWithReference], 'mnt-2026-014', '')).toEqual([
+      expenseWithReference,
+    ])
+    expect(filterFinanceExpenses([customExpense], 'proveedor', 'combustible')).toEqual([])
   })
 })

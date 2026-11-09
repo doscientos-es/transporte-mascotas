@@ -24,6 +24,23 @@ export const expenseCategoryValue = (value: string): ExpenseCategory => {
   return existing?.[0] ?? trimmed
 }
 
+export function filterFinanceExpenses(
+  expenses: readonly Expense[],
+  query: string,
+  category: string,
+) {
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  return expenses.filter(
+    (expense) =>
+      (!category || expense.category === category) &&
+      (!normalizedQuery ||
+        [expense.vendor, expense.concept, expense.invoiceReference]
+          .join(' ')
+          .toLocaleLowerCase()
+          .includes(normalizedQuery)),
+  )
+}
+
 export type FinanceTotals = {
   incomeNet: number
   incomeVat: number

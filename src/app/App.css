@@ -7862,6 +7862,13 @@ a.whatsapp-link:hover {
   gap: 12px 20px;
   padding: 12px 14px;
 }
+.finance-period-controls {
+  align-items: end;
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
 .finance-presets {
   background: #f3f3f2;
   border-radius: 10px;
@@ -7931,6 +7938,31 @@ a.whatsapp-link:hover {
   flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
+}
+.finance-export-popover {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  width: 260px;
+}
+.finance-export-heading {
+  display: grid;
+  gap: 3px;
+  padding: 7px 9px 9px;
+}
+.finance-export-heading strong {
+  font-size: 13px;
+}
+.finance-export-heading span {
+  color: #6b6b6b;
+  font-size: 12px;
+}
+.finance-export-option {
+  justify-content: flex-start;
+  width: 100%;
+}
+.finance-expenses-pagination {
+  margin-top: 12px;
 }
 .finance-kpis {
   display: grid;

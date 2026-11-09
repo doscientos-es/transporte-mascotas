@@ -315,3 +315,10 @@ export async function confirmManualInvoicePayment(
   const result = data as { error?: string } | null
   if (result?.error) throw new Error(result.error)
 }
+
+export async function removePendingPaymentRequest(invoiceId: string) {
+  const { error } = await requireSupabase().rpc('cancel_invoice_payment_request', {
+    p_invoice_id: invoiceId,
+  })
+  if (error) throw error
+}

@@ -37,6 +37,7 @@ import {
   confirmManualInvoicePayment,
   createClient,
   deleteClient,
+  removePendingPaymentRequest as persistPaymentRequestRemoval,
   updateClient,
 } from '../infrastructure/clients'
 import {
@@ -1401,6 +1402,13 @@ export function useDashboard(session: Session | null, role: AppRole) {
     toast('Cobro registrado y factura creada.')
   }
 
+  async function removePaymentRequest(invoice: ClientInvoice) {
+    if (!session || role !== 'admin')
+      throw new Error('Solo administración puede quitar solicitudes de pago.')
+    await persistPaymentRequestRemoval(invoice.id)
+    toast(`Solicitud de pago${invoice.letterId ? ` de ${invoice.letterId}` : ''} retirada.`)
+  }
+
   return {
     letters,
     lettersLoading,
@@ -1458,5 +1466,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
     saveClient,
     removeClient,
     confirmManualPayment,
+    removePaymentRequest,
   }
 }

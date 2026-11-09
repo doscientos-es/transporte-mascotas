@@ -112,6 +112,23 @@ describe('billing browser compatibility', () => {
     expect(card).toContain('Preparando…')
   })
 
+  it('offers to remove a payment request without replacing the manual payment action', async () => {
+    const { BillingDocumentActions } = await import('./billing-document-card')
+    const markup = renderToStaticMarkup(
+      createElement(BillingDocumentActions, {
+        mode: 'payment-requests',
+        downloading: false,
+        onPreview: vi.fn(),
+        onDownload: vi.fn(),
+        onManualPayment: vi.fn(),
+        onRemovePaymentRequest: vi.fn(),
+      }),
+    )
+
+    expect(markup).toContain('aria-label="Registrar cobro"')
+    expect(markup).toContain('aria-label="Quitar solicitud de pago"')
+  })
+
   it('offers to clear active search and date filters, including legacy letter links', async () => {
     const { InvoicesPage } = await import('./invoices-page')
     const render = (url: string) =>

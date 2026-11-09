@@ -22,6 +22,7 @@ import {
   InvoicePreviewDialog,
   ManualPaymentDialog,
   PaymentRequestPreviewDialog,
+  RemovePaymentRequestDialog,
 } from './billing-document-dialogs'
 import { downloadBlob, downloadInvoiceRegister } from './billing-document-export'
 import { BillingDocumentTable } from './billing-document-table'
@@ -64,6 +65,7 @@ export function BillingDocumentsPage({
   mode,
   canCreateManualInvoice = false,
   onConfirmManualPayment,
+  onRemovePaymentRequest,
   onOpenClient,
   onOpenLetter,
 }: BillingDocumentsPageProps & { mode: BillingDocumentMode }) {
@@ -76,6 +78,7 @@ export function BillingDocumentsPage({
   const [refreshKey, setRefreshKey] = useState(0)
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<ClientInvoice['issuedInvoice']>()
+  const [removingPaymentRequest, setRemovingPaymentRequest] = useState<ClientInvoice | null>(null)
   const [notice, setNotice] = useState('')
   const { searchParams, updateParams } = useUrlParams()
   const query = searchParams.get('q') ?? searchParams.get('letter') ?? ''
@@ -363,6 +366,11 @@ export function BillingDocumentsPage({
                 onManualPayment={
                   isPaymentRequests ? () => updateParams({ cobro: invoice.id }, false) : undefined
                 }
+                onRemovePaymentRequest={
+                  isPaymentRequests && onRemovePaymentRequest
+                    ? () => setRemovingPaymentRequest(invoice)
+                    : undefined
+                }
                 onOpenClient={onOpenClient}
                 onOpenLetter={onOpenLetter}
                 onEdit={
@@ -412,6 +420,20 @@ export function BillingDocumentsPage({
           onConfirm={async (invoice, method) => {
             await onConfirmManualPayment(invoice, method)
             setRefreshKey((current) => current + 1)
+          }}
+        />
+      )}
+      {isPaymentRequests && removingPaymentRequest && onRemovePaymentRequest && (
+        <RemovePaymentRequestDialog
+          invoice={removingPaymentRequest}
+          onClose={() => setRemovingPaymentRequest(null)}
+          onConfirm={async (invoice) => {
+            await onRemovePaymentRequest(invoice)
+            setRemovingPaymentRequest(null)
+            setRefreshKey((current) => current + 1)
+            setNotice(
+              `Solicitud de pago${invoice.letterId ? ` de ${invoice.letterId}` : ''} retirada. No se registró el cobro.`,
+            )
           }}
         />
       )}

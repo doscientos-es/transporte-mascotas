@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@doscientos/ui'
-import { CheckCircle2, Download, ExternalLink } from 'lucide-react'
+import { CheckCircle2, Download, ExternalLink, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import type { ClientInvoice, ManualPaymentMethod } from '@/shared/types'
@@ -285,6 +285,58 @@ export function ManualPaymentDialog({
         <Button className="dialog-submit" disabled={saving} onClick={() => void confirm()}>
           <CheckCircle2 /> {saving ? 'Emitiendo…' : 'Confirmar cobro y emitir'}
         </Button>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function RemovePaymentRequestDialog({
+  invoice,
+  onClose,
+  onConfirm,
+}: {
+  invoice: ClientInvoice
+  onClose: () => void
+  onConfirm: (invoice: ClientInvoice) => Promise<void>
+}) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function remove() {
+    setSaving(true)
+    setError('')
+    try {
+      await onConfirm(invoice)
+      onClose()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'No se ha podido quitar la solicitud.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
+      <DialogContent className="dialog-card">
+        <DialogHeader className="gap-0">
+          <DialogTitle>Quitar solicitud de pago</DialogTitle>
+          <DialogDescription>
+            {`La solicitud${invoice.letterId ? ` de ${invoice.letterId}` : ''} dejará de aparecer en pagos pendientes. No se registrará el cobro ni se emitirá una factura; la carta de porte se conservará.`}
+          </DialogDescription>
+        </DialogHeader>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" disabled={saving} onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="button" disabled={saving} onClick={() => void remove()}>
+            <Trash2 size={15} /> {saving ? 'Quitando…' : 'Quitar solicitud'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )

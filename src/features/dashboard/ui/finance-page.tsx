@@ -1,6 +1,19 @@
-﻿import { Button } from '@doscientos/ui'
-import { Download, ExternalLink, Pencil, Plus, Receipt, Search, Trash2 } from 'lucide-react'
+﻿import { Button, Pagination, PopoverContent, PopoverTrigger } from '@doscientos/ui'
+import {
+  ArrowLeftRight,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  Pencil,
+  Plus,
+  Receipt,
+  ReceiptText,
+  Search,
+  Trash2,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+import { paginate } from '@/shared/lib/pagination'
 
 import {
   createExpenseDocumentUrl,
@@ -17,6 +30,7 @@ import {
   expenseCategoryLabel,
   expensesByCategory,
   expensesToCsv,
+  filterFinanceExpenses,
   incomeToCsv,
   money,
   monthlyBreakdown,
@@ -25,9 +39,10 @@ import {
 } from '../application/finance-summary'
 import { downloadBlob } from './billing-document-export'
 import { ExpenseDialog, type ExpenseSubmit } from './expense-dialog'
-import { CategoryPanel, FinanceKpis, IncomePanel, MonthlyPanel } from './finance-sections'
+import { CategoryPanel, FinanceKpis, MonthlyPanel } from './finance-sections'
 
 const csvBlob = (content: string) => new Blob([content], { type: 'text/csv;charset=utf-8' })
+const EXPENSES_PAGE_SIZE = 12
 const iso = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
@@ -64,11 +79,13 @@ export function FinancePage({ userId }: { userId?: string }) {
   const [to, setTo] = useState(presets[2].to)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
+  const [expensePage, setExpensePage] = useState(1)
   const [income, setIncome] = useState<FinanceIncome[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState<Expense | 'new' | null>(null)
+  const [exportOpen, setExportOpen] = useState(false)
 
   const reload = useCallback(async () => {
     if (from && to && from > to) return
@@ -102,18 +119,14 @@ export function FinancePage({ userId }: { userId?: string }) {
   const stamp = `${from || 'inicio'}_${to || 'hoy'}`
   const activePreset = presets.find((preset) => preset.from === from && preset.to === to)?.id
   const invalidRange = Boolean(from && to && from > to)
-  const filteredExpenses = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return expenses.filter(
-      (expense) =>
-        (!category || expense.category === category) &&
-        (!term ||
-          [expense.vendor, expense.concept, expense.invoiceReference]
-            .join(' ')
-            .toLowerCase()
-            .includes(term)),
-    )
-  }, [expenses, search, category])
+  const filteredExpenses = useMemo(
+    () => filterFinanceExpenses(expenses, search, category),
+    [expenses, search, category],
+  )
+  const expensePagination = useMemo(
+    () => paginate(filteredExpenses, expensePage, EXPENSES_PAGE_SIZE),
+    [expensePage, filteredExpenses],
+  )
   const filteredTotal = useMemo(
     () => summarizeFinance([], filteredExpenses).expenseTotal,
     [filteredExpenses],
@@ -122,6 +135,7 @@ export function FinancePage({ userId }: { userId?: string }) {
   const clearFilters = () => {
     setSearch('')
     setCategory('')
+    setExpensePage(1)
   }
 
   async function submitExpense({ input, file, removeDocument }: ExpenseSubmit) {
@@ -166,6 +180,12 @@ export function FinancePage({ userId }: { userId?: string }) {
   const pickPreset = (preset: (typeof presets)[number]) => {
     setFrom(preset.from)
     setTo(preset.to)
+    setExpensePage(1)
+  }
+
+  const exportCsv = (content: string, fileName: string) => {
+    downloadBlob(csvBlob(content), fileName)
+    setExportOpen(false)
   }
 
   return (
@@ -177,68 +197,85 @@ export function FinancePage({ userId }: { userId?: string }) {
         </Button>
       </section>
 
-      <section className="finance-toolbar" aria-label="Periodo">
-        <div className="finance-presets" aria-label="Periodos rápidos">
-          {presets.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              aria-pressed={activePreset === preset.id}
-              onClick={() => pickPreset(preset)}
-            >
-              {preset.label}
-            </button>
-          ))}
+      <section className="finance-toolbar" aria-label="Periodo y exportación">
+        <div className="finance-period-controls">
+          <div className="finance-presets" aria-label="Periodos rápidos">
+            {presets.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={activePreset === preset.id}
+                onClick={() => pickPreset(preset)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="finance-range">
+            <label>
+              Desde
+              <input
+                type="date"
+                value={from}
+                max={to || undefined}
+                onChange={(event) => {
+                  setFrom(event.target.value)
+                  setExpensePage(1)
+                }}
+              />
+            </label>
+            <label>
+              Hasta
+              <input
+                type="date"
+                value={to}
+                min={from || undefined}
+                onChange={(event) => {
+                  setTo(event.target.value)
+                  setExpensePage(1)
+                }}
+              />
+            </label>
+          </div>
         </div>
-        <div className="finance-range">
-          <label>
-            Desde
-            <input
-              type="date"
-              value={from}
-              max={to || undefined}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </label>
-          <label>
-            Hasta
-            <input
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </label>
-        </div>
-        <div className="finance-actions" aria-label="Exportar a CSV">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={loading}
-            onClick={() =>
-              downloadBlob(csvBlob(movementsToCsv(income, expenses)), `movimientos-${stamp}.csv`)
-            }
-          >
-            <Download size={15} /> Movimientos
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={loading}
-            onClick={() =>
-              downloadBlob(csvBlob(incomeToCsv(income)), `facturas-emitidas-${stamp}.csv`)
-            }
-          >
-            <Download size={15} /> Facturas
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={loading}
-            onClick={() => downloadBlob(csvBlob(expensesToCsv(expenses)), `gastos-${stamp}.csv`)}
-          >
-            <Download size={15} /> Gastos
-          </Button>
+        <div className="finance-actions">
+          <PopoverTrigger isOpen={exportOpen} onOpenChange={setExportOpen}>
+            <Button size="sm" variant="outline" disabled={loading}>
+              <Download size={15} /> Exportar
+            </Button>
+            <PopoverContent placement="bottom end" className="finance-export-popover">
+              <div className="finance-export-heading">
+                <strong>Descargar CSV</strong>
+                <span>Datos del periodo seleccionado</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="finance-export-option"
+                onClick={() =>
+                  exportCsv(movementsToCsv(income, expenses), `movimientos-${stamp}.csv`)
+                }
+              >
+                <ArrowLeftRight size={16} /> Movimientos
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="finance-export-option"
+                onClick={() => exportCsv(incomeToCsv(income), `facturas-emitidas-${stamp}.csv`)}
+              >
+                <ReceiptText size={16} /> Facturas emitidas
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="finance-export-option"
+                onClick={() => exportCsv(expensesToCsv(expenses), `gastos-${stamp}.csv`)}
+              >
+                <FileSpreadsheet size={16} /> Gastos
+              </Button>
+            </PopoverContent>
+          </PopoverTrigger>
         </div>
       </section>
 
@@ -265,8 +302,6 @@ export function FinancePage({ userId }: { userId?: string }) {
         <CategoryPanel categories={categories} />
       </div>
 
-      <IncomePanel income={income} loading={loading} />
-
       <section className="finance-panel">
         <div className="finance-panel-heading">
           <h3>Gastos</h3>
@@ -287,13 +322,19 @@ export function FinancePage({ userId }: { userId?: string }) {
                 value={search}
                 placeholder="Buscar proveedor, concepto o nº de factura"
                 aria-label="Buscar gastos"
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  setExpensePage(1)
+                }}
               />
             </label>
             <select
               value={category}
               aria-label="Filtrar por categoría"
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(event) => {
+                setCategory(event.target.value)
+                setExpensePage(1)
+              }}
             >
               <option value="">Todas las categorías</option>
               {categoryOptions.map((value) => (
@@ -310,68 +351,78 @@ export function FinancePage({ userId }: { userId?: string }) {
           </div>
         )}
         {filteredExpenses.length ? (
-          <div className="finance-table-wrap">
-            <table className="finance-table finance-expenses">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Proveedor</th>
-                  <th>Categoría</th>
-                  <th className="is-number">Base</th>
-                  <th className="is-number">Total</th>
-                  <th>
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExpenses.map((expense) => (
-                  <tr key={expense.id}>
-                    <td>{dateLabel(expense.expenseDate)}</td>
-                    <td>
-                      <span className="finance-cell-main">{expense.vendor}</span>
-                      <span className="finance-cell-sub">{expense.concept}</span>
-                    </td>
-                    <td>
-                      <span className="finance-badge">
-                        {expenseCategoryLabel(expense.category)}
-                      </span>
-                    </td>
-                    <td className="is-number">{money(expense.netAmount)}</td>
-                    <td className="is-number is-strong">{money(expense.totalAmount)}</td>
-                    <td className="finance-row-actions">
-                      {expense.documentPath && (
+          <>
+            <div className="finance-table-wrap">
+              <table className="finance-table finance-expenses">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Proveedor</th>
+                    <th>Categoría</th>
+                    <th className="is-number">Base</th>
+                    <th className="is-number">Total</th>
+                    <th>
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expensePagination.items.map((expense) => (
+                    <tr key={expense.id}>
+                      <td>{dateLabel(expense.expenseDate)}</td>
+                      <td>
+                        <span className="finance-cell-main">{expense.vendor}</span>
+                        <span className="finance-cell-sub">{expense.concept}</span>
+                      </td>
+                      <td>
+                        <span className="finance-badge">
+                          {expenseCategoryLabel(expense.category)}
+                        </span>
+                      </td>
+                      <td className="is-number">{money(expense.netAmount)}</td>
+                      <td className="is-number is-strong">{money(expense.totalAmount)}</td>
+                      <td className="finance-row-actions">
+                        {expense.documentPath && (
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label="Ver justificante"
+                            onClick={() => void openDocument(expense)}
+                          >
+                            <ExternalLink size={15} />
+                          </Button>
+                        )}
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          aria-label="Ver justificante"
-                          onClick={() => void openDocument(expense)}
+                          aria-label="Editar gasto"
+                          onClick={() => setEditing(expense)}
                         >
-                          <ExternalLink size={15} />
+                          <Pencil size={15} />
                         </Button>
-                      )}
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Editar gasto"
-                        onClick={() => setEditing(expense)}
-                      >
-                        <Pencil size={15} />
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="Eliminar gasto"
-                        onClick={() => void removeExpense(expense)}
-                      >
-                        <Trash2 size={15} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="Eliminar gasto"
+                          onClick={() => void removeExpense(expense)}
+                        >
+                          <Trash2 size={15} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              page={expensePagination.page}
+              pageCount={expensePagination.pageCount}
+              ariaLabel="Paginación de gastos"
+              onPageChange={setExpensePage}
+              summary={`Mostrando ${expensePagination.firstRecord}–${expensePagination.lastRecord} de ${filteredExpenses.length} gastos`}
+              className="finance-expenses-pagination"
+            />
+          </>
         ) : loading ? (
           <p className="finance-empty">Cargando…</p>
         ) : hasFilters ? (

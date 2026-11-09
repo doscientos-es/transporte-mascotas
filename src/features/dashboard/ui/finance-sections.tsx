@@ -1,10 +1,6 @@
-import { Button } from '@doscientos/ui'
 import { Landmark, TrendingDown, TrendingUp, Wallet } from 'lucide-react'
-import { useState } from 'react'
 
-import type { FinanceIncome } from '../application/finance'
 import {
-  dateLabel,
   expenseCategoryLabel,
   monthLabel,
   money,
@@ -170,59 +166,6 @@ export function CategoryPanel({ categories }: { categories: CategoryTotal[] }) {
           <strong>Sin gastos en este periodo</strong>
           <span>Cuando registres gastos verás aquí cómo se reparten por categoría.</span>
         </div>
-      )}
-    </section>
-  )
-}
-
-const INCOME_PREVIEW = 6
-
-export function IncomePanel({ income, loading }: { income: FinanceIncome[]; loading: boolean }) {
-  const [showAll, setShowAll] = useState(false)
-  const sorted = [...income].sort((a, b) => b.issuedOn.localeCompare(a.issuedOn))
-  const visible = showAll ? sorted : sorted.slice(0, INCOME_PREVIEW)
-  return (
-    <section className="finance-panel">
-      <div className="finance-panel-heading">
-        <h3>Facturas emitidas</h3>
-        {sorted.length > INCOME_PREVIEW && (
-          <Button size="sm" variant="ghost" onClick={() => setShowAll((value) => !value)}>
-            {showAll ? 'Ver menos' : `Ver las ${sorted.length}`}
-          </Button>
-        )}
-      </div>
-      {visible.length ? (
-        <div className="finance-table-wrap">
-          <table className="finance-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Nº factura</th>
-                <th>Cliente</th>
-                <th className="is-number">Base</th>
-                <th className="is-number">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((item) => (
-                <tr key={item.issuedInvoiceId}>
-                  <td>{dateLabel(item.issuedOn)}</td>
-                  <td>{item.invoiceNumber}</td>
-                  <td>
-                    <span className="finance-cell-main">{item.clientName}</span>
-                    <span className="finance-cell-sub">{item.concept}</span>
-                  </td>
-                  <td className="is-number">{money(item.netAmount)}</td>
-                  <td className="is-number is-strong">{money(item.totalAmount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="finance-empty">
-          {loading ? 'Cargando…' : 'Aún no hay facturas emitidas en este periodo.'}
-        </p>
       )}
     </section>
   )

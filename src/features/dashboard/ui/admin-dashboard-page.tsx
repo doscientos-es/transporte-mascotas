@@ -430,6 +430,9 @@ export function AdminDashboardPage({
               <>
                 <PaymentRequestsPage
                   onConfirmManualPayment={dashboard.confirmManualPayment}
+                  onRemovePaymentRequest={
+                    profile.role === 'admin' ? dashboard.removePaymentRequest : undefined
+                  }
                   onOpenClient={openClient}
                   onOpenLetter={openLetter}
                 />
