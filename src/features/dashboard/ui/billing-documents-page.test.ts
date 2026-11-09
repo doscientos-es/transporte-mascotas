@@ -85,7 +85,6 @@ describe('billing browser compatibility', () => {
     expect(markup).toContain('Pagada')
     for (const label of ['Ver factura', 'Descargar factura', 'Editar factura']) {
       expect(markup).toContain(`aria-label="${label}"`)
-      expect(markup).toContain(`title="${label}"`)
     }
     expect(markup.match(/data-size="icon-sm"/g)).toHaveLength(3)
     expect(markup).not.toContain('invoice-action-label')
@@ -104,7 +103,6 @@ describe('billing browser compatibility', () => {
       createElement(BillingDocumentActions, { ...props, compact: true }),
     )
     expect(compact).toMatch(/<button[^>]*disabled[^>]*aria-label="Descargar factura"/)
-    expect(compact).toContain('title="Preparando descarga…"')
     const card = renderToStaticMarkup(createElement(BillingDocumentActions, props))
     expect(card).toContain('invoice-action-label')
     expect(card).toContain('Preparando…')

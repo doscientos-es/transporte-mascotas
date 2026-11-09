@@ -1,5 +1,6 @@
-import { Button, Card, CardContent } from '@doscientos/ui'
+import { Button, Card, CardContent, IconButton } from '@doscientos/ui'
 import { CheckCircle2, Download, Eye, FileText, Pencil, ReceiptText } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import type { ClientInvoice } from '@/shared/types'
 
@@ -18,6 +19,54 @@ type DocumentActions = {
   onEdit?: () => void
 }
 
+function DocumentAction({
+  compact,
+  label,
+  text,
+  icon,
+  onClick,
+  disabled,
+  className,
+  labelClassName,
+}: {
+  compact: boolean
+  label: string
+  text?: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+  className?: string
+  labelClassName?: string
+}) {
+  if (compact) {
+    return (
+      <IconButton
+        label={label}
+        size="icon-sm"
+        variant="outline"
+        className={className}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {icon}
+      </IconButton>
+    )
+  }
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className={className}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+    >
+      {icon}
+      <span className={labelClassName}>{text ?? label}</span>
+    </Button>
+  )
+}
+
 export function BillingDocumentActions({
   mode,
   downloading,
@@ -30,62 +79,40 @@ export function BillingDocumentActions({
   const isIssued = mode === 'invoices'
   return (
     <div className="invoice-card-actions">
-      <Button
-        size={compact ? 'icon-sm' : 'sm'}
-        variant="outline"
+      <DocumentAction
+        compact={compact}
+        label={isIssued ? 'Ver factura' : 'Ver solicitud'}
+        icon={<Eye size={15} />}
         className="invoice-preview-button"
+        labelClassName="invoice-action-label"
         onClick={onPreview}
-        aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
-        title={isIssued ? 'Ver factura' : 'Ver solicitud'}
-      >
-        <Eye size={15} />
-        {!compact && (
-          <span className="invoice-action-label">{isIssued ? 'Ver factura' : 'Ver solicitud'}</span>
-        )}
-      </Button>
-      <Button
-        size={compact ? 'icon-sm' : 'sm'}
-        variant="outline"
+      />
+      <DocumentAction
+        compact={compact}
+        label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+        text={downloading ? 'Preparando…' : undefined}
+        icon={<Download size={15} />}
         className="invoice-download-button"
+        labelClassName="invoice-download-label"
         disabled={downloading}
         onClick={onDownload}
-        aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-        title={
-          downloading
-            ? 'Preparando descarga…'
-            : isIssued
-              ? 'Descargar factura'
-              : 'Descargar solicitud'
-        }
-      >
-        <Download size={15} />
-        {!compact && (
-          <span className="invoice-download-label">
-            {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-          </span>
-        )}
-      </Button>
+      />
       {onEdit && (
-        <Button
-          size={compact ? 'icon-sm' : 'sm'}
-          variant="outline"
+        <DocumentAction
+          compact={compact}
+          label="Editar factura"
+          text="Editar"
+          icon={<Pencil size={15} />}
           onClick={onEdit}
-          aria-label="Editar factura"
-          title="Editar factura"
-        >
-          <Pencil size={15} /> {!compact && 'Editar'}
-        </Button>
+        />
       )}
       {!isIssued && onManualPayment && (
-        <Button
-          size={compact ? 'icon-sm' : 'sm'}
-          variant="outline"
+        <DocumentAction
+          compact={compact}
+          label="Registrar cobro"
+          icon={<CheckCircle2 size={15} />}
           onClick={onManualPayment}
-          aria-label="Registrar cobro"
-          title="Registrar cobro"
-        >
-          <CheckCircle2 size={15} /> {!compact && 'Registrar cobro'}
-        </Button>
+        />
       )}
     </div>
   )
