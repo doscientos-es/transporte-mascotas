@@ -1,6 +1,34 @@
 import { describe, expect, it } from 'vitest'
 
-import { isBoxCompatible, shouldShareVanBox, vanBoxSizeForAnimal } from './van'
+import {
+  filterVanAssignments,
+  isBoxCompatible,
+  shouldShareVanBox,
+  vanBoxSizeForAnimal,
+} from './van'
+
+describe('filterVanAssignments', () => {
+  it('combines box-size, pickup-status, and accent-insensitive text filters', () => {
+    const rows = [
+      {
+        assignment: { box: 5, label: 'Carta Norte', animalCount: 2 },
+        pickup: { customer: 'Ana', stop: 'Alcalá', status: 'incidencia' as const },
+      },
+      {
+        assignment: { box: 13, label: 'Carta Sur', animalCount: 1 },
+        pickup: { customer: 'Luis', stop: 'Sevilla', status: 'pendiente' as const },
+      },
+    ]
+
+    expect(
+      filterVanAssignments(rows, {
+        query: 'alcala',
+        boxSize: 'mediano',
+        status: 'incidencia',
+      }),
+    ).toEqual([rows[0]])
+  })
+})
 
 describe('van box category compatibility', () => {
   it('uses the configured box category instead of the legacy animal size', () => {

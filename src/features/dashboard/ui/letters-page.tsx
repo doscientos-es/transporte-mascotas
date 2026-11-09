@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   FilterBar,
   IconButton,
   Pagination,
@@ -21,6 +22,7 @@ import {
 } from '@doscientos/ui'
 import {
   ArrowLeft,
+  Ban,
   ChevronRight,
   Eye,
   FileDown,
@@ -763,9 +765,6 @@ function LetterActionsMenu({
           <FilePenLine size={16} /> Editar carta
         </DropdownMenuItem>
       )}
-      {letter.status !== 'cancelada' && (
-        <DropdownMenuItem onAction={() => onCancelLetter(letter.id)}>Anular carta</DropdownMenuItem>
-      )}
       <DropdownMenuItem onAction={() => onDownload(letter)}>
         <FileDown size={16} /> Descargar PDF
       </DropdownMenuItem>
@@ -778,6 +777,14 @@ function LetterActionsMenu({
         <DropdownMenuItem onAction={() => onOpenClient(clientName)}>
           <UserRound size={16} /> Buscar cliente
         </DropdownMenuItem>
+      )}
+      {letter.status !== 'cancelada' && (
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onAction={() => onCancelLetter(letter.id)}>
+            <Ban size={16} /> Anular carta
+          </DropdownMenuItem>
+        </>
       )}
     </DropdownMenu>
   )

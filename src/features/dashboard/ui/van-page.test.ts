@@ -47,4 +47,44 @@ describe('VanPage route selector', () => {
     expect(markup).toContain('value="2025-01-03" selected=""')
     expect(routes.map((item) => item.id)).toEqual(['2025-01-03', '2027-01-03', '2026-01-03'])
   })
+
+  it('renders searchable assignment rows with an accessible box detail action', () => {
+    const route: DailyRoute = {
+      id: 'route-1',
+      date: '2026-11-09',
+      templateId: 'template',
+      status: 'activa',
+      actions: [
+        {
+          id: 'pickup-1',
+          letterId: 'letter-1',
+          animalId: 'animal-1',
+          type: 'recogida',
+          stop: 'Alcalá',
+          customer: 'Ana Pérez',
+          phone: '',
+          status: 'pendiente',
+          box: 5,
+        },
+      ],
+    }
+    const markup = renderToStaticMarkup(
+      createElement(VanPage, {
+        route,
+        routes: [route],
+        templates: [{ id: 'template', name: 'Madrid', color: '', stops: [] }],
+        letters: [],
+        assignments: [{ box: 5, label: 'letter-1', animalCount: 1 }],
+        boxCatalog: defaultTransportBoxCatalog,
+        canManage: true,
+        onSelectRoute: vi.fn(),
+        onReassignBox: vi.fn(),
+      }),
+    )
+
+    expect(markup).toContain('<table class="assignments-table">')
+    expect(markup).toContain('aria-label="Buscar asignaciones"')
+    expect(markup).toContain('aria-label="Abrir detalle del box 5"')
+    expect(markup).toContain('Alcalá')
+  })
 })

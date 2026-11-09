@@ -1,6 +1,53 @@
-import type { Animal, AnimalSize, DailyRoute, TransportBoxCategory } from '@/shared/types'
+import { statusLabels } from '@/shared/lib/status-labels'
+import type {
+  Animal,
+  AnimalSize,
+  DailyRoute,
+  ServiceAction,
+  TransportBoxCategory,
+} from '@/shared/types'
 
 export type VanAssignment = { box: number; label: string; animalCount: number }
+export type VanAssignmentRow = {
+  assignment: VanAssignment
+  pickup?: Pick<ServiceAction, 'status' | 'stop' | 'customer'>
+}
+export type VanAssignmentFilters = {
+  query: string
+  boxSize: AnimalSize | 'todos'
+  status: ServiceAction['status'] | 'todos'
+}
+
+const normalizeAssignmentSearch = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+export function filterVanAssignments(
+  rows: VanAssignmentRow[],
+  filters: VanAssignmentFilters,
+): VanAssignmentRow[] {
+  const query = normalizeAssignmentSearch(filters.query.trim())
+  return rows.filter(({ assignment, pickup }) => {
+    if (filters.boxSize !== 'todos' && boxSize(assignment.box) !== filters.boxSize) return false
+    if (filters.status !== 'todos' && pickup?.status !== filters.status) return false
+
+    const searchableText = [
+      assignment.label,
+      String(assignment.box),
+      `Box ${assignment.box}`,
+      pickup?.stop,
+      pickup?.customer,
+      pickup?.status,
+      pickup?.status ? statusLabels[pickup.status] : undefined,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(' ')
+
+    return normalizeAssignmentSearch(searchableText).includes(query)
+  })
+}
 
 export function letterBoxForRoute(route: Pick<DailyRoute, 'actions'>, letterId: string) {
   return route.actions.find((action) => action.letterId === letterId && action.type === 'recogida')

@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@doscientos/ui'
-import { ArrowRightLeft, MapPin, PawPrint, UserRound } from 'lucide-react'
+import { ArrowRightLeft, MapPin, PawPrint, Search, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import {
@@ -31,9 +31,11 @@ import { sortRoutesByDate } from '../application/route-order'
 import {
   boxGridSpan,
   boxSize,
+  filterVanAssignments,
   isBoxCompatible,
   shouldShareVanBox,
   type VanAssignment,
+  type VanAssignmentFilters,
   vanLanes,
 } from '../application/van'
 
@@ -52,6 +54,13 @@ const boxSizeLabel: Record<AnimalSize, string> = {
   mediano: 'Mediano',
   grande: 'Grande',
 }
+const assignmentStatuses: ServiceAction['status'][] = ['pendiente', 'completada', 'incidencia']
+const assignmentSizeOptions = [
+  { id: 'todos', label: 'Todos los tamaños' },
+  { id: 'grande', label: 'Grandes' },
+  { id: 'mediano', label: 'Medianos' },
+  { id: 'pequeno', label: 'Pequeños' },
+]
 
 export function VanPage({
   route,
@@ -75,6 +84,10 @@ export function VanPage({
   onReassignBox: (letterId: string, box: number, shareBox?: boolean) => Promise<void>
 }) {
   const [selectedBox, setSelectedBox] = useState<number | null>(null)
+  const [assignmentQuery, setAssignmentQuery] = useState('')
+  const [assignmentBoxSize, setAssignmentBoxSize] =
+    useState<VanAssignmentFilters['boxSize']>('todos')
+  const [assignmentStatus, setAssignmentStatus] = useState<VanAssignmentFilters['status']>('todos')
   const leftLanes = vanLanes.filter((lane) => lane.side === 'left')
   const rightLanes = vanLanes.filter((lane) => lane.side === 'right')
   const totalBoxes = vanLanes.reduce((total, lane) => total + lane.boxes.length, 0)
@@ -85,6 +98,26 @@ export function VanPage({
   const occupiedBoxCount = new Set(assignments.map((assignment) => assignment.box)).size
   const occupiedBoxes = [...new Set(assignments.map((assignment) => assignment.box))]
   const selectedAssignment = assignments.find((assignment) => assignment.box === selectedBox)
+  const assignmentRows = assignments
+    .map((assignment) => ({
+      assignment,
+      pickup: route.actions.find(
+        (action) =>
+          action.type === 'recogida' &&
+          action.letterId === assignment.label &&
+          action.box === assignment.box,
+      ),
+    }))
+    .sort(
+      (left, right) =>
+        left.assignment.box - right.assignment.box ||
+        left.assignment.label.localeCompare(right.assignment.label),
+    )
+  const visibleAssignments = filterVanAssignments(assignmentRows, {
+    query: assignmentQuery,
+    boxSize: assignmentBoxSize,
+    status: assignmentStatus,
+  })
   const routeName = (item: DailyRoute) =>
     templates.find((template) => template.id === item.templateId)?.name ?? 'Ruta sin plantilla'
   const routeOptionLabel = (item: DailyRoute) =>
@@ -281,31 +314,128 @@ export function VanPage({
             : `Abriendo el detalle del box ${selectedBox}, disponible para una nueva asignación.`}
       </output>
       <section className="assignments">
-        <h3>Asignaciones activas</h3>
-        {assignments.length ? (
-          assignments.map((assignment) => {
-            const pickup = route.actions.find(
-              (action) =>
-                action.type === 'recogida' &&
-                action.letterId === assignment.label &&
-                action.box === assignment.box,
-            )
-            return (
-              <div key={`${assignment.label}:${assignment.box}`}>
-                <span className={`box-chip box-${boxSize(assignment.box)}`}>{assignment.box}</span>
-                <div>
-                  <strong>{assignment.label}</strong>
-                  <p>
-                    {assignment.animalCount} {assignment.animalCount === 1 ? 'animal' : 'animales'}{' '}
-                    · Recogida{pickup ? ` · ${pickup.stop}` : ''}
-                  </p>
-                </div>
-                {pickup && <StatusBadge status={pickup.status} />}
-              </div>
-            )
-          })
+        <div className="assignments-heading">
+          <div>
+            <h3>Asignaciones activas</h3>
+            <p>Selecciona una fila para abrir el detalle del box.</p>
+          </div>
+          <span className="assignments-count" aria-live="polite">
+            {visibleAssignments.length} de {assignments.length}
+          </span>
+        </div>
+        <search className="assignments-filters" aria-label="Filtrar asignaciones">
+          <label className="assignment-filter assignment-search">
+            <span>Buscar</span>
+            <span className="assignment-search-control">
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="Buscar asignaciones"
+                placeholder="Carta, box, parada o cliente"
+                value={assignmentQuery}
+                onChange={(event) => setAssignmentQuery(event.target.value)}
+              />
+            </span>
+          </label>
+          <div className="assignment-filter">
+            <span>Tamaño del box</span>
+            <SelectField
+              ariaLabel="Filtrar por tamaño del box"
+              className="assignment-select"
+              value={assignmentBoxSize}
+              onChange={(value) => setAssignmentBoxSize(value as VanAssignmentFilters['boxSize'])}
+              options={assignmentSizeOptions}
+            />
+          </div>
+          <div className="assignment-filter">
+            <span>Estado de recogida</span>
+            <SelectField
+              ariaLabel="Filtrar por estado de recogida"
+              className="assignment-select"
+              value={assignmentStatus}
+              onChange={(value) => setAssignmentStatus(value as VanAssignmentFilters['status'])}
+              options={[
+                { id: 'todos', label: 'Todos los estados' },
+                ...assignmentStatuses.map((status) => ({
+                  id: status,
+                  label: statusLabels[status],
+                })),
+              ]}
+            />
+          </div>
+        </search>
+        {visibleAssignments.length ? (
+          <div className="assignments-table-wrap">
+            <table className="assignments-table">
+              <thead>
+                <tr>
+                  <th scope="col">Box</th>
+                  <th scope="col">Carta de porte</th>
+                  <th scope="col">Mascotas</th>
+                  <th scope="col">Recogida</th>
+                  <th scope="col">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleAssignments.map(({ assignment, pickup }) => (
+                  <tr
+                    key={`${assignment.label}:${assignment.box}`}
+                    className="assignment-table-row"
+                    onClick={() => setSelectedBox(assignment.box)}
+                  >
+                    <td>
+                      <button
+                        type="button"
+                        className="assignment-box-trigger"
+                        aria-label={`Abrir detalle del box ${assignment.box}`}
+                      >
+                        <span className={`box-chip box-${boxSize(assignment.box)}`}>
+                          {assignment.box}
+                        </span>
+                        <span>{boxSizeLabel[boxSize(assignment.box)]}</span>
+                      </button>
+                    </td>
+                    <td className="assignment-letter">{assignment.label}</td>
+                    <td>
+                      {assignment.animalCount}{' '}
+                      {assignment.animalCount === 1 ? 'animal' : 'animales'}
+                    </td>
+                    <td>
+                      {pickup ? (
+                        <>
+                          <span>{pickup.stop}</span>
+                          <small>{pickup.customer}</small>
+                        </>
+                      ) : (
+                        'Sin parada'
+                      )}
+                    </td>
+                    <td>{pickup && <StatusBadge status={pickup.status} />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <p className="empty-copy">No hay asignaciones activas para esta ruta.</p>
+          <div className="assignments-empty">
+            <p>
+              {assignments.length
+                ? 'No hay asignaciones que coincidan con estos filtros.'
+                : 'No hay asignaciones activas para esta ruta.'}
+            </p>
+            {assignments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAssignmentQuery('')
+                  setAssignmentBoxSize('todos')
+                  setAssignmentStatus('todos')
+                }}
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         )}
       </section>
       {selectedBox !== null && (
