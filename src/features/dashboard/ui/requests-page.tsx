@@ -36,8 +36,12 @@ import { StatusBadge } from '@/shared/ui/status-badge'
 import { WhatsAppLink } from '@/shared/ui/whatsapp-link'
 
 import { labelledRouteStops } from '../application/letter-route-stops'
+import { requestStatusesForView, type RequestsView } from '../application/requests-view'
 
 type Props = {
+  view: RequestsView
+  dataVersion: number
+  onStatusChange: () => void
   routes: DailyRoute[]
   boxCatalog: TransportBoxCatalog
   onNotify: (message: string) => void
@@ -142,7 +146,14 @@ function requestMessage(request: TransportRequest) {
   return [greeting, detail[request.status]].filter(Boolean).join(' ')
 }
 
-export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
+export function RequestsPage({
+  view,
+  dataVersion,
+  onStatusChange,
+  routes,
+  boxCatalog,
+  onNotify,
+}: Props) {
   const [requests, setRequests] = useState<TransportRequest[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [busy, setBusy] = useState('')
@@ -156,8 +167,8 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<string>(manualPaymentMethods[0])
 
   const refresh = useCallback(async () => {
-    setRequests(await loadTransportRequests())
-  }, [])
+    setRequests(await loadTransportRequests({ statuses: requestStatusesForView(view) }))
+  }, [view])
 
   const refreshRequests = useCallback(async () => {
     setRefreshing(true)
@@ -173,7 +184,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
 
   useEffect(() => {
     void refreshRequests()
-  }, [refreshRequests])
+  }, [dataVersion, refreshRequests])
 
   const assignmentFor = (requestId: string) => assignments[requestId] ?? emptyAssignment
   const update = (requestId: string, patch: Partial<Assignment>) =>
@@ -202,11 +213,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
         assignment.note,
       )
       onNotify('Solicitud confirmada: carta creada y box asignado en la ruta.')
-      try {
-        await refresh()
-      } catch {
-        onNotify('Solicitud confirmada. No se ha podido actualizar la lista todavía.')
-      }
+      onStatusChange()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido confirmar la solicitud.')
     } finally {
@@ -220,7 +227,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
       await rejectTransportRequest(request.id, assignmentFor(request.id).note)
       onNotify('Solicitud rechazada.')
       setRejecting(null)
-      await refresh()
+      onStatusChange()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido rechazar la solicitud.')
     } finally {
@@ -238,7 +245,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           : 'Cobro registrado. La solicitud está lista para asignar.',
       )
       setMarkingPaid(null)
-      await refresh()
+      onStatusChange()
     } catch (error) {
       onNotify(error instanceof Error ? error.message : 'No se ha podido registrar el cobro.')
     } finally {
@@ -255,7 +262,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           ? `Reserva confirmada y factura emitida. ${warning}`
           : 'Reserva confirmada y factura emitida.',
       )
-      await refresh()
+      onStatusChange()
     } catch (error) {
       onNotify(
         error instanceof Error ? error.message : 'No se ha podido confirmar la reserva todavía.',
@@ -312,7 +319,15 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
 
   return (
     <>
-      <PageIntro text="Gestiona las solicitudes de transporte recibidas desde el portal de clientes.">
+      <PageIntro
+        text={
+          view === 'pending'
+            ? 'Asigna a una ruta los transportes con el pago confirmado.'
+            : view === 'payments'
+              ? 'Revisa los pagos pendientes de solicitudes de transporte.'
+              : 'Consulta las solicitudes de transporte ya gestionadas.'
+        }
+      >
         <Button
           variant="outline"
           disabled={refreshing || Boolean(busy)}
@@ -322,7 +337,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           {refreshing ? 'Actualizando…' : 'Actualizar'}
         </Button>
       </PageIntro>
-      <Card className="table-card">
+      <Card className="table-card" hidden={view !== 'pending'}>
         <CardContent>
           <div className="table-heading">
             <div>
@@ -568,7 +583,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           )}
         </CardContent>
       </Card>
-      <Card className="table-card">
+      <Card className="table-card" hidden={view !== 'payments'}>
         <CardContent>
           <div className="table-heading">
             <div>
@@ -662,7 +677,7 @@ export function RequestsPage({ routes, boxCatalog, onNotify }: Props) {
           )}
         </CardContent>
       </Card>
-      <Card className="table-card">
+      <Card className="table-card" hidden={view !== 'history'}>
         <CardContent>
           <div className="table-heading">
             <div>

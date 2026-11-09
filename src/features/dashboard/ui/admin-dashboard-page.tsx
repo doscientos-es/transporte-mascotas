@@ -1,8 +1,8 @@
-﻿import { Button } from '@doscientos/ui'
+﻿import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@doscientos/ui'
 import type { Session } from '@supabase/supabase-js'
 import { CalendarDays, CheckCircle2, FilePlus2, Plus, Printer } from 'lucide-react'
 import { lazy, Suspense, useEffect, useState, type ComponentType } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   createAdminTransportRequest,
@@ -13,6 +13,7 @@ import type { ClientInvoice, DashboardNavigation, UpcomingRoute, UserProfile } f
 import { DashboardLayout } from '@/shared/ui/dashboard-layout'
 import { SectionBoundary } from '@/shared/ui/section-boundary'
 
+import { requestsViewFromSearchParams, type RequestsView } from '../application/requests-view'
 import { useDashboard } from '../application/use-dashboard'
 import { assignmentsForRoute } from '../application/van'
 function lazyWithRetry<T extends Record<string, unknown>, P>(
@@ -116,6 +117,13 @@ export function AdminDashboardPage({
   navigation: DashboardNavigation
 }) {
   const dashboard = useDashboard(session, profile.role)
+  const [searchParams] = useSearchParams()
+  const requestedRequestsView = requestsViewFromSearchParams(searchParams)
+  const [requestsView, setRequestsView] = useState<RequestsView>(requestedRequestsView)
+  const [visitedRequestsViews, setVisitedRequestsViews] = useState<Set<RequestsView>>(
+    () => new Set([requestedRequestsView]),
+  )
+  const [requestsDataVersion, setRequestsDataVersion] = useState(0)
   const [printingManifest, setPrintingManifest] = useState(false)
   const [clientCreateRequestId, setClientCreateRequestId] = useState(0)
   const [templateCreateRequestId, setTemplateCreateRequestId] = useState(0)
@@ -187,6 +195,26 @@ export function AdminDashboardPage({
   useEffect(() => {
     if (sectionNeedsLetters) void ensureLetters()
   }, [ensureLetters, sectionNeedsLetters])
+
+  useEffect(() => {
+    if (section !== 'solicitudes' || creatingTransport || requestedRequestsView !== 'payments')
+      return
+    setRequestsView('payments')
+    setVisitedRequestsViews((visited) => new Set(visited).add('payments'))
+  }, [creatingTransport, requestedRequestsView, section])
+
+  function renderRequestsView(view: RequestsView) {
+    return visitedRequestsViews.has(view) ? (
+      <RequestsPage
+        view={view}
+        dataVersion={requestsDataVersion}
+        onStatusChange={() => setRequestsDataVersion((version) => version + 1)}
+        routes={visibleRoutes}
+        boxCatalog={dashboard.boxCatalog}
+        onNotify={dashboard.toast}
+      />
+    ) : null
+  }
 
   async function createRouteAndNavigate(
     template: Parameters<typeof dashboard.createDailyRoute>[0],
@@ -427,21 +455,41 @@ export function AdminDashboardPage({
               />
             )}
             {section === 'solicitudes' && !creatingTransport && (
-              <>
-                <PaymentRequestsPage
-                  onConfirmManualPayment={dashboard.confirmManualPayment}
-                  onRemovePaymentRequest={
-                    profile.role === 'admin' ? dashboard.removePaymentRequest : undefined
-                  }
-                  onOpenClient={openClient}
-                  onOpenLetter={openLetter}
-                />
-                <RequestsPage
-                  routes={visibleRoutes}
-                  boxCatalog={dashboard.boxCatalog}
-                  onNotify={dashboard.toast}
-                />
-              </>
+              <Tabs
+                selectedKey={requestsView}
+                onSelectionChange={(key) => {
+                  const nextView = key as RequestsView
+                  setRequestsView(nextView)
+                  setVisitedRequestsViews((visited) => new Set(visited).add(nextView))
+                }}
+              >
+                <TabsList aria-label="Secciones de solicitudes">
+                  <TabsTrigger id="pending">Por asignar</TabsTrigger>
+                  <TabsTrigger id="payments">Pendientes de pago</TabsTrigger>
+                  <TabsTrigger id="history">Histórico</TabsTrigger>
+                </TabsList>
+                <TabsContent id="pending" shouldForceMount>
+                  {renderRequestsView('pending')}
+                </TabsContent>
+                <TabsContent id="payments" shouldForceMount>
+                  {visitedRequestsViews.has('payments') && (
+                    <>
+                      <PaymentRequestsPage
+                        onConfirmManualPayment={dashboard.confirmManualPayment}
+                        onRemovePaymentRequest={
+                          profile.role === 'admin' ? dashboard.removePaymentRequest : undefined
+                        }
+                        onOpenClient={openClient}
+                        onOpenLetter={openLetter}
+                      />
+                      {renderRequestsView('payments')}
+                    </>
+                  )}
+                </TabsContent>
+                <TabsContent id="history" shouldForceMount>
+                  {renderRequestsView('history')}
+                </TabsContent>
+              </Tabs>
             )}
             {profile.role === 'admin' && section === 'ajustes' && (
               <SettingsPage

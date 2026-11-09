@@ -2,6 +2,7 @@ import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type {
   AccompanyingDocument,
   TransportRequest,
+  TransportRequestStatus,
   TransportRequestAnimal,
   TransportPaymentAttemptStatus,
   TransportBoxCategory,
@@ -132,13 +133,20 @@ function mapRequest(row: RequestRow): TransportRequest {
   }
 }
 
-export async function loadTransportRequests(requesterId?: string) {
+export async function loadTransportRequests({
+  requesterId,
+  statuses,
+}: {
+  requesterId?: string
+  statuses?: TransportRequestStatus[]
+} = {}) {
   const database = requireSupabase()
   let query = database
     .from('transport_requests')
     .select('*, transport_request_animals(*)')
     .order('created_at', { ascending: false })
   if (requesterId) query = query.eq('requester_id', requesterId)
+  if (statuses?.length) query = query.in('status', statuses)
   const { data, error } = await query
   if (error) throwRequestError(error, 'No se han podido cargar las solicitudes de transporte.')
   return ((data ?? []) as RequestRow[]).map(mapRequest)

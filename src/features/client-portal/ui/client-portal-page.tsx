@@ -114,7 +114,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
     if (!userId) return [] as TransportRequest[]
     const [nextRoutes, nextRequests, nextBoxCatalog, nextPaymentRequests] = await Promise.all([
       loadUpcomingRoutes(),
-      loadTransportRequests(userId),
+      loadTransportRequests({ requesterId: userId }),
       loadTransportBoxCatalog(),
       loadMyPaymentRequests().catch(() => [] as ClientPaymentRequest[]),
     ])
@@ -290,7 +290,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       await completeRequestPayment(requestId)
     } catch (reason) {
       try {
-        const currentRequests = await loadTransportRequests(userId)
+        const currentRequests = await loadTransportRequests({ requesterId: userId })
         setRequests(currentRequests)
         const currentRequest = currentRequests.find((item) => item.id === requestId)
         setError(
@@ -337,7 +337,7 @@ export function ClientPortalPage({ session, profile, navigation }: Props) {
       await completeRequestPayment(requestId)
     } catch {
       try {
-        const currentRequests = await loadTransportRequests(userId)
+        const currentRequests = await loadTransportRequests({ requesterId: userId })
         setRequests(currentRequests)
         const request = currentRequests.find((item) => item.id === requestId)
         if (
