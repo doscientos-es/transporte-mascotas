@@ -83,8 +83,31 @@ describe('billing browser compatibility', () => {
     expect(markup).toContain('F-2026-000819')
     expect(markup).toContain('Factura libre')
     expect(markup).toContain('Pagada')
-    expect(markup).toContain('Editar')
-    expect(markup).toContain('Descargar factura')
+    for (const label of ['Ver factura', 'Descargar factura', 'Editar factura']) {
+      expect(markup).toContain(`aria-label="${label}"`)
+      expect(markup).toContain(`title="${label}"`)
+    }
+    expect(markup.match(/data-size="icon-sm"/g)).toHaveLength(3)
+    expect(markup).not.toContain('invoice-action-label')
+    expect(markup).not.toContain('invoice-download-label')
+  })
+
+  it('keeps the download disabled while preparing it and retains labels on cards', async () => {
+    const { BillingDocumentActions } = await import('./billing-document-card')
+    const props = {
+      mode: 'invoices' as const,
+      downloading: true,
+      onPreview: vi.fn(),
+      onDownload: vi.fn(),
+    }
+    const compact = renderToStaticMarkup(
+      createElement(BillingDocumentActions, { ...props, compact: true }),
+    )
+    expect(compact).toMatch(/<button[^>]*disabled[^>]*aria-label="Descargar factura"/)
+    expect(compact).toContain('title="Preparando descarga…"')
+    const card = renderToStaticMarkup(createElement(BillingDocumentActions, props))
+    expect(card).toContain('invoice-action-label')
+    expect(card).toContain('Preparando…')
   })
 
   it('opens invoices and payment requests without the Iterator API required by the PDF viewer', async () => {

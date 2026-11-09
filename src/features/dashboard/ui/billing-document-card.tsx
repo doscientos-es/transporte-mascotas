@@ -11,6 +11,7 @@ const currency = (amount: number) =>
 type DocumentActions = {
   mode: BillingDocumentMode
   downloading: boolean
+  compact?: boolean
   onPreview: () => void
   onDownload: () => void
   onManualPayment?: () => void
@@ -20,6 +21,7 @@ type DocumentActions = {
 export function BillingDocumentActions({
   mode,
   downloading,
+  compact = false,
   onPreview,
   onDownload,
   onManualPayment,
@@ -29,36 +31,60 @@ export function BillingDocumentActions({
   return (
     <div className="invoice-card-actions">
       <Button
-        size="sm"
+        size={compact ? 'icon-sm' : 'sm'}
         variant="outline"
         className="invoice-preview-button"
         onClick={onPreview}
         aria-label={isIssued ? 'Ver factura' : 'Ver solicitud'}
+        title={isIssued ? 'Ver factura' : 'Ver solicitud'}
       >
         <Eye size={15} />
-        <span className="invoice-action-label">{isIssued ? 'Ver factura' : 'Ver solicitud'}</span>
+        {!compact && (
+          <span className="invoice-action-label">{isIssued ? 'Ver factura' : 'Ver solicitud'}</span>
+        )}
       </Button>
       <Button
-        size="sm"
+        size={compact ? 'icon-sm' : 'sm'}
         variant="outline"
         className="invoice-download-button"
         disabled={downloading}
         onClick={onDownload}
         aria-label={isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+        title={
+          downloading
+            ? 'Preparando descarga…'
+            : isIssued
+              ? 'Descargar factura'
+              : 'Descargar solicitud'
+        }
       >
         <Download size={15} />
-        <span className="invoice-download-label">
-          {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
-        </span>
+        {!compact && (
+          <span className="invoice-download-label">
+            {downloading ? 'Preparando…' : isIssued ? 'Descargar factura' : 'Descargar solicitud'}
+          </span>
+        )}
       </Button>
       {onEdit && (
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          <Pencil size={15} /> Editar
+        <Button
+          size={compact ? 'icon-sm' : 'sm'}
+          variant="outline"
+          onClick={onEdit}
+          aria-label="Editar factura"
+          title="Editar factura"
+        >
+          <Pencil size={15} /> {!compact && 'Editar'}
         </Button>
       )}
       {!isIssued && onManualPayment && (
-        <Button size="sm" variant="outline" onClick={onManualPayment}>
-          <CheckCircle2 size={15} /> Registrar cobro
+        <Button
+          size={compact ? 'icon-sm' : 'sm'}
+          variant="outline"
+          onClick={onManualPayment}
+          aria-label="Registrar cobro"
+          title="Registrar cobro"
+        >
+          <CheckCircle2 size={15} /> {!compact && 'Registrar cobro'}
         </Button>
       )}
     </div>

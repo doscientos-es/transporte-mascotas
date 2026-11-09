@@ -81,6 +81,7 @@ export function BillingDocumentTable({
               <td>
                 <BillingDocumentActions
                   mode="invoices"
+                  compact
                   downloading={downloadingId === invoice.id}
                   onPreview={() => onPreview(invoice)}
                   onDownload={() => onDownload(invoice)}
