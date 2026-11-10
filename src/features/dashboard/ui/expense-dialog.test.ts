@@ -49,8 +49,9 @@ describe('ExpenseDialog fiscal address', () => {
     const markup = renderToStaticMarkup(
       createElement(ExpenseDialog, { expense, onClose: vi.fn(), onSubmit: vi.fn() }),
     )
-    expect(markup).toMatch(/Dirección fiscal del proveedor/)
-    expect(markup).toContain(`value="${address}"`)
-    expect(markup).toContain('maxLength="300"')
+    const field = markup.match(/Dirección fiscal del proveedor<input[^>]*>/)?.[0]
+    expect(field).toContain(`value="${address}"`)
+    expect(field).toContain('maxLength="300"')
+    expect(field).not.toContain('required')
   })
 })
