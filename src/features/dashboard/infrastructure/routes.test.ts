@@ -1,12 +1,6 @@
 ﻿import { describe, expect, it, vi } from 'vitest'
 
-import type {
-  DailyRoute,
-  DailyRouteStop,
-  Letter,
-  RouteTemplate,
-  ServiceAction,
-} from '@/shared/types'
+import type { DailyRouteStop, RouteTemplate } from '@/shared/types'
 
 const { updates, inserts, deletes, rpcs, closure } = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
@@ -73,7 +67,6 @@ vi.mock('@/shared/infrastructure/supabase', () => ({
 }))
 
 import {
-  appendLetterToDailyRoute,
   closeDailyRoute,
   deleteRouteTemplateStop,
   duplicateRouteTemplate,
@@ -127,49 +120,6 @@ describe('removeLetterFromDailyRoute', () => {
       },
     ])
   })
-})
-
-describe('appendLetterToDailyRoute', () => {
-  it.each([
-    [false, 'assign_van_box'],
-    [true, 'assign_shared_van_box'],
-  ] as const)(
-    'restores a box using the correct assignment method (shared: %s)',
-    async (shared, rpcName) => {
-      rpcs.length = 0
-      const actions = (['recogida', 'entrega'] as const).map((type, index) => ({
-        id: `action-${index}`,
-        letterId: 'letter-1',
-        animalId: 'animal-1',
-        type,
-        stop: index ? 'delivery' : 'pickup',
-        stopId: index ? 'delivery' : 'pickup',
-        customer: '',
-        phone: '',
-        status: 'pendiente' as const,
-        box: 17,
-      })) satisfies ServiceAction[]
-      await appendLetterToDailyRoute(
-        { id: 'route-1' } as DailyRoute,
-        { id: 'letter-1' } as Letter,
-        actions,
-        shared,
-      )
-      expect(rpcs).toEqual([
-        {
-          name: rpcName,
-          args: {
-            p_daily_route_id: 'route-1',
-            p_letter_id: 'letter-1',
-            p_animal_id: 'animal-1',
-            p_box_number: 17,
-            p_pickup_sequence: 1,
-            p_delivery_sequence: 2,
-          },
-        },
-      ])
-    },
-  )
 })
 
 describe('updateDailyRouteStops', () => {

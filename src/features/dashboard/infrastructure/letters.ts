@@ -368,16 +368,15 @@ export async function sendPaymentRequestEmail(letterId: string) {
 /** Persists the editable data without ever changing a letter's operational status. */
 export async function updateLetter(
   letter: Letter,
-  routeTemplateId: string,
-  routesToClear: DailyRoute[],
+  route: DailyRoute,
+  actions: ServiceAction[],
   signatureConfirmed: boolean,
+  shareBox: boolean,
 ) {
-  const database = requireSupabase()
-  const { error: letterError } = await database
-    .from('carriage_letters')
-    .update({
-      service_date: letter.serviceDate,
-      default_route_template_id: routeTemplateId,
+  const { error } = await requireSupabase().rpc('update_carriage_letter_atomically', {
+    p_letter_id: letter.id,
+    p_daily_route_id: route.id,
+    p_letter: {
       sender_name: letter.sender,
       sender_nif: letter.senderNif,
       sender_email: letter.senderEmail,
@@ -402,49 +401,35 @@ export async function updateLetter(
       ...(letter.atesNumber ? { ates_number: letter.atesNumber } : {}),
       billing_payer: letter.billingPayer,
       billing_client: letter.billingClient,
-      signed_at: signatureConfirmed ? new Date().toISOString() : undefined,
-    })
-    .eq('id', letter.id)
-  if (letterError) throw letterError
-
-  const routeIds = routesToClear.map((route) => route.id)
-  if (routeIds.length) {
-    const { error: assignmentsError } = await database
-      .from('van_assignments')
-      .delete()
-      .in('daily_route_id', routeIds)
-      .eq('letter_id', letter.id)
-    if (assignmentsError) throw assignmentsError
-    const { error: actionsError } = await database
-      .from('route_actions')
-      .delete()
-      .eq('letter_id', letter.id)
-    if (actionsError) throw actionsError
-  }
-
-  const animalIds = letter.animals.map((animal) => animal.id)
-  const { error: animalsError } = await database.from('animals').upsert(
-    letter.animals.map((animal, index) => ({
+    },
+    p_signature_confirmed: signatureConfirmed,
+    p_animals: letter.animals.map((animal, index) => ({
       id: animal.id,
-      letter_id: letter.id,
       ordinal: index + 1,
       species: animal.species,
       breed: animal.breed,
       birth_date: animal.birthDate || null,
-      weight_kg: animal.weightKg,
-      length_cm: animal.lengthCm,
-      height_cm: animal.heightCm,
-      width_cm: animal.widthCm,
+      size: animal.size,
+      weight_kg: animal.weightKg || null,
+      length_cm: animal.lengthCm || null,
+      height_cm: animal.heightCm || null,
+      width_cm: animal.widthCm || null,
       box_category: animal.boxCategory ?? null,
     })),
-  )
-  if (animalsError) throw animalsError
-  const { error: removedAnimalsError } = await database
-    .from('animals')
-    .delete()
-    .eq('letter_id', letter.id)
-    .not('id', 'in', `(${animalIds.join(',')})`)
-  if (removedAnimalsError) throw removedAnimalsError
+    p_actions: actions.map((action) => ({
+      id: action.id,
+      animal_id: action.animalId,
+      stop_id: action.stopId,
+      type: action.type,
+    })),
+    p_box_number: actions.find((action) => action.type === 'recogida')?.box ?? null,
+    p_share_box: shareBox,
+  })
+  if (error?.code === 'PGRST202')
+    throw new Error(
+      'No se puede guardar la carta: falta aplicar la actualización de la base de datos.',
+    )
+  if (error) throw new Error(error.message)
 }
 
 function routeTemplateName(template: LetterRow['route_templates']) {

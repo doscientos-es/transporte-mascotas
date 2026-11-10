@@ -1,6 +1,14 @@
 type RouteStop = { id: string; locality: string }
 export type LetterRouteStopOption = RouteStop & { label: string }
 
+/** Changing the pickup must not discard the selected delivery. */
+export function withLetterOrigin<T extends { origin: string; originStopId?: string }>(
+  draft: T,
+  stop: RouteStop | undefined,
+): T {
+  return { ...draft, origin: stop?.locality ?? '', originStopId: stop?.id ?? '' }
+}
+
 export function labelledRouteStops(stops: RouteStop[]): LetterRouteStopOption[] {
   const counts = new Map<string, number>()
   for (const stop of stops) {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ServiceAction } from '@/shared/types'
+
 import {
   filterVanAssignments,
+  isBoxAssignedToOtherLetter,
   isBoxCompatible,
   shouldShareVanBox,
   vanBoxSizeForAnimal,
@@ -55,5 +58,20 @@ describe('shouldShareVanBox', () => {
   it('does not share when keeping the current box or moving to a free box', () => {
     expect(shouldShareVanBox(5, 5, [5])).toBe(false)
     expect(shouldShareVanBox(9, 5, [5, 12])).toBe(false)
+  })
+})
+
+describe('isBoxAssignedToOtherLetter', () => {
+  it('detects another letter without mistaking the current letter for a shared assignment', () => {
+    const actions = [
+      { letterId: 'one', type: 'recogida', box: 13 },
+      { letterId: 'two', type: 'recogida', box: 14 },
+      { letterId: 'three', type: 'entrega', box: 15 },
+    ] as ServiceAction[]
+    const route = { actions }
+    expect(isBoxAssignedToOtherLetter(route, 'one', 14)).toBe(true)
+    expect(isBoxAssignedToOtherLetter(route, 'one', 13)).toBe(false)
+    expect(isBoxAssignedToOtherLetter(route, 'one', 15)).toBe(false)
+    expect(isBoxAssignedToOtherLetter(route, 'one', undefined)).toBe(false)
   })
 })

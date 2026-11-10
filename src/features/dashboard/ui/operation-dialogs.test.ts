@@ -143,6 +143,63 @@ describe('LetterForm contact addresses', () => {
   })
 })
 
+describe('LetterForm route stops', () => {
+  it('shows the selected destination with a warning when it is not after the origin', () => {
+    const pickup = route.actions[0]
+    if (!pickup) throw new Error('Missing pickup action')
+    const invalidRoute = {
+      ...route,
+      actions: [
+        { ...pickup, stopId: 'stop-3' },
+        { ...pickup, id: 'delivery', type: 'entrega' as const, stopId: 'stop-2' },
+      ],
+    }
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [invalidRoute],
+        templates: [template],
+        letter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    expect(markup).toMatch(
+      /<option[^>]*value="stop-2"[^>]*disabled=""[^>]*selected=""[^>]*>Zaragoza · fuera del tramo<\/option>/,
+    )
+    expect(markup).toContain('El destino debe estar después del origen.')
+  })
+
+  it('keeps the selected destination visible when no origin is selected', () => {
+    const pickup = route.actions[0]
+    if (!pickup) throw new Error('Missing pickup action')
+    const noOriginRoute = {
+      ...route,
+      actions: [{ ...pickup, type: 'entrega' as const, stopId: 'stop-2' }],
+    }
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [noOriginRoute],
+        templates: [template],
+        letter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    expect(markup).toMatch(
+      /<option[^>]*value="stop-2"[^>]*disabled=""[^>]*selected=""[^>]*>Zaragoza<\/option>/,
+    )
+    expect(markup).not.toContain('El destino debe estar después del origen.')
+  })
+})
+
 describe('LetterForm assigned box', () => {
   it.each([
     [17, 'value="17"'],
@@ -165,8 +222,35 @@ describe('LetterForm assigned box', () => {
     const boxInput = markup.match(/<input[^>]*aria-describedby="letter-box-hint"[^>]*>/)?.[0]
 
     expect(boxInput).toContain(expectedValue)
-    expect(boxInput).toContain('readOnly=""')
-    expect(markup).toContain('Para cambiar el box, utiliza la sección Furgoneta.')
+    expect(boxInput).not.toContain('readOnly')
+    expect(boxInput).toContain('max="72"')
+    expect(markup).toContain('Vacío: se asigna un box libre automáticamente.')
+  })
+
+  it('warns when the selected box is also assigned to another letter', () => {
+    const pickup = route.actions[0]
+    if (!pickup) throw new Error('Missing pickup action')
+    const assignedRoute = {
+      ...route,
+      actions: [
+        { ...pickup, box: 17 },
+        { ...pickup, letterId: 'letter-2', box: 17 },
+      ],
+    }
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [assignedRoute],
+        templates: [template],
+        letter,
+        routeId: route.id,
+        fullPage: true,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    expect(markup).toContain('Este box ya está asignado a otra carta')
   })
 
   it('preserves the assigned box in rebuilt pickup and delivery actions', () => {
@@ -199,7 +283,7 @@ describe('LetterForm assigned box', () => {
     expect(actions.map((action) => action.box)).toEqual([17, 17])
   })
 
-  it('rejects an incompatible assigned box before rebuilding actions', () => {
+  it('accepts a manually selected box even when its size is incompatible', () => {
     const animal = {
       id: 'animal-1',
       species: 'Perro',
@@ -211,6 +295,20 @@ describe('LetterForm assigned box', () => {
       widthCm: 60,
       size: 'grande' as const,
     }
+    const actions = actionsForLetter(
+      route,
+      template,
+      { ...letter, animals: [animal] },
+      defaultTransportBoxCatalog,
+      'stop-1',
+      'stop-4',
+      17,
+    )
+    expect(actions.map((action) => action.box)).toEqual([17, 17])
+  })
+
+  it.each([0, 73, 1.5])('rejects an invalid box number (%s)', (box) => {
+    const animal = { id: 'animal-1', size: 'pequeno' } as Letter['animals'][number]
     expect(() =>
       actionsForLetter(
         route,
@@ -219,9 +317,37 @@ describe('LetterForm assigned box', () => {
         defaultTransportBoxCatalog,
         'stop-1',
         'stop-4',
-        17,
+        box,
       ),
-    ).toThrow('El box asignado no es adecuado')
+    ).toThrow('El número de box debe estar entre 1 y 72')
+  })
+
+  it('does not create actions without a compatible box', () => {
+    const occupied = [1, 2, 3, 4, 37, 38, 39, 40].map((box) => ({
+      ...route.actions[0],
+      box,
+    }))
+    const animal = {
+      id: 'animal-1',
+      species: 'Perro',
+      breed: 'Mestizo',
+      birthDate: '',
+      weightKg: 70,
+      lengthCm: 0,
+      heightCm: 0,
+      widthCm: 0,
+      size: 'grande' as const,
+    }
+    expect(() =>
+      actionsForLetter(
+        { ...route, actions: occupied },
+        template,
+        { ...letter, animals: [animal] },
+        defaultTransportBoxCatalog,
+        'stop-1',
+        'stop-4',
+      ),
+    ).toThrow('No queda ningún box compatible disponible')
   })
 })
 

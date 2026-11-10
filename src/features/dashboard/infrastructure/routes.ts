@@ -3,7 +3,6 @@ import { requireSupabase } from '@/shared/infrastructure/supabase'
 import type {
   DailyRoute,
   DailyRouteStop,
-  Letter,
   RouteDirection,
   RouteTemplate,
   ServiceAction,
@@ -683,68 +682,6 @@ export async function deleteDailyRouteStop(routeId: string, stopId: string) {
     .eq('id', stopId)
     .eq('daily_route_id', routeId)
   if (error) throw error
-}
-
-export async function appendLetterToDailyRoute(
-  route: DailyRoute,
-  letter: Letter,
-  actions: ServiceAction[],
-  shareBox = false,
-) {
-  if (!actions.length) return
-  const database = requireSupabase()
-  const { data: savedStops, error: stopsError } = await database
-    .from('daily_route_stops')
-    .select('id,locality,sequence')
-    .eq('daily_route_id', route.id)
-  if (stopsError) throw stopsError
-
-  const stopIdByLocality = new Map((savedStops ?? []).map((stop) => [stop.locality, stop.id]))
-  const stopSequenceById = new Map((savedStops ?? []).map((stop) => [stop.id, stop.sequence]))
-  const savedStopIds = new Set(stopSequenceById.keys())
-  const rows = actions
-    .map((action) => ({
-      action,
-      stopId:
-        action.stopId && savedStopIds.has(action.stopId)
-          ? action.stopId
-          : stopIdByLocality.get(action.stop),
-    }))
-    .filter((item): item is { action: ServiceAction; stopId: string } => Boolean(item.stopId))
-  if (!rows.length) return
-
-  const { error: actionsError } = await database.from('route_actions').insert(
-    rows.map(({ action, stopId }) => ({
-      id: action.id,
-      daily_route_id: route.id,
-      daily_route_stop_id: stopId,
-      letter_id: letter.id,
-      animal_id: action.animalId,
-      action_type: action.type,
-      status: action.status,
-      dwell_minutes: action.dwellMinutes ?? 15,
-    })),
-  )
-  if (actionsError) throw actionsError
-
-  const pickup = rows.find(({ action }) => action.type === 'recogida' && action.box)
-  const delivery = rows.find(({ action }) => action.type === 'entrega' && action.box)
-  if (!pickup || !delivery || !pickup.action.box) return
-  const pickupSequence = stopSequenceById.get(pickup.stopId)
-  const deliverySequence = stopSequenceById.get(delivery.stopId)
-  if (!pickupSequence || !deliverySequence) return
-  const { error: assignmentError } = await database.rpc(
-    shareBox ? 'assign_shared_van_box' : 'assign_van_box',
-    {
-      p_daily_route_id: route.id,
-      p_letter_id: letter.id,
-      p_animal_id: pickup.action.animalId,
-      p_box_number: pickup.action.box,
-      p_pickup_sequence: pickupSequence,
-      p_delivery_sequence: Math.max(pickupSequence + 1, deliverySequence),
-    },
-  )
-  if (assignmentError) throw assignmentError
 }
 
 /** With `shareBox`, the admin may put the letter in a box already used by another letter. */

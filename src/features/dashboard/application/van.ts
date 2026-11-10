@@ -54,6 +54,19 @@ export function letterBoxForRoute(route: Pick<DailyRoute, 'actions'>, letterId: 
     ?.box
 }
 
+export function isBoxAssignedToOtherLetter(
+  route: Pick<DailyRoute, 'actions'>,
+  letterId: string,
+  box: number | undefined,
+) {
+  return (
+    box !== undefined &&
+    route.actions.some(
+      (action) => action.type === 'recogida' && action.letterId !== letterId && action.box === box,
+    )
+  )
+}
+
 export function assignmentsForRoute(route: Pick<DailyRoute, 'actions'>): VanAssignment[] {
   const byLetterAndBox = new Map<string, VanAssignment>()
   route.actions

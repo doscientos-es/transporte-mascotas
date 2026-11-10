@@ -59,7 +59,6 @@ import {
 import {
   addDailyRouteStop,
   addRouteTemplateStop,
-  appendLetterToDailyRoute,
   closeDailyRoute,
   deleteDailyRoute,
   deleteDailyRouteStop,
@@ -93,8 +92,7 @@ import { findForwardRouteSegment } from './route-segment'
 import {
   assignmentsForRoute,
   boxesBySize,
-  isBoxCompatible,
-  letterBoxForRoute,
+  isBoxAssignedToOtherLetter,
   vanBoxSizeForAnimal,
 } from './van'
 
@@ -209,7 +207,7 @@ export function actionsForLetter(
   boxCatalog: TransportBoxCatalog,
   originStopId?: string,
   destinationStopId?: string,
-  preservedBox?: number,
+  selectedBox?: number,
 ) {
   if (!letter.animals.length) return []
   const stops = route.stops ?? copyTemplateStops(template)
@@ -226,17 +224,13 @@ export function actionsForLetter(
   if (!segment) return []
   const { originStop, destinationStop } = segment
   if (
-    preservedBox !== undefined &&
-    letter.animals.some(
-      (animal) =>
-        !isBoxCompatible(preservedBox, animal.size) ||
-        !isBoxCompatible(preservedBox, vanRequirementForAnimal(animal, boxCatalog)),
-    )
+    selectedBox !== undefined &&
+    (!Number.isInteger(selectedBox) || selectedBox < 1 || selectedBox > 72)
   )
-    throw new Error(
-      'El box asignado no es adecuado para todos los animales. Cambia el box en Furgoneta antes de guardar.',
-    )
-  const box = preservedBox ?? selectFreeBox(letter.animals, usedBoxes, boxCatalog)
+    throw new Error('El número de box debe estar entre 1 y 72.')
+  const box = selectedBox ?? selectFreeBox(letter.animals, usedBoxes, boxCatalog)
+  if (box === undefined)
+    throw new Error('No queda ningún box compatible disponible para esta carta.')
   return letter.animals.flatMap((animal) => [
     ...(originStop
       ? [
@@ -1189,15 +1183,6 @@ export function useDashboard(session: Session | null, role: AppRole) {
         serviceDate: dailyRoute.date,
         animals,
       }
-      const assignedBox = letterBoxForRoute(dailyRoute, letter.id)
-      const sharedBox =
-        assignedBox !== undefined &&
-        dailyRoute.actions.some(
-          (action) =>
-            action.letterId !== letter.id &&
-            action.type === 'recogida' &&
-            action.box === assignedBox,
-        )
       const rebuiltActions = actionsForLetter(
         dailyRoute,
         routeTemplate,
@@ -1205,22 +1190,12 @@ export function useDashboard(session: Session | null, role: AppRole) {
         boxCatalog,
         draft.originStopId,
         draft.destinationStopId,
-        assignedBox,
+        draft.boxNumber,
       )
       if (rebuiltActions.length !== animals.length * 2)
         throw new Error('Elige un origen y un destino incluidos en la ruta seleccionada.')
-      if (sharedBox) {
-        const oldActions = dailyRoute.actions.filter((action) => action.letterId === letter.id)
-        const stopChanged = (['recogida', 'entrega'] as const).some(
-          (type) =>
-            oldActions.find((action) => action.type === type)?.stopId !==
-            rebuiltActions.find((action) => action.type === type)?.stopId,
-        )
-        if (stopChanged)
-          throw new Error(
-            'Para cambiar las paradas de una carta con box compartido, reasigna primero el box en Furgoneta.',
-          )
-      }
+      const selectedBox = rebuiltActions.find((action) => action.type === 'recogida')?.box
+      const sharedBox = isBoxAssignedToOtherLetter(dailyRoute, letter.id, selectedBox)
       const previousActions = dailyRoutes
         .flatMap((route) => route.actions)
         .filter((action) => action.letterId === letter.id)
@@ -1231,11 +1206,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
         ...action,
         status: previousStatus.get(`${action.animalId}:${action.type}`) ?? action.status,
       }))
-      const affectedRoutes = dailyRoutes.filter((route) =>
-        route.actions.some((action) => action.letterId === letter.id),
-      )
-      await updateLetter(letter, routeTemplate.id, affectedRoutes, draft.signatureConfirmed)
-      await appendLetterToDailyRoute(dailyRoute, letter, routeActions, sharedBox)
+      await updateLetter(letter, dailyRoute, routeActions, draft.signatureConfirmed, sharedBox)
       invalidateLettersCache(session.user.id)
       setLetters((current) => current.map((item) => (item.id === letter.id ? letter : item)))
       const updateRoute = (route: DailyRoute): DailyRoute => {

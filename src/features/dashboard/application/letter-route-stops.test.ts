@@ -4,6 +4,7 @@ import {
   labelledRouteStops,
   letterDestinationOptions,
   letterOriginOptions,
+  withLetterOrigin,
 } from './letter-route-stops'
 
 describe('letter route stop options', () => {
@@ -32,6 +33,32 @@ describe('letter route stop options', () => {
     expect(letterDestinationOptions(stops, '')).toEqual([])
     expect(letterDestinationOptions(stops, 'Unknown')).toEqual([])
     expect(letterDestinationOptions(stops, '3')).toEqual([])
+  })
+
+  it('preserves the selected destination when changing or clearing the origin', () => {
+    const draft = {
+      origin: 'Madrid',
+      originStopId: '0',
+      destination: 'Barcelona',
+      destinationStopId: '2',
+    }
+    const valid = withLetterOrigin(draft, stops[1])
+    const invalid = withLetterOrigin(draft, stops[2])
+    const cleared = withLetterOrigin(draft, undefined)
+
+    for (const updated of [valid, invalid, cleared]) {
+      expect(updated.destination).toBe('Barcelona')
+      expect(updated.destinationStopId).toBe('2')
+    }
+    expect(valid.originStopId).toBe('1')
+    expect(
+      letterDestinationOptions(stops, valid.originStopId).some((stop) => stop.id === '2'),
+    ).toBe(true)
+    expect(
+      letterDestinationOptions(stops, invalid.originStopId).some((stop) => stop.id === '2'),
+    ).toBe(false)
+    expect(cleared.originStopId).toBe('')
+    expect(draft.originStopId).toBe('0')
   })
 
   it('keeps repeated stops as distinct choices with their position', () => {

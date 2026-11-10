@@ -57,13 +57,18 @@ import type {
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
 import type { DrivingProgress } from '../application/driving-times'
-import { letterDestinationOptions, letterOriginOptions } from '../application/letter-route-stops'
+import {
+  labelledRouteStops,
+  letterDestinationOptions,
+  letterOriginOptions,
+  withLetterOrigin,
+} from '../application/letter-route-stops'
 import { validateManualLetterBreeds } from '../application/manual-letter-animals'
 import { manualLetterTotalCents } from '../application/manual-letter-total'
 import { stopFieldsFromMeetingPoint } from '../application/meeting-point-values'
 import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
-import { letterBoxForRoute } from '../application/van'
+import { isBoxAssignedToOtherLetter, letterBoxForRoute } from '../application/van'
 import { CalculationProgress } from './calculation-progress'
 import {
   PaperBand,
@@ -248,6 +253,10 @@ export function LetterForm({
       ? {
           reference: letter.id.replace(/^CARTA DE PORTE Nº\s*/i, ''),
           routeId: routeId ?? '',
+          boxNumber: letterBoxForRoute(
+            routes.find((route) => route.id === routeId) ?? { actions: [] },
+            letter.id,
+          ),
           sender: letter.sender,
           senderPhone: letter.senderPhone,
           senderEmail: letter.senderEmail,
@@ -319,6 +328,11 @@ export function LetterForm({
   const creationMode = useRef<'request' | 'paid'>('request')
   const isSaving = savingMode !== null
   const selectedRoute = routes.find((route) => route.id === draft.routeId)
+  const boxAlreadyAssigned = Boolean(
+    letter &&
+    selectedRoute &&
+    isBoxAssignedToOtherLetter(selectedRoute, letter.id, draft.boxNumber),
+  )
   const selectedTemplate = templates.find((template) => template.id === selectedRoute?.templateId)
   const stops = useMemo(
     () => selectedRoute?.stops ?? selectedTemplate?.stops ?? [],
@@ -353,6 +367,16 @@ export function LetterForm({
     }
     if (draft.animals.some((animal) => !animal.birthDate || animal.birthDate > todayIso())) {
       setError('Indica una fecha de nacimiento válida para cada mascota.')
+      return
+    }
+    if (
+      draft.originStopId &&
+      draft.destinationStopId &&
+      !letterDestinationOptions(stops, draft.originStopId).some(
+        (stop) => stop.id === draft.destinationStopId,
+      )
+    ) {
+      setError('El destino debe estar después del origen en la ruta.')
       return
     }
     setError('')
@@ -402,13 +426,11 @@ export function LetterForm({
   async function addStop(values: StopFormValues) {
     if (!selectedRoute || !addingStopFor) throw new Error('Selecciona primero una ruta diaria.')
     const stop = await onAddStop(selectedRoute.id, values)
-    setDraft((current) => ({
-      ...current,
-      [addingStopFor]: stop.locality,
-      ...(addingStopFor === 'origin'
-        ? { originStopId: stop.id, destination: '', destinationStopId: '' }
-        : { destinationStopId: stop.id }),
-    }))
+    setDraft((current) =>
+      addingStopFor === 'origin'
+        ? withLetterOrigin(current, stop)
+        : { ...current, destination: stop.locality, destinationStopId: stop.id },
+    )
     setAddingStopFor(null)
   }
   const updateAnimalCount = (count: number) =>
@@ -440,10 +462,8 @@ export function LetterForm({
           reference={draft.reference}
           referenceLocked={isEditing}
           onReferenceChange={(value) => update('reference', value)}
-          boxNumber={
-            letter && selectedRoute ? letterBoxForRoute(selectedRoute, letter.id) : draft.boxNumber
-          }
-          boxNumberLocked={isEditing}
+          boxNumber={draft.boxNumber}
+          boxAlreadyAssigned={boxAlreadyAssigned}
           onBoxNumberChange={(value) => update('boxNumber', value)}
           atesNumber={draft.atesNumber}
           onAtesNumberChange={(value) => update('atesNumber', value)}
@@ -456,6 +476,7 @@ export function LetterForm({
           stops={stops}
           update={update}
           onRouteChange={selectRoute}
+          onOriginChange={(stop) => setDraft((current) => withLetterOrigin(current, stop))}
           onAddStop={setAddingStopFor}
         />
         <ContactsSection draft={draft} update={update} addressLookupEnabled={isEditing} />
@@ -607,6 +628,7 @@ function TripSection({
   stops,
   update,
   onRouteChange,
+  onOriginChange,
   onAddStop,
 }: {
   draft: LetterDraft
@@ -616,6 +638,7 @@ function TripSection({
   stops: RouteStop[]
   update: <K extends Exclude<keyof LetterDraft, 'animals'>>(field: K, value: LetterDraft[K]) => void
   onRouteChange: (routeId: string) => void
+  onOriginChange: (stop: RouteStop | undefined) => void
   onAddStop: (field: 'origin' | 'destination') => void
 }) {
   const itineraryClosed = Boolean(selectedRoute?.closedAt)
@@ -625,6 +648,14 @@ function TripSection({
   const stopPlaceholder = selectedRoute ? 'Selecciona una parada…' : 'Elige primero una ruta'
   const originStops = letterOriginOptions(stops)
   const destinationStops = letterDestinationOptions(stops, draft.originStopId ?? '')
+  const destinationOutsideOptions = Boolean(
+    draft.destinationStopId &&
+    !destinationStops.some((stop) => stop.id === draft.destinationStopId),
+  )
+  const invalidDestination = Boolean(draft.originStopId && destinationOutsideOptions)
+  const selectedDestination = labelledRouteStops(stops).find(
+    (stop) => stop.id === draft.destinationStopId,
+  )
   const selectStop = (field: 'origin' | 'destination', stopId: string) => {
     if (stopId === '__new-stop__') {
       onAddStop(field)
@@ -632,10 +663,7 @@ function TripSection({
     }
     const stop = stops.find((item) => item.id === stopId)
     if (field === 'origin') {
-      update('originStopId', stopId)
-      update('origin', stop?.locality ?? '')
-      update('destinationStopId', '')
-      update('destination', '')
+      onOriginChange(stop)
     } else {
       update('destinationStopId', stopId)
       update('destination', stop?.locality ?? '')
@@ -707,6 +735,12 @@ function TripSection({
           required
         >
           <option value="">{stopPlaceholder}</option>
+          {destinationOutsideOptions && (
+            <option value={draft.destinationStopId} disabled>
+              {selectedDestination?.label ?? draft.destination}
+              {invalidDestination && ' · fuera del tramo'}
+            </option>
+          )}
           {destinationStops.map((stop) => (
             <option value={stop.id} key={stop.id}>
               {stop.label}
@@ -714,6 +748,9 @@ function TripSection({
           ))}
           <option value="__new-stop__">+ Añadir nueva parada…</option>
         </select>
+        {invalidDestination && (
+          <span className="text-xs text-red-700">El destino debe estar después del origen.</span>
+        )}
       </PaperCell>
     </div>
   )

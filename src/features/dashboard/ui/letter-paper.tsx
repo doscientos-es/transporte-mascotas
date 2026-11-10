@@ -68,7 +68,7 @@ export function PaperHeader({
   referenceLocked,
   onReferenceChange,
   boxNumber,
-  boxNumberLocked = false,
+  boxAlreadyAssigned = false,
   onBoxNumberChange,
   atesNumber,
   onAtesNumberChange,
@@ -77,7 +77,7 @@ export function PaperHeader({
   referenceLocked: boolean
   onReferenceChange: (value: string) => void
   boxNumber?: number | undefined
-  boxNumberLocked?: boolean
+  boxAlreadyAssigned?: boolean
   onBoxNumberChange: (value: number | undefined) => void
   atesNumber: string
   onAtesNumberChange: (value: string) => void
@@ -114,9 +114,10 @@ export function PaperHeader({
             className={`${paperControl} w-20 min-w-0 border-b border-neutral-500 focus-visible:border-black sm:text-right`}
             type="number"
             min="1"
+            max="72"
+            step="1"
             inputMode="numeric"
             value={boxNumber ?? ''}
-            readOnly={boxNumberLocked}
             onChange={(event) =>
               onBoxNumberChange(event.target.value ? Number(event.target.value) : undefined)
             }
@@ -125,8 +126,8 @@ export function PaperHeader({
           />
         </label>
         <span id="letter-box-hint" className="text-[11px] text-neutral-700">
-          {boxNumberLocked
-            ? 'Para cambiar el box, utiliza la sección Furgoneta.'
+          {boxAlreadyAssigned
+            ? 'Este box ya está asignado a otra carta en la ruta; compartirán el box si coinciden.'
             : 'Vacío: se asigna un box libre automáticamente.'}
         </span>
         <label className="flex items-baseline gap-1.5 text-sm font-bold">
