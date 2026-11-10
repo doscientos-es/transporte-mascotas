@@ -10,9 +10,14 @@ import {
   Textarea,
 } from '@doscientos/ui'
 import { Save } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useReducer, useState, type FormEvent } from 'react'
 
-import { expenseSupplierFields, searchExpenseSuppliers } from '../application/expense-suppliers'
+import {
+  expenseSupplierFields,
+  initialSupplierSelection,
+  supplierSelectionReducer,
+  type ExpenseSupplier,
+} from '../application/expense-suppliers'
 import {
   EXPENSE_DOCUMENT_MAX_BYTES,
   EXPENSE_DOCUMENT_TYPES,
@@ -21,8 +26,8 @@ import {
   type ExpenseInput,
 } from '../application/finance'
 import { expenseCategoryLabel, expenseCategoryValue } from '../application/finance-summary'
-import { DirectoryLookup } from './directory-lookup'
 import { ExpenseCategoryField } from './expense-category-field'
+import { ExpenseSupplierField } from './expense-supplier-field'
 
 export type ExpenseSubmit = {
   input: ExpenseInput
@@ -34,19 +39,30 @@ const today = () => new Date().toISOString().slice(0, 10)
 
 export function ExpenseDialog({
   expense,
+  initialSupplier,
   onClose,
   onSubmit,
 }: {
   expense: Expense | null
+  initialSupplier?: ExpenseSupplier | undefined
   onClose: () => void
   onSubmit: (value: ExpenseSubmit) => Promise<void>
 }) {
   const [expenseDate, setExpenseDate] = useState(expense?.expenseDate ?? today())
-  const [supplier, setSupplier] = useState({
-    vendor: expense?.vendor ?? '',
-    vendorNif: expense?.vendorNif ?? '',
-    vendorAddress: expense?.vendorAddress ?? '',
-  })
+  const [supplierSelection, dispatchSupplier] = useReducer(
+    supplierSelectionReducer,
+    expense
+      ? {
+          vendor: expense.vendor,
+          vendorNif: expense.vendorNif,
+          vendorAddress: expense.vendorAddress,
+        }
+      : initialSupplier
+        ? expenseSupplierFields(initialSupplier)
+        : undefined,
+    initialSupplierSelection,
+  )
+  const supplier = supplierSelection.fields
   const [invoiceReference, setInvoiceReference] = useState(expense?.invoiceReference ?? '')
   const [concept, setConcept] = useState(expense?.concept ?? '')
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -118,6 +134,11 @@ export function ExpenseDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="expense-form" onSubmit={(event) => void submit(event)}>
+          <ExpenseSupplierField selection={supplierSelection} dispatch={dispatchSupplier} />
+          <p className="expense-form-wide text-muted-foreground m-0 text-xs">
+            Obligatorios: fecha, categoría, proveedor, concepto y base imponible. Los demás datos
+            son opcionales.
+          </p>
           <Label>
             Fecha
             <Input
@@ -128,64 +149,32 @@ export function ExpenseDialog({
             />
           </Label>
           <ExpenseCategoryField value={category} onChange={setCategory} />
-          <div className="expense-form-wide">
-            <DirectoryLookup
-              label="Buscar proveedor guardado (opcional)"
-              itemName="proveedores"
-              search={searchExpenseSuppliers}
-              describe={(supplier) => [supplier.name, supplier.nif].filter(Boolean).join(' · ')}
-              onSelect={(item) => setSupplier(expenseSupplierFields(item))}
-            />
-            <p className="mt-1 mb-0 text-xs">
-              Al guardar el gasto, se guarda o actualiza el proveedor.
-            </p>
-          </div>
-          <Label>
-            Proveedor
-            <Input
-              value={supplier.vendor}
-              maxLength={160}
-              onChange={(e) => setSupplier((current) => ({ ...current, vendor: e.target.value }))}
-            />
-          </Label>
-          <Label>
-            NIF/CIF del proveedor
-            <Input
-              value={supplier.vendorNif}
-              maxLength={40}
-              onChange={(e) =>
-                setSupplier((current) => ({ ...current, vendorNif: e.target.value }))
-              }
-            />
-          </Label>
-          <Label className="expense-form-wide">
-            Dirección fiscal del proveedor
-            <Input
-              value={supplier.vendorAddress}
-              maxLength={300}
-              autoComplete="off"
-              onChange={(e) =>
-                setSupplier((current) => ({ ...current, vendorAddress: e.target.value }))
-              }
-            />
-          </Label>
           <Label>
             Nº de factura
             <Input
               value={invoiceReference}
               maxLength={80}
+              placeholder="Ej. F-2026-001"
               onChange={(e) => setInvoiceReference(e.target.value)}
             />
           </Label>
           <Label className="expense-form-wide">
             Concepto
-            <Input value={concept} maxLength={240} onChange={(e) => setConcept(e.target.value)} />
+            <Input
+              value={concept}
+              maxLength={240}
+              aria-required="true"
+              placeholder="Ej. Cambio de neumáticos"
+              onChange={(e) => setConcept(e.target.value)}
+            />
           </Label>
           <Label>
             Base imponible (€)
             <Input
               inputMode="decimal"
               value={netAmount}
+              aria-required="true"
+              placeholder="Ej. 100,00"
               onChange={(e) => setNetAmount(e.target.value)}
             />
           </Label>
@@ -197,6 +186,9 @@ export function ExpenseDialog({
               onChange={(e) => setVatRate(e.target.value)}
             />
           </Label>
+          <p className="expense-form-wide text-muted-foreground m-0 text-xs">
+            Introduce la base sin IVA; calcularemos el total automáticamente.
+          </p>
           <p className="expense-form-total expense-form-wide">
             Total con IVA:{' '}
             <strong>{total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</strong>
@@ -207,6 +199,7 @@ export function ExpenseDialog({
               value={notes}
               maxLength={1000}
               rows={2}
+              placeholder="Ej. Pago realizado con tarjeta"
               onChange={(e) => setNotes(e.target.value)}
             />
           </Label>

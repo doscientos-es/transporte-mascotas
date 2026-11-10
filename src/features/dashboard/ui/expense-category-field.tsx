@@ -17,6 +17,7 @@ export function ExpenseCategoryField({
         aria-label="Categoría"
         list="expense-category-suggestions"
         required
+        placeholder="Ej. combustible o mantenimiento"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { expenseSupplierFields } from './expense-suppliers'
+import {
+  expenseSupplierFields,
+  initialSupplierSelection,
+  supplierSelectionReducer,
+} from './expense-suppliers'
 
 describe('expense supplier fields', () => {
   it('copies name, NIF and fiscal address without the directory identity', () => {
@@ -15,5 +19,30 @@ describe('expense supplier fields', () => {
       vendorNif: '',
       vendorAddress: '',
     })
+  })
+})
+
+describe('supplier selection', () => {
+  it('selects, edits and replaces fiscal data without retaining the previous supplier', () => {
+    const first = { id: '1', name: 'Taller', nif: 'B123', address: 'Calle 1' }
+    const second = { id: '2', name: 'Peajes', nif: '', address: '' }
+    let state = supplierSelectionReducer(initialSupplierSelection(), {
+      type: 'select',
+      supplier: first,
+    })
+    expect(state).toEqual({ mode: 'selected', fields: expenseSupplierFields(first) })
+    state = supplierSelectionReducer(state, { type: 'edit' })
+    state = supplierSelectionReducer(state, {
+      type: 'update',
+      fields: { ...state.fields, vendorAddress: 'Calle 2' },
+    })
+    state = supplierSelectionReducer(state, { type: 'finish-edit' })
+    expect(state.fields.vendorAddress).toBe('Calle 2')
+    state = supplierSelectionReducer(state, { type: 'lookup' })
+    expect(state.fields.vendor).toBe('')
+    state = supplierSelectionReducer(state, { type: 'select', supplier: second })
+    expect(state.fields).toEqual({ vendor: 'Peajes', vendorNif: '', vendorAddress: '' })
+    state = supplierSelectionReducer(state, { type: 'new' })
+    expect(state).toEqual({ mode: 'new', fields: { vendor: '', vendorNif: '', vendorAddress: '' } })
   })
 })

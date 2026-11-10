@@ -1,4 +1,13 @@
-﻿import { Button, Pagination, PopoverContent, PopoverTrigger } from '@doscientos/ui'
+﻿import {
+  Button,
+  Pagination,
+  PopoverContent,
+  PopoverTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@doscientos/ui'
 import {
   ArrowLeftRight,
   Download,
@@ -15,6 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { paginate } from '@/shared/lib/pagination'
 
+import type { ExpenseSupplier } from '../application/expense-suppliers'
 import {
   createExpenseDocumentUrl,
   deleteExpense,
@@ -39,6 +49,7 @@ import {
 } from '../application/finance-summary'
 import { downloadBlob } from './billing-document-export'
 import { ExpenseDialog, type ExpenseSubmit } from './expense-dialog'
+import { ExpenseSuppliersPanel } from './expense-suppliers-panel'
 import { CategoryPanel, FinanceKpis, MonthlyPanel } from './finance-sections'
 
 const csvBlob = (content: string) => new Blob([content], { type: 'text/csv;charset=utf-8' })
@@ -85,6 +96,8 @@ export function FinancePage({ userId }: { userId?: string }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState<Expense | 'new' | null>(null)
+  const [initialSupplier, setInitialSupplier] = useState<ExpenseSupplier | undefined>()
+  const [supplierRefreshKey, setSupplierRefreshKey] = useState(0)
   const [exportOpen, setExportOpen] = useState(false)
 
   const reload = useCallback(async () => {
@@ -145,7 +158,13 @@ export function FinancePage({ userId }: { userId?: string }) {
       file,
       removeDocument,
     })
+    setSupplierRefreshKey((value) => value + 1)
     await reload()
+  }
+
+  function newExpense(supplier?: ExpenseSupplier) {
+    setInitialSupplier(supplier)
+    setEditing('new')
   }
 
   async function removeExpense(expense: Expense) {
@@ -192,263 +211,278 @@ export function FinancePage({ userId }: { userId?: string }) {
     <div className="finance-page">
       <section className="finance-hero" aria-label="Finanzas">
         <p>Ingresos de las facturas emitidas frente a los gastos del negocio.</p>
-        <Button onClick={() => setEditing('new')}>
+        <Button onClick={() => newExpense()}>
           <Plus size={16} /> Nuevo gasto
         </Button>
       </section>
 
-      <section className="finance-toolbar" aria-label="Periodo y exportación">
-        <div className="finance-period-controls">
-          <div className="finance-presets" aria-label="Periodos rápidos">
-            {presets.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                aria-pressed={activePreset === preset.id}
-                onClick={() => pickPreset(preset)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <div className="finance-range">
-            <label>
-              Desde
-              <input
-                type="date"
-                value={from}
-                max={to || undefined}
-                onChange={(event) => {
-                  setFrom(event.target.value)
-                  setExpensePage(1)
-                }}
-              />
-            </label>
-            <label>
-              Hasta
-              <input
-                type="date"
-                value={to}
-                min={from || undefined}
-                onChange={(event) => {
-                  setTo(event.target.value)
-                  setExpensePage(1)
-                }}
-              />
-            </label>
-          </div>
-        </div>
-        <div className="finance-actions">
-          <PopoverTrigger isOpen={exportOpen} onOpenChange={setExportOpen}>
-            <Button size="sm" variant="outline" disabled={loading}>
-              <Download size={15} /> Exportar
-            </Button>
-            <PopoverContent placement="bottom end" className="finance-export-popover">
-              <div className="finance-export-heading">
-                <strong>Descargar CSV</strong>
-                <span>Datos del periodo seleccionado</span>
+      <Tabs defaultSelectedKey="resumen">
+        <TabsList aria-label="Secciones de finanzas">
+          <TabsTrigger id="resumen">Resumen y gastos</TabsTrigger>
+          <TabsTrigger id="proveedores">Proveedores</TabsTrigger>
+        </TabsList>
+        <TabsContent id="resumen">
+          <section className="finance-toolbar" aria-label="Periodo y exportación">
+            <div className="finance-period-controls">
+              <div className="finance-presets" aria-label="Periodos rápidos">
+                {presets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    aria-pressed={activePreset === preset.id}
+                    onClick={() => pickPreset(preset)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="finance-export-option"
-                onClick={() =>
-                  exportCsv(movementsToCsv(income, expenses), `movimientos-${stamp}.csv`)
-                }
-              >
-                <ArrowLeftRight size={16} /> Movimientos
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="finance-export-option"
-                onClick={() => exportCsv(incomeToCsv(income), `facturas-emitidas-${stamp}.csv`)}
-              >
-                <ReceiptText size={16} /> Facturas emitidas
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="finance-export-option"
-                onClick={() => exportCsv(expensesToCsv(expenses), `gastos-${stamp}.csv`)}
-              >
-                <FileSpreadsheet size={16} /> Gastos
-              </Button>
-            </PopoverContent>
-          </PopoverTrigger>
-        </div>
-      </section>
-
-      {invalidRange && (
-        <p className="form-error" role="alert">
-          La fecha inicial no puede ser posterior a la final.
-        </p>
-      )}
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      <FinanceKpis
-        totals={totals}
-        incomeCount={income.length}
-        expenseCount={expenses.length}
-        loading={loading}
-      />
-
-      <div className="finance-grid">
-        <MonthlyPanel months={months} loading={loading} />
-        <CategoryPanel categories={categories} />
-      </div>
-
-      <section className="finance-panel">
-        <div className="finance-panel-heading">
-          <h3>Gastos</h3>
-          {expenses.length > 0 && (
-            <span className="finance-count">
-              {hasFilters
-                ? `${filteredExpenses.length} de ${expenses.length} · ${money(filteredTotal)}`
-                : `${expenses.length} · ${money(filteredTotal)}`}
-            </span>
-          )}
-        </div>
-        {expenses.length > 0 && (
-          <div className="finance-filters">
-            <label className="finance-search">
-              <Search size={15} aria-hidden="true" />
-              <input
-                type="search"
-                value={search}
-                placeholder="Buscar proveedor, concepto o nº de factura"
-                aria-label="Buscar gastos"
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setExpensePage(1)
-                }}
-              />
-            </label>
-            <select
-              value={category}
-              aria-label="Filtrar por categoría"
-              onChange={(event) => {
-                setCategory(event.target.value)
-                setExpensePage(1)
-              }}
-            >
-              <option value="">Todas las categorías</option>
-              {categoryOptions.map((value) => (
-                <option key={value} value={value}>
-                  {expenseCategoryLabel(value)}
-                </option>
-              ))}
-            </select>
-            {hasFilters && (
-              <Button size="sm" variant="ghost" onClick={clearFilters}>
-                Limpiar
-              </Button>
-            )}
-          </div>
-        )}
-        {filteredExpenses.length ? (
-          <>
-            <div className="finance-table-wrap">
-              <table className="finance-table finance-expenses">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Proveedor</th>
-                    <th>Categoría</th>
-                    <th className="is-number">Base</th>
-                    <th className="is-number">Total</th>
-                    <th>
-                      <span className="sr-only">Acciones</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expensePagination.items.map((expense) => (
-                    <tr key={expense.id}>
-                      <td>{dateLabel(expense.expenseDate)}</td>
-                      <td>
-                        <span className="finance-cell-main">{expense.vendor}</span>
-                        <span className="finance-cell-sub">{expense.concept}</span>
-                      </td>
-                      <td>
-                        <span className="finance-badge">
-                          {expenseCategoryLabel(expense.category)}
-                        </span>
-                      </td>
-                      <td className="is-number">{money(expense.netAmount)}</td>
-                      <td className="is-number is-strong">{money(expense.totalAmount)}</td>
-                      <td className="finance-row-actions">
-                        {expense.documentPath && (
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label="Ver justificante"
-                            onClick={() => void openDocument(expense)}
-                          >
-                            <ExternalLink size={15} />
-                          </Button>
-                        )}
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label="Editar gasto"
-                          onClick={() => setEditing(expense)}
-                        >
-                          <Pencil size={15} />
-                        </Button>
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label="Eliminar gasto"
-                          onClick={() => void removeExpense(expense)}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="finance-range">
+                <label>
+                  Desde
+                  <input
+                    type="date"
+                    value={from}
+                    max={to || undefined}
+                    onChange={(event) => {
+                      setFrom(event.target.value)
+                      setExpensePage(1)
+                    }}
+                  />
+                </label>
+                <label>
+                  Hasta
+                  <input
+                    type="date"
+                    value={to}
+                    min={from || undefined}
+                    onChange={(event) => {
+                      setTo(event.target.value)
+                      setExpensePage(1)
+                    }}
+                  />
+                </label>
+              </div>
             </div>
-            <Pagination
-              page={expensePagination.page}
-              pageCount={expensePagination.pageCount}
-              ariaLabel="Paginación de gastos"
-              onPageChange={setExpensePage}
-              summary={`Mostrando ${expensePagination.firstRecord}–${expensePagination.lastRecord} de ${filteredExpenses.length} gastos`}
-              className="finance-expenses-pagination"
-            />
-          </>
-        ) : loading ? (
-          <p className="finance-empty">Cargando…</p>
-        ) : hasFilters ? (
-          <div className="finance-empty-state">
-            <Search size={22} aria-hidden="true" />
-            <strong>Ningún gasto coincide con la búsqueda</strong>
-            <Button size="sm" variant="outline" onClick={clearFilters}>
-              Limpiar filtros
-            </Button>
+            <div className="finance-actions">
+              <PopoverTrigger isOpen={exportOpen} onOpenChange={setExportOpen}>
+                <Button size="sm" variant="outline" disabled={loading}>
+                  <Download size={15} /> Exportar
+                </Button>
+                <PopoverContent placement="bottom end" className="finance-export-popover">
+                  <div className="finance-export-heading">
+                    <strong>Descargar CSV</strong>
+                    <span>Datos del periodo seleccionado</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="finance-export-option"
+                    onClick={() =>
+                      exportCsv(movementsToCsv(income, expenses), `movimientos-${stamp}.csv`)
+                    }
+                  >
+                    <ArrowLeftRight size={16} /> Movimientos
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="finance-export-option"
+                    onClick={() => exportCsv(incomeToCsv(income), `facturas-emitidas-${stamp}.csv`)}
+                  >
+                    <ReceiptText size={16} /> Facturas emitidas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="finance-export-option"
+                    onClick={() => exportCsv(expensesToCsv(expenses), `gastos-${stamp}.csv`)}
+                  >
+                    <FileSpreadsheet size={16} /> Gastos
+                  </Button>
+                </PopoverContent>
+              </PopoverTrigger>
+            </div>
+          </section>
+
+          {invalidRange && (
+            <p className="form-error" role="alert">
+              La fecha inicial no puede ser posterior a la final.
+            </p>
+          )}
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <FinanceKpis
+            totals={totals}
+            incomeCount={income.length}
+            expenseCount={expenses.length}
+            loading={loading}
+          />
+
+          <div className="finance-grid">
+            <MonthlyPanel months={months} loading={loading} />
+            <CategoryPanel categories={categories} />
           </div>
-        ) : (
-          <div className="finance-empty-state">
-            <Receipt size={22} aria-hidden="true" />
-            <strong>Todavía no hay gastos en este periodo.</strong>
-            <span>Registra combustible, peajes o suministros para ver el beneficio real.</span>
-            <Button size="sm" onClick={() => setEditing('new')}>
-              <Plus size={15} /> Añadir el primer gasto
-            </Button>
-          </div>
-        )}
-      </section>
+
+          <section className="finance-panel">
+            <div className="finance-panel-heading">
+              <h3>Gastos</h3>
+              {expenses.length > 0 && (
+                <span className="finance-count">
+                  {hasFilters
+                    ? `${filteredExpenses.length} de ${expenses.length} · ${money(filteredTotal)}`
+                    : `${expenses.length} · ${money(filteredTotal)}`}
+                </span>
+              )}
+            </div>
+            {expenses.length > 0 && (
+              <div className="finance-filters">
+                <label className="finance-search">
+                  <Search size={15} aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={search}
+                    placeholder="Buscar proveedor, concepto o nº de factura"
+                    aria-label="Buscar gastos"
+                    onChange={(event) => {
+                      setSearch(event.target.value)
+                      setExpensePage(1)
+                    }}
+                  />
+                </label>
+                <select
+                  value={category}
+                  aria-label="Filtrar por categoría"
+                  onChange={(event) => {
+                    setCategory(event.target.value)
+                    setExpensePage(1)
+                  }}
+                >
+                  <option value="">Todas las categorías</option>
+                  {categoryOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {expenseCategoryLabel(value)}
+                    </option>
+                  ))}
+                </select>
+                {hasFilters && (
+                  <Button size="sm" variant="ghost" onClick={clearFilters}>
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+            )}
+            {filteredExpenses.length ? (
+              <>
+                <div className="finance-table-wrap">
+                  <table className="finance-table finance-expenses">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Proveedor</th>
+                        <th>Categoría</th>
+                        <th className="is-number">Base</th>
+                        <th className="is-number">Total</th>
+                        <th>
+                          <span className="sr-only">Acciones</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expensePagination.items.map((expense) => (
+                        <tr key={expense.id}>
+                          <td>{dateLabel(expense.expenseDate)}</td>
+                          <td>
+                            <span className="finance-cell-main">{expense.vendor}</span>
+                            <span className="finance-cell-sub">{expense.concept}</span>
+                          </td>
+                          <td>
+                            <span className="finance-badge">
+                              {expenseCategoryLabel(expense.category)}
+                            </span>
+                          </td>
+                          <td className="is-number">{money(expense.netAmount)}</td>
+                          <td className="is-number is-strong">{money(expense.totalAmount)}</td>
+                          <td className="finance-row-actions">
+                            {expense.documentPath && (
+                              <Button
+                                size="icon-sm"
+                                variant="ghost"
+                                aria-label="Ver justificante"
+                                onClick={() => void openDocument(expense)}
+                              >
+                                <ExternalLink size={15} />
+                              </Button>
+                            )}
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label="Editar gasto"
+                              onClick={() => setEditing(expense)}
+                            >
+                              <Pencil size={15} />
+                            </Button>
+                            <Button
+                              size="icon-sm"
+                              variant="ghost"
+                              aria-label="Eliminar gasto"
+                              onClick={() => void removeExpense(expense)}
+                            >
+                              <Trash2 size={15} />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={expensePagination.page}
+                  pageCount={expensePagination.pageCount}
+                  ariaLabel="Paginación de gastos"
+                  onPageChange={setExpensePage}
+                  summary={`Mostrando ${expensePagination.firstRecord}–${expensePagination.lastRecord} de ${filteredExpenses.length} gastos`}
+                  className="finance-expenses-pagination"
+                />
+              </>
+            ) : loading ? (
+              <p className="finance-empty">Cargando…</p>
+            ) : hasFilters ? (
+              <div className="finance-empty-state">
+                <Search size={22} aria-hidden="true" />
+                <strong>Ningún gasto coincide con la búsqueda</strong>
+                <Button size="sm" variant="outline" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="finance-empty-state">
+                <Receipt size={22} aria-hidden="true" />
+                <strong>Todavía no hay gastos en este periodo.</strong>
+                <span>Registra combustible, peajes o suministros para ver el beneficio real.</span>
+                <Button size="sm" onClick={() => newExpense()}>
+                  <Plus size={15} /> Añadir el primer gasto
+                </Button>
+              </div>
+            )}
+          </section>
+        </TabsContent>
+        <TabsContent id="proveedores">
+          <ExpenseSuppliersPanel onNewExpense={newExpense} refreshKey={supplierRefreshKey} />
+        </TabsContent>
+      </Tabs>
 
       {editing && (
         <ExpenseDialog
           expense={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
+          initialSupplier={initialSupplier}
+          onClose={() => {
+            setEditing(null)
+            setInitialSupplier(undefined)
+          }}
           onSubmit={submitExpense}
         />
       )}
