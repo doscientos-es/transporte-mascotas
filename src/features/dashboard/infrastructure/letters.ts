@@ -365,7 +365,7 @@ export async function sendPaymentRequestEmail(letterId: string) {
   return result?.sent === true
 }
 
-/** Persists the editable data without ever changing a letter's operational status. */
+/** Reassigns cancelled letters atomically; ordinary edits retain their operational status. */
 export async function updateLetter(
   letter: Letter,
   route: DailyRoute,
@@ -373,7 +373,11 @@ export async function updateLetter(
   signatureConfirmed: boolean,
   shareBox: boolean,
 ) {
-  const { error } = await requireSupabase().rpc('update_carriage_letter_atomically', {
+  const rpc =
+    letter.status === 'cancelada'
+      ? 'reassign_cancelled_carriage_letter'
+      : 'update_carriage_letter_atomically'
+  const { data, error } = await requireSupabase().rpc(rpc, {
     p_letter_id: letter.id,
     p_daily_route_id: route.id,
     p_letter: {
@@ -430,6 +434,7 @@ export async function updateLetter(
       'No se puede guardar la carta: falta aplicar la actualización de la base de datos.',
     )
   if (error) throw new Error(error.message)
+  return letter.status === 'cancelada' ? (data as Letter['status']) : undefined
 }
 
 function routeTemplateName(template: LetterRow['route_templates']) {

@@ -12,6 +12,7 @@ import {
 import { Save } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
+import { expenseSupplierFields, searchExpenseSuppliers } from '../application/expense-suppliers'
 import {
   EXPENSE_DOCUMENT_MAX_BYTES,
   EXPENSE_DOCUMENT_TYPES,
@@ -20,7 +21,6 @@ import {
   type ExpenseInput,
 } from '../application/finance'
 import { expenseCategoryLabel, expenseCategoryValue } from '../application/finance-summary'
-import { expenseSupplierFields, searchExpenseSuppliers } from '../application/expense-suppliers'
 import { DirectoryLookup } from './directory-lookup'
 import { ExpenseCategoryField } from './expense-category-field'
 
@@ -136,7 +136,9 @@ export function ExpenseDialog({
               describe={(supplier) => [supplier.name, supplier.nif].filter(Boolean).join(' · ')}
               onSelect={(item) => setSupplier(expenseSupplierFields(item))}
             />
-            <p className="mt-1 mb-0 text-xs">Al guardar el gasto, se guarda o actualiza el proveedor.</p>
+            <p className="mt-1 mb-0 text-xs">
+              Al guardar el gasto, se guarda o actualiza el proveedor.
+            </p>
           </div>
           <Label>
             Proveedor
@@ -151,7 +153,9 @@ export function ExpenseDialog({
             <Input
               value={supplier.vendorNif}
               maxLength={40}
-              onChange={(e) => setSupplier((current) => ({ ...current, vendorNif: e.target.value }))}
+              onChange={(e) =>
+                setSupplier((current) => ({ ...current, vendorNif: e.target.value }))
+              }
             />
           </Label>
           <Label className="expense-form-wide">
@@ -160,7 +164,9 @@ export function ExpenseDialog({
               value={supplier.vendorAddress}
               maxLength={300}
               autoComplete="off"
-              onChange={(e) => setSupplier((current) => ({ ...current, vendorAddress: e.target.value }))}
+              onChange={(e) =>
+                setSupplier((current) => ({ ...current, vendorAddress: e.target.value }))
+              }
             />
           </Label>
           <Label>

@@ -267,6 +267,7 @@ describe('LettersPage route selector', () => {
     expect(active).not.toContain('Ver 1 cartas de Sin ruta')
     expect(cancelled).toContain('cancelled')
     expect(cancelled).toContain('>Anulada</span>')
+    expect(cancelled).toContain('Reasignar ruta')
     expect(cancelled).not.toContain('>active</strong>')
   })
 })

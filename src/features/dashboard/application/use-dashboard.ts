@@ -68,7 +68,6 @@ import {
   loadDailyRoutes,
   loadRouteTemplates,
   reassignVanBox,
-  removeLetterFromDailyRoute,
   saveDailyRoute,
   saveRouteTemplate,
   updateDailyRouteDate,
@@ -916,36 +915,14 @@ export function useDashboard(session: Session | null, role: AppRole) {
   }
 
   async function removeRouteLetter(routeId: string, letterId: string) {
-    if (!session) throw new Error('Inicia sesión para quitar una carta de la ruta.')
-    await removeLetterFromDailyRoute(routeId, letterId)
-    const update = (route: DailyRoute): DailyRoute =>
-      route.id === routeId
-        ? { ...route, actions: route.actions.filter((action) => action.letterId !== letterId) }
-        : route
-    setSelectedRoute((current) => (current ? update(current) : null))
-    setDailyRoutes((current) => current.map(update))
     if (
       !dailyRoutes.some(
         (route) =>
-          route.id !== routeId && route.actions.some((action) => action.letterId === letterId),
+          route.id === routeId && route.actions.some((action) => action.letterId === letterId),
       )
-    ) {
-      setLetters((current) =>
-        current.map((letter) =>
-          letter.id === letterId
-            ? {
-                ...letter,
-                route: 'Sin ruta',
-                routeTemplateColor: undefined,
-                status: letter.status === 'cancelada' ? 'cancelada' : 'pendiente',
-              }
-            : letter,
-        ),
-      )
-    }
-    invalidateLettersCache(session.user.id)
-    await ensureLetters(true)
-    toast('Carta retirada de la ruta y del box. La carta y su factura se conservan.')
+    )
+      throw new Error('La carta ya no está asignada a esta ruta.')
+    await cancelLetter(letterId)
   }
 
   async function cancelLetter(letterId: string) {
@@ -1206,9 +1183,19 @@ export function useDashboard(session: Session | null, role: AppRole) {
         ...action,
         status: previousStatus.get(`${action.animalId}:${action.type}`) ?? action.status,
       }))
-      await updateLetter(letter, dailyRoute, routeActions, draft.signatureConfirmed, sharedBox)
+      const reassignedStatus = await updateLetter(
+        letter,
+        dailyRoute,
+        routeActions,
+        draft.signatureConfirmed,
+        sharedBox,
+      )
       invalidateLettersCache(session.user.id)
-      setLetters((current) => current.map((item) => (item.id === letter.id ? letter : item)))
+      setLetters((current) =>
+        current.map((item) =>
+          item.id === letter.id ? { ...letter, status: reassignedStatus ?? letter.status } : item,
+        ),
+      )
       const updateRoute = (route: DailyRoute): DailyRoute => {
         const withoutLetter = route.actions.filter((action) => action.letterId !== letter.id)
         return route.id === dailyRoute.id
@@ -1218,7 +1205,8 @@ export function useDashboard(session: Session | null, role: AppRole) {
       setDailyRoutes((current) => current.map(updateRoute))
       setSelectedRoute((current) => (current ? updateRoute(current) : null))
       setEditingLetter(null)
-      toast('Carta actualizada.')
+      toast(reassignedStatus ? 'Carta reasignada a la ruta.' : 'Carta actualizada.')
+      if (reassignedStatus) void ensureLetters(true)
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se ha podido actualizar la carta.'

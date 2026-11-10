@@ -58,8 +58,12 @@ export function DirectoryLookup<Item extends { id: string }>({
         />
       </Label>
       {status === 'searching' && <output>Buscando {itemName}…</output>}
-      {status === 'empty' && <output>No se han encontrado {itemName}. Puedes rellenar los datos.</output>}
-      {status === 'failed' && <output>No se han podido buscar {itemName}. Puedes rellenar los datos.</output>}
+      {status === 'empty' && (
+        <output>No se han encontrado {itemName}. Puedes rellenar los datos.</output>
+      )}
+      {status === 'failed' && (
+        <output>No se han podido buscar {itemName}. Puedes rellenar los datos.</output>
+      )}
       {items.length > 0 && (
         <div className="grid gap-2" aria-label={`${itemName} encontrados`}>
           {items.map((item) => (

@@ -1189,10 +1189,11 @@ export function RoutesPage({
       >
         <AlertDialogContent className="!w-[calc(100%-2.5rem)] !max-w-[460px] !p-[26px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Quitar de la ruta</AlertDialogTitle>
+            <AlertDialogTitle>Quitar y anular carta</AlertDialogTitle>
             <AlertDialogDescription>
-              Se retirarán de esta ruta la recogida y la entrega de todos los animales de{' '}
-              {removingLetter}, y se liberará su box. La carta y su factura se conservarán.
+              Se anulará {removingLetter}, se retirará de todas sus rutas y se liberarán sus boxes.
+              La carta y su factura se conservarán. No se harán devoluciones ni se desactivarán
+              enlaces de pago. Podrás reasignarla desde Anuladas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1205,7 +1206,7 @@ export function RoutesPage({
                 void removeLetter()
               }}
             >
-              {removingLetterBusy ? 'Quitando…' : 'Quitar de la ruta'}
+              {removingLetterBusy ? 'Anulando…' : 'Quitar y anular'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1771,7 +1772,7 @@ function ServiceCard({
         <div className="flex flex-wrap gap-2">
           {onRemove && (
             <Button variant="outline" size="sm" onClick={onRemove}>
-              Quitar de la ruta
+              Quitar y anular
             </Button>
           )}
           {onCancel && (

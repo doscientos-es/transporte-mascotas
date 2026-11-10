@@ -567,18 +567,22 @@ export function LetterForm({
       <div className="bg-card border-border sticky bottom-0 z-10 grid gap-3 rounded-xl border p-3 shadow-[0_-6px_18px_rgb(0_0_0/6%)] sm:grid-cols-2 sm:p-4">
         <div className="flex flex-col justify-between gap-2">
           <p className="text-muted-foreground m-0 text-xs">
-            {isEditing
-              ? 'Guarda los cambios y vuelve a firmar la carta.'
-              : complimentary
-                ? 'Crea la carta sin factura ni cobro.'
-                : 'Crea la carta y deja el cobro pendiente.'}
+            {letter?.status === 'cancelada'
+              ? 'Al guardar, la carta dejará de estar anulada y se asignará a la ruta elegida.'
+              : isEditing
+                ? 'Guarda los cambios y vuelve a firmar la carta.'
+                : complimentary
+                  ? 'Crea la carta sin factura ni cobro.'
+                  : 'Crea la carta y deja el cobro pendiente.'}
           </p>
           <Button type="submit" disabled={isSaving} className="h-10 w-full">
             <ShieldCheck />{' '}
             {savingMode === 'request'
               ? 'Guardando carta…'
               : isEditing
-                ? 'Firmar y guardar cambios'
+                ? letter?.status === 'cancelada'
+                  ? 'Reasignar y guardar'
+                  : 'Firmar y guardar cambios'
                 : complimentary
                   ? 'Crear pagada sin factura'
                   : 'Firmar y crear carta'}
@@ -622,7 +626,13 @@ export function LetterForm({
         form
       ) : (
         <OperationDialog
-          title={isEditing ? 'Editar carta de porte' : 'Nueva carta de porte'}
+          title={
+            letter?.status === 'cancelada'
+              ? 'Reasignar carta de porte'
+              : isEditing
+                ? 'Editar carta de porte'
+                : 'Nueva carta de porte'
+          }
           description="Completa los datos, revísalos y firma la carta antes de guardarla."
           icon={isEditing ? <FilePenLine size={24} /> : <FilePlus2 size={24} />}
           onClose={onClose}

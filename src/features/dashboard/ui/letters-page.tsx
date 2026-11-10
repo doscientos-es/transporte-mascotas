@@ -710,6 +710,11 @@ function LetterRow({
       </TableCell>
       <TableCell>
         <div className="row-actions">
+          {letter.status === 'cancelada' && (
+            <Button type="button" variant="outline" size="sm" onClick={() => onEdit(letter)}>
+              Reasignar ruta
+            </Button>
+          )}
           <IconButton type="button" label="Ver detalles" onClick={() => onView(letter)}>
             <Eye size={17} />
           </IconButton>
@@ -837,6 +842,11 @@ function LetterCard({
       <div className="letter-card-footer">
         <span>{letter.route}</span>
         <div>
+          {letter.status === 'cancelada' && (
+            <Button type="button" variant="outline" size="sm" onClick={() => onEdit(letter)}>
+              Reasignar ruta
+            </Button>
+          )}
           <button className="letter-card-view-button" type="button" onClick={() => onView(letter)}>
             <Eye size={16} /> Ver detalles
           </button>

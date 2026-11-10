@@ -170,7 +170,7 @@ describe('route pickup actions', () => {
     expect(markup).not.toContain('>Recogido</button>')
     expect(markup).toContain('>Entregado</button>')
     expect(markup).toContain('1 transporte')
-    expect(markup.includes('>Quitar de la ruta</button>')).toBe(canManage)
+    expect(markup.includes('>Quitar y anular</button>')).toBe(canManage)
     expect(markup.includes('>Anular</button>')).toBe(canManage)
   })
 })

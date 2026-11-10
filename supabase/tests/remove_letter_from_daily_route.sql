@@ -108,6 +108,15 @@ begin
     or not exists (select 1 from public.issued_invoices where invoice_draft_id = invoice_id)
     or not exists (select 1 from public.profiles where id = auth.uid())
   then raise exception 'Cancellation must preserve issued invoices and user records'; end if;
+
+  if public.reassign_cancelled_carriage_letter(v_letter_id, '20000000-0000-4000-8000-0000000000d1',
+    (select to_jsonb(letter) from public.carriage_letters letter where id = v_letter_id),
+    (select jsonb_agg(to_jsonb(animal)) from public.animals animal where animal.letter_id = v_letter_id),
+    actions, 13, false, false) <> 'programada'
+    then raise exception 'A paid reassigned letter must be scheduled'; end if;
+  if not exists (select 1 from public.issued_invoices where invoice_draft_id = invoice_id)
+    or (select count(*) from public.route_actions where letter_id = v_letter_id) <> 4
+    then raise exception 'Reassignment must retain the issued invoice and restore all animals'; end if;
 end;
 $$;
 rollback;

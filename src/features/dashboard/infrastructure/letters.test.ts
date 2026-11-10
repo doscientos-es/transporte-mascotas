@@ -89,6 +89,27 @@ describe('updateLetter', () => {
     )
   })
 
+  it('reassigns a cancelled letter using the atomic reactivation RPC and returns its status', async () => {
+    rpc.mockResolvedValue({ data: 'programada', error: null })
+    const result = await updateLetter(
+      { ...letter, status: 'cancelada' },
+      { id: 'route-1' } as DailyRoute,
+      actions,
+      false,
+      false,
+    )
+    expect(result).toBe('programada')
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledWith(
+      'reassign_cancelled_carriage_letter',
+      expect.objectContaining({
+        p_letter_id: 'letter-1',
+        p_daily_route_id: 'route-1',
+        p_box_number: 6,
+      }),
+    )
+  })
+
   it('propagates failures without issuing separate deletion requests', async () => {
     rpc.mockResolvedValue({ error: new Error('box ocupado') })
     await expect(

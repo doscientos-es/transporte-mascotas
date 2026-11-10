@@ -23,6 +23,8 @@ declare
   actions jsonb := '[{"id":"50000000-0000-4000-8000-0000000000f1","animal_id":"40000000-0000-4000-8000-0000000000f1","stop_id":"30000000-0000-4000-8000-0000000000f1","type":"recogida"},{"id":"50000000-0000-4000-8000-0000000000f2","animal_id":"40000000-0000-4000-8000-0000000000f1","stop_id":"30000000-0000-4000-8000-0000000000f2","type":"entrega"}]';
   v_letter_id text;
   other_id text;
+  free_id text;
+  free_actions jsonb := '[{"id":"50000000-0000-4000-8000-0000000000f5","animal_id":"40000000-0000-4000-8000-0000000000f3","stop_id":"30000000-0000-4000-8000-0000000000f1","type":"recogida"},{"id":"50000000-0000-4000-8000-0000000000f6","animal_id":"40000000-0000-4000-8000-0000000000f3","stop_id":"30000000-0000-4000-8000-0000000000f2","type":"entrega"}]';
   letter jsonb;
 begin
   v_letter_id := public.create_manual_carriage_letter(route_id, 'ATOMIC-EDIT-TEST', contact, contact,
@@ -88,7 +90,53 @@ begin
   if (select count(*) from public.van_assignments where daily_route_id = route_id and box_number = 13) <> 2
     then raise exception 'Existing shared assignments must be preserved'; end if;
 
+  insert into public.transport_requests (id, requester_id, origin_text, destination_text, desired_date, status, letter_id, daily_route_id, route_template_id)
+  values ('60000000-0000-4000-8000-0000000000f1', auth.uid(), 'Origen', 'Destino', current_date, 'confirmada', v_letter_id, route_id, '10000000-0000-4000-8000-0000000000f1');
+  perform public.cancel_carriage_letter(v_letter_id);
+  begin
+    perform public.reassign_cancelled_carriage_letter(v_letter_id, route_id, letter, animal, actions, 14, false, false);
+    raise exception 'Occupied box should prevent reassignment';
+  exception when others then
+    if sqlerrm <> 'El box está ocupado en este tramo' then raise; end if;
+  end;
+  if not exists (select 1 from public.carriage_letters where id = v_letter_id and status = 'cancelada')
+    or exists (select 1 from public.route_actions where letter_id = v_letter_id)
+    or not exists (select 1 from public.transport_requests where letter_id = v_letter_id and status = 'cancelada')
+    then raise exception 'A failed reassignment must preserve cancellation'; end if;
+
+  if public.reassign_cancelled_carriage_letter(v_letter_id, route_id, letter, animal, actions, 17, false, false) <> 'pendiente' then
+    raise exception 'An unpaid reassigned letter must remain pending';
+  end if;
+  if (select count(*) from public.route_actions where route_actions.letter_id = v_letter_id and status = 'pendiente') <> 2
+    or not exists (select 1 from public.van_assignments where van_assignments.letter_id = v_letter_id and box_number = 17)
+    or not exists (select 1 from public.transport_requests where letter_id = v_letter_id and status = 'confirmada' and daily_route_id = route_id and desired_date = current_date + 2)
+    or not exists (select 1 from public.invoice_drafts where letter_id = v_letter_id)
+    then raise exception 'Reassignment must restore actions, box and request without losing the invoice'; end if;
+  begin
+    perform public.reassign_cancelled_carriage_letter(v_letter_id, route_id, letter, animal, actions, 17, false, false);
+    raise exception 'A non-cancelled letter must not be reactivated';
+  exception when others then
+    if sqlerrm <> 'La carta ya no está anulada' then raise; end if;
+  end;
+
+  free_id := public.create_manual_carriage_letter(route_id, 'ATOMIC-FREE-TEST', contact, contact,
+    'Origen', 'Destino', 'Origen', 'Destino', array['microchip'], 'remitente', payer, 0, true,
+    '[{"id":"40000000-0000-4000-8000-0000000000f3","species":"perro","breed":"mestizo","birth_date":"2020-01-01","weight_kg":1,"box_category":"pequeno"}]', free_actions, 18, null, true);
+  perform public.cancel_carriage_letter(free_id);
+  if public.reassign_cancelled_carriage_letter(free_id, route_id,
+    (select to_jsonb(row) from public.carriage_letters row where id = free_id),
+    (select jsonb_agg(to_jsonb(row)) from public.animals row where row.letter_id = free_id),
+    free_actions, 18, false, false) <> 'programada'
+    or exists (select 1 from public.invoice_drafts where letter_id = free_id)
+    then raise exception 'A complimentary letter must be scheduled without an invoice'; end if;
+
   update public.profiles set role = 'user' where id = auth.uid();
+  begin
+    perform public.reassign_cancelled_carriage_letter(v_letter_id, route_id, letter, animal, actions, 17, false, false);
+    raise exception 'A non-admin must not reassign a letter';
+  exception when others then
+    if sqlerrm <> 'Solo administración puede reasignar cartas' then raise; end if;
+  end;
   begin
     perform public.update_carriage_letter_atomically(v_letter_id, route_id, letter, animal, actions, 13, false, true);
     raise exception 'A non-admin must not edit a letter';
