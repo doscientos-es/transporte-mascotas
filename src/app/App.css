@@ -8364,15 +8364,62 @@ a.whatsapp-link:hover {
     transition: none;
   }
 }
+.dialog-card.expense-dialog {
+  max-width: min(56rem, calc(100% - 3rem));
+}
 .expense-form {
   display: grid;
+  gap: 18px;
+}
+.expense-form-layout {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+.expense-section {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fafafa;
+}
+.expense-section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.expense-section-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+}
+.expense-section-heading h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.expense-dialog .expense-section-heading p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+.expense-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  grid-template-columns: 1fr 1fr;
 }
 .expense-form label {
   display: grid;
   font-size: 0.85rem;
   gap: 4px;
+  min-width: 0;
 }
 .expense-form input:not([type='checkbox']),
 .expense-form select,
@@ -8388,11 +8435,68 @@ a.whatsapp-link:hover {
   gap: 8px !important;
 }
 .expense-form-total {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
 }
-@media (max-width: 560px) {
-  .expense-form {
+.expense-form-total > strong {
+  white-space: nowrap;
+  font-size: 18px;
+}
+.expense-dialog .expense-form-total p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+.expense-form input[type='file']::file-selector-button {
+  margin-right: 10px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 0 10px 0 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+}
+.expense-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.expense-dialog .expense-form-footer p {
+  margin: 0;
+  font-size: 12px;
+}
+.expense-form-actions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+.expense-dialog .form-error {
+  margin: 0;
+  color: var(--destructive);
+}
+@media (min-width: 760px) {
+  .expense-form-layout {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+@media (max-width: 420px) {
+  .expense-form-fields {
     grid-template-columns: 1fr;
+  }
+  .expense-form-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .expense-form-actions > * {
+    flex: 1;
   }
 }
 

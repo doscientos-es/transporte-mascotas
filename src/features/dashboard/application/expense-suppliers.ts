@@ -15,10 +15,13 @@ export type SupplierFields = ReturnType<typeof expenseSupplierFields>
 export type SupplierSelection = {
   mode: 'lookup' | 'selected' | 'new' | 'edit'
   fields: SupplierFields
+  savedDraft?: { mode: 'lookup' | 'selected' | 'edit'; fields: SupplierFields }
+  newDraft?: SupplierFields
 }
 export type SupplierSelectionAction =
   | { type: 'lookup' }
   | { type: 'new' }
+  | { type: 'saved-tab' }
   | { type: 'select'; supplier: ExpenseSupplier }
   | { type: 'edit' }
   | { type: 'finish-edit' }
@@ -37,11 +40,24 @@ export function supplierSelectionReducer(
 ): SupplierSelection {
   switch (action.type) {
     case 'lookup':
-      return initialSupplierSelection()
+      return { ...state, ...initialSupplierSelection() }
     case 'new':
-      return { ...initialSupplierSelection(), mode: 'new' }
+      if (state.mode === 'new') return state
+      return {
+        ...state,
+        savedDraft: { mode: state.mode, fields: state.fields },
+        mode: 'new',
+        fields: state.newDraft ?? initialSupplierSelection().fields,
+      }
+    case 'saved-tab':
+      if (state.mode !== 'new') return state
+      return {
+        ...state,
+        newDraft: state.fields,
+        ...(state.savedDraft ?? initialSupplierSelection()),
+      }
     case 'select':
-      return { mode: 'selected', fields: expenseSupplierFields(action.supplier) }
+      return { ...state, mode: 'selected', fields: expenseSupplierFields(action.supplier) }
     case 'edit':
       return { ...state, mode: 'edit' }
     case 'finish-edit':

@@ -49,7 +49,9 @@ describe('ExpenseDialog field guidance', () => {
     expect(markup).toContain(
       'Obligatorios: fecha, categoría, proveedor, concepto y base imponible.',
     )
-    expect(markup).toContain('Introduce la base sin IVA; calcularemos el total automáticamente.')
+    expect(markup).toContain('Calculado a partir de la base y el IVA.')
+    expect(markup).toContain('expense-form-layout')
+    expect(markup).toContain('Datos del gasto')
     for (const example of [
       'Ej. F-2026-001',
       'Ej. Cambio de neumáticos',
@@ -68,9 +70,9 @@ describe('ExpenseDialog supplier choice', () => {
     const markup = renderToStaticMarkup(
       createElement(ExpenseDialog, { expense: null, onClose: vi.fn(), onSubmit: vi.fn() }),
     )
-    expect(markup).toContain('¿Quién es el proveedor?')
-    expect(markup).toContain('Proveedor guardado')
-    expect(markup).toContain('Proveedor nuevo')
+    expect(markup).toContain('Tipo de proveedor')
+    expect(markup).toContain('Guardado')
+    expect(markup).toContain('Nuevo')
     expect(markup).toContain('Buscar por nombre o NIF/CIF')
     expect(markup).not.toContain('Ej. Taller de vehículos')
   })

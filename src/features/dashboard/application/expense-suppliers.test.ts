@@ -43,6 +43,24 @@ describe('supplier selection', () => {
     state = supplierSelectionReducer(state, { type: 'select', supplier: second })
     expect(state.fields).toEqual({ vendor: 'Peajes', vendorNif: '', vendorAddress: '' })
     state = supplierSelectionReducer(state, { type: 'new' })
-    expect(state).toEqual({ mode: 'new', fields: { vendor: '', vendorNif: '', vendorAddress: '' } })
+    expect(state.mode).toBe('new')
+    expect(state.fields).toEqual({ vendor: '', vendorNif: '', vendorAddress: '' })
+  })
+
+  it('preserves both drafts when switching tabs without submitting hidden supplier data', () => {
+    const saved = { id: '1', name: 'Taller', nif: 'B123', address: 'Calle 1' }
+    let state = supplierSelectionReducer(initialSupplierSelection(), {
+      type: 'select',
+      supplier: saved,
+    })
+    state = supplierSelectionReducer(state, { type: 'new' })
+    const newFields = { vendor: 'Nuevo', vendorNif: 'B456', vendorAddress: 'Calle 2' }
+    state = supplierSelectionReducer(state, { type: 'update', fields: newFields })
+    state = supplierSelectionReducer(state, { type: 'saved-tab' })
+    expect(state.mode).toBe('selected')
+    expect(state.fields).toEqual(expenseSupplierFields(saved))
+    state = supplierSelectionReducer(state, { type: 'new' })
+    expect(state.mode).toBe('new')
+    expect(state.fields).toEqual(newFields)
   })
 })

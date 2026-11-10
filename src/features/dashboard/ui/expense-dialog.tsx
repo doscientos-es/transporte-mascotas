@@ -9,7 +9,7 @@ import {
   Label,
   Textarea,
 } from '@doscientos/ui'
-import { Save } from 'lucide-react'
+import { ReceiptText, Save } from 'lucide-react'
 import { useReducer, useState, type FormEvent } from 'react'
 
 import {
@@ -126,7 +126,7 @@ export function ExpenseDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="dialog-card">
+      <DialogContent className="dialog-card expense-dialog">
         <DialogHeader className="gap-0">
           <DialogTitle>{expense ? 'Editar gasto' : 'Nuevo gasto'}</DialogTitle>
           <DialogDescription>
@@ -134,101 +134,125 @@ export function ExpenseDialog({
           </DialogDescription>
         </DialogHeader>
         <form className="expense-form" onSubmit={(event) => void submit(event)}>
-          <ExpenseSupplierField selection={supplierSelection} dispatch={dispatchSupplier} />
-          <p className="expense-form-wide text-muted-foreground m-0 text-xs">
-            Obligatorios: fecha, categoría, proveedor, concepto y base imponible. Los demás datos
-            son opcionales.
-          </p>
-          <Label>
-            Fecha
-            <Input
-              type="date"
-              required
-              value={expenseDate}
-              onChange={(e) => setExpenseDate(e.target.value)}
-            />
-          </Label>
-          <ExpenseCategoryField value={category} onChange={setCategory} />
-          <Label>
-            Nº de factura
-            <Input
-              value={invoiceReference}
-              maxLength={80}
-              placeholder="Ej. F-2026-001"
-              onChange={(e) => setInvoiceReference(e.target.value)}
-            />
-          </Label>
-          <Label className="expense-form-wide">
-            Concepto
-            <Input
-              value={concept}
-              maxLength={240}
-              aria-required="true"
-              placeholder="Ej. Cambio de neumáticos"
-              onChange={(e) => setConcept(e.target.value)}
-            />
-          </Label>
-          <Label>
-            Base imponible (€)
-            <Input
-              inputMode="decimal"
-              value={netAmount}
-              aria-required="true"
-              placeholder="Ej. 100,00"
-              onChange={(e) => setNetAmount(e.target.value)}
-            />
-          </Label>
-          <Label>
-            IVA (%)
-            <Input
-              inputMode="decimal"
-              value={vatRate}
-              onChange={(e) => setVatRate(e.target.value)}
-            />
-          </Label>
-          <p className="expense-form-wide text-muted-foreground m-0 text-xs">
-            Introduce la base sin IVA; calcularemos el total automáticamente.
-          </p>
-          <p className="expense-form-total expense-form-wide">
-            Total con IVA:{' '}
-            <strong>{total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</strong>
-          </p>
-          <Label className="expense-form-wide">
-            Notas
-            <Textarea
-              value={notes}
-              maxLength={1000}
-              rows={2}
-              placeholder="Ej. Pago realizado con tarjeta"
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </Label>
-          <Label className="expense-form-wide">
-            Justificante (PDF o imagen, máx. 10 MB)
-            <Input
-              type="file"
-              accept={EXPENSE_DOCUMENT_TYPES.join(',')}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </Label>
-          {expense?.documentName && !file && (
-            <label className="expense-form-wide expense-form-check">
-              <input
-                type="checkbox"
-                checked={removeDocument}
-                onChange={(e) => setRemoveDocument(e.target.checked)}
-              />
-              Quitar el justificante actual ({expense.documentName})
-            </label>
-          )}
+          <div className="expense-form-layout">
+            <ExpenseSupplierField selection={supplierSelection} dispatch={dispatchSupplier} />
+            <section
+              className="expense-section expense-details"
+              aria-labelledby="expense-details-title"
+            >
+              <div className="expense-section-heading">
+                <span className="expense-section-icon">
+                  <ReceiptText size={18} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 id="expense-details-title">Datos del gasto</h3>
+                  <p>Detalles de la factura o ticket.</p>
+                </div>
+              </div>
+              <div className="expense-form-fields">
+                <Label>
+                  Fecha
+                  <Input
+                    type="date"
+                    required
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                  />
+                </Label>
+                <ExpenseCategoryField value={category} onChange={setCategory} />
+                <Label>
+                  Nº de factura
+                  <Input
+                    value={invoiceReference}
+                    maxLength={80}
+                    placeholder="Ej. F-2026-001"
+                    onChange={(e) => setInvoiceReference(e.target.value)}
+                  />
+                </Label>
+                <Label className="expense-form-wide">
+                  Concepto
+                  <Input
+                    value={concept}
+                    maxLength={240}
+                    aria-required="true"
+                    placeholder="Ej. Cambio de neumáticos"
+                    onChange={(e) => setConcept(e.target.value)}
+                  />
+                </Label>
+                <Label>
+                  Base imponible (€)
+                  <Input
+                    inputMode="decimal"
+                    value={netAmount}
+                    aria-required="true"
+                    placeholder="Ej. 100,00"
+                    onChange={(e) => setNetAmount(e.target.value)}
+                  />
+                </Label>
+                <Label>
+                  IVA (%)
+                  <Input
+                    inputMode="decimal"
+                    value={vatRate}
+                    onChange={(e) => setVatRate(e.target.value)}
+                  />
+                </Label>
+                <div className="expense-form-total expense-form-wide">
+                  <div>
+                    <strong>Total con IVA</strong>
+                    <p>Calculado a partir de la base y el IVA.</p>
+                  </div>
+                  <strong>
+                    {total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
+                  </strong>
+                </div>
+                <Label className="expense-form-wide">
+                  Notas
+                  <Textarea
+                    value={notes}
+                    maxLength={1000}
+                    rows={2}
+                    placeholder="Ej. Pago realizado con tarjeta"
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </Label>
+                <Label className="expense-form-wide">
+                  Justificante (PDF o imagen, máx. 10 MB)
+                  <Input
+                    type="file"
+                    accept={EXPENSE_DOCUMENT_TYPES.join(',')}
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                </Label>
+                {expense?.documentName && !file && (
+                  <label className="expense-form-wide expense-form-check">
+                    <input
+                      type="checkbox"
+                      checked={removeDocument}
+                      onChange={(e) => setRemoveDocument(e.target.checked)}
+                    />
+                    Quitar el justificante actual ({expense.documentName})
+                  </label>
+                )}
+              </div>
+            </section>
+          </div>
           {error && (
-            <p className="form-error expense-form-wide" role="alert">
+            <p className="form-error" role="alert">
               {error}
             </p>
           )}
-          <Button type="submit" className="dialog-submit expense-form-wide" disabled={saving}>
-            <Save /> {saving ? 'Guardando…' : 'Guardar gasto'}
-          </Button>
+          <div className="expense-form-footer">
+            <p>Obligatorios: fecha, categoría, proveedor, concepto y base imponible.</p>
+            <div className="expense-form-actions">
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                <Save /> {saving ? 'Guardando…' : 'Guardar gasto'}
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
