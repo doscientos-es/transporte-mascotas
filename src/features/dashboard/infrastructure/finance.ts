@@ -23,6 +23,7 @@ export type Expense = {
   expenseDate: string
   vendor: string
   vendorNif: string
+  vendorAddress: string
   invoiceReference: string
   concept: string
   category: ExpenseCategory
@@ -40,6 +41,7 @@ export type ExpenseInput = Pick<
   | 'expenseDate'
   | 'vendor'
   | 'vendorNif'
+  | 'vendorAddress'
   | 'invoiceReference'
   | 'concept'
   | 'category'
@@ -66,6 +68,7 @@ type ExpenseRow = {
   expense_date: string
   vendor: string
   vendor_nif: string
+  vendor_address: string
   invoice_reference: string
   concept: string
   category: ExpenseCategory
@@ -92,13 +95,14 @@ type IncomeRow = {
 }
 
 const expenseColumns =
-  'id, expense_date, vendor, vendor_nif, invoice_reference, concept, category, net_amount, vat_rate, vat_amount, total_amount, notes, document_path, document_name'
+  'id, expense_date, vendor, vendor_nif, vendor_address, invoice_reference, concept, category, net_amount, vat_rate, vat_amount, total_amount, notes, document_path, document_name'
 
 const toExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
   expenseDate: row.expense_date,
   vendor: row.vendor,
   vendorNif: row.vendor_nif,
+  vendorAddress: row.vendor_address,
   invoiceReference: row.invoice_reference,
   concept: row.concept,
   category: row.category,
@@ -128,6 +132,7 @@ const toRow = (input: ExpenseInput) => ({
   expense_date: input.expenseDate,
   vendor: input.vendor.trim(),
   vendor_nif: input.vendorNif.trim(),
+  vendor_address: input.vendorAddress.trim(),
   invoice_reference: input.invoiceReference.trim(),
   concept: input.concept.trim(),
   category: input.category,

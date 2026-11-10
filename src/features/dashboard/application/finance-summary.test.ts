@@ -14,6 +14,7 @@ const customExpense: Expense = {
   expenseDate: '2026-10-16',
   vendor: 'Proveedor',
   vendorNif: '',
+  vendorAddress: 'Calle Mayor 1, Madrid',
   invoiceReference: '',
   concept: 'Mantenimiento',
   category: 'Mantenimiento de jaulas',
@@ -31,6 +32,12 @@ describe('custom expense categories', () => {
     expect(expenseCategoryLabel(customExpense.category)).toBe('Mantenimiento de jaulas')
     expect(expensesByCategory([customExpense])[0]?.category).toBe('Mantenimiento de jaulas')
     expect(expensesToCsv([customExpense])).toContain('"Mantenimiento de jaulas"')
+  })
+
+  it('includes the vendor fiscal address in the expense export', () => {
+    const exported = expensesToCsv([customExpense])
+    expect(exported).toContain('"Dirección fiscal del proveedor"')
+    expect(exported).toContain('"Calle Mayor 1, Madrid"')
   })
 
   it('normalizes suggested labels while preserving custom text', () => {

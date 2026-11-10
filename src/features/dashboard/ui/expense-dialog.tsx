@@ -42,6 +42,7 @@ export function ExpenseDialog({
   const [expenseDate, setExpenseDate] = useState(expense?.expenseDate ?? today())
   const [vendor, setVendor] = useState(expense?.vendor ?? '')
   const [vendorNif, setVendorNif] = useState(expense?.vendorNif ?? '')
+  const [vendorAddress, setVendorAddress] = useState(expense?.vendorAddress ?? '')
   const [invoiceReference, setInvoiceReference] = useState(expense?.invoiceReference ?? '')
   const [concept, setConcept] = useState(expense?.concept ?? '')
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -86,6 +87,7 @@ export function ExpenseDialog({
           expenseDate,
           vendor,
           vendorNif,
+          vendorAddress,
           invoiceReference,
           concept,
           category: expenseCategoryValue(category),
@@ -134,6 +136,15 @@ export function ExpenseDialog({
               value={vendorNif}
               maxLength={40}
               onChange={(e) => setVendorNif(e.target.value)}
+            />
+          </Label>
+          <Label className="expense-form-wide">
+            Dirección fiscal del proveedor
+            <Input
+              value={vendorAddress}
+              maxLength={300}
+              autoComplete="off"
+              onChange={(e) => setVendorAddress(e.target.value)}
             />
           </Label>
           <Label>

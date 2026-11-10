@@ -1,8 +1,24 @@
-import { createElement } from 'react'
+import type * as Ui from '@doscientos/ui'
+import { createElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+vi.mock('@doscientos/ui', async (importOriginal) => {
+  const original = await importOriginal<typeof Ui>()
+  const passthrough = ({ children }: { children: ReactNode }) => children
+  return {
+    ...original,
+    Dialog: passthrough,
+    DialogContent: passthrough,
+    DialogDescription: passthrough,
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+  }
+})
+
+import type { Expense } from '../application/finance'
 import { ExpenseCategoryField } from './expense-category-field'
+import { ExpenseDialog } from './expense-dialog'
 
 describe('ExpenseDialog category input', () => {
   it('offers suggested categories in a free-text input', () => {
@@ -19,5 +35,22 @@ describe('ExpenseDialog category input', () => {
     expect(markup).toContain('value="combustible"')
     expect(markup).toContain('label="Combustible"')
     expect(markup).not.toContain('<select')
+  })
+})
+
+describe('ExpenseDialog fiscal address', () => {
+  it.each([
+    [null, ''],
+    [
+      { vendorAddress: 'Calle Mayor 1, Madrid', category: 'otros' } as Expense,
+      'Calle Mayor 1, Madrid',
+    ],
+  ])('shows the optional address when creating or editing an expense', (expense, address) => {
+    const markup = renderToStaticMarkup(
+      createElement(ExpenseDialog, { expense, onClose: vi.fn(), onSubmit: vi.fn() }),
+    )
+    expect(markup).toMatch(/Dirección fiscal del proveedor/)
+    expect(markup).toContain(`value="${address}"`)
+    expect(markup).toContain('maxLength="300"')
   })
 })
