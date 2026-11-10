@@ -8,19 +8,15 @@ import {
   Input,
   Label,
 } from '@doscientos/ui'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
-import type {
-  Client,
-  InvoiceClientInput,
-  ManualInvoiceInput,
-  ManualPaymentMethod,
-} from '@/shared/types'
+import type { InvoiceClientInput, ManualInvoiceInput, ManualPaymentMethod } from '@/shared/types'
 
+import { invoiceClientFromSaved } from '../application/client-values'
 import { createPaidManualInvoice } from '../application/manual-invoices'
-import { loadClientPage } from '../application/paginated-lists'
 import { invoiceAmounts } from '../domain/invoice-values'
 import { ClientFields } from './client-fields'
+import { ClientLookup } from './client-lookup'
 
 const currency = (amount: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount)
@@ -43,9 +39,6 @@ export function ManualInvoiceDialog({
     email: '',
     phone: '',
   })
-  const [query, setQuery] = useState('')
-  const [clients, setClients] = useState<Client[]>([])
-  const [lookupError, setLookupError] = useState('')
   const [concept, setConcept] = useState('')
   const [total, setTotal] = useState('')
   const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(new Date())
@@ -60,26 +53,6 @@ export function ManualInvoiceDialog({
   } catch {
     /* Show totals once the amount is valid. */
   }
-
-  useEffect(() => {
-    let active = true
-    setClients([])
-    setLookupError('')
-    if (!query.trim()) return
-    const timeout = window.setTimeout(() => {
-      void loadClientPage({ query: query.trim(), sort: 'name', direction: 'asc', page: 1 })
-        .then((result) => {
-          if (active) setClients(result.items.slice(0, 5))
-        })
-        .catch(() => {
-          if (active) setLookupError('No se han podido buscar clientes. Puedes rellenar sus datos.')
-        })
-    }, 250)
-    return () => {
-      active = false
-      window.clearTimeout(timeout)
-    }
-  }, [query])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -122,42 +95,12 @@ export function ManualInvoiceDialog({
         </DialogHeader>
         <form onSubmit={(event) => void submit(event)}>
           <fieldset disabled={saving} className="client-form min-w-0 border-0 p-0">
-            <Label className="form-span">
-              Buscar cliente existente (opcional)
-              <Input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Nombre o NIF/CIF"
+            <div className="form-span">
+              <ClientLookup
+                label="Buscar cliente existente (opcional)"
+                onSelect={(item) => setClient(invoiceClientFromSaved(item))}
               />
-            </Label>
-            {lookupError && <output className="form-span">{lookupError}</output>}
-            {clients.length > 0 && (
-              <div className="form-span grid gap-2" aria-label="Clientes encontrados">
-                {clients.map((item) => (
-                  <Button
-                    key={item.id}
-                    type="button"
-                    variant="outline"
-                    className="h-auto min-h-9 justify-start text-left whitespace-normal"
-                    onClick={() => {
-                      setClient({
-                        fullName: item.fullName,
-                        nif: item.nif,
-                        address: item.address,
-                        city: item.city,
-                        postalCode: item.postalCode,
-                        email: item.email,
-                        phone: item.phone,
-                      })
-                      setQuery('')
-                    }}
-                  >
-                    {item.fullName} · {item.nif}
-                  </Button>
-                ))}
-              </div>
-            )}
+            </div>
             <ClientFields
               value={client}
               requireFiscal

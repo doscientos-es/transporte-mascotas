@@ -39,6 +39,7 @@ import { isWhatsAppPhone } from '@/shared/application/whatsapp-phone'
 import { DEFAULT_ROUTE_START_TIME } from '@/shared/constants/route-defaults'
 import type {
   AccompanyingDocument,
+  Client,
   DailyRoute,
   DailyRouteStop,
   InvoiceClientInput,
@@ -56,7 +57,9 @@ import type {
 
 import { lookupAddressSuggestions, type AddressSuggestion } from '../application/address-lookup'
 import { DEFAULT_ATES_NUMBER } from '../application/carriage-letter-defaults'
+import { invoiceClientFromSaved } from '../application/client-values'
 import type { DrivingProgress } from '../application/driving-times'
+import { withLetterClient } from '../application/letter-client'
 import {
   labelledRouteStops,
   letterDestinationOptions,
@@ -70,6 +73,7 @@ import { letterRouteOptions, madridIsoDate } from '../application/route-order'
 import { mergedStopInstructions } from '../application/stop-instructions'
 import { isBoxAssignedToOtherLetter, letterBoxForRoute } from '../application/van'
 import { CalculationProgress } from './calculation-progress'
+import { ClientLookup } from './client-lookup'
 import {
   PaperBand,
   PaperCell,
@@ -234,6 +238,7 @@ export type LetterFormProps = {
   onAddStop: (routeId: string, stop: StopFormValues) => Promise<DailyRouteStop>
   letter?: Letter
   routeId?: string
+  canLookupClients?: boolean
 }
 
 export function LetterForm({
@@ -245,6 +250,7 @@ export function LetterForm({
   onAddStop,
   letter,
   routeId,
+  canLookupClients = false,
   fullPage = false,
 }: LetterFormProps & { fullPage?: boolean }) {
   const isEditing = Boolean(letter)
@@ -479,7 +485,16 @@ export function LetterForm({
           onOriginChange={(stop) => setDraft((current) => withLetterOrigin(current, stop))}
           onAddStop={setAddingStopFor}
         />
-        <ContactsSection draft={draft} update={update} addressLookupEnabled={isEditing} />
+        <ContactsSection
+          draft={draft}
+          update={update}
+          addressLookupEnabled={isEditing}
+          onSelectClient={
+            canLookupClients && !isEditing
+              ? (person, client) => setDraft((current) => withLetterClient(current, person, client))
+              : undefined
+          }
+        />
         <div className="grid md:grid-cols-[1.4fr_1fr]">
           <AnimalsSection
             animals={draft.animals}
@@ -531,6 +546,11 @@ export function LetterForm({
           totalCents={transportAnimalsTotalCents(draft.animals, boxCatalog)}
           update={update}
           isEditing={isEditing}
+          onSelectClient={
+            canLookupClients && !isEditing
+              ? (client) => update('otherPayer', invoiceClientFromSaved(client))
+              : undefined
+          }
           onOtherPayerChange={(field, value) =>
             setDraft((current) => ({
               ...current,
@@ -1304,10 +1324,12 @@ function ContactsSection({
   draft,
   update,
   addressLookupEnabled,
+  onSelectClient,
 }: {
   draft: LetterDraft
   update: LetterUpdate
   addressLookupEnabled: boolean
+  onSelectClient?: ((person: 'sender' | 'recipient', client: Client) => void) | undefined
 }) {
   const updatePerson = (
     person: 'sender' | 'recipient',
@@ -1327,6 +1349,7 @@ function ContactsSection({
         draft={draft}
         addressLookupEnabled={addressLookupEnabled}
         onChange={updatePerson}
+        onSelectClient={onSelectClient ? (client) => onSelectClient('sender', client) : undefined}
       />
       <ContactDetails
         title="Destinatario"
@@ -1335,6 +1358,9 @@ function ContactsSection({
         draft={draft}
         addressLookupEnabled={addressLookupEnabled}
         onChange={updatePerson}
+        onSelectClient={
+          onSelectClient ? (client) => onSelectClient('recipient', client) : undefined
+        }
       />
     </div>
   )
@@ -1347,12 +1373,14 @@ function ContactDetails({
   draft,
   addressLookupEnabled,
   onChange,
+  onSelectClient,
 }: {
   title: string
   subtitle: string
   person: 'sender' | 'recipient'
   draft: LetterDraft
   addressLookupEnabled: boolean
+  onSelectClient?: ((client: Client) => void) | undefined
   onChange: (
     person: 'sender' | 'recipient',
     field: 'Name' | 'Phone' | 'Nif' | 'Email' | 'Address' | 'PostalCode' | 'City' | 'Province',
@@ -1427,6 +1455,17 @@ function ContactDetails({
           : ''
   return (
     <PaperParty role={person} title={title} hint={subtitle}>
+      {onSelectClient && (
+        <div className="col-span-2 border border-neutral-600 p-2">
+          <ClientLookup
+            label={`Buscar ${title.toLowerCase()} existente (opcional)`}
+            onSelect={onSelectClient}
+          />
+          <p className="mt-1 mb-0 text-[11px]">
+            También puedes introducir los datos manualmente. Completa la provincia.
+          </p>
+        </div>
+      )}
       <PaperCell label="Nombre y apellidos" tone={tone} className="col-span-2">
         <input
           className={paperControl}
@@ -1810,12 +1849,14 @@ function BillingAndSignatureSection({
   update,
   isEditing,
   onOtherPayerChange,
+  onSelectClient,
 }: {
   draft: LetterDraft
   totalCents: number
   update: LetterUpdate
   isEditing: boolean
   onOtherPayerChange: (field: keyof InvoiceClientInput, value: string) => void
+  onSelectClient?: ((client: Client) => void) | undefined
 }) {
   const payerLabels: Record<InvoicePayer, [string, string]> = {
     remitente: ['Remitente', draft.sender || 'Datos del remitente'],
@@ -1846,6 +1887,12 @@ function BillingAndSignatureSection({
         <div
           className={`mt-3 rounded-lg border border-[#e2e2e2] bg-[#fafafa] p-3 sm:p-4 ${letterFieldGrid}`}
         >
+          {onSelectClient && (
+            <div className="sm:col-span-2">
+              <ClientLookup label="Buscar pagador existente (opcional)" onSelect={onSelectClient} />
+              <p className="mt-1 mb-0 text-xs">También puedes introducir los datos manualmente.</p>
+            </div>
+          )}
           <Label className="sm:col-span-2">
             Nombre o razón social
             <Input

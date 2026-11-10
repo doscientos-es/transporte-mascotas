@@ -10,9 +10,9 @@ on conflict (id) do update set role = 'admin', active = true;
 insert into public.route_templates (id, name) values ('10000000-0000-4000-8000-0000000000f1', 'Atomic edit test');
 insert into public.daily_routes (id, route_template_id, service_date)
 values ('20000000-0000-4000-8000-0000000000f1', '10000000-0000-4000-8000-0000000000f1', current_date + 2);
-insert into public.daily_route_stops (id, daily_route_id, sequence, locality) values
-  ('30000000-0000-4000-8000-0000000000f1', '20000000-0000-4000-8000-0000000000f1', 1, 'Origen'),
-  ('30000000-0000-4000-8000-0000000000f2', '20000000-0000-4000-8000-0000000000f1', 2, 'Destino');
+insert into public.daily_route_stops (id, daily_route_id, sequence, locality, latitude, longitude) values
+  ('30000000-0000-4000-8000-0000000000f1', '20000000-0000-4000-8000-0000000000f1', 1, 'Origen', 40.4, -3.7),
+  ('30000000-0000-4000-8000-0000000000f2', '20000000-0000-4000-8000-0000000000f1', 2, 'Destino', 41.4, 2.1);
 
 do $$
 declare

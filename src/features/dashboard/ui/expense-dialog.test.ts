@@ -55,3 +55,19 @@ describe('ExpenseDialog fiscal address', () => {
     expect(field).not.toContain('required')
   })
 })
+
+describe('ExpenseDialog saved providers', () => {
+  it.each([null, { vendor: 'Proveedor', category: 'otros' } as Expense])(
+    'offers optional lookup while keeping manual fields when creating or editing',
+    (expense) => {
+      const markup = renderToStaticMarkup(
+        createElement(ExpenseDialog, { expense, onClose: vi.fn(), onSubmit: vi.fn() }),
+      )
+      expect(markup).toContain('Buscar proveedor guardado (opcional)')
+      expect(markup).toContain('Al guardar el gasto, se guarda o actualiza el proveedor.')
+      expect(markup).toMatch(/Proveedor<input[^>]*maxLength="160"/)
+      expect(markup).toMatch(/NIF\/CIF del proveedor<input[^>]*maxLength="40"/)
+      expect(markup).toMatch(/Dirección fiscal del proveedor<input[^>]*maxLength="300"/)
+    },
+  )
+})

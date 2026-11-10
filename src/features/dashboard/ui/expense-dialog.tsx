@@ -20,6 +20,8 @@ import {
   type ExpenseInput,
 } from '../application/finance'
 import { expenseCategoryLabel, expenseCategoryValue } from '../application/finance-summary'
+import { expenseSupplierFields, searchExpenseSuppliers } from '../application/expense-suppliers'
+import { DirectoryLookup } from './directory-lookup'
 import { ExpenseCategoryField } from './expense-category-field'
 
 export type ExpenseSubmit = {
@@ -40,9 +42,11 @@ export function ExpenseDialog({
   onSubmit: (value: ExpenseSubmit) => Promise<void>
 }) {
   const [expenseDate, setExpenseDate] = useState(expense?.expenseDate ?? today())
-  const [vendor, setVendor] = useState(expense?.vendor ?? '')
-  const [vendorNif, setVendorNif] = useState(expense?.vendorNif ?? '')
-  const [vendorAddress, setVendorAddress] = useState(expense?.vendorAddress ?? '')
+  const [supplier, setSupplier] = useState({
+    vendor: expense?.vendor ?? '',
+    vendorNif: expense?.vendorNif ?? '',
+    vendorAddress: expense?.vendorAddress ?? '',
+  })
   const [invoiceReference, setInvoiceReference] = useState(expense?.invoiceReference ?? '')
   const [concept, setConcept] = useState(expense?.concept ?? '')
   const [category, setCategory] = useState<ExpenseCategory>(
@@ -61,7 +65,7 @@ export function ExpenseDialog({
   const total = Number.isFinite(net) && Number.isFinite(rate) ? net * (1 + rate / 100) : 0
 
   function validate() {
-    if (!vendor.trim()) return 'Indica el proveedor.'
+    if (!supplier.vendor.trim()) return 'Indica el proveedor.'
     if (!concept.trim()) return 'Indica el concepto del gasto.'
     if (!category.trim()) return 'Indica la categoría del gasto.'
     if (!netAmount.trim() || !Number.isFinite(net) || net < 0)
@@ -85,9 +89,7 @@ export function ExpenseDialog({
       await onSubmit({
         input: {
           expenseDate,
-          vendor,
-          vendorNif,
-          vendorAddress,
+          ...supplier,
           invoiceReference,
           concept,
           category: expenseCategoryValue(category),
@@ -126,25 +128,39 @@ export function ExpenseDialog({
             />
           </Label>
           <ExpenseCategoryField value={category} onChange={setCategory} />
+          <div className="expense-form-wide">
+            <DirectoryLookup
+              label="Buscar proveedor guardado (opcional)"
+              itemName="proveedores"
+              search={searchExpenseSuppliers}
+              describe={(supplier) => [supplier.name, supplier.nif].filter(Boolean).join(' · ')}
+              onSelect={(item) => setSupplier(expenseSupplierFields(item))}
+            />
+            <p className="mt-1 mb-0 text-xs">Al guardar el gasto, se guarda o actualiza el proveedor.</p>
+          </div>
           <Label>
             Proveedor
-            <Input value={vendor} maxLength={160} onChange={(e) => setVendor(e.target.value)} />
+            <Input
+              value={supplier.vendor}
+              maxLength={160}
+              onChange={(e) => setSupplier((current) => ({ ...current, vendor: e.target.value }))}
+            />
           </Label>
           <Label>
             NIF/CIF del proveedor
             <Input
-              value={vendorNif}
+              value={supplier.vendorNif}
               maxLength={40}
-              onChange={(e) => setVendorNif(e.target.value)}
+              onChange={(e) => setSupplier((current) => ({ ...current, vendorNif: e.target.value }))}
             />
           </Label>
           <Label className="expense-form-wide">
             Dirección fiscal del proveedor
             <Input
-              value={vendorAddress}
+              value={supplier.vendorAddress}
               maxLength={300}
               autoComplete="off"
-              onChange={(e) => setVendorAddress(e.target.value)}
+              onChange={(e) => setSupplier((current) => ({ ...current, vendorAddress: e.target.value }))}
             />
           </Label>
           <Label>

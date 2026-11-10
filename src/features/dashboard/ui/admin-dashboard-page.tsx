@@ -326,6 +326,7 @@ export function AdminDashboardPage({
                 routes={dashboard.dailyRoutes}
                 templates={dashboard.routeTemplates}
                 boxCatalog={dashboard.boxCatalog}
+                canLookupClients={profile.role === 'admin'}
                 onClose={() => navigateToSection('cartas')}
                 onCreate={async (draft, paymentMethod) => {
                   const created = await dashboard.createLetter(draft, paymentMethod)

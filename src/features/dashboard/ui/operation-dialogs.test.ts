@@ -88,6 +88,32 @@ const letter: Letter = {
   importedAt: '',
 }
 
+describe('LetterForm saved clients', () => {
+  it.each([
+    ['admin creating', true, undefined, true],
+    ['non-admin creating', false, undefined, false],
+    ['admin editing', true, letter, false],
+  ])('limits the optional lookup to %s', (_, canLookupClients, existingLetter, expected) => {
+    const markup = renderToStaticMarkup(
+      createElement(LetterForm, {
+        routes: [route],
+        templates: [template],
+        letter: existingLetter,
+        fullPage: true,
+        canLookupClients,
+        boxCatalog: defaultTransportBoxCatalog,
+        onClose: vi.fn(),
+        onCreate: vi.fn(),
+        onAddStop: vi.fn(),
+      }),
+    )
+    expect(markup.includes('Buscar remitente existente (opcional)')).toBe(expected)
+    expect(markup.includes('Buscar destinatario existente (opcional)')).toBe(expected)
+    expect(markup).toContain('placeholder="Ej. María García López"')
+    expect(markup).toContain('placeholder="Ej. Calle Mayor 12"')
+  })
+})
+
 describe('LetterForm logo', () => {
   it.each([
     ['creation', undefined],
