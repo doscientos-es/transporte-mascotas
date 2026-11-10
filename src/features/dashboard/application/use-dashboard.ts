@@ -72,6 +72,7 @@ import {
   saveRouteTemplate,
   updateDailyRouteDate,
   updateDailyRouteStartTime,
+  updateDailyRouteStopActionOrder,
   updateDailyRouteStops,
   updateRouteTemplate,
   updateRouteTemplateStop,
@@ -506,6 +507,22 @@ export function useDashboard(session: Session | null, role: AppRole) {
       return { ...route, stops: updatedStops, actions }
     }
     await updateDailyRouteStops(routeId, updatedStops)
+    setSelectedRoute((current) => (current ? update(current) : null))
+    setDailyRoutes((current) => current.map(update))
+  }
+
+  async function updateRouteStopActionOrder(routeId: string, stopId: string, actionIds: string[]) {
+    if (!session) throw new Error('Inicia sesión para guardar el orden de los servicios.')
+    await updateDailyRouteStopActionOrder(routeId, stopId, actionIds)
+    const update = (route: DailyRoute): DailyRoute =>
+      route.id !== routeId
+        ? route
+        : {
+            ...route,
+            stops: stopsForRoute(route, routeTemplates).map((stop) =>
+              stop.id === stopId ? { ...stop, actionOrder: actionIds } : stop,
+            ),
+          }
     setSelectedRoute((current) => (current ? update(current) : null))
     setDailyRoutes((current) => current.map(update))
   }
@@ -1398,6 +1415,7 @@ export function useDashboard(session: Session | null, role: AppRole) {
     removeMeetingPoint,
     updateActions,
     updateRouteStops,
+    updateRouteStopActionOrder,
     updateRouteStartTime,
     updateRouteDate,
     suggestRouteStop,

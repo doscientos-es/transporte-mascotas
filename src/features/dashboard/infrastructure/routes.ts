@@ -38,7 +38,11 @@ type DailyRouteRow = {
   closed_at: string | null
   route_direction: RouteDirection
   daily_route_stops: Array<
-    StoredStop & { stop_kind: 'parada' | 'recogida' | 'entrega'; dwell_minutes: number }
+    StoredStop & {
+      stop_kind: 'parada' | 'recogida' | 'entrega'
+      dwell_minutes: number
+      action_order: string[]
+    }
   >
 }
 type RouteActionRow = {
@@ -356,7 +360,7 @@ export async function loadDailyRoutes() {
       database
         .from('daily_routes')
         .select(
-          'id,route_template_id,service_date,start_time,status,closed_at,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes)',
+          'id,route_template_id,service_date,start_time,status,closed_at,route_direction,daily_route_stops(id,sequence,locality,meeting_point,map_url,minutes_to_next,stop_alias,street,street_number,floor,postal_code,province,country,latitude,longitude,stop_kind,dwell_minutes,action_order)',
         )
         .order('service_date'),
       database
@@ -378,7 +382,12 @@ export async function loadDailyRoutes() {
   return ((routes ?? []) as DailyRouteRow[]).map((route): DailyRoute => {
     const stops = route.daily_route_stops
       .toSorted((a, b) => a.sequence - b.sequence)
-      .map((stop) => ({ ...mapStop(stop), kind: stop.stop_kind, dwellMinutes: stop.dwell_minutes }))
+      .map((stop) => ({
+        ...mapStop(stop),
+        kind: stop.stop_kind,
+        dwellMinutes: stop.dwell_minutes,
+        actionOrder: stop.action_order,
+      }))
     return {
       id: route.id,
       templateId: route.route_template_id ?? '',
@@ -405,6 +414,19 @@ export async function loadDailyRoutes() {
       })),
     }
   })
+}
+
+export async function updateDailyRouteStopActionOrder(
+  routeId: string,
+  stopId: string,
+  actionIds: string[],
+) {
+  const { error } = await requireSupabase().rpc('reorder_daily_route_stop_actions', {
+    p_daily_route_id: routeId,
+    p_stop_id: stopId,
+    p_action_ids: actionIds,
+  })
+  if (error) throw new Error(error.message)
 }
 
 export async function updateDailyRouteStartTime(routeId: string, startTime: string) {

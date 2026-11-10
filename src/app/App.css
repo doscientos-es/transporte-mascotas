@@ -6780,6 +6780,7 @@ a.whatsapp-link:hover {
 }
 
 .reorder-drop-hint {
+  display: block;
   min-height: 18px;
   margin: 14px 0 -10px;
   color: #9d1921;
@@ -6888,6 +6889,54 @@ a.whatsapp-link:hover {
 .reorder-stop-item:focus-visible {
   outline: 2px solid #b51e27;
   outline-offset: 2px;
+}
+
+.reorder-instructions {
+  color: #645c5d;
+  font-size: 13px;
+}
+
+.reorder-item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.reorder-item-row .reorder-stop-item {
+  min-width: 0;
+  flex: 1;
+}
+
+.reorder-item-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.reorder-item-buttons button {
+  display: grid;
+  min-width: 32px;
+  min-height: 44px;
+  place-items: center;
+  border: 1px solid #e8e1e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #9d1921;
+}
+
+.reorder-item-buttons button:focus-visible {
+  outline: 2px solid #b51e27;
+  outline-offset: 2px;
+}
+
+.reorder-item-row button[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.reorder-services-trigger {
+  justify-self: start;
 }
 
 .reorder-stops-footer {

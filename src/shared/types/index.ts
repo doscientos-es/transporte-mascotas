@@ -281,6 +281,8 @@ export type RouteDirection = 'normal' | 'inversa'
 export interface DailyRouteStop extends RouteStop {
   kind: DailyStopKind
   dwellMinutes: number
+  /** Manual order of pickup/delivery actions within this stop. New actions follow saved ones. */
+  actionOrder?: string[]
 }
 
 export interface RouteTemplate {

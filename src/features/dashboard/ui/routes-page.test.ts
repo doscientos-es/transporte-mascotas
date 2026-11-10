@@ -174,3 +174,67 @@ describe('route pickup actions', () => {
     expect(markup.includes('>Anular</button>')).toBe(canManage)
   })
 })
+
+describe('pickup/delivery ordering within a stop', () => {
+  it.each([true, false])(
+    'renders saved order and restricts editing to managers (%s)',
+    (canManage) => {
+      const route: DailyRoute = {
+        id: 'route',
+        templateId: 'template',
+        date: '2026-12-01',
+        status: 'activa',
+        stops: [
+          {
+            id: 'stop',
+            locality: 'Madrid',
+            place: '',
+            mapUrl: '',
+            latitude: 40,
+            longitude: -3,
+            minutes: 0,
+            kind: 'parada',
+            dwellMinutes: 15,
+            actionOrder: ['delivery', 'pickup'],
+          },
+        ],
+        actions: (['pickup', 'delivery'] as const).map((id) => ({
+          id,
+          letterId: id,
+          animalId: id,
+          type: id === 'pickup' ? 'recogida' : 'entrega',
+          stop: 'Madrid',
+          stopId: 'stop',
+          customer: `${id}-customer`,
+          phone: '',
+          status: 'pendiente',
+        })),
+      }
+      const markup = renderToStaticMarkup(
+        createElement(
+          MemoryRouter,
+          null,
+          createElement(RoutesPage, {
+            route,
+            template: { id: 'template', name: 'Ruta', color: '', stops: [] },
+            letters: [],
+            onBack: vi.fn(),
+            onAction: vi.fn(),
+            onUpdateStops: vi.fn(),
+            onUpdateStopActionOrder: vi.fn(),
+            onSuggestStop: vi.fn(),
+            onAddStop: vi.fn(),
+            onRemoveStop: vi.fn(),
+            onUpdateService: vi.fn(),
+            onRemoveLetter: vi.fn(),
+            onCancelLetter: vi.fn(),
+            onCloseRoute: vi.fn(),
+            canManage,
+          }),
+        ),
+      )
+      expect(markup.indexOf('delivery-customer')).toBeLessThan(markup.indexOf('pickup-customer'))
+      expect(markup.includes('aria-label="Ordenar recogidas y entregas en Madrid"')).toBe(canManage)
+    },
+  )
+})

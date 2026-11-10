@@ -26,7 +26,6 @@ import {
   ArrowUpDown,
   Clock3,
   FileSpreadsheet,
-  GripVertical,
   Lock,
   MapPin,
   MoreHorizontal,
@@ -40,16 +39,7 @@ import {
   Trash2,
   Truck,
 } from 'lucide-react'
-import {
-  type KeyboardEvent,
-  lazy,
-  type PointerEvent,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 
 import { itineraryDirectionsLinks } from '@/features/client-portal'
 import type { StopDetail } from '@/features/client-portal/ui/route-map'
@@ -87,12 +77,17 @@ import {
 import type { RouteClosureResult } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { legLabel, summarizeVerification } from '../application/route-verification'
+import {
+  groupedServices,
+  serviceGroupLabel,
+  type ServiceGroup,
+} from '../application/service-groups'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
 import { mergedStopInstructions } from '../application/stop-instructions'
-import { moveItemAtInsertionIndex } from '../application/stop-order'
 import { CalculationProgress } from './calculation-progress'
 import { CancelLetterDialog } from './cancel-letter-dialog'
 import { StopFormDialog } from './operation-dialogs'
+import { ReorderListDialog } from './reorder-list-dialog'
 import { RouteClosureReport } from './route-closure-report'
 import { RouteVerificationPanel, type VerificationStatus } from './route-verification-panel'
 
@@ -107,6 +102,7 @@ type Props = {
   onBack: () => void
   onAction: (ids: string[]) => Promise<void>
   onUpdateStops: (routeId: string, stops: DailyRouteStop[], recalculate?: boolean) => Promise<void>
+  onUpdateStopActionOrder?: (routeId: string, stopId: string, actionIds: string[]) => Promise<void>
   onUpdateStartTime?: (routeId: string, startTime: string) => Promise<void>
   onUpdateDate?: (routeId: string, date: string) => Promise<void>
   onSuggestStop: (
@@ -123,7 +119,6 @@ type Props = {
   onDeleteRoute?: (routeId: string) => Promise<void>
   canManage?: boolean
 }
-type ServiceGroup = { key: string; actions: ServiceAction[]; animalLabels: string[] }
 
 const kindLabels: Record<DailyStopKind, string> = {
   parada: 'Parada',
@@ -431,33 +426,6 @@ function transportsLabel(count: number) {
   return `${count} ${count === 1 ? 'transporte' : 'transportes'}`
 }
 
-function groupedServices(route: DailyRoute, stops: DailyRouteStop[], letters: Letter[]) {
-  const groupsByStop = new Map<string, ServiceGroup[]>()
-  route.actions.forEach((action) => {
-    const stopId = action.stopId ?? stops.find((stop) => stop.locality === action.stop)?.id
-    if (!stopId) return
-    const groups = groupsByStop.get(stopId) ?? []
-    const key = [action.type, action.letterId, action.box ?? 'sin-box', stopId].join(':')
-    const group = groups.find((item) => item.key === key) ?? { key, actions: [], animalLabels: [] }
-    if (!groups.includes(group)) groups.push(group)
-    group.actions.push({ ...action, stopId })
-    const animal =
-      action.animalLabel ??
-      letters
-        .find((letter) => letter.id === action.letterId)
-        ?.animals.find((candidate) => candidate.id === action.animalId)
-    const label =
-      typeof animal === 'string'
-        ? animal
-        : animal
-          ? [animal.breed, animal.species].filter(Boolean).join(' · ')
-          : 'Mascota sin identificar'
-    if (!group.animalLabels.includes(label)) group.animalLabels.push(label)
-    groupsByStop.set(stopId, groups)
-  })
-  return groupsByStop
-}
-
 export function RoutesPage({
   route,
   template,
@@ -467,6 +435,7 @@ export function RoutesPage({
   onBack,
   onAction,
   onUpdateStops,
+  onUpdateStopActionOrder,
   onUpdateStartTime,
   onUpdateDate,
   onSuggestStop,
@@ -1049,6 +1018,11 @@ export function RoutesPage({
                     plannedStops || recalculatingTimes ? undefined : () => setDeletingStop(stop)
                   }
                   onAction={updateServices}
+                  onReorderServices={
+                    canManage && onUpdateStopActionOrder && !plannedStops && !recalculatingTimes
+                      ? (actionIds) => onUpdateStopActionOrder(route.id, stop.id, actionIds)
+                      : undefined
+                  }
                   onRemoveLetter={canManage ? setRemovingLetter : undefined}
                   onCancelLetter={canManage ? setCancellingLetter : undefined}
                 />
@@ -1288,6 +1262,7 @@ function JourneyStop({
   onEdit,
   onDelete,
   onAction,
+  onReorderServices,
   onRemoveLetter,
   onCancelLetter,
 }: {
@@ -1303,9 +1278,11 @@ function JourneyStop({
   onEdit?: () => void
   onDelete?: () => void
   onAction: (ids: string[]) => Promise<void>
+  onReorderServices?: ((actionIds: string[]) => Promise<void>) | undefined
   onRemoveLetter?: ((letterId: string) => void) | undefined
   onCancelLetter?: ((letterId: string) => void) | undefined
 }) {
+  const [reorderingServices, setReorderingServices] = useState<ServiceGroup[] | null>(null)
   const hasServices = services.length > 0
   const instructions = mergedStopInstructions(stop.alias, stop.place)
   return (
@@ -1379,6 +1356,39 @@ function JourneyStop({
         )}
         {services.length > 0 && (
           <div className="services">
+            {onReorderServices && services.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="reorder-services-trigger"
+                aria-label={`Ordenar recogidas y entregas en ${stop.locality}`}
+                onClick={() => setReorderingServices(services)}
+              >
+                <ArrowUpDown aria-hidden="true" /> Ordenar recogidas y entregas
+              </Button>
+            )}
+            {reorderingServices && onReorderServices && (
+              <ReorderListDialog
+                title="Ordenar recogidas y entregas"
+                description={`Servicios en ${stop.locality}. Cada transporte mantiene sus animales juntos.`}
+                items={reorderingServices.map((group) => ({
+                  id: group.key,
+                  title: serviceGroupLabel(group),
+                  description: group.animalLabels.join(' + '),
+                }))}
+                onClose={() => setReorderingServices(null)}
+                onSave={(keys) =>
+                  onReorderServices(
+                    keys.flatMap((key) => {
+                      const group = reorderingServices.find((item) => item.key === key)
+                      if (!group)
+                        throw new Error('Los servicios han cambiado. Vuelve a abrir el diálogo.')
+                      return group.actions.map((action) => action.id)
+                    }),
+                  )
+                }
+              />
+            )}
             {services.map((group) => (
               <ServiceCard
                 key={group.key}
@@ -1550,166 +1560,28 @@ function ReorderStopsDialog({
   onClose: () => void
   onSave: (stops: DailyRouteStop[]) => Promise<void>
 }) {
-  const [orderedStops, setOrderedStops] = useState(stops)
-  const [draggedStopId, setDraggedStopId] = useState<string | null>(null)
-  const [dropIndex, setDropIndex] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const dragState = useRef<{
-    pointerId: number
-    stopId: string
-    destinationIndex: number | null
-  } | null>(null)
-  const unchanged = orderedStops.every((stop, index) => stop.id === stops[index]?.id)
-
-  function moveStop(sourceIndex: number, destinationIndex: number) {
-    setOrderedStops((current) => moveItemAtInsertionIndex(current, sourceIndex, destinationIndex))
-  }
-
-  function startDragging(event: PointerEvent<HTMLButtonElement>, stopId: string) {
-    if (event.button !== 0) return
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragState.current = { pointerId: event.pointerId, stopId, destinationIndex: null }
-    setDraggedStopId(stopId)
-  }
-
-  function updateDropTarget(event: PointerEvent<HTMLButtonElement>) {
-    const activeDrag = dragState.current
-    if (activeDrag?.pointerId !== event.pointerId) return
-
-    const target = document
-      .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>('[data-reorder-index]')
-    if (!target) {
-      activeDrag.destinationIndex = null
-      setDropIndex(null)
-      return
-    }
-
-    const targetIndex = Number(target.dataset.reorderIndex)
-    const { top, height } = target.getBoundingClientRect()
-    const destinationIndex = targetIndex + (event.clientY > top + height / 2 ? 1 : 0)
-    activeDrag.destinationIndex = destinationIndex
-    setDropIndex(destinationIndex)
-  }
-
-  function finishDragging(event: PointerEvent<HTMLButtonElement>, cancelled = false) {
-    const activeDrag = dragState.current
-    if (activeDrag?.pointerId !== event.pointerId) return
-    if (!cancelled && activeDrag.destinationIndex !== null) {
-      const sourceIndex = orderedStops.findIndex((stop) => stop.id === activeDrag.stopId)
-      moveStop(sourceIndex, activeDrag.destinationIndex)
-    }
-    dragState.current = null
-    setDraggedStopId(null)
-    setDropIndex(null)
-  }
-
-  function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
-    event.preventDefault()
-    const direction = event.key === 'ArrowUp' ? -1 : 1
-    const destinationIndex = index + direction
-    if (destinationIndex < 0 || destinationIndex >= orderedStops.length) return
-    moveStop(index, destinationIndex + (direction > 0 ? 1 : 0))
-  }
-
-  async function save() {
-    setSaving(true)
-    setError('')
-    try {
-      await onSave(orderedStops)
-      onClose()
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : 'No se ha podido actualizar el orden de las paradas.',
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !saving) onClose()
-      }}
-    >
-      <DialogContent className="dialog-card route-create-dialog reorder-stops-dialog w-[calc(100%-2.5rem)]! max-w-115! p-6.5!">
-        <DialogHeader className="gap-0">
-          <DialogTitle>Reordenar paradas</DialogTitle>
-          <DialogDescription>
-            Arrastra cada parada a su nueva posición. También puedes seleccionarla y usar las
-            flechas del teclado.
-          </DialogDescription>
-        </DialogHeader>
-        <p className="reorder-drop-hint" aria-live="polite">
-          {dropIndex === null
-            ? 'Mantén pulsada una parada y arrástrala al lugar deseado.'
-            : dropIndex >= orderedStops.length
-              ? 'Se colocará al final de la lista.'
-              : `Se colocará antes de ${orderedStops[dropIndex].locality}.`}
-        </p>
-        <ol className="reorder-stops-list">
-          {orderedStops.map((stop, index) => (
-            <li
-              className={[
-                draggedStopId === stop.id ? 'is-dragging' : '',
-                dropIndex === index ? 'is-drop-before' : '',
-                dropIndex === orderedStops.length && index === orderedStops.length - 1
-                  ? 'is-drop-after'
-                  : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              data-reorder-index={index}
-              key={stop.id}
-            >
-              <button
-                type="button"
-                className="reorder-stop-item"
-                aria-label={`Mover ${stop.locality}, posición ${index + 1} de ${orderedStops.length}`}
-                aria-keyshortcuts="ArrowUp ArrowDown"
-                title="Mantén pulsado para arrastrar; también puedes usar las flechas del teclado"
-                onKeyDown={(event) => moveWithKeyboard(event, index)}
-                onPointerDown={(event) => startDragging(event, stop.id)}
-                onPointerMove={updateDropTarget}
-                onPointerUp={(event) => finishDragging(event)}
-                onPointerCancel={(event) => finishDragging(event, true)}
-              >
-                <span className="reorder-stop-index">{index + 1}</span>
-                <span className="reorder-stop-description">
-                  <strong>{stop.locality}</strong>
-                  <small>
-                    {[kindLabels[stop.kind], mergedStopInstructions(stop.alias, stop.place)]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </small>
-                </span>
-                <GripVertical size={18} className="reorder-stop-grip" />
-              </button>
-            </li>
-          ))}
-        </ol>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="reorder-stops-footer">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button onClick={() => void save()} disabled={saving || unchanged}>
-            {saving ? 'Guardando…' : 'Guardar orden'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ReorderListDialog
+      title="Reordenar paradas"
+      description="Cambia el orden de las paradas de la ruta."
+      items={stops.map((stop) => ({
+        id: stop.id,
+        title: stop.locality,
+        description: [kindLabels[stop.kind], mergedStopInstructions(stop.alias, stop.place)]
+          .filter(Boolean)
+          .join(' · '),
+      }))}
+      onClose={onClose}
+      onSave={(ids) =>
+        onSave(
+          ids.map((id) => {
+            const stop = stops.find((item) => item.id === id)
+            if (!stop) throw new Error('Las paradas han cambiado. Vuelve a abrir el diálogo.')
+            return stop
+          }),
+        )
+      }
+    />
   )
 }
 
