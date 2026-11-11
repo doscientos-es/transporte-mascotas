@@ -99,4 +99,3 @@ function validateFiscalClient(client: Record<string, unknown>) {
   if (required.some((field) => typeof client[field] !== 'string' || !client[field].trim()))
     throw new Error('Completa los datos fiscales antes de registrar el cobro.')
 }
-

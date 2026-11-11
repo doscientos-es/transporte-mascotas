@@ -30,13 +30,10 @@ describe('invoice issuer', () => {
     expect(requireInvoiceIssuerSnapshot().name).toBe('Kache Envíos')
   })
 
-  it.each(['INVOICE_ISSUER_TAX_ID', 'INVOICE_ISSUER_ADDRESS'])(
-    'rejects missing %s',
-    (missing) => {
-      vi.stubGlobal('Deno', { env: { get: (key: string) => (key === missing ? '' : 'value') } })
+  it.each(['INVOICE_ISSUER_TAX_ID', 'INVOICE_ISSUER_ADDRESS'])('rejects missing %s', (missing) => {
+    vi.stubGlobal('Deno', { env: { get: (key: string) => (key === missing ? '' : 'value') } })
 
-      expect(invoiceIssuerSnapshot()).toBeNull()
-      expect(requireInvoiceIssuerSnapshot).toThrow('Faltan los datos fiscales del emisor.')
-    },
-  )
+    expect(invoiceIssuerSnapshot()).toBeNull()
+    expect(requireInvoiceIssuerSnapshot).toThrow('Faltan los datos fiscales del emisor.')
+  })
 })

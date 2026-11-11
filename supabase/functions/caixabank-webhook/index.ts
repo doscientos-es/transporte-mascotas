@@ -683,4 +683,3 @@ function parseGatewayAmount(value: string | undefined) {
   const amount = Number(value)
   return Number.isSafeInteger(amount) ? amount : null
 }
-
