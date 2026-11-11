@@ -58,6 +58,11 @@ export function carriageLetterFileName(letter: TransportCarriageLetter) {
 }
 
 export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
+  return createCarriageLettersPdf([letter])
+}
+
+export async function createCarriageLettersPdf(letters: TransportCarriageLetter[]) {
+  if (letters.length === 0) throw new Error('No hay cartas de porte para generar el PDF.')
   const { jsPDF } = await import('jspdf')
   const { width, height } = CARRIAGE_LETTER_PAGE
   const doc = new jsPDF({ unit: 'mm', format: [width, height], orientation: 'landscape' })
@@ -68,42 +73,42 @@ export async function createCarriageLetterPdf(letter: TransportCarriageLetter) {
     doc.setFont('helvetica', bold ? 'bold' : 'normal')
     doc.setFontSize(size)
   }
-  drawCarriageLetter(
-    {
-      rect(x, y, w, h, { fill, stroke, lineWidth }) {
-        if (fill) doc.setFillColor(...fill)
-        if (stroke) {
-          doc.setDrawColor(...stroke)
-          doc.setLineWidth(lineWidth ?? 0.3)
-        }
-        doc.rect(x, y, w, h, fill && stroke ? 'FD' : fill ? 'F' : 'S')
-      },
-      text(value, x, y, { size, bold, color = [0, 0, 0], align = 'left' }) {
-        font(size, bold)
-        doc.setTextColor(...color)
-        doc.text(value, x, y, { align })
-      },
-      image(data, x, y, w, h) {
-        const image = doc.getImageProperties(data)
-        const scale = Math.min(w / image.width, h / image.height)
-        const imageWidth = image.width * scale
-        const imageHeight = image.height * scale
-        doc.addImage(
-          data,
-          'PNG',
-          x + (w - imageWidth) / 2,
-          y + (h - imageHeight) / 2,
-          imageWidth,
-          imageHeight,
-        )
-      },
-      width(value, size, bold) {
-        font(size, bold)
-        return doc.getTextWidth(value)
-      },
+  const canvas: Parameters<typeof drawCarriageLetter>[0] = {
+    rect(x, y, w, h, { fill, stroke, lineWidth }) {
+      if (fill) doc.setFillColor(...fill)
+      if (stroke) {
+        doc.setDrawColor(...stroke)
+        doc.setLineWidth(lineWidth ?? 0.3)
+      }
+      doc.rect(x, y, w, h, fill && stroke ? 'FD' : fill ? 'F' : 'S')
     },
-    letter,
-    logo ?? undefined,
-  )
+    text(value, x, y, { size, bold, color = [0, 0, 0], align = 'left' }) {
+      font(size, bold)
+      doc.setTextColor(...color)
+      doc.text(value, x, y, { align })
+    },
+    image(data, x, y, w, h) {
+      const image = doc.getImageProperties(data)
+      const scale = Math.min(w / image.width, h / image.height)
+      const imageWidth = image.width * scale
+      const imageHeight = image.height * scale
+      doc.addImage(
+        data,
+        'PNG',
+        x + (w - imageWidth) / 2,
+        y + (h - imageHeight) / 2,
+        imageWidth,
+        imageHeight,
+      )
+    },
+    width(value, size, bold) {
+      font(size, bold)
+      return doc.getTextWidth(value)
+    },
+  }
+  letters.forEach((letter, index) => {
+    if (index > 0) doc.addPage([width, height], 'landscape')
+    drawCarriageLetter(canvas, letter, logo ?? undefined)
+  })
   return doc.output('blob')
 }

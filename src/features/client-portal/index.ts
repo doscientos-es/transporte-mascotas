@@ -14,6 +14,7 @@ export {
 export {
   carriageLetterFileName,
   createCarriageLetterPdf,
+  createCarriageLettersPdf,
   letterToCarriageLetter,
 } from './application/carriage-letter-pdf'
 export { itineraryDirectionsLinks } from './application/route-maps'

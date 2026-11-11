@@ -35,13 +35,14 @@ import {
   Pencil,
   Phone,
   Plus,
+  Printer,
   Search,
   Trash2,
   Truck,
 } from 'lucide-react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 
-import { itineraryDirectionsLinks } from '@/features/client-portal'
+import { createCarriageLettersPdf, itineraryDirectionsLinks } from '@/features/client-portal'
 import type { StopDetail } from '@/features/client-portal/ui/route-map'
 import {
   DEFAULT_ROUTE_START_TIME,
@@ -74,6 +75,7 @@ import {
   type DrivingProgress,
   type RouteVerification,
 } from '../application/driving-times'
+import { routeCarriageLetters } from '../application/route-carriage-letters'
 import type { RouteClosureResult } from '../application/route-closure'
 import { DEFAULT_ROUTE_SORT_DIRECTION, sortRoutesByDate } from '../application/route-order'
 import { legLabel, summarizeVerification } from '../application/route-verification'
@@ -84,6 +86,7 @@ import {
 } from '../application/service-groups'
 import { transportReminderMessage, type ReminderPoint } from '../application/service-reminder'
 import { mergedStopInstructions } from '../application/stop-instructions'
+import { downloadBlob } from './billing-document-export'
 import { CalculationProgress } from './calculation-progress'
 import { CancelLetterDialog } from './cancel-letter-dialog'
 import { StopFormDialog } from './operation-dialogs'
@@ -98,6 +101,8 @@ type Props = {
   template: RouteTemplate
   meetingPoints?: SavedMeetingPoint[]
   letters: Letter[]
+  lettersLoading?: boolean
+  lettersError?: string
   onOpenVan?: (route: DailyRoute) => void
   onBack: () => void
   onAction: (ids: string[]) => Promise<void>
@@ -431,6 +436,8 @@ export function RoutesPage({
   template,
   meetingPoints = [],
   letters,
+  lettersLoading = false,
+  lettersError = '',
   onOpenVan,
   onBack,
   onAction,
@@ -471,6 +478,7 @@ export function RoutesPage({
   const [deleteRouteOpen, setDeleteRouteOpen] = useState(false)
   const [deletingRoute, setDeletingRoute] = useState(false)
   const [operationError, setOperationError] = useState('')
+  const [printingLetters, setPrintingLetters] = useState(false)
   const stops = plannedStops ?? routeStops(route, template)
   const direction = route.direction ?? 'normal'
   const startTime = route.startTime ?? DEFAULT_ROUTE_START_TIME
@@ -814,6 +822,39 @@ export function RoutesPage({
     link.remove()
     URL.revokeObjectURL(url)
   }
+  async function downloadRouteLetters() {
+    if (printingLetters) return
+    setOperationError('')
+    if (lettersLoading) {
+      setOperationError(
+        'Las cartas todavía se están cargando. Vuelve a intentarlo en unos segundos.',
+      )
+      return
+    }
+    if (lettersError) {
+      setOperationError(
+        'No se han podido cargar las cartas. Recarga la página e inténtalo de nuevo.',
+      )
+      return
+    }
+    setPrintingLetters(true)
+    try {
+      const documents = routeCarriageLetters(route, letters)
+      if (documents.length === 0) throw new Error('Esta ruta no tiene cartas de porte activas.')
+      const pdf = await createCarriageLettersPdf(documents)
+      const name = template.name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase()
+      downloadBlob(pdf, `cartas-de-porte-${name || 'ruta'}-${route.date}.pdf`)
+    } catch (error) {
+      reportOperationError(error, 'No se ha podido generar el PDF de las cartas de porte.')
+    } finally {
+      setPrintingLetters(false)
+    }
+  }
   async function updateServices(actionIds: string[]) {
     try {
       setOperationError('')
@@ -925,6 +966,9 @@ export function RoutesPage({
                     placement="bottom end"
                     className="min-w-48"
                   >
+                    <DropdownMenuItem onAction={() => void downloadRouteLetters()}>
+                      <Printer /> {printingLetters ? 'Preparando PDF…' : 'Imprimir cartas de porte'}
+                    </DropdownMenuItem>
                     <DropdownMenuItem onAction={() => void downloadDriverSheet()}>
                       <FileSpreadsheet /> Descargar Excel
                     </DropdownMenuItem>

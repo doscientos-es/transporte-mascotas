@@ -392,6 +392,8 @@ export function AdminDashboardPage({
                   template={activeTemplate}
                   meetingPoints={dashboard.meetingPoints}
                   letters={dashboard.letters}
+                  lettersLoading={dashboard.lettersLoading}
+                  lettersError={dashboard.lettersError}
                   onBack={() => navigateToSection('rutas')}
                   onOpenVan={(route) => {
                     dashboard.setSelectedRoute(route)

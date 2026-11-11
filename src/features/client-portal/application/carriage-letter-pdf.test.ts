@@ -6,7 +6,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 import type { Letter } from '@/shared/types'
 
-import { createCarriageLetterPdf, letterToCarriageLetter } from './carriage-letter-pdf'
+import {
+  createCarriageLetterPdf,
+  createCarriageLettersPdf,
+  letterToCarriageLetter,
+} from './carriage-letter-pdf'
 
 describe('letterToCarriageLetter', () => {
   it('includes each animal birth date and the assigned transport box number', () => {
@@ -84,5 +88,58 @@ describe('createCarriageLetterPdf', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe('createCarriageLettersPdf', () => {
+  it('renders one distinct letter per page using the existing format', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Logo unavailable')))
+    try {
+      const makeLetter = (id: string, sender: string, box: number) =>
+        letterToCarriageLetter(
+          {
+            id,
+            sender,
+            recipient: 'Cliente',
+            origin: 'Madrid',
+            destination: 'Vigo',
+            animals: [],
+            accompanyingDocuments: [],
+          } as unknown as Letter,
+          box,
+        )
+      const blob = await createCarriageLettersPdf([
+        makeLetter('CARTA DE PORTE Nº 100', 'Ana', 17),
+        makeLetter('CARTA DE PORTE Nº 200', 'Luis', 23),
+      ])
+      const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
+      const task = getDocument({ data: new Uint8Array(await blob.arrayBuffer()) })
+      try {
+        const pdf = await task.promise
+        expect(pdf.numPages).toBe(2)
+        const pageText = async (page: number) =>
+          (await (await pdf.getPage(page)).getTextContent()).items
+            .map((item) => ('str' in item ? item.str : ''))
+            .join(' ')
+        const first = await pageText(1)
+        const second = await pageText(2)
+        expect(first).toContain('Nº 100')
+        expect(first).toContain('Nº Box: 17')
+        expect(first).toContain('Ana')
+        expect(first).not.toContain('Luis')
+        expect(second).toContain('Nº 200')
+        expect(second).toContain('Nº Box: 23')
+        expect(second).toContain('Luis')
+        expect(second).not.toContain('Ana')
+      } finally {
+        await task.destroy()
+      }
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('rejects an empty collection instead of creating a blank page', async () => {
+    await expect(createCarriageLettersPdf([])).rejects.toThrow('No hay cartas de porte')
   })
 })
