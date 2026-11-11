@@ -6,6 +6,7 @@ import {
   type CyberpacSignatureVersion,
 } from '../_shared/cyberpac.ts'
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import { requireInvoiceIssuerSnapshot } from '../_shared/invoice-issuer.ts'
 import {
   sendInvoicePaymentConfirmation,
   sendTransportPaymentConfirmation,
@@ -240,7 +241,7 @@ Deno.serve(async (request) => {
         p_payment_id: payment.id,
         p_paid_at: paidAt,
         p_gateway_response: gatewayResponse,
-        p_issuer_snapshot: issuerSnapshot(),
+        p_issuer_snapshot: requireInvoiceIssuerSnapshot(),
       }),
     })
     const issuedInvoiceId = (await issuedResponse.json()) as string
@@ -468,7 +469,7 @@ async function processTransportPayment(
   })
   let issuedInvoiceId: string | null = null
   try {
-    const issuer = issuerSnapshot()
+    const issuer = requireInvoiceIssuerSnapshot()
     const finalizeResponse = await rest('rpc/auto_finalize_paid_transport', {
       method: 'POST',
       body: JSON.stringify({
@@ -683,10 +684,3 @@ function parseGatewayAmount(value: string | undefined) {
   return Number.isSafeInteger(amount) ? amount : null
 }
 
-function issuerSnapshot() {
-  const name = Deno.env.get('INVOICE_ISSUER_NAME')
-  const taxId = Deno.env.get('INVOICE_ISSUER_TAX_ID')
-  const address = Deno.env.get('INVOICE_ISSUER_ADDRESS')
-  if (!name || !taxId || !address) throw new Error('Faltan los datos fiscales del emisor.')
-  return { name, taxId, address }
-}

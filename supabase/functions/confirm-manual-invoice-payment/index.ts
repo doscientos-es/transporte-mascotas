@@ -1,4 +1,5 @@
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import { requireInvoiceIssuerSnapshot } from '../_shared/invoice-issuer.ts'
 import { sendInvoicePaymentConfirmation } from '../_shared/payment-confirmation-email.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
@@ -47,7 +48,7 @@ Deno.serve(async (request) => {
         p_payment_id: payment.id,
         p_paid_at: paidAt,
         p_gateway_response: { paymentMethod, registeredAt: paidAt },
-        p_issuer_snapshot: issuerSnapshot(),
+        p_issuer_snapshot: requireInvoiceIssuerSnapshot(),
       }),
     })
     const issuedInvoiceId = (await issuedResponse.json()) as string
@@ -99,10 +100,3 @@ function validateFiscalClient(client: Record<string, unknown>) {
     throw new Error('Completa los datos fiscales antes de registrar el cobro.')
 }
 
-function issuerSnapshot() {
-  const name = Deno.env.get('INVOICE_ISSUER_NAME')
-  const taxId = Deno.env.get('INVOICE_ISSUER_TAX_ID')
-  const address = Deno.env.get('INVOICE_ISSUER_ADDRESS')
-  if (!name || !taxId || !address) throw new Error('Faltan los datos fiscales del emisor.')
-  return { name, taxId, address }
-}

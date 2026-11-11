@@ -95,7 +95,7 @@ describe('free invoice endpoint', () => {
       p_total: 121,
       p_operation_date: input.operationDate,
       p_payment_method: 'Tarjeta',
-      p_issuer_snapshot: { name: 'Test issuer', taxId: 'TEST', address: 'Test address' },
+      p_issuer_snapshot: { name: 'Kache Envíos', taxId: 'TEST', address: 'Test address' },
     })
     expect(persistDocument).toHaveBeenCalledWith(input.id, 'verified-admin')
   })

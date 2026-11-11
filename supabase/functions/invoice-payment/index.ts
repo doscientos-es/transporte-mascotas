@@ -1,3 +1,4 @@
+import { requireInvoiceIssuerSnapshot } from '../_shared/invoice-issuer.ts'
 import { json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 type Invoice = {
@@ -26,7 +27,7 @@ Deno.serve(async (request) => {
     if (invoice.status !== 'solicitud_pago')
       return json({ error: 'Esta solicitud ya no admite pagos.' }, 409)
     validateFiscalClient(invoice.client_snapshot)
-    validateIssuer()
+    requireInvoiceIssuerSnapshot()
 
     const payment = await createPayment(invoice)
     const url = Deno.env.get('SUPABASE_URL')
@@ -55,15 +56,6 @@ function validateFiscalClient(client: Record<string, unknown>) {
   const required = ['fullName', 'nif', 'address', 'postalCode', 'city']
   if (required.some((field) => typeof client[field] !== 'string' || !client[field].trim()))
     throw new Error('Completa los datos fiscales antes de solicitar el cobro.')
-}
-
-function validateIssuer() {
-  if (
-    !Deno.env.get('INVOICE_ISSUER_NAME') ||
-    !Deno.env.get('INVOICE_ISSUER_TAX_ID') ||
-    !Deno.env.get('INVOICE_ISSUER_ADDRESS')
-  )
-    throw new Error('Faltan los datos fiscales del emisor.')
 }
 
 async function createPayment(invoice: Invoice) {

@@ -1,4 +1,5 @@
 import { persistIssuedInvoiceDocument } from '../_shared/invoice-document.ts'
+import { requireInvoiceIssuerSnapshot } from '../_shared/invoice-issuer.ts'
 import { corsHeaders, json, requireAdmin, rest } from '../_shared/supabase.ts'
 
 type Input = {
@@ -37,10 +38,7 @@ Deno.serve(async (request) => {
     )
       return json({ error: 'Revisa los datos de la factura y del cobro.' }, 400)
 
-    const name = Deno.env.get('INVOICE_ISSUER_NAME')
-    const taxId = Deno.env.get('INVOICE_ISSUER_TAX_ID')
-    const address = Deno.env.get('INVOICE_ISSUER_ADDRESS')
-    if (!name || !taxId || !address) throw new Error('Faltan los datos fiscales del emisor.')
+    const issuer = requireInvoiceIssuerSnapshot()
     const response = await rest('rpc/create_paid_manual_invoice', {
       method: 'POST',
       body: JSON.stringify({
@@ -51,7 +49,7 @@ Deno.serve(async (request) => {
         p_total: input.total,
         p_operation_date: input.operationDate,
         p_payment_method: input.paymentMethod,
-        p_issuer_snapshot: { name, taxId, address },
+        p_issuer_snapshot: issuer,
       }),
     })
     const result = (await response.json()) as { invoiceDraftId: string; issuedInvoiceId: string }

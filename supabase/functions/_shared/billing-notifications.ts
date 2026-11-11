@@ -1,3 +1,4 @@
+import { requireInvoiceIssuerSnapshot } from './invoice-issuer.ts'
 import { rest } from './supabase.ts'
 
 type PaymentInvoice = { id: string; total_amount: string; client_snapshot: Record<string, unknown> }
@@ -16,7 +17,7 @@ async function createPayment(invoiceId: string) {
   const [invoice] = (await invoiceResponse.json()) as PaymentInvoice[]
   if (!invoice) throw new Error('La solicitud de pago ya no está disponible.')
   validateFiscalClient(invoice.client_snapshot)
-  validateIssuer()
+  requireInvoiceIssuerSnapshot()
   const amountCents = Math.round(Number(invoice.total_amount) * 100)
   if (!Number.isSafeInteger(amountCents) || amountCents <= 0)
     throw new Error('El importe de la solicitud no es válido.')
@@ -40,15 +41,6 @@ function validateFiscalClient(client: Record<string, unknown>) {
     throw new Error('Completa los datos fiscales antes de solicitar el cobro.')
 }
 
-function validateIssuer() {
-  if (
-    !Deno.env.get('INVOICE_ISSUER_NAME') ||
-    !Deno.env.get('INVOICE_ISSUER_TAX_ID') ||
-    !Deno.env.get('INVOICE_ISSUER_ADDRESS')
-  )
-    throw new Error('Faltan los datos fiscales del emisor.')
-}
-
 function requirePaymentConfiguration() {
   const required = [
     'CAIXABANK_CYBERPAC_MERCHANT_CODE',
@@ -56,7 +48,6 @@ function requirePaymentConfiguration() {
     'CAIXABANK_CYBERPAC_SECRET',
     'CAIXABANK_CYBERPAC_ENDPOINT',
     'PUBLIC_APP_URL',
-    'INVOICE_ISSUER_NAME',
     'INVOICE_ISSUER_TAX_ID',
     'INVOICE_ISSUER_ADDRESS',
   ]

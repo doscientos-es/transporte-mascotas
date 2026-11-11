@@ -1,3 +1,4 @@
+import { invoiceIssuerSnapshot } from '../_shared/invoice-issuer.ts'
 import { sendTransportPaymentConfirmation } from '../_shared/payment-confirmation-email.ts'
 import { corsHeaders, json, requireAdmin, rest, serviceHeaders } from '../_shared/supabase.ts'
 
@@ -53,7 +54,7 @@ const MANUAL_PAYMENT_ERRORS = {
     outcome: 'retryable_error',
     message: 'Faltan los datos fiscales del emisor. Avisa al equipo técnico.',
     action:
-      'Set the INVOICE_ISSUER_NAME, INVOICE_ISSUER_TAX_ID and INVOICE_ISSUER_ADDRESS secrets. Nothing was recorded yet.',
+      'Set the INVOICE_ISSUER_TAX_ID and INVOICE_ISSUER_ADDRESS secrets. Nothing was recorded yet.',
   },
   RECORD_PAYMENT_FAILED: {
     status: 500,
@@ -383,10 +384,7 @@ async function recordEvent(
 }
 
 function issuerSnapshot() {
-  const name = Deno.env.get('INVOICE_ISSUER_NAME')
-  const taxId = Deno.env.get('INVOICE_ISSUER_TAX_ID')
-  const address = Deno.env.get('INVOICE_ISSUER_ADDRESS')
-  if (!name || !taxId || !address)
-    throw new ManualPaymentError('ISSUER_NOT_CONFIGURED', 'read_issuer')
-  return { name, taxId, address }
+  const issuer = invoiceIssuerSnapshot()
+  if (!issuer) throw new ManualPaymentError('ISSUER_NOT_CONFIGURED', 'read_issuer')
+  return issuer
 }

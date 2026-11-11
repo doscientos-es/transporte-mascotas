@@ -13,7 +13,7 @@ Las funciones implementan el flujo **solicitud de pago → tarjeta en Cyberpac �
 
 ## Facturación y comunicaciones
 
-Antes de abrir cobros configurad los datos fiscales no secretos que aparecerán congelados en cada factura: `INVOICE_ISSUER_NAME`, `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`. No se emite una factura si falta alguno.
+Las nuevas facturas muestran «Kache Envíos» como nombre del emisor. Antes de abrir cobros configurad `INVOICE_ISSUER_TAX_ID` e `INVOICE_ISSUER_ADDRESS`, que quedan congelados en cada factura. No se emite una factura si falta alguno. La configuración anterior `INVOICE_ISSUER_NAME` ya no se utiliza; las facturas emitidas conservan sus datos originales.
 
 Todas las comunicaciones con clientes se envían por email.
 
