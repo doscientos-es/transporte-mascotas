@@ -8478,6 +8478,28 @@ a.whatsapp-link:hover {
 .expense-form-wide {
   grid-column: 1 / -1;
 }
+.expense-lines {
+  display: grid;
+  gap: 10px;
+}
+.expense-line {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.expense-line legend {
+  padding: 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.expense-lines > button {
+  justify-self: start;
+}
 .expense-form-check {
   align-items: center;
   display: flex !important;

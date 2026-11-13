@@ -173,7 +173,7 @@ export function expensesToCsv(expenses: Expense[]) {
       item.concept,
       expenseCategoryLabel(item.category),
       item.netAmount.toFixed(2),
-      item.vatRate,
+      [...new Set(item.lines.map((line) => line.vatRate))].join(' / '),
       item.vatAmount.toFixed(2),
       item.totalAmount.toFixed(2),
     ]),

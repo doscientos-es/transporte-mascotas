@@ -1,5 +1,7 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
 
+import type { ExpenseLine } from '../domain/expense-lines'
+
 export const expenseCategories = [
   'combustible',
   'vehiculo',
@@ -31,6 +33,7 @@ export type Expense = {
   vatRate: number
   vatAmount: number
   totalAmount: number
+  lines: ExpenseLine[]
   notes: string
   documentPath: string | null
   documentName: string | null
@@ -45,8 +48,7 @@ export type ExpenseInput = Pick<
   | 'invoiceReference'
   | 'concept'
   | 'category'
-  | 'netAmount'
-  | 'vatRate'
+  | 'lines'
   | 'notes'
 >
 
@@ -76,6 +78,7 @@ type ExpenseRow = {
   vat_rate: number | string
   vat_amount: number | string
   total_amount: number | string
+  lines: ExpenseLine[] | null
   notes: string
   document_path: string | null
   document_name: string | null
@@ -95,7 +98,7 @@ type IncomeRow = {
 }
 
 const expenseColumns =
-  'id, expense_date, vendor, vendor_nif, vendor_address, invoice_reference, concept, category, net_amount, vat_rate, vat_amount, total_amount, notes, document_path, document_name'
+  'id, expense_date, vendor, vendor_nif, vendor_address, invoice_reference, concept, category, net_amount, vat_rate, vat_amount, total_amount, lines, notes, document_path, document_name'
 
 const toExpense = (row: ExpenseRow): Expense => ({
   id: row.id,
@@ -110,6 +113,9 @@ const toExpense = (row: ExpenseRow): Expense => ({
   vatRate: Number(row.vat_rate),
   vatAmount: Number(row.vat_amount),
   totalAmount: Number(row.total_amount),
+  lines: row.lines ?? [
+    { description: '', netAmount: Number(row.net_amount), vatRate: Number(row.vat_rate) },
+  ],
   notes: row.notes,
   documentPath: row.document_path,
   documentName: row.document_name,
@@ -136,8 +142,7 @@ const toRow = (input: ExpenseInput) => ({
   invoice_reference: input.invoiceReference.trim(),
   concept: input.concept.trim(),
   category: input.category,
-  net_amount: input.netAmount,
-  vat_rate: input.vatRate,
+  lines: input.lines,
   notes: input.notes.trim(),
 })
 

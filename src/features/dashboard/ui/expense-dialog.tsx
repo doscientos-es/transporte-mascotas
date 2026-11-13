@@ -9,8 +9,8 @@ import {
   Label,
   Textarea,
 } from '@doscientos/ui'
-import { ReceiptText, Save } from 'lucide-react'
-import { useReducer, useState, type FormEvent } from 'react'
+import { Plus, ReceiptText, Save, Trash2 } from 'lucide-react'
+import { useReducer, useRef, useState, type FormEvent } from 'react'
 
 import {
   expenseSupplierFields,
@@ -26,6 +26,11 @@ import {
   type ExpenseInput,
 } from '../application/finance'
 import { expenseCategoryLabel, expenseCategoryValue } from '../application/finance-summary'
+import {
+  expenseLineTotals,
+  parseExpenseLines,
+  type ExpenseLineDraft,
+} from '../domain/expense-lines'
 import { ExpenseCategoryField } from './expense-category-field'
 import { ExpenseSupplierField } from './expense-supplier-field'
 
@@ -68,25 +73,55 @@ export function ExpenseDialog({
   const [category, setCategory] = useState<ExpenseCategory>(
     expense ? expenseCategoryLabel(expense.category) : expenseCategoryLabel('otros'),
   )
-  const [netAmount, setNetAmount] = useState(expense ? String(expense.netAmount) : '')
-  const [vatRate, setVatRate] = useState(expense ? String(expense.vatRate) : '21')
+  const [lines, setLines] = useState<ExpenseLineDraft[]>(() =>
+    expense?.lines?.length
+      ? expense.lines.map((line, id) => ({
+          ...line,
+          id,
+          netAmount: String(line.netAmount),
+          vatRate: String(line.vatRate),
+        }))
+      : [
+          {
+            id: 0,
+            description: '',
+            netAmount: expense ? String(expense.netAmount) : '',
+            vatRate: expense ? String(expense.vatRate) : '21',
+          },
+        ],
+  )
+  const nextLineId = useRef(lines.length)
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [file, setFile] = useState<File | null>(null)
   const [removeDocument, setRemoveDocument] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const net = Number(netAmount.replace(',', '.'))
-  const rate = Number(vatRate.replace(',', '.'))
-  const total = Number.isFinite(net) && Number.isFinite(rate) ? net * (1 + rate / 100) : 0
+  let parsedLines: ReturnType<typeof parseExpenseLines> = []
+  let lineError = ''
+  try {
+    parsedLines = parseExpenseLines(lines)
+  } catch (reason) {
+    lineError = reason instanceof Error ? reason.message : 'Revisa las partidas.'
+  }
+  const totals = expenseLineTotals(parsedLines)
+  const formatMoney = (amount: number) =>
+    amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+
+  function updateLine(id: number, patch: Partial<ExpenseLineDraft>) {
+    setLines((current) => current.map((line) => (line.id === id ? { ...line, ...patch } : line)))
+  }
+
+  function addLine() {
+    const id = nextLineId.current++
+    setLines((current) => [...current, { id, description: '', netAmount: '', vatRate: '21' }])
+  }
 
   function validate() {
     if (!supplier.vendor.trim()) return 'Indica el proveedor.'
     if (!concept.trim()) return 'Indica el concepto del gasto.'
     if (!category.trim()) return 'Indica la categoría del gasto.'
-    if (!netAmount.trim() || !Number.isFinite(net) || net < 0)
-      return 'La base imponible no es válida.'
-    if (!Number.isFinite(rate) || rate < 0 || rate > 100) return 'El IVA debe estar entre 0 y 100.'
+    if (lineError) return lineError
     if (file && !EXPENSE_DOCUMENT_TYPES.includes(file.type)) return 'Adjunta un PDF o una imagen.'
     if (file && file.size > EXPENSE_DOCUMENT_MAX_BYTES) return 'El archivo supera los 10 MB.'
     return ''
@@ -109,8 +144,7 @@ export function ExpenseDialog({
           invoiceReference,
           concept,
           category: expenseCategoryValue(category),
-          netAmount: Math.round(net * 100) / 100,
-          vatRate: rate,
+          lines: parsedLines,
           notes,
         },
         file,
@@ -179,32 +213,76 @@ export function ExpenseDialog({
                     onChange={(e) => setConcept(e.target.value)}
                   />
                 </Label>
-                <Label>
-                  Base imponible (€)
-                  <Input
-                    inputMode="decimal"
-                    value={netAmount}
-                    aria-required="true"
-                    placeholder="Ej. 100,00"
-                    onChange={(e) => setNetAmount(e.target.value)}
-                  />
-                </Label>
-                <Label>
-                  IVA (%)
-                  <Input
-                    inputMode="decimal"
-                    value={vatRate}
-                    onChange={(e) => setVatRate(e.target.value)}
-                  />
-                </Label>
+                <div className="expense-lines expense-form-wide">
+                  <strong>Partidas</strong>
+                  {lines.map((line, index) => (
+                    <fieldset className="expense-line" key={line.id}>
+                      <legend>Partida {index + 1}</legend>
+                      <Label className="expense-form-wide">
+                        Descripción (opcional)
+                        <Input
+                          value={line.description}
+                          maxLength={240}
+                          placeholder="Ej. Material"
+                          onChange={(e) => updateLine(line.id, { description: e.target.value })}
+                        />
+                      </Label>
+                      <Label>
+                        Base imponible (€)
+                        <Input
+                          inputMode="decimal"
+                          value={line.netAmount}
+                          aria-required="true"
+                          placeholder="Ej. 100,00"
+                          onChange={(e) => updateLine(line.id, { netAmount: e.target.value })}
+                        />
+                      </Label>
+                      <Label>
+                        IVA (%)
+                        <Input
+                          inputMode="decimal"
+                          value={line.vatRate}
+                          aria-required="true"
+                          onChange={(e) => updateLine(line.id, { vatRate: e.target.value })}
+                        />
+                      </Label>
+                      {lines.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="expense-form-wide"
+                          aria-label={`Eliminar partida ${index + 1}`}
+                          onClick={() =>
+                            setLines((current) => current.filter((item) => item.id !== line.id))
+                          }
+                        >
+                          <Trash2 size={15} /> Eliminar partida
+                        </Button>
+                      )}
+                    </fieldset>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={lines.length >= 100}
+                    onClick={addLine}
+                  >
+                    <Plus size={15} /> Añadir partida
+                  </Button>
+                </div>
                 <div className="expense-form-total expense-form-wide">
                   <div>
                     <strong>Total con IVA</strong>
-                    <p>Calculado a partir de la base y el IVA.</p>
+                    <p>Suma de las bases y el IVA de cada partida.</p>
+                    {!lineError && (
+                      <p>
+                        Base: {formatMoney(totals.netAmount)} · IVA: {formatMoney(totals.vatAmount)}
+                      </p>
+                    )}
                   </div>
-                  <strong>
-                    {total.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}
-                  </strong>
+                  <strong>{lineError ? '—' : formatMoney(totals.totalAmount)}</strong>
                 </div>
                 <Label className="expense-form-wide">
                   Notas

@@ -49,7 +49,8 @@ describe('ExpenseDialog field guidance', () => {
     expect(markup).toContain(
       'Obligatorios: fecha, categoría, proveedor, concepto y base imponible.',
     )
-    expect(markup).toContain('Calculado a partir de la base y el IVA.')
+    expect(markup).toContain('Suma de las bases y el IVA de cada partida.')
+    expect(markup).toContain('Añadir partida')
     expect(markup).toContain('expense-form-layout')
     expect(markup).toContain('Datos del gasto')
     for (const example of [
@@ -62,6 +63,27 @@ describe('ExpenseDialog field guidance', () => {
     }
     expect(markup).toMatch(/Concepto<input[^>]*aria-required="true"/)
     expect(markup).toMatch(/Base imponible \(€\)<input[^>]*aria-required="true"/)
+  })
+
+  it('shows saved lines with their individual tax rates when editing', () => {
+    const expense = {
+      vendor: 'Proveedor',
+      vendorNif: '',
+      vendorAddress: '',
+      category: 'otros',
+      lines: [
+        { description: 'Servicio', netAmount: 100, vatRate: 21 },
+        { description: 'Material', netAmount: 50, vatRate: 10 },
+      ],
+    } as Expense
+    const markup = renderToStaticMarkup(
+      createElement(ExpenseDialog, { expense, onClose: vi.fn(), onSubmit: vi.fn() }),
+    )
+    expect(markup).toContain('Partida 2')
+    expect(markup).toContain('value="Material"')
+    expect(markup).toContain('value="10"')
+    expect(markup).toContain('Eliminar partida 2')
+    expect(markup).toContain('176,00')
   })
 })
 

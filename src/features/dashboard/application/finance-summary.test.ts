@@ -22,6 +22,7 @@ const customExpense: Expense = {
   vatRate: 21,
   vatAmount: 10.5,
   totalAmount: 60.5,
+  lines: [{ description: '', netAmount: 50, vatRate: 21 }],
   notes: '',
   documentPath: null,
   documentName: null,
@@ -38,6 +39,18 @@ describe('custom expense categories', () => {
     const exported = expensesToCsv([customExpense])
     expect(exported).toContain('"Dirección fiscal del proveedor"')
     expect(exported).toContain('"Calle Mayor 1, Madrid"')
+  })
+
+  it('exports every distinct VAT rate instead of a misleading single rate', () => {
+    const expense = {
+      ...customExpense,
+      lines: [
+        { description: '', netAmount: 50, vatRate: 21 },
+        { description: '', netAmount: 20, vatRate: 10 },
+        { description: '', netAmount: 10, vatRate: 21 },
+      ],
+    }
+    expect(expensesToCsv([expense])).toContain('"21 / 10"')
   })
 
   it('normalizes suggested labels while preserving custom text', () => {

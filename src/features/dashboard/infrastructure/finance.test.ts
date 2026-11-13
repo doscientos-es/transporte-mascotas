@@ -22,8 +22,7 @@ const input: ExpenseInput = {
   invoiceReference: 'F-1',
   concept: 'Servicio',
   category: 'otros',
-  netAmount: 100,
-  vatRate: 21,
+  lines: [{ description: 'Servicio', netAmount: 100, vatRate: 21 }],
   notes: '',
 }
 
@@ -40,6 +39,7 @@ const row = {
   vat_rate: 21,
   vat_amount: 21,
   total_amount: 121,
+  lines: input.lines,
   notes: '',
   document_path: null,
   document_name: null,
@@ -78,5 +78,27 @@ describe('expense vendor fiscal address', () => {
     const expense = await saveExpense({ ...input, vendorAddress: '  ' }, { id: row.id })
     expect(db.update).toHaveBeenCalledWith(expect.objectContaining({ vendor_address: '' }))
     expect(expense.vendorAddress).toBe('')
+  })
+
+  it('saves and reloads separate tax lines without collapsing their rates', async () => {
+    const lines = [
+      { description: 'Servicio', netAmount: 100, vatRate: 21 },
+      { description: 'Material', netAmount: 50, vatRate: 10 },
+    ]
+    db.single.mockResolvedValue({
+      data: { ...row, lines, net_amount: 150, vat_amount: 26, total_amount: 176 },
+      error: null,
+    })
+    const expense = await saveExpense({ ...input, lines }, { userId: 'admin' })
+    expect(db.insert).toHaveBeenCalledWith(expect.objectContaining({ lines }))
+    expect(expense).toMatchObject({ lines, netAmount: 150, vatAmount: 26, totalAmount: 176 })
+  })
+
+  it('represents a legacy expense without lines as one line', async () => {
+    db.order
+      .mockReturnValueOnce(db)
+      .mockResolvedValueOnce({ data: [{ ...row, lines: null }], error: null })
+    const [expense] = await loadExpenses('', '')
+    expect(expense?.lines).toEqual([{ description: '', netAmount: 100, vatRate: 21 }])
   })
 })
