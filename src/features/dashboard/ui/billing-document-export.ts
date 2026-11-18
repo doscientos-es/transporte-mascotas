@@ -12,6 +12,8 @@ export function downloadInvoiceRegister(invoices: ClientInvoice[]) {
   const header = [
     'Número',
     'Estado',
+    'Fecha de anulación interna',
+    'Motivo de anulación interna',
     'Fecha',
     'Cliente',
     'NIF/CIF',
@@ -26,7 +28,9 @@ export function downloadInvoiceRegister(invoices: ClientInvoice[]) {
     const client = fiscal?.client
     return [
       invoice.issuedInvoice?.number ?? '',
-      invoice.status,
+      invoice.cancelledAt ? 'anulada internamente' : invoice.status,
+      invoice.cancelledAt ?? '',
+      invoice.cancellationReason ?? '',
       invoice.issuedInvoice?.issuedAt ?? invoice.createdAt,
       client?.fullName ?? invoice.clientName ?? '',
       client?.nif ?? invoice.clientNif ?? '',

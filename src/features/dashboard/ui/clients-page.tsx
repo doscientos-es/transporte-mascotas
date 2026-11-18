@@ -414,6 +414,7 @@ export function ClientsPage({
                                 <small>
                                   {new Date(invoice.createdAt).toLocaleDateString('es-ES')} ·{' '}
                                   {payerLabels[invoice.payer]}
+                                  {invoice.cancelledAt && ' · Anulada internamente'}
                                 </small>
                               </span>
                               <b>{currency(invoice.total)}</b>

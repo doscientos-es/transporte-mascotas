@@ -19,6 +19,7 @@ type DocumentActions = {
   onManualPayment?: () => void
   onRemovePaymentRequest?: () => void
   onEdit?: () => void
+  onCancelInvoice?: () => void
 }
 
 function DocumentAction({
@@ -78,6 +79,7 @@ export function BillingDocumentActions({
   onManualPayment,
   onRemovePaymentRequest,
   onEdit,
+  onCancelInvoice,
 }: DocumentActions) {
   const isIssued = mode === 'invoices'
   return (
@@ -107,6 +109,15 @@ export function BillingDocumentActions({
           text="Editar"
           icon={<Pencil size={15} />}
           onClick={onEdit}
+        />
+      )}
+      {isIssued && onCancelInvoice && (
+        <DocumentAction
+          compact={compact}
+          label="Anular factura internamente"
+          text="Anular"
+          icon={<Trash2 size={15} />}
+          onClick={onCancelInvoice}
         />
       )}
       {!isIssued && onManualPayment && (
@@ -141,6 +152,7 @@ export function BillingDocumentCard({
   onOpenClient,
   onOpenLetter,
   onEdit,
+  onCancelInvoice,
 }: {
   invoice: ClientInvoice
   mode: BillingDocumentMode
@@ -153,6 +165,7 @@ export function BillingDocumentCard({
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
   onEdit?: () => void
+  onCancelInvoice?: () => void
 }) {
   const isIssued = mode === 'invoices'
   const issued = isIssued ? invoice.issuedInvoice : undefined
@@ -210,10 +223,16 @@ export function BillingDocumentCard({
               </span>
             </div>
             {!isIssued && <StatusBadge status="pendiente_pago">Pendiente de cobro</StatusBadge>}
-            {isIssued && (
-              <StatusBadge status="pagada" className="gap-1.5">
-                <CheckCircle2 size={13} aria-hidden="true" /> Pagada
-              </StatusBadge>
+            {isIssued && invoice.cancelledAt ? (
+              <span title={invoice.cancellationReason ?? undefined}>
+                <StatusBadge status="cancelada">Anulada internamente</StatusBadge>
+              </span>
+            ) : (
+              isIssued && (
+                <StatusBadge status="pagada" className="gap-1.5">
+                  <CheckCircle2 size={13} aria-hidden="true" /> Pagada
+                </StatusBadge>
+              )
             )}
           </div>
           <BillingDocumentActions
@@ -224,6 +243,7 @@ export function BillingDocumentCard({
             onManualPayment={onManualPayment}
             onRemovePaymentRequest={onRemovePaymentRequest}
             onEdit={onEdit}
+            onCancelInvoice={onCancelInvoice}
           />
         </div>
       </CardContent>

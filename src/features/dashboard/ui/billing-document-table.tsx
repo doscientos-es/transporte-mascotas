@@ -3,6 +3,7 @@ import { CheckCircle2, FileText, ReceiptText } from 'lucide-react'
 import type { ClientInvoice } from '@/shared/types'
 import { StatusBadge } from '@/shared/ui/status-badge'
 
+import { canCancelManualInvoice } from '../application/manual-invoices'
 import { BillingDocumentActions } from './billing-document-card'
 
 const currency = (amount: number) =>
@@ -14,6 +15,7 @@ export function BillingDocumentTable({
   onPreview,
   onDownload,
   onEdit,
+  onCancelInvoice,
   onOpenClient,
   onOpenLetter,
 }: {
@@ -22,6 +24,7 @@ export function BillingDocumentTable({
   onPreview: (invoice: ClientInvoice) => void
   onDownload: (invoice: ClientInvoice) => void
   onEdit?: (invoice: ClientInvoice) => void
+  onCancelInvoice?: (invoice: ClientInvoice) => void
   onOpenClient?: (clientId: string) => void
   onOpenLetter?: (letterId: string) => void
 }) {
@@ -85,9 +88,15 @@ export function BillingDocumentTable({
               </td>
               <td className="invoice-table-amount">{currency(invoice.total)}</td>
               <td>
-                <StatusBadge status="pagada" className="gap-1.5">
-                  <CheckCircle2 size={13} aria-hidden="true" /> Pagada
-                </StatusBadge>
+                {invoice.cancelledAt ? (
+                  <span title={invoice.cancellationReason ?? undefined}>
+                    <StatusBadge status="cancelada">Anulada internamente</StatusBadge>
+                  </span>
+                ) : (
+                  <StatusBadge status="pagada" className="gap-1.5">
+                    <CheckCircle2 size={13} aria-hidden="true" /> Pagada
+                  </StatusBadge>
+                )}
               </td>
               <td>
                 <BillingDocumentActions
@@ -96,7 +105,16 @@ export function BillingDocumentTable({
                   downloading={downloadingId === invoice.id}
                   onPreview={() => onPreview(invoice)}
                   onDownload={() => onDownload(invoice)}
-                  onEdit={onEdit && invoice.issuedInvoice ? () => onEdit(invoice) : undefined}
+                  onEdit={
+                    onEdit && invoice.issuedInvoice && !invoice.cancelledAt
+                      ? () => onEdit(invoice)
+                      : undefined
+                  }
+                  onCancelInvoice={
+                    onCancelInvoice && canCancelManualInvoice(invoice)
+                      ? () => onCancelInvoice(invoice)
+                      : undefined
+                  }
                 />
               </td>
             </tr>

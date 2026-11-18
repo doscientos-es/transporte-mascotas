@@ -95,6 +95,49 @@ describe('billing browser compatibility', () => {
     expect(markup).not.toContain('invoice-download-label')
   })
 
+  it('offers cancellation for free invoices and shows cancelled invoices without edit actions', async () => {
+    const { BillingDocumentTable } = await import('./billing-document-table')
+    const invoice = {
+      id: 'draft',
+      letterId: null,
+      clientId: 'client',
+      payer: 'manual' as const,
+      concept: 'Extra',
+      total: 121,
+      status: 'emitida' as const,
+      createdAt: '2026-01-10',
+      clientName: 'Test',
+      issuedInvoice: {
+        id: 'issued',
+        invoiceDraftId: 'draft',
+        number: 'F-1',
+        issuedAt: '2026-01-10',
+        fiscalSnapshot: {},
+      },
+    }
+    const render = (item: typeof invoice & { cancelledAt?: string; cancellationReason?: string }) =>
+      renderToStaticMarkup(
+        createElement(BillingDocumentTable, {
+          invoices: [item],
+          downloadingId: null,
+          onPreview: vi.fn(),
+          onDownload: vi.fn(),
+          onEdit: vi.fn(),
+          onCancelInvoice: vi.fn(),
+        }),
+      )
+    expect(render(invoice)).toContain('aria-label="Anular factura internamente"')
+    const cancelled = render({
+      ...invoice,
+      cancelledAt: '2026-11-18',
+      cancellationReason: 'Duplicada',
+    })
+    expect(cancelled).toContain('Anulada internamente')
+    expect(cancelled).toContain('Duplicada')
+    expect(cancelled).not.toContain('aria-label="Anular factura internamente"')
+    expect(cancelled).not.toContain('aria-label="Editar factura"')
+  })
+
   it('keeps the download disabled while preparing it and retains labels on cards', async () => {
     const { BillingDocumentActions } = await import('./billing-document-card')
     const props = {

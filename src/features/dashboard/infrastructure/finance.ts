@@ -63,6 +63,7 @@ export type FinanceIncome = {
   netAmount: number
   vatAmount: number
   totalAmount: number
+  cancelledAt?: string | null
 }
 
 type ExpenseRow = {
@@ -95,6 +96,7 @@ type IncomeRow = {
   net_amount: number | string
   vat_amount: number | string
   total_amount: number | string
+  cancelled_at: string | null
 }
 
 const expenseColumns =
@@ -132,6 +134,7 @@ const toIncome = (row: IncomeRow): FinanceIncome => ({
   netAmount: Number(row.net_amount),
   vatAmount: Number(row.vat_amount),
   totalAmount: Number(row.total_amount),
+  cancelledAt: row.cancelled_at,
 })
 
 const toRow = (input: ExpenseInput) => ({

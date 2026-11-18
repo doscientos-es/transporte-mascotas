@@ -240,6 +240,8 @@ export interface ClientInvoice {
   clientName: string
   clientNif?: string
   issuedInvoice?: IssuedInvoice
+  cancelledAt?: string | null
+  cancellationReason?: string | null
 }
 
 export interface RouteStop {

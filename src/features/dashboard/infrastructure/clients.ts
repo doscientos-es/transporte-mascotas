@@ -79,6 +79,8 @@ type InvoiceRow = {
   issued_number: string | null
   issued_at: string | null
   fiscal_snapshot: InvoiceFiscalSnapshot | null
+  cancelled_at: string | null
+  cancellation_reason: string | null
 }
 
 type PagePayload = { items?: unknown; total?: unknown }
@@ -115,6 +117,8 @@ function toInvoice(row: InvoiceRow): ClientInvoice {
     clientName: row.client_name ?? '',
     clientNif: row.client_nif ?? '',
     issuedInvoice,
+    cancelledAt: row.cancelled_at,
+    cancellationReason: row.cancellation_reason,
   }
 }
 

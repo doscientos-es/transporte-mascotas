@@ -41,3 +41,40 @@ describe('removePendingPaymentRequest', () => {
     )
   })
 })
+
+describe('invoice history', () => {
+  it('maps internal cancellation metadata returned by the paginated list', async () => {
+    mocks.requireSupabase.mockReturnValue({ rpc: mocks.rpc })
+    mocks.rpc.mockResolvedValue({
+      error: null,
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 'draft',
+            letter_id: null,
+            client_id: 'client',
+            payer: 'manual',
+            concept: 'Extra',
+            total_amount: '121',
+            status: 'emitida',
+            created_at: '2026-11-10',
+            client_name: 'Test',
+            issued_invoice_id: 'issued',
+            issued_number: 'F-1',
+            issued_at: '2026-11-10',
+            fiscal_snapshot: {},
+            cancelled_at: '2026-11-18',
+            cancellation_reason: 'Duplicada',
+          },
+        ],
+      },
+    })
+    const { loadInvoicePage } = await import('./clients')
+    const page = await loadInvoicePage({ query: '', sort: 'date', direction: 'desc', page: 1 })
+    expect(page.items[0]).toMatchObject({
+      cancelledAt: '2026-11-18',
+      cancellationReason: 'Duplicada',
+    })
+  })
+})

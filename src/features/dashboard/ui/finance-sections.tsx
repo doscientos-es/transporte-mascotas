@@ -31,7 +31,7 @@ export function FinanceKpis({
       label: 'Ingresos',
       icon: TrendingUp,
       value: money(totals.incomeNet),
-      note: `${plural(incomeCount, 'factura', 'facturas')} · IVA ${money(totals.incomeVat)}`,
+      note: `${plural(incomeCount, 'factura', 'facturas')} activas · IVA emitido ${money(totals.incomeVat)}`,
     },
     {
       id: 'expense',

@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Expense } from '../infrastructure/finance'
+import type { Expense, FinanceIncome } from '../infrastructure/finance'
 import {
   expenseCategoryLabel,
   expenseCategoryValue,
   expensesByCategory,
   expensesToCsv,
   filterFinanceExpenses,
+  incomeToCsv,
+  monthlyBreakdown,
+  movementsToCsv,
+  summarizeFinance,
 } from './finance-summary'
 
 const customExpense: Expense = {
@@ -71,5 +75,46 @@ describe('filterFinanceExpenses', () => {
       expenseWithReference,
     ])
     expect(filterFinanceExpenses([customExpense], 'proveedor', 'combustible')).toEqual([])
+  })
+})
+
+describe('internally cancelled income', () => {
+  const invoice: FinanceIncome = {
+    issuedInvoiceId: 'issued-1',
+    invoiceDraftId: 'draft-1',
+    issuedOn: '2026-11-10',
+    invoiceNumber: 'F-1',
+    clientName: 'Cliente',
+    clientNif: 'TEST',
+    concept: 'Servicio',
+    netAmount: 100,
+    vatAmount: 21,
+    totalAmount: 121,
+  }
+  const cancelled = {
+    ...invoice,
+    issuedInvoiceId: 'issued-2',
+    invoiceNumber: 'F-2',
+    cancelledAt: '2026-11-18T12:00:00Z',
+  }
+
+  it('excludes cancelled income from profit but retains the original VAT', () => {
+    expect(summarizeFinance([invoice, cancelled], [])).toMatchObject({
+      incomeNet: 100,
+      incomeTotal: 121,
+      incomeVat: 42,
+      vatBalance: 42,
+      profit: 100,
+    })
+    expect(monthlyBreakdown([invoice, cancelled], [])).toEqual([
+      { month: '2026-11', incomeNet: 100, expenseNet: 0, profit: 100 },
+    ])
+  })
+
+  it('marks the retained invoice in the fiscal export and excludes it from operational movements', () => {
+    expect(incomeToCsv([cancelled])).toContain('"Anulada internamente"')
+    expect(incomeToCsv([cancelled])).toContain('"21.00"')
+    expect(movementsToCsv([invoice, cancelled], [])).toContain('"F-1"')
+    expect(movementsToCsv([invoice, cancelled], [])).not.toContain('"F-2"')
   })
 })

@@ -73,9 +73,11 @@ function sumBy<T>(items: T[], pick: (item: T) => number) {
 }
 
 export function summarizeFinance(income: FinanceIncome[], expenses: Expense[]): FinanceTotals {
-  const incomeNet = sumBy(income, (item) => item.netAmount)
+  const activeIncome = income.filter((item) => !item.cancelledAt)
+  const incomeNet = sumBy(activeIncome, (item) => item.netAmount)
+  // Internal cancellation is not a fiscal rectification: retain the issued VAT.
   const incomeVat = sumBy(income, (item) => item.vatAmount)
-  const incomeTotal = sumBy(income, (item) => item.totalAmount)
+  const incomeTotal = sumBy(activeIncome, (item) => item.totalAmount)
   const expenseNet = sumBy(expenses, (item) => item.netAmount)
   const expenseVat = sumBy(expenses, (item) => item.vatAmount)
   const expenseTotal = sumBy(expenses, (item) => item.totalAmount)
@@ -102,7 +104,8 @@ export function monthlyBreakdown(income: FinanceIncome[], expenses: Expense[]): 
     months.set(key, existing)
     return existing
   }
-  for (const item of income) bucket(item.issuedOn).incomeNet += cents(item.netAmount)
+  for (const item of income)
+    if (!item.cancelledAt) bucket(item.issuedOn).incomeNet += cents(item.netAmount)
   for (const item of expenses) bucket(item.expenseDate).expenseNet += cents(item.netAmount)
   return [...months.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
@@ -135,10 +138,11 @@ const csv = (rows: Array<Array<string | number>>) =>
 
 export function incomeToCsv(income: FinanceIncome[]) {
   return csv([
-    ['Fecha', 'Nº factura', 'Cliente', 'NIF/CIF', 'Concepto', 'Base', 'IVA', 'Total'],
+    ['Fecha', 'Nº factura', 'Estado', 'Cliente', 'NIF/CIF', 'Concepto', 'Base', 'IVA', 'Total'],
     ...income.map((item) => [
       item.issuedOn,
       item.invoiceNumber,
+      item.cancelledAt ? 'Anulada internamente' : 'Emitida',
       item.clientName,
       item.clientNif,
       item.concept,
@@ -183,16 +187,18 @@ export function expensesToCsv(expenses: Expense[]) {
 /** Ledger of every movement (income positive, expense negative), newest first. */
 export function movementsToCsv(income: FinanceIncome[], expenses: Expense[]) {
   const movements = [
-    ...income.map((item) => ({
-      date: item.issuedOn,
-      type: 'Ingreso',
-      reference: item.invoiceNumber,
-      party: item.clientName,
-      concept: item.concept,
-      net: item.netAmount,
-      vat: item.vatAmount,
-      total: item.totalAmount,
-    })),
+    ...income
+      .filter((item) => !item.cancelledAt)
+      .map((item) => ({
+        date: item.issuedOn,
+        type: 'Ingreso',
+        reference: item.invoiceNumber,
+        party: item.clientName,
+        concept: item.concept,
+        net: item.netAmount,
+        vat: item.vatAmount,
+        total: item.totalAmount,
+      })),
     ...expenses.map((item) => ({
       date: item.expenseDate,
       type: 'Gasto',

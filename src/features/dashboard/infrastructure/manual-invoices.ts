@@ -1,7 +1,16 @@
 import { requireSupabase } from '@/shared/infrastructure/supabase'
-import type { ManualInvoiceInput } from '@/shared/types'
+import type { IssuedInvoice, ManualInvoiceInput } from '@/shared/types'
 
 import { validateManualInvoice } from '../domain/invoice-values'
+
+export async function cancelManualInvoice(invoice: IssuedInvoice, reason: string) {
+  const { error } = await requireSupabase().rpc('cancel_manual_invoice', {
+    p_invoice_id: invoice.invoiceDraftId,
+    p_expected_snapshot: invoice.fiscalSnapshot,
+    p_reason: reason.trim(),
+  })
+  if (error) throw error
+}
 
 export async function createPaidManualInvoice(input: ManualInvoiceInput) {
   const invoice = validateManualInvoice(input)

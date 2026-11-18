@@ -210,7 +210,11 @@ export function FinancePage({ userId }: { userId?: string }) {
   return (
     <div className="finance-page">
       <section className="finance-hero" aria-label="Finanzas">
-        <p>Ingresos de las facturas emitidas frente a los gastos del negocio.</p>
+        <p>
+          Ingresos de las facturas emitidas frente a los gastos del negocio. Las anulaciones
+          internas se excluyen de los ingresos, pero su IVA permanece: no son rectificativas
+          fiscales.
+        </p>
         <Button onClick={() => newExpense()}>
           <Plus size={16} /> Nuevo gasto
         </Button>
@@ -317,7 +321,7 @@ export function FinancePage({ userId }: { userId?: string }) {
 
           <FinanceKpis
             totals={totals}
-            incomeCount={income.length}
+            incomeCount={income.filter((item) => !item.cancelledAt).length}
             expenseCount={expenses.length}
             loading={loading}
           />

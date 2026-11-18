@@ -8,6 +8,7 @@ import { SearchFilter, SelectField } from '@/shared/ui/filter-controls'
 import { useUrlParams } from '@/shared/ui/use-url-params'
 
 import { prepareInvoiceDocument } from '../application/invoice-preview'
+import { canCancelManualInvoice } from '../application/manual-invoices'
 import {
   INVOICE_LIST_PAGE_SIZE,
   invoiceSortOptions,
@@ -27,6 +28,7 @@ import {
 import { downloadBlob, downloadInvoiceRegister } from './billing-document-export'
 import { BillingDocumentTable } from './billing-document-table'
 import type { BillingDocumentMode, BillingDocumentsPageProps } from './billing-document-types'
+import { CancelManualInvoiceDialog } from './cancel-manual-invoice-dialog'
 import { EditInvoiceDialog } from './edit-invoice-dialog'
 import { ManualInvoiceDialog } from './manual-invoice-dialog'
 
@@ -78,6 +80,7 @@ export function BillingDocumentsPage({
   const [refreshKey, setRefreshKey] = useState(0)
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<ClientInvoice['issuedInvoice']>()
+  const [cancellingInvoice, setCancellingInvoice] = useState<ClientInvoice | null>(null)
   const [removingPaymentRequest, setRemovingPaymentRequest] = useState<ClientInvoice | null>(null)
   const [notice, setNotice] = useState('')
   const { searchParams, updateParams } = useUrlParams()
@@ -344,6 +347,7 @@ export function BillingDocumentsPage({
           onEdit={
             canCreateManualInvoice ? (invoice) => setEditing(invoice.issuedInvoice) : undefined
           }
+          onCancelInvoice={canCreateManualInvoice ? setCancellingInvoice : undefined}
           onOpenClient={onOpenClient}
           onOpenLetter={onOpenLetter}
         />
@@ -374,8 +378,16 @@ export function BillingDocumentsPage({
                 onOpenClient={onOpenClient}
                 onOpenLetter={onOpenLetter}
                 onEdit={
-                  !isPaymentRequests && canCreateManualInvoice && invoice.issuedInvoice
+                  !isPaymentRequests &&
+                  canCreateManualInvoice &&
+                  invoice.issuedInvoice &&
+                  !invoice.cancelledAt
                     ? () => setEditing(invoice.issuedInvoice)
+                    : undefined
+                }
+                onCancelInvoice={
+                  !isPaymentRequests && canCreateManualInvoice && canCancelManualInvoice(invoice)
+                    ? () => setCancellingInvoice(invoice)
                     : undefined
                 }
               />
@@ -473,6 +485,19 @@ export function BillingDocumentsPage({
             setRefreshKey((current) => current + 1)
             setNotice(
               'Factura actualizada. Se ha guardado el PDF anterior y el cobro registrado refleja el importe de la factura.',
+            )
+          }}
+        />
+      )}
+      {cancellingInvoice && (
+        <CancelManualInvoiceDialog
+          invoice={cancellingInvoice}
+          onClose={() => setCancellingInvoice(null)}
+          onCancelled={() => {
+            setCancellingInvoice(null)
+            setRefreshKey((current) => current + 1)
+            setNotice(
+              'Factura anulada internamente. El cobro y la factura se conservan; no se ha generado una rectificativa.',
             )
           }}
         />

@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ManualInvoiceInput } from '@/shared/types'
-
-import { loadInvoicePage } from './clients'
-import { createPaidManualInvoice } from './manual-invoices'
+import type { ClientInvoice, IssuedInvoice, ManualInvoiceInput } from '@/shared/types'
 
 const { invoke, rpc } = vi.hoisted(() => ({ invoke: vi.fn(), rpc: vi.fn() }))
 vi.mock('@/shared/infrastructure/supabase', () => ({
   supabase: null,
   requireSupabase: () => ({ functions: { invoke }, rpc }),
 }))
+
+import { canCancelManualInvoice } from '../application/manual-invoices'
+import { loadInvoicePage } from './clients'
+import { cancelManualInvoice, createPaidManualInvoice } from './manual-invoices'
+
 const input: ManualInvoiceInput = {
   id: '11111111-1111-4111-8111-111111111111',
   client: {
@@ -109,5 +111,54 @@ describe('manual invoice persistence', () => {
   it('rejects a response without the persisted identity', async () => {
     invoke.mockResolvedValue({ data: {}, error: null })
     await expect(createPaidManualInvoice(input)).rejects.toThrow('confirmar')
+  })
+})
+
+const issuedInvoice: IssuedInvoice = {
+  id: 'issued-1',
+  invoiceDraftId: 'draft-1',
+  number: 'F-1',
+  issuedAt: '2026-11-10',
+  fiscalSnapshot: { total_amount: 121 },
+}
+
+const invoice: ClientInvoice = {
+  id: 'draft-1',
+  letterId: null,
+  clientId: 'client-1',
+  payer: 'manual',
+  concept: 'Servicio',
+  total: 121,
+  status: 'emitida',
+  createdAt: '2026-11-10',
+  clientName: 'Cliente',
+  issuedInvoice,
+}
+
+describe('internal manual invoice cancellation', () => {
+  beforeEach(() => {
+    rpc.mockReset()
+  })
+
+  it('only offers cancellation for an active, independently issued manual invoice', () => {
+    expect(canCancelManualInvoice(invoice)).toBe(true)
+    expect(canCancelManualInvoice({ ...invoice, letterId: 'letter-1' })).toBe(false)
+    expect(canCancelManualInvoice({ ...invoice, cancelledAt: '2026-11-18' })).toBe(false)
+    expect(canCancelManualInvoice({ ...invoice, issuedInvoice: undefined })).toBe(false)
+  })
+
+  it('sends the invoice snapshot and trimmed reason and propagates errors', async () => {
+    rpc
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('Factura modificada') })
+    await cancelManualInvoice(issuedInvoice, '  Duplicada  ')
+    expect(rpc).toHaveBeenCalledWith('cancel_manual_invoice', {
+      p_invoice_id: invoice.id,
+      p_expected_snapshot: issuedInvoice.fiscalSnapshot,
+      p_reason: 'Duplicada',
+    })
+    await expect(cancelManualInvoice(issuedInvoice, 'Duplicada')).rejects.toThrow(
+      'Factura modificada',
+    )
   })
 })
